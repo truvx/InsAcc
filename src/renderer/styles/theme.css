@@ -139,6 +139,9 @@
   --kpi-blue: #818CF8;
   --kpi-amber: #F59E0B;
   --gold: #F59E0B;
+  --gold-light: rgba(245, 158, 11, 0.12);
+  --navy: #1F4E79;
+  --navy-light: rgba(31, 78, 121, 0.12);
   --blue: #6366F1;
   --green: #22C55E;
 }
@@ -1531,4 +1534,117 @@ select.input {
   .kpi-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.chart-period {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-sans);
+  white-space: nowrap;
+}
+
+.chart-period:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-heavy);
+  color: var(--text-primary);
+}
+
+.chart-period.active {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary-text);
+}
+
+.performance-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-light);
+  transition: background var(--transition-fast);
+}
+
+.performance-item:last-child {
+  border-bottom: none;
+}
+
+.performance-item:hover {
+  background: var(--surface-hover);
+}
+
+.performance-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.performance-name {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.performance-value {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+}
+
+.chart-card .chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.chart-card .chart-title {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.chart-card .chart-subtitle {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.chart-card:has(> .chart-header) {
+  padding: 0;
+}
+
+.chart-card:has(> .chart-header) .chart-header {
+  padding: var(--space-5) var(--space-6);
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.chart-card:has(> .chart-header) .chart-header + * {
+  padding: var(--space-6);
+}
+
+.chart-card:has(> .chart-header) .chart-header + .performance-item,
+.chart-card:has(> .chart-header) .chart-header + div > .performance-item:first-child {
+  padding-left: var(--space-6);
+  padding-right: var(--space-6);
 }

@@ -93,7 +93,7 @@ export default function History({ profile, language = 'English', investments, tr
               onChange={e => { setSelectedDate(e.target.value); if (e.target.value) setSelectedYear(e.target.value.slice(0, 4)) }}
             />
             {selectedDate && (
-              <button className="cancel-btn" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setSelectedDate('')}>
+              <button className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setSelectedDate('')}>
                 Clear
               </button>
             )}

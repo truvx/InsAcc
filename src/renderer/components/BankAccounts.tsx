@@ -97,7 +97,7 @@ export default function BankAccounts({ currency = 'AED', dateFormat = 'DD/MM/YYY
                 Transfer Funds
               </Button>
               <Button variant="secondary" onClick={async () => {
-                const api = (window as any).api
+                const api = window.api
                 if (api?.saveFile) {
                   const content = `Bank Statement - Emirates Islamic Bank\nAccount: ----\nDate: ${new Date().toLocaleDateString()}\n\nBalance: AED ${balance.toLocaleString()}\n\nTransactions:\n${statement.map(s => `${s.date} | ${s.desc} | ${s.amount}`).join('\n')}\n`
                   await api.saveFile(`Bank_Statement_${new Date().toISOString().split('T')[0]}.txt`, content)

@@ -1,17 +1,6 @@
 import React, { useState } from 'react'
+import type { UserEntry, LogEntry } from '../data/types'
 import Toast from './Toast'
-
-interface UserEntry {
-  name: string
-  role: string
-  status: string
-}
-
-interface LogEntry {
-  action: string
-  user: string
-  time: string
-}
 
 interface Props {
   currentTheme: string
@@ -114,7 +103,7 @@ export default function Settings({
         </div>
       </div>
 
-      <div className="scroll-content">
+      <div className="page-body">
         <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
           {[{ id: 'general', label: 'General' }, { id: 'users', label: 'User Management' }, { id: 'security', label: 'Security' }, { id: 'notifications', label: 'Notifications' }].map(tab => (
             <button key={tab.id} className={`chart-period ${activeTab === tab.id ? 'active' : ''}`} onClick={() => setActiveTab(tab.id)}>
@@ -150,7 +139,7 @@ export default function Settings({
                   <div style={{ fontSize: 14, fontWeight: 500 }}>Default Currency</div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Current: {currency}</div>
                 </div>
-                <select className="settings-field" value={currency} onChange={e => onSetCurrency(e.target.value)}>
+                <select className="input" value={currency} onChange={e => onSetCurrency(e.target.value)}>
                   <option value="AED">AED - UAE Dirham</option>
                   <option value="USD">USD - US Dollar</option>
                   <option value="EUR">EUR - Euro</option>
@@ -162,7 +151,7 @@ export default function Settings({
                   <div style={{ fontSize: 14, fontWeight: 500 }}>Date Format</div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Current: {dateFormat}</div>
                 </div>
-                <select className="settings-field" value={dateFormat} onChange={e => onSetDateFormat(e.target.value)}>
+                <select className="input" value={dateFormat} onChange={e => onSetDateFormat(e.target.value)}>
                   <option>DD/MM/YYYY</option>
                   <option>MM/DD/YYYY</option>
                   <option>YYYY-MM-DD</option>
@@ -173,7 +162,7 @@ export default function Settings({
                   <div style={{ fontSize: 14, fontWeight: 500 }}>Language</div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Current: {language}</div>
                 </div>
-                <select className="settings-field" value={language} onChange={e => onSetLanguage(e.target.value)}>
+                <select className="input" value={language} onChange={e => onSetLanguage(e.target.value)}>
                   <option value="English">English</option>
                   <option value="Arabic">Arabic</option>
                   <option value="French">French</option>
@@ -184,7 +173,7 @@ export default function Settings({
                   <div style={{ fontSize: 14, fontWeight: 500 }}>Auto Logout</div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Session timeout: {autoLogout}</div>
                 </div>
-                <select className="settings-field" value={autoLogout} onChange={e => onSetAutoLogout(e.target.value)}>
+                <select className="input" value={autoLogout} onChange={e => onSetAutoLogout(e.target.value)}>
                   <option>5 minutes</option>
                   <option>15 minutes</option>
                   <option>30 minutes</option>
@@ -205,13 +194,13 @@ export default function Settings({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {users.map((u, i) => (
                 <div key={i} className="performance-item">
-                  <div className="sidebar-user-avatar" style={{ background: '#D4AF37' }}>{u.name[0]}</div>
+                  <div className="sidebar-avatar" style={{ background: '#D4AF37' }}>{u.name[0]}</div>
                   <div className="performance-info">
                     <div className="performance-name">{u.name}</div>
                     <div className="performance-value">{u.role} · {u.status}</div>
                   </div>
                   <button
-                    className="numpad-btn"
+                    className="btn btn-secondary"
                     style={{ padding: '4px 12px', fontSize: 12, border: '1px solid #EF4444', color: '#EF4444', background: 'transparent' }}
                     onClick={() => handleRemoveUser(i)}
                   >
@@ -220,25 +209,25 @@ export default function Settings({
                 </div>
               ))}
               <div style={{ marginTop: 16 }}>
-                <button className="numpad-btn" onClick={() => setShowAddUser(!showAddUser)} style={{ width: '100%' }}>
+                <button className="btn btn-secondary" onClick={() => setShowAddUser(!showAddUser)} style={{ width: '100%' }}>
                   {showAddUser ? 'Cancel' : '+ Add New User'}
                 </button>
               </div>
               {showAddUser && (
                 <div style={{ marginTop: 12, padding: 16, background: 'var(--bg-secondary)', borderRadius: 8 }}>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
-                    <div className="login-input-group" style={{ flex: 1, marginBottom: 0 }}>
-                      <label className="login-label">Full Name</label>
-                      <input className="settings-input" placeholder="e.g. Accounts 2" value={newUserName} onChange={e => setNewUserName(e.target.value)} />
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                      <label className="form-label">Full Name</label>
+                      <input className="input" placeholder="e.g. Accounts 2" value={newUserName} onChange={e => setNewUserName(e.target.value)} />
                     </div>
-                    <div className="login-input-group" style={{ flex: 1, marginBottom: 0 }}>
-                      <label className="login-label">Role</label>
-                      <select className="settings-field" value={newUserRole} onChange={e => setNewUserRole(e.target.value)}>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                      <label className="form-label">Role</label>
+                      <select className="input" value={newUserRole} onChange={e => setNewUserRole(e.target.value)}>
                         <option value="Accounts">Accounts</option>
                         <option value="Admin">Admin</option>
                       </select>
                     </div>
-                    <button className="numpad-btn enter" style={{ height: 46, padding: '0 24px' }} onClick={handleAddUser}>Create</button>
+                    <button className="btn btn-primary" style={{ height: 46, padding: '0 24px' }} onClick={handleAddUser}>Create</button>
                   </div>
                 </div>
               )}
@@ -252,21 +241,21 @@ export default function Settings({
               <div className="chart-title">Security & Activity Logs</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div className="login-input-group">
-                <label className="login-label">Current Password</label>
-                <input className="settings-input" type="password" placeholder="Enter current password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+              <div className="form-group">
+                <label className="form-label">Current Password</label>
+                <input className="input" type="password" placeholder="Enter current password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div className="login-input-group">
-                  <label className="login-label">New Password</label>
-                  <input className="settings-input" type="password" placeholder="Enter new password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                <div className="form-group">
+                  <label className="form-label">New Password</label>
+                  <input className="input" type="password" placeholder="Enter new password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
                 </div>
-                <div className="login-input-group">
-                  <label className="login-label">Confirm New Password</label>
-                  <input className="settings-input" type="password" placeholder="Confirm new password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
+                <div className="form-group">
+                  <label className="form-label">Confirm New Password</label>
+                  <input className="input" type="password" placeholder="Confirm new password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
                 </div>
               </div>
-              <button className="numpad-btn enter" style={{ width: '100%' }} onClick={handlePasswordChange}>Update Password</button>
+              <button className="btn btn-primary" style={{ width: '100%' }} onClick={handlePasswordChange}>Update Password</button>
               <div style={{ fontSize: 12, color: 'var(--text-light)', textAlign: 'center' }}>Default password: 1234</div>
             </div>
             <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
@@ -287,7 +276,7 @@ export default function Settings({
                 Reset all {moduleLabel} data to defaults. This cannot be undone.
               </div>
               <button
-                className="numpad-btn"
+                className="btn btn-secondary"
                 style={{ width: '100%', border: '1px solid #EF4444', color: '#EF4444' }}
                 onClick={() => {
                   if (confirm('Are you sure? This will delete all data.')) {

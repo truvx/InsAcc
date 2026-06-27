@@ -4,6 +4,7 @@ import Login from './components/Login'
 import ModuleSelection from './components/ModuleSelection'
 import ProfileSelection from './components/ProfileSelection'
 import type { Profile } from './data/sampleData'
+import type { UserEntry, LogEntry } from './data/types'
 import Dashboard from './components/Dashboard'
 import Investments, { type Investment, generateId } from './components/Investments'
 import Transactions, { type Transaction } from './components/Transactions'
@@ -30,18 +31,6 @@ type Screen = 'profiles' | 'login' | 'module' | 'dashboard'
 type Module = 'investment' | 'property'
 type InvPage = 'dashboard' | 'investments' | 'transactions' | 'bank-accounts' | 'reports' | 'documents' | 'history' | 'settings' | 'purchase-ledger'
 type PropPage = 'dashboard' | 'properties' | 'tenants' | 'income' | 'documents' | 'settings'
-
-interface UserEntry {
-  name: string
-  role: string
-  status: string
-}
-
-interface LogEntry {
-  action: string
-  user: string
-  time: string
-}
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('login')

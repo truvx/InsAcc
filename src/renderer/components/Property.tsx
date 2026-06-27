@@ -5,62 +5,10 @@ import type {
   PropertyTenant, RentPayment,
 } from '../data/propertyData'
 import Toast from './Toast'
-import Modal from './Modal'
+import { Modal } from './design/DesignSystem'
+import { DatePicker, MonthPicker } from './design/DatePicker'
 import { formatDate } from '../utils'
 
-function DatePicker({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  return (
-    <div className="login-input-group" style={{ minWidth: 120 }}>
-      <label className="login-label">{label}</label>
-      <div
-        onClick={() => inputRef.current?.showPicker?.() || inputRef.current?.click()}
-        style={{
-          position: 'relative', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '14px 16px', borderRadius: 8,
-          border: '1.5px solid var(--login-input-border)',
-          background: 'var(--login-input-bg)',
-          fontSize: 14, color: value ? 'var(--login-input-text)' : 'var(--login-input-placeholder)',
-          transition: 'var(--transition)',
-        }}
-        onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--gold)'}
-        onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--login-input-border)'}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        <span>{value || 'Select date...'}</span>
-      </div>
-      <input ref={inputRef} type="date" value={value} onChange={e => onChange(e.target.value)} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }} />
-    </div>
-  )
-}
-
-function MonthPicker({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  return (
-    <div className="login-input-group" style={{ flex: 1, minWidth: 120 }}>
-      <label className="login-label">{label}</label>
-      <div
-        onClick={() => inputRef.current?.showPicker?.() || inputRef.current?.click()}
-        style={{
-          position: 'relative', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '14px 16px', borderRadius: 8,
-          border: '1.5px solid var(--login-input-border)',
-          background: 'var(--login-input-bg)',
-          fontSize: 14, color: value ? 'var(--login-input-text)' : 'var(--login-input-placeholder)',
-          transition: 'var(--transition)',
-        }}
-        onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--gold)'}
-        onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--login-input-border)'}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        <span>{value || 'Select month...'}</span>
-      </div>
-      <input ref={inputRef} type="month" value={value} onChange={e => onChange(e.target.value)} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }} />
-    </div>
-  )
-}
 
 interface Props {
   profile: Profile
@@ -379,14 +327,14 @@ export default function Property({
     <div className="main-content page-enter">
       <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.png,.jpg" style={{ display: 'none' }} onChange={handleFileSelected} />
       <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={() => setToast(prev => ({ ...prev, visible: false }))} />
-      <div className="main-header">
+      <div className="page-header">
         <div>
           <h1>Property Management</h1>
           <p>Manage buildings, customers, tenants, and rent collection</p>
         </div>
       </div>
 
-      <div className="scroll-content">
+      <div className="page-body">
         <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
           {tabs.map(tab => (
             <button key={tab.id} className={`chart-period ${activeTab === tab.id ? 'active' : ''}`} onClick={() => handleTabChange(tab.id)}>
@@ -525,8 +473,8 @@ export default function Property({
                                 {editUnitId === unit.id ? (
                                   <>
                                     <input className="settings-input" style={{ width: 80, fontSize: 11 }} type="number" value={editRent} onChange={e => setEditRent(e.target.value)} />
-                                    <button className="numpad-btn enter" style={{ padding: '2px 8px', fontSize: 11 }} onClick={() => handleUpdateRent(unit.id)}>Save</button>
-                                    <button className="cancel-btn" style={{ padding: '2px 8px', fontSize: 11 }} onClick={() => setEditUnitId(null)}>X</button>
+                                    <button className="btn btn-primary" style={{ padding: '2px 8px', fontSize: 11 }} onClick={() => handleUpdateRent(unit.id)}>Save</button>
+                                    <button className="btn btn-secondary" style={{ padding: '2px 8px', fontSize: 11 }} onClick={() => setEditUnitId(null)}>X</button>
                                   </>
                                 ) : (
                                   <span style={{ color: 'var(--gold)', fontWeight: 600, cursor: 'pointer' }} onClick={() => { setEditUnitId(unit.id); setEditRent(String(unit.monthlyRent)) }}>
@@ -552,16 +500,15 @@ export default function Property({
               )
             })}
 
-<Modal visible={showAddCategory} onClose={() => { setShowAddCategory(false); setNewCategoryName('') }}>
-              <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>Add Category</div>
+<Modal open={showAddCategory} onClose={() => { setShowAddCategory(false); setNewCategoryName('') }} title="Add Category"
+              footer={<div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button className="btn btn-secondary" style={{ padding: '10px 24px' }} onClick={() => { setShowAddCategory(false); setNewCategoryName('') }}>Cancel</button>
+                <button className="btn btn-primary" style={{ padding: '10px 24px' }} onClick={handleAddCategory}>Add Category</button>
+              </div>}>
               <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>Enter the name of the new category</div>
-              <div className="login-input-group" style={{ marginBottom: 20 }}>
-                <label className="login-label">Category Name</label>
-                <input className="login-input" placeholder="e.g. Commercial" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} autoFocus />
-              </div>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                <button className="cancel-btn" style={{ padding: '10px 24px' }} onClick={() => { setShowAddCategory(false); setNewCategoryName('') }}>Cancel</button>
-                <button className="numpad-btn enter" style={{ padding: '10px 24px' }} onClick={handleAddCategory}>Add Category</button>
+              <div className="form-group" style={{ marginBottom: 20 }}>
+                <label className="form-label">Category Name</label>
+                <input className="input" placeholder="e.g. Commercial" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} autoFocus />
               </div>
             </Modal>
 
@@ -581,25 +528,24 @@ export default function Property({
                   </div>
                 ))}
               </div>
-              <button className="numpad-btn" style={{ width: '100%' }} onClick={() => setShowAddBuilding(true)}>+ Add Building</button>
+              <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => setShowAddBuilding(true)}>+ Add Building</button>
             </div>
 
-<Modal visible={showAddBuilding} onClose={() => { setShowAddBuilding(false); setNewBuildingName('') }}>
-              <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>Add Building</div>
+<Modal open={showAddBuilding} onClose={() => { setShowAddBuilding(false); setNewBuildingName('') }} title="Add Building"
+              footer={<div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button className="btn btn-secondary" style={{ padding: '10px 24px' }} onClick={() => { setShowAddBuilding(false); setNewBuildingName('') }}>Cancel</button>
+                <button className="btn btn-primary" style={{ padding: '10px 24px' }} onClick={handleAddBuilding}>Add Building</button>
+              </div>}>
               <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>Enter the details of the new building</div>
-              <div className="login-input-group" style={{ marginBottom: 16 }}>
-                <label className="login-label">Building Name</label>
-                <input className="login-input" placeholder="e.g. Tower A" value={newBuildingName} onChange={e => setNewBuildingName(e.target.value)} autoFocus />
+              <div className="form-group" style={{ marginBottom: 16 }}>
+                <label className="form-label">Building Name</label>
+                <input className="input" placeholder="e.g. Tower A" value={newBuildingName} onChange={e => setNewBuildingName(e.target.value)} autoFocus />
               </div>
-              <div className="login-input-group" style={{ marginBottom: 20 }}>
-                <label className="login-label">Category</label>
-                <select className="settings-field" style={{ width: '100%' }} value={newBuildingCategory} onChange={e => setNewBuildingCategory(e.target.value)}>
+              <div className="form-group" style={{ marginBottom: 20 }}>
+                <label className="form-label">Category</label>
+                <select className="input" style={{ width: '100%' }} value={newBuildingCategory} onChange={e => setNewBuildingCategory(e.target.value)}>
                   {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                 </select>
-              </div>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                <button className="cancel-btn" style={{ padding: '10px 24px' }} onClick={() => { setShowAddBuilding(false); setNewBuildingName('') }}>Cancel</button>
-                <button className="numpad-btn enter" style={{ padding: '10px 24px' }} onClick={handleAddBuilding}>Add Building</button>
               </div>
             </Modal>
           </div>
@@ -612,7 +558,7 @@ export default function Property({
               <div className="chart-subtitle">{tenants.length} tenants</div>
             </div>
             <div style={{ marginBottom: 12 }}>
-              <button className="numpad-btn" onClick={() => {
+              <button className="btn btn-secondary" onClick={() => {
                 if (showTenantForm && editingTenantId) { setEditingTenantId(null); setShowTenantForm(false); resetTenantForm(); return }
                 setShowTenantForm(!showTenantForm)
               }} style={{ width: '100%' }}>
@@ -622,20 +568,20 @@ export default function Property({
             {showTenantForm && (
               <div style={{ padding: 12, background: 'var(--bg-secondary)', borderRadius: 8, marginBottom: 16 }}>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                  <div className="login-input-group" style={{ flex: 1, minWidth: 140 }}>
-                    <label className="login-label">Tenant Name</label>
-                    <input className="login-input" placeholder="Tenant name" value={tenantName} onChange={e => setTenantName(e.target.value)} />
+                  <div className="form-group" style={{ flex: 1, minWidth: 140 }}>
+                    <label className="form-label">Tenant Name</label>
+                    <input className="input" placeholder="Tenant name" value={tenantName} onChange={e => setTenantName(e.target.value)} />
                   </div>
-                  <div className="login-input-group" style={{ flex: 1, minWidth: 120 }}>
-                    <label className="login-label">Phone</label>
-                    <input className="login-input" type="tel" placeholder="Phone" value={tenantPhone} onChange={e => setTenantPhone(e.target.value.replace(/\D/g, ''))} />
+                  <div className="form-group" style={{ flex: 1, minWidth: 120 }}>
+                    <label className="form-label">Phone</label>
+                    <input className="input" type="tel" placeholder="Phone" value={tenantPhone} onChange={e => setTenantPhone(e.target.value.replace(/\D/g, ''))} />
                   </div>
-                  <div className="login-input-group" style={{ flex: 1, minWidth: 140 }}>
-                    <label className="login-label">Email</label>
-                    <input className="login-input" placeholder="Email" value={tenantEmail} onChange={e => setTenantEmail(e.target.value)} />
+                  <div className="form-group" style={{ flex: 1, minWidth: 140 }}>
+                    <label className="form-label">Email</label>
+                    <input className="input" placeholder="Email" value={tenantEmail} onChange={e => setTenantEmail(e.target.value)} />
                   </div>
-                  <div className="login-input-group" style={{ flex: 1, minWidth: 160 }}>
-                    <label className="login-label">Customer/Unit</label>
+                  <div className="form-group" style={{ flex: 1, minWidth: 160 }}>
+                    <label className="form-label">Customer/Unit</label>
                     <select className="settings-field" value={tenantUnit} onChange={e => setTenantUnit(e.target.value)}>
                       <option value="">-- Select --</option>
                       {vacantUnits.map(u => (
@@ -645,31 +591,31 @@ export default function Property({
                   </div>
                   <DatePicker label="Lease Start" value={tenantLeaseStart} onChange={setTenantLeaseStart} />
                   <DatePicker label="Lease End" value={tenantLeaseEnd} onChange={setTenantLeaseEnd} />
-                  <div className="login-input-group" style={{ flex: 1, minWidth: 120 }}>
-                    <label className="login-label">Contract Amount</label>
-                    <input className="login-input" type="number" placeholder="Amount" value={tenantContractAmount} onChange={e => setTenantContractAmount(e.target.value)} />
+                  <div className="form-group" style={{ flex: 1, minWidth: 120 }}>
+                    <label className="form-label">Contract Amount</label>
+                    <input className="input" type="number" placeholder="Amount" value={tenantContractAmount} onChange={e => setTenantContractAmount(e.target.value)} />
                   </div>
-                  <div className="login-input-group" style={{ flex: 1, minWidth: 120 }}>
-                    <label className="login-label">Payment Mode</label>
+                  <div className="form-group" style={{ flex: 1, minWidth: 120 }}>
+                    <label className="form-label">Payment Mode</label>
                     <select className="settings-field" value={tenantPaymentMode} onChange={e => setTenantPaymentMode(e.target.value as any)}>
                       <option value="cash">Cash</option>
                       <option value="cheque">Cheque</option>
                       <option value="online">Bank Transfer</option>
                     </select>
                   </div>
-                  <div className="login-input-group" style={{ flex: 1, minWidth: 120 }}>
-                    <label className="login-label">PDC Cheque No.</label>
-                    <input className="login-input" placeholder="PDC cheque" value={tenantPdcCheque} onChange={e => setTenantPdcCheque(e.target.value)} />
+                  <div className="form-group" style={{ flex: 1, minWidth: 120 }}>
+                    <label className="form-label">PDC Cheque No.</label>
+                    <input className="input" placeholder="PDC cheque" value={tenantPdcCheque} onChange={e => setTenantPdcCheque(e.target.value)} />
                   </div>
-                  <div className="login-input-group" style={{ flex: 1, minWidth: 120 }}>
-                    <label className="login-label">Security Cheque No.</label>
-                    <input className="login-input" placeholder="Security cheque" value={tenantSecurityCheque} onChange={e => setTenantSecurityCheque(e.target.value)} />
+                  <div className="form-group" style={{ flex: 1, minWidth: 120 }}>
+                    <label className="form-label">Security Cheque No.</label>
+                    <input className="input" placeholder="Security cheque" value={tenantSecurityCheque} onChange={e => setTenantSecurityCheque(e.target.value)} />
                   </div>
-                  <div className="login-input-group" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <input type="checkbox" id="paidCheck" checked={tenantIsPaid} onChange={e => setTenantIsPaid(e.target.checked)} />
                     <label htmlFor="paidCheck" style={{ fontSize: 13 }}>Amount Paid</label>
                   </div>
-                  <button className="numpad-btn enter" onClick={handleAddTenant}>{editingTenantId ? 'Update' : 'Add'}</button>
+                  <button className="btn btn-primary" onClick={handleAddTenant}>{editingTenantId ? 'Update' : 'Add'}</button>
                 </div>
               </div>
             )}
@@ -684,7 +630,7 @@ export default function Property({
                 const pmode = t.paymentMode || 'cash'
                 return (
                   <div key={t.id} className="performance-item">
-                    <div className="sidebar-user-avatar" style={{ background: '#1F4E79' }}>{t.name.split(' ').map(w => w[0]).join('')}</div>
+                    <div className="sidebar-avatar" style={{ background: '#1F4E79' }}>{t.name.split(' ').map(w => w[0]).join('')}</div>
                     <div className="performance-info">
                       <div className="performance-name">{t.name}</div>
                       <div className="performance-value">
@@ -705,7 +651,7 @@ export default function Property({
                         {isPaid ? 'Paid' : 'Unpaid'}
                       </span>
                       {isPaid && !invGenerated && (
-                        <button className="numpad-btn" style={{ padding: '2px 8px', fontSize: 10 }} onClick={() => handleGenerateInvoice(t)}>
+                        <button className="btn btn-secondary" style={{ padding: '2px 8px', fontSize: 10 }} onClick={() => handleGenerateInvoice(t)}>
                           Invoice
                         </button>
                       )}
@@ -713,19 +659,19 @@ export default function Property({
                         <span style={{ fontSize: 10, color: 'var(--green)' }}>✓ Inv</span>
                       )}
                       {t.contractFile ? (
-                        <button className="numpad-btn" style={{ padding: '4px 10px', border: '1px solid var(--blue)', background: 'rgba(31,78,121,0.12)' }} onClick={() => handleDownloadContract(t)} title="Download contract">
+                        <button className="btn btn-secondary" style={{ padding: '4px 10px', border: '1px solid var(--blue)', background: 'rgba(31,78,121,0.12)' }} onClick={() => handleDownloadContract(t)} title="Download contract">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                         </button>
                       ) : (
-                        <button className="numpad-btn" style={{ padding: '4px 10px', border: '1px solid var(--blue)', background: 'rgba(31,78,121,0.12)' }} onClick={() => handleContractUpload(t.id)} title="Upload contract">
+                        <button className="btn btn-secondary" style={{ padding: '4px 10px', border: '1px solid var(--blue)', background: 'rgba(31,78,121,0.12)' }} onClick={() => handleContractUpload(t.id)} title="Upload contract">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                         </button>
                       )}
                       <div style={{ display: 'flex', gap: 4 }}>
-                        <button className="numpad-btn" style={{ padding: '4px 10px', border: '1px solid var(--gold)', background: 'rgba(212,175,55,0.12)' }} onClick={() => handleEditTenant(t)} title="Edit">
+                        <button className="btn btn-secondary" style={{ padding: '4px 10px', border: '1px solid var(--gold)', background: 'rgba(212,175,55,0.12)' }} onClick={() => handleEditTenant(t)} title="Edit">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                         </button>
-                        <button className="numpad-btn" style={{ padding: '4px 10px', border: '1px solid #EF4444', background: 'rgba(239,68,68,0.12)' }} onClick={() => handleRemoveTenant(t)} title="Remove">
+                        <button className="btn btn-secondary" style={{ padding: '4px 10px', border: '1px solid #EF4444', background: 'rgba(239,68,68,0.12)' }} onClick={() => handleRemoveTenant(t)} title="Remove">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                         </button>
                       </div>
@@ -744,7 +690,7 @@ export default function Property({
               <div className="chart-subtitle">{rentPayments.length} payments recorded</div>
             </div>
             <div style={{ marginBottom: 12 }}>
-              <button className="numpad-btn" onClick={() => {
+              <button className="btn btn-secondary" onClick={() => {
                 if (showRentForm && editingRentId) { setEditingRentId(null); setShowRentForm(false); setRentUnit(''); setRentAmount(''); setRentMonth(''); setRentPaymentMode('cash'); setRentCreditedTo('cash'); setRentSecurityCheque(''); setRentPdcCheque(''); return }
                 setShowRentForm(!showRentForm)
               }} style={{ width: '100%' }}>
@@ -754,8 +700,8 @@ export default function Property({
             {showRentForm && (
               <div style={{ padding: 12, background: 'var(--bg-secondary)', borderRadius: 8, marginBottom: 16 }}>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                  <div className="login-input-group" style={{ flex: 1, minWidth: 160 }}>
-                    <label className="login-label">Unit</label>
+                  <div className="form-group" style={{ flex: 1, minWidth: 160 }}>
+                    <label className="form-label">Unit</label>
                     <select className="settings-field" value={rentUnit} onChange={e => setRentUnit(e.target.value)}>
                       <option value="">-- Select --</option>
                       {occupiedUnits.map(u => (
@@ -763,35 +709,35 @@ export default function Property({
                       ))}
                     </select>
                   </div>
-                  <div className="login-input-group" style={{ flex: 1, minWidth: 100 }}>
-                    <label className="login-label">Amount</label>
-                    <input className="login-input" type="number" placeholder="Amount" value={rentAmount} onChange={e => setRentAmount(e.target.value)} />
+                  <div className="form-group" style={{ flex: 1, minWidth: 100 }}>
+                    <label className="form-label">Amount</label>
+                    <input className="input" type="number" placeholder="Amount" value={rentAmount} onChange={e => setRentAmount(e.target.value)} />
                   </div>
                   <MonthPicker label="Month" value={rentMonth} onChange={setRentMonth} />
-                  <div className="login-input-group" style={{ flex: 1, minWidth: 100 }}>
-                    <label className="login-label">Payment Mode</label>
+                  <div className="form-group" style={{ flex: 1, minWidth: 100 }}>
+                    <label className="form-label">Payment Mode</label>
                     <select className="settings-field" value={rentPaymentMode} onChange={e => setRentPaymentMode(e.target.value as any)}>
                       <option value="cash">Cash</option>
                       <option value="cheque">Cheque</option>
                       <option value="online">Bank Transfer</option>
                     </select>
                   </div>
-                  <div className="login-input-group" style={{ flex: 1, minWidth: 100 }}>
-                    <label className="login-label">Credited To</label>
+                  <div className="form-group" style={{ flex: 1, minWidth: 100 }}>
+                    <label className="form-label">Credited To</label>
                     <select className="settings-field" value={rentCreditedTo} onChange={e => setRentCreditedTo(e.target.value as any)}>
                       <option value="cash">Cash</option>
                       <option value="cheque">Cheque</option>
                     </select>
                   </div>
-                  <div className="login-input-group" style={{ flex: 1, minWidth: 120 }}>
-                    <label className="login-label">PDC Cheque No.</label>
-                    <input className="login-input" placeholder="PDC cheque" value={rentPdcCheque} onChange={e => setRentPdcCheque(e.target.value)} />
+                  <div className="form-group" style={{ flex: 1, minWidth: 120 }}>
+                    <label className="form-label">PDC Cheque No.</label>
+                    <input className="input" placeholder="PDC cheque" value={rentPdcCheque} onChange={e => setRentPdcCheque(e.target.value)} />
                   </div>
-                  <div className="login-input-group" style={{ flex: 1, minWidth: 120 }}>
-                    <label className="login-label">Security Cheque No.</label>
-                    <input className="login-input" placeholder="Security cheque" value={rentSecurityCheque} onChange={e => setRentSecurityCheque(e.target.value)} />
+                  <div className="form-group" style={{ flex: 1, minWidth: 120 }}>
+                    <label className="form-label">Security Cheque No.</label>
+                    <input className="input" placeholder="Security cheque" value={rentSecurityCheque} onChange={e => setRentSecurityCheque(e.target.value)} />
                   </div>
-                  <button className="numpad-btn enter" onClick={handleRecordRent}>{editingRentId ? 'Update' : 'Record'}</button>
+                  <button className="btn btn-primary" onClick={handleRecordRent}>{editingRentId ? 'Update' : 'Record'}</button>
                 </div>
               </div>
             )}
@@ -827,7 +773,7 @@ export default function Property({
                           color: p.status === 'paid' ? 'var(--green)' : '#EF4444',
                         }}>{p.status}</span>
                         {p.status === 'paid' && tnt && !invDone && (
-                          <button className="numpad-btn" style={{ padding: '2px 8px', fontSize: 10 }} onClick={() => handleGenerateInvoice(tnt)}>
+                          <button className="btn btn-secondary" style={{ padding: '2px 8px', fontSize: 10 }} onClick={() => handleGenerateInvoice(tnt)}>
                             Invoice
                           </button>
                         )}
@@ -835,10 +781,10 @@ export default function Property({
                           <span style={{ fontSize: 10, color: 'var(--green)' }}>✓ Inv</span>
                         )}
                         <div style={{ display: 'flex', gap: 4 }}>
-                          <button className="numpad-btn" style={{ padding: '2px 8px', border: '1px solid var(--gold)', background: 'rgba(212,175,55,0.12)' }} onClick={() => handleEditRent(p)} title="Edit">
+                          <button className="btn btn-secondary" style={{ padding: '2px 8px', border: '1px solid var(--gold)', background: 'rgba(212,175,55,0.12)' }} onClick={() => handleEditRent(p)} title="Edit">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                           </button>
-                          <button className="numpad-btn" style={{ padding: '2px 8px', border: '1px solid #EF4444', background: 'rgba(239,68,68,0.12)' }} onClick={() => handleRemoveRent(p.id)} title="Remove">
+                          <button className="btn btn-secondary" style={{ padding: '2px 8px', border: '1px solid #EF4444', background: 'rgba(239,68,68,0.12)' }} onClick={() => handleRemoveRent(p.id)} title="Remove">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                           </button>
                         </div>

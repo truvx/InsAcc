@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react'
 import type { Profile } from '../data/sampleData'
-import type { PurchaseCategory, Purchase, ItemAverages } from '../data/purchaseData'
+import type { PurchaseCategory, Purchase } from '../data/purchaseData'
 import {
-  SUMMARY_CARDS,
   ASSET_ALLOCATION,
   ASSET_PERFORMANCES,
 } from '../data/sampleData'
+import { computeAverages } from '../services/purchaseService'
 import AssetAllocationPie from './charts/AssetAllocationPie'
 import InvestmentGrowthChart from './charts/InvestmentGrowthChart'
 import CashFlowChart from './charts/CashFlowChart'
@@ -21,33 +21,6 @@ interface Props {
   language?: string
   purchaseCategories?: PurchaseCategory[]
   purchases?: Purchase[]
-}
-
-function computeAverages(categories: PurchaseCategory[], purchases: Purchase[]): ItemAverages[] {
-  const byItem: Record<string, Purchase[]> = {}
-  purchases.forEach(p => {
-    if (!byItem[p.itemId]) byItem[p.itemId] = []
-    byItem[p.itemId].push(p)
-  })
-  return Object.entries(byItem).map(([itemId, pList]) => {
-    const cat = categories.find(c => c.items.some(i => i.id === itemId))
-    const item = cat?.items.find(i => i.id === itemId)
-    const count = pList.length
-    const totalQty = pList.reduce((s, p) => s + p.quantity, 0)
-    const totalVal = pList.reduce((s, p) => s + p.totalValue, 0)
-    const sumUnitPrice = pList.reduce((s, p) => s + p.unitPrice, 0)
-    return {
-      itemId,
-      itemName: item?.name || itemId,
-      categoryName: cat?.name || 'Unknown',
-      purchaseCount: count,
-      totalQuantity: totalQty,
-      totalValue: totalVal,
-      avgUnitPrice: count ? +(sumUnitPrice / count).toFixed(2) : 0,
-      avgValue: count ? +(totalVal / count).toFixed(2) : 0,
-      avgQuantity: count ? +(totalQty / count).toFixed(2) : 0,
-    }
-  })
 }
 
 export default function Dashboard({ profile, currency, dateFormat, language = 'English', purchaseCategories = [], purchases = [] }: Props) {

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import type { Profile } from '../data/sampleData'
-import type { PurchaseCategory, Purchase, ItemAverages } from '../data/purchaseData'
+import type { PurchaseCategory, Purchase } from '../data/purchaseData'
+import { computeAverages, nextPurchaseId } from '../services/purchaseService'
 import Toast from './Toast'
 import { formatDate, t } from '../utils'
 
@@ -12,39 +13,6 @@ interface Props {
   categories: PurchaseCategory[]
   purchases: Purchase[]
   setPurchases: React.Dispatch<React.SetStateAction<Purchase[]>>
-}
-
-function computeAverages(categories: PurchaseCategory[], purchases: Purchase[]): ItemAverages[] {
-  const byItem: Record<string, Purchase[]> = {}
-  purchases.forEach(p => {
-    if (!byItem[p.itemId]) byItem[p.itemId] = []
-    byItem[p.itemId].push(p)
-  })
-
-  return Object.entries(byItem).map(([itemId, pList]) => {
-    const cat = categories.find(c => c.items.some(i => i.id === itemId))
-    const item = cat?.items.find(i => i.id === itemId)
-    const count = pList.length
-    const totalQty = pList.reduce((s, p) => s + p.quantity, 0)
-    const totalVal = pList.reduce((s, p) => s + p.totalValue, 0)
-    const sumUnitPrice = pList.reduce((s, p) => s + p.unitPrice, 0)
-    return {
-      itemId,
-      itemName: item?.name || itemId,
-      categoryName: cat?.name || 'Unknown',
-      purchaseCount: count,
-      totalQuantity: totalQty,
-      totalValue: totalVal,
-      avgUnitPrice: count ? +(sumUnitPrice / count).toFixed(2) : 0,
-      avgValue: count ? +(totalVal / count).toFixed(2) : 0,
-      avgQuantity: count ? +(totalQty / count).toFixed(2) : 0,
-    }
-  })
-}
-
-let purchaseIdCounter = Date.now()
-function nextPurchaseId() {
-  return `P-${++purchaseIdCounter}`
 }
 
 export default function PurchaseLedger({ profile, currency = 'AED', dateFormat = 'DD/MM/YYYY', language = 'English', categories, purchases, setPurchases }: Props) {
@@ -102,17 +70,17 @@ export default function PurchaseLedger({ profile, currency = 'AED', dateFormat =
   return (
     <div className="main-content">
       <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={() => setToast(prev => ({ ...prev, visible: false }))} />
-      <div className="main-header">
+      <div className="page-header">
         <div>
           <h1>Purchase Ledger</h1>
           <p>Record purchases and track average costs</p>
         </div>
         <div className="header-actions">
-          <button className="header-btn" onClick={() => { setShowForm(!showForm); if (!showForm) setFormDate(new Date().toISOString().split('T')[0]) }} title="Add Purchase" aria-label="Add Purchase"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+          <button className="btn btn-ghost btn-sm" onClick={() => { setShowForm(!showForm); if (!showForm) setFormDate(new Date().toISOString().split('T')[0]) }} title="Add Purchase" aria-label="Add Purchase"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
         </div>
       </div>
 
-      <div className="scroll-content">
+      <div className="page-body">
         {topAverages.length > 0 && (
           <div className="dashboard-grid" style={{ marginBottom: 20 }}>
             {topAverages.map(avg => (
@@ -127,13 +95,13 @@ export default function PurchaseLedger({ profile, currency = 'AED', dateFormat =
         )}
 
         <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-          <select className="settings-field" value={selectedCat} onChange={e => { setSelectedCat(e.target.value); setSelectedItem('') }} style={{ minWidth: 160 }}>
+          <select className="input" value={selectedCat} onChange={e => { setSelectedCat(e.target.value); setSelectedItem('') }} style={{ minWidth: 160 }}>
             {categories.map(c => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
           {items.length > 0 && (
-            <select className="settings-field" value={selectedItem} onChange={e => setSelectedItem(e.target.value)} style={{ minWidth: 200 }}>
+            <select className="input" value={selectedItem} onChange={e => setSelectedItem(e.target.value)} style={{ minWidth: 200 }}>
               <option value="">-- Select Item --</option>
               {items.map(i => (
                 <option key={i.id} value={i.id}>{i.name}</option>
@@ -177,21 +145,21 @@ export default function PurchaseLedger({ profile, currency = 'AED', dateFormat =
           <div className="chart-card" style={{ marginBottom: 16 }}>
             <div className="chart-title" style={{ marginBottom: 12 }}>New Purchase</div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              <div className="login-input-group" style={{ flex: 1, minWidth: 140 }}>
-                <label className="login-label">Date</label>
-                <input className="login-input" type="date" value={formDate} onChange={e => setFormDate(e.target.value)} />
+              <div className="form-group" style={{ flex: 1, minWidth: 140 }}>
+                <label className="form-label">Date</label>
+                <input className="input" type="date" value={formDate} onChange={e => setFormDate(e.target.value)} />
               </div>
-              <div className="login-input-group" style={{ flex: 1, minWidth: 100 }}>
-                <label className="login-label">Quantity</label>
-                <input className="login-input" type="number" step="any" placeholder="e.g. 100" value={formQty} onChange={e => setFormQty(e.target.value)} />
+              <div className="form-group" style={{ flex: 1, minWidth: 100 }}>
+                <label className="form-label">Quantity</label>
+                <input className="input" type="number" step="any" placeholder="e.g. 100" value={formQty} onChange={e => setFormQty(e.target.value)} />
               </div>
-              <div className="login-input-group" style={{ flex: 1, minWidth: 100 }}>
-                <label className="login-label">Unit Price ({currency})</label>
-                <input className="login-input" type="number" step="any" placeholder="e.g. 490" value={formPrice} onChange={e => setFormPrice(e.target.value)} />
+              <div className="form-group" style={{ flex: 1, minWidth: 100 }}>
+                <label className="form-label">Unit Price ({currency})</label>
+                <input className="input" type="number" step="any" placeholder="e.g. 490" value={formPrice} onChange={e => setFormPrice(e.target.value)} />
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button className="cancel-btn" onClick={() => setShowForm(false)}>Cancel</button>
-                <button className="numpad-btn enter" onClick={handleAdd}>Record</button>
+                <button className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleAdd}>Record</button>
               </div>
             </div>
           </div>
