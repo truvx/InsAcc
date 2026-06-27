@@ -8,22 +8,18 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import {
-  INVESTMENT_GROWTH_DAILY,
-  INVESTMENT_GROWTH_MONTHLY,
-  INVESTMENT_GROWTH_YEARLY,
-} from '../../data/sampleData'
+import type { InvestmentHistory } from '../../data/sampleData'
 
-export default function InvestmentGrowthChart() {
+interface Props {
+  dataByPeriod?: Record<string, InvestmentHistory[]>
+}
+
+export default function InvestmentGrowthChart({ dataByPeriod }: Props) {
   const [period, setPeriod] = useState('Monthly')
 
   const data = useMemo(() => {
-    switch (period) {
-      case 'Daily': return INVESTMENT_GROWTH_DAILY
-      case 'Yearly': return INVESTMENT_GROWTH_YEARLY
-      default: return INVESTMENT_GROWTH_MONTHLY
-    }
-  }, [period])
+    return dataByPeriod?.[period] || []
+  }, [period, dataByPeriod])
 
   return (
     <div className="chart-card">
@@ -49,30 +45,30 @@ export default function InvestmentGrowthChart() {
           <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="growthGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#D4AF37" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#D4AF37" stopOpacity={0} />
+                <stop offset="5%" stopColor="var(--gold)" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="var(--gold)" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis
               dataKey="date"
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 12, fill: '#9CA3AF' }}
+              tick={{ fontSize: 12, fill: 'var(--text-muted)' }}
             />
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 12, fill: '#9CA3AF' }}
+              tick={{ fontSize: 12, fill: 'var(--text-muted)' }}
               tickFormatter={(val) => `${(val / 1000000).toFixed(1)}M`}
             />
             <Tooltip
               contentStyle={{
-                background: 'rgba(255,255,255,0.9)',
+                background: 'var(--surface)',
                 backdropFilter: 'blur(12px)',
-                border: '1px solid rgba(255,255,255,0.3)',
+                border: '1px solid var(--border)',
                 borderRadius: '8px',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+                boxShadow: 'var(--shadow-md)',
                 fontSize: '13px',
               }}
               formatter={(value: number) => [`AED ${value.toLocaleString()}`, 'Portfolio Value']}
@@ -80,11 +76,11 @@ export default function InvestmentGrowthChart() {
             <Area
               type="monotone"
               dataKey="value"
-              stroke="#D4AF37"
+              stroke="var(--gold)"
               strokeWidth={2.5}
               fill="url(#growthGradient)"
               dot={false}
-              activeDot={{ r: 5, fill: '#D4AF37', stroke: '#fff', strokeWidth: 2 }}
+              activeDot={{ r: 5, fill: 'var(--gold)', stroke: 'var(--text-inverse)', strokeWidth: 2 }}
             />
           </AreaChart>
         </ResponsiveContainer>

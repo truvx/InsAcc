@@ -41,7 +41,7 @@ export default function App() {
   ]
   const [activeModule, setActiveModule] = useState<Module>('investment')
   const [activePage, setActivePage] = useState<string>('dashboard')
-  const [theme, setTheme] = useState('light')
+  const [theme, setTheme] = usePersistedState<string>('insacc_theme', 'light')
   const [storedPassword, setStoredPassword] = useState('1234')
   const [currency, setCurrency] = useState('AED')
   const [dateFormat, setDateFormat] = useState('DD/MM/YYYY')
@@ -165,9 +165,10 @@ export default function App() {
       switch (activePage as InvPage) {
         case 'dashboard': return (
           <Dashboard
-            profile={{ name: 'Investor', role: 'Admin', id: 1, initials: 'IN', avatar: '', locked: false }}
             currency={currency} dateFormat={dateFormat} language={language}
             purchaseCategories={purchaseCategories} purchases={purchases}
+            investments={investments} transactions={transactions}
+            statement={statement}
           />
         )
         case 'investments': return (

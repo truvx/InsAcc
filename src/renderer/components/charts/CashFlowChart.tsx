@@ -9,22 +9,18 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts'
-import {
-  CASH_FLOW_MONTHLY,
-  CASH_FLOW_QUARTERLY,
-  CASH_FLOW_YEARLY,
-} from '../../data/sampleData'
+import type { MonthlyCashFlow } from '../../data/sampleData'
 
-export default function CashFlowChart() {
+interface Props {
+  dataByPeriod?: Record<string, MonthlyCashFlow[]>
+}
+
+export default function CashFlowChart({ dataByPeriod }: Props) {
   const [period, setPeriod] = useState('Monthly')
 
   const data = useMemo(() => {
-    switch (period) {
-      case 'Quarterly': return CASH_FLOW_QUARTERLY
-      case 'Yearly': return CASH_FLOW_YEARLY
-      default: return CASH_FLOW_MONTHLY
-    }
-  }, [period])
+    return dataByPeriod?.[period] || []
+  }, [period, dataByPeriod])
 
   const subtitle = `${period} income vs expenses`
 
@@ -36,7 +32,7 @@ export default function CashFlowChart() {
           <div className="chart-subtitle">{subtitle}</div>
         </div>
         <div className="chart-periods">
-          {['Monthly', 'Quarterly', 'Yearly'].map((p) => (
+          {['Daily', 'Monthly', 'Yearly'].map((p) => (
             <button
               key={p}
               className={`chart-period ${period === p ? 'active' : ''}`}
@@ -50,46 +46,57 @@ export default function CashFlowChart() {
       <div style={{ width: '100%', height: 280 }}>
         <ResponsiveContainer>
           <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis
               dataKey="month"
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 12, fill: '#9CA3AF' }}
+              tick={{ fontSize: 12, fill: 'var(--text-muted)' }}
             />
             <YAxis
+              yAxisId="left"
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 12, fill: '#9CA3AF' }}
+              tick={{ fontSize: 12, fill: 'var(--green)' }}
+              tickFormatter={(val) => `${(val / 1000).toFixed(0)}K`}
+            />
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 12, fill: 'var(--text-muted)' }}
               tickFormatter={(val) => `${(val / 1000).toFixed(0)}K`}
             />
             <Tooltip
               contentStyle={{
-                background: 'rgba(255,255,255,0.9)',
+                background: 'var(--surface)',
                 backdropFilter: 'blur(12px)',
-                border: '1px solid rgba(255,255,255,0.3)',
+                border: '1px solid var(--border)',
                 borderRadius: '8px',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+                boxShadow: 'var(--shadow-md)',
                 fontSize: '13px',
               }}
-              formatter={(value: number) => [`AED ${value.toLocaleString()}`, '']}
+              formatter={(value: number, name: string) => [`AED ${value.toLocaleString()}`, name]}
             />
             <Legend
-              wrapperStyle={{ fontSize: '12px', color: '#6B7280' }}
+              wrapperStyle={{ fontSize: '12px', color: 'var(--text-secondary)' }}
               iconType="circle"
               iconSize={8}
             />
             <Bar
+              yAxisId="left"
               dataKey="income"
               name="Income"
-              fill="#2E8B57"
+              fill="var(--green)"
               radius={[4, 4, 0, 0]}
               barSize={16}
             />
             <Bar
+              yAxisId="right"
               dataKey="expense"
               name="Expenses"
-              fill="#9CA3AF"
+              fill="var(--text-muted)"
               radius={[4, 4, 0, 0]}
               barSize={16}
             />

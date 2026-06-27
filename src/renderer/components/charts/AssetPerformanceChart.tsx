@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import type { AssetPerformance } from '../../data/sampleData'
 
 interface Props {
@@ -15,7 +15,7 @@ const ASSET_COLORS: Record<string, string> = {
 }
 
 export default function AssetPerformanceChart({ data }: Props) {
-  const sorted = [...data].sort((a, b) => b.roi - a.roi)
+  const sorted = useMemo(() => [...data].sort((a, b) => b.roi - a.roi), [data])
 
   return (
     <div className="chart-card">
@@ -31,8 +31,10 @@ export default function AssetPerformanceChart({ data }: Props) {
             <div
               className="performance-rank"
               style={{
-                background: ASSET_COLORS[asset.name] || 'var(--text-light)',
-                boxShadow: `0 2px 8px ${(ASSET_COLORS[asset.name] || 'var(--text-light)')}40`,
+                background: ASSET_COLORS[asset.name] || 'var(--text-muted)',
+                boxShadow: ASSET_COLORS[asset.name]
+                  ? `0 2px 8px ${ASSET_COLORS[asset.name]}40`
+                  : '0 2px 8px transparent',
               }}
             >
               {index + 1}

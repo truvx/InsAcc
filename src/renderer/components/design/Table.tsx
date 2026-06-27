@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Button, Spinner, ChevronDownIcon, ChevronLeftIcon, SearchIcon } from './DesignSystem'
+import { Button, ChevronLeftIcon, SearchIcon, CloseIcon, EmptyState } from './DesignSystem'
 
 export interface Column<T> {
   key: string
@@ -53,10 +53,7 @@ function SearchInput({ value, onChange, placeholder }: { value: string; onChange
       />
       {value && (
         <button className="data-table-search-clear" onClick={() => onChange('')} aria-label="Clear search">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
+          <CloseIcon />
         </button>
       )}
     </div>
@@ -177,16 +174,16 @@ export function DataTable<T>({
               <tr>
                 <td colSpan={columns.length} style={{ padding: 0 }}>
                   {emptyState || (
-                    <div className="empty-state" style={{ padding: '48px 24px' }}>
-                      <div className="empty-state-icon">
+                    <EmptyState
+                      icon={
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                           <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
                           <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
                         </svg>
-                      </div>
-                      <div className="empty-state-title">No data found</div>
-                      <div className="empty-state-text">Try adjusting your search or filters</div>
-                    </div>
+                      }
+                      title="No data found"
+                      text="Try adjusting your search or filters"
+                    />
                   )}
                 </td>
               </tr>
