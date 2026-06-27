@@ -106,7 +106,7 @@ All defined in `src/renderer/components/design/DesignSystem.tsx`:
 1. **Inter font is the best open-source alternative to SF Pro** — installed as webfonts (woff2) for cross-platform consistency
 2. **All users are on modern browsers** (Chrome/Edge/Firefox/Safari within 2 major versions) — CSS custom properties and Grid layout used
 3. **Financial users prefer density over whitespace** — base font 13px, compact tables
-4. **Blue (#2563EB) is the safest enterprise accent color** — widely used in financial/professional software, conveys trust
+4. **Indigo (#6366F1) is the safest enterprise accent color** — widely used in financial/professional software, conveys trust
 5. **Slate gray neutrals avoid brand conflicts** — neutral enough to feel institutional, warm enough to not feel cold
 6. **No external icon library needed** — all icons are inline SVGs in DesignSystem.tsx, zero HTTP requests
 7. **localStorage persistence is acceptable for a desktop app** — per the existing architecture decision

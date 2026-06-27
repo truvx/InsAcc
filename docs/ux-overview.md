@@ -81,11 +81,11 @@ Purchase Ledger → Select category → Add purchase item → View running avera
 
 ## Color System
 
-- **Primary**: Blue (#2563EB) — conveys trust, professionalism, financial stability
-- **Success**: Green (#059669) — positive indicators, confirmations
-- **Warning**: Amber (#D97706) — attention-required states
-- **Danger**: Red (#DC2626) — errors, deletions, critical alerts
-- **Neutral scale**: Slate grays — clean, unobtrusive backgrounds and borders
+- **Primary**: Indigo (#6366F1) — conveys trust, professionalism, financial stability
+- **Success**: Green (#22C55E) — positive indicators, confirmations
+- **Warning**: Amber (#F59E0B) — attention-required states
+- **Danger**: Red (#EF4444) — errors, deletions, critical alerts
+- **Neutral scale**: Zinc grays (#0C0C0D–#F4F4F5) — clean, unobtrusive backgrounds and borders
 
 ## Typography
 
@@ -96,8 +96,8 @@ Purchase Ledger → Select category → Add purchase item → View running avera
 
 ## Layout
 
-- **Sidebar**: Fixed left, dark background, 240px wide
-- **Content**: Fluid right area with light background
+- **Sidebar**: Fixed left, dark background, 240px wide (56px collapsed)
+- **Content**: Fluid right area with dark background (#111113)
 - **Page header**: Sticky top bar with title, actions, and breadcrumb context
 - **Cards**: White surfaces with subtle border, used for KPIs and grouped content
 - **Tables**: Full-width with sticky headers, horizontal scroll on overflow
