@@ -1648,3 +1648,109 @@ select.input {
   padding-left: var(--space-6);
   padding-right: var(--space-6);
 }
+
+/* Enhanced KPI Card */
+.kpi-card-accent {
+  border-top: 2px solid var(--primary);
+  position: relative;
+}
+
+.kpi-card-accent::before {
+  display: none;
+}
+
+.kpi-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--primary-light);
+  color: var(--primary);
+  margin-bottom: var(--space-2);
+  flex-shrink: 0;
+}
+
+.kpi-arrow {
+  display: inline-block;
+  margin-right: 2px;
+  font-size: 10px;
+}
+
+.kpi-arrow.up { color: var(--kpi-green); }
+.kpi-arrow.down { color: var(--kpi-red); }
+.kpi-arrow.neutral { color: var(--text-muted); }
+
+.kpi-card-accent .kpi-card-icon {
+  width: 34px;
+  height: 34px;
+}
+
+/* Chart Card Enhancements */
+.chart-card-empty {
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+  min-height: 240px;
+  gap: var(--space-3);
+}
+
+.chart-empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+}
+
+.chart-empty-text {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  text-align: center;
+  max-width: 240px;
+  line-height: 1.5;
+}
+
+.chart-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Dashboard Section Divider */
+.dashboard-section-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  margin-top: var(--space-2);
+}
+
+.dashboard-section-divider::before,
+.dashboard-section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.dashboard-section-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
