@@ -1,0 +1,81 @@
+{
+  "name": "insacc",
+  "version": "1.0.0",
+  "description": "Intelligent Asset & Investment Accounting System",
+  "main": "src/main/main.js",
+  "scripts": {
+    "dev": "concurrently \"vite\" \"wait-on http://localhost:5174 && electron .\"",
+    "build": "vite build && electron-builder --win --x64",
+    "build:mac": "vite build && electron-builder --mac --x64",
+    "build:linux": "vite build && electron-builder --linux --x64",
+    "build:all": "vite build && electron-builder --win --mac --linux --x64",
+    "preview": "vite build && electron .",
+    "icons": "node scripts/generate-icons.js"
+  },
+  "build": {
+    "appId": "com.insacc.app",
+    "productName": "InsAcc",
+    "copyright": "Copyright © 2024 InsAcc",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "src/main/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "icon": "resources/icon.png",
+      "artifactName": "InsAcc-Setup-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "InsAcc",
+      "installerIcon": "resources/icon.bmp",
+      "uninstallerIcon": "resources/icon.bmp"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "resources/icon.png",
+      "category": "public.app-category.finance"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "resources",
+      "category": "Finance"
+    },
+    "extraMetadata": {
+      "main": "src/main/main.js"
+    }
+  },
+  "dependencies": {
+    "framer-motion": "^11.18.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "recharts": "^2.10.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "concurrently": "^8.2.0",
+    "electron": "^28.3.3",
+    "electron-builder": "^24.0.0",
+    "sharp": "^0.35.2",
+    "typescript": "^5.3.0",
+    "vite": "^5.0.0",
+    "wait-on": "^7.2.0"
+  }
+}
