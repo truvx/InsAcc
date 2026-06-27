@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import type { Profile } from '../data/sampleData'
-import { Badge, Button } from './design/DesignSystem'
+import { Badge, Button, Modal, Select, Input, PlusIcon, EditIcon, TrashIcon } from './design/DesignSystem'
+import { DataTable, type Column } from './design/Table'
 import Toast from './Toast'
 import { formatDate, t } from '../utils'
 
@@ -42,6 +43,10 @@ export default function Investments({ currency = 'AED', dateFormat = 'DD/MM/YYYY
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' })
+  const [searchQuery, setSearchQuery] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     type: 'Gold', assetName: '', purchaseValue: '', quantity: '', unitPrice: '', broker: '',
     date: new Date().toISOString().split('T')[0],
@@ -78,14 +83,106 @@ export default function Investments({ currency = 'AED', dateFormat = 'DD/MM/YYYY
   }
 
   const handleDelete = (id: string) => {
-    if (confirm('Delete this investment record?')) { setInvestments(prev => prev.filter(inv => inv.id !== id)); setToast({ visible: true, message: 'Investment deleted', type: 'success' }) }
+    setConfirmDelete(id)
+  }
+
+  const confirmDeleteAction = () => {
+    if (confirmDelete) {
+      setInvestments(prev => prev.filter(inv => inv.id !== confirmDelete))
+      setToast({ visible: true, message: 'Investment deleted', type: 'success' })
+      setConfirmDelete(null)
+    }
+  }
+
+  const openAddForm = () => {
+    resetForm()
+    setEditingId(null)
+    setShowForm(true)
   }
 
   const fmt = (n: number) => `${currency} ${n.toLocaleString()}`
 
+  const filtered = useMemo(() => {
+    let result = investments
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      result = result.filter(inv =>
+        inv.id.toLowerCase().includes(q) ||
+        inv.assetName.toLowerCase().includes(q) ||
+        inv.type.toLowerCase().includes(q) ||
+        inv.broker.toLowerCase().includes(q)
+      )
+    }
+    if (typeFilter) {
+      result = result.filter(inv => inv.type === typeFilter)
+    }
+    return result
+  }, [investments, searchQuery, typeFilter])
+
+  const summary = useMemo(() => {
+    const totalValue = investments.reduce((s, i) => s + i.purchaseValue, 0)
+    const totalQty = investments.reduce((s, i) => s + i.quantity, 0)
+    const types = new Set(investments.map(i => i.type))
+    return { totalValue, totalQty, uniqueTypes: types.size, count: investments.length }
+  }, [investments])
+
+  const typeOptions = [
+    { value: '', label: 'All Types' },
+    ...ASSET_TYPES.map(t => ({ value: t, label: t })),
+  ]
+
+  const columns: Column<Investment>[] = [
+    {
+      key: 'id', header: 'ID', sortable: true, width: '110px',
+      render: inv => <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 'var(--font-size-xs)' }}>{inv.id}</span>,
+    },
+    {
+      key: 'date', header: 'Date', sortable: true, width: '120px',
+      render: inv => <span className="text-secondary">{formatDate(inv.date, dateFormat)}</span>,
+    },
+    {
+      key: 'assetName', header: 'Asset Name', sortable: true,
+      render: inv => <span style={{ fontWeight: 500 }}>{inv.assetName}</span>,
+    },
+    {
+      key: 'type', header: 'Type', sortable: true, width: '140px',
+      render: inv => <Badge variant="primary">{inv.type}</Badge>,
+    },
+    {
+      key: 'purchaseValue', header: 'Purchase Value', sortable: true, numeric: true, width: '140px',
+      render: inv => <span style={{ fontWeight: 600 }}>{fmt(inv.purchaseValue)}</span>,
+    },
+    {
+      key: 'quantity', header: 'Qty', sortable: true, numeric: true, width: '90px',
+      render: inv => <span className="text-secondary">{inv.quantity.toLocaleString()}</span>,
+    },
+    {
+      key: 'unitPrice', header: 'Unit Price', sortable: true, numeric: true, width: '120px',
+      render: inv => <span className="text-secondary">{fmt(inv.unitPrice)}</span>,
+    },
+    {
+      key: 'broker', header: 'Broker', sortable: true, width: '130px',
+      render: inv => <span className="text-secondary">{inv.broker}</span>,
+    },
+    {
+      key: 'actions', header: '', width: '80px',
+      render: inv => (
+        <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+          <Button variant="ghost" size="sm" onClick={() => handleEdit(inv)} aria-label="Edit">
+            <EditIcon />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => handleDelete(inv.id)} aria-label="Delete" style={{ color: 'var(--danger)' }}>
+            <TrashIcon />
+          </Button>
+        </div>
+      ),
+    },
+  ]
+
   return (
     <>
       <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={() => setToast(prev => ({ ...prev, visible: false }))} />
+
       <div className="page-header">
         <div className="page-header-left">
           <div>
@@ -94,106 +191,158 @@ export default function Investments({ currency = 'AED', dateFormat = 'DD/MM/YYYY
           </div>
         </div>
         <div className="page-header-right">
-          <Button variant="primary" size="sm" onClick={() => { setShowForm(!showForm); setEditingId(null); resetForm() }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <Button variant="primary" size="sm" onClick={openAddForm}>
+            <PlusIcon />
             Add Investment
           </Button>
         </div>
       </div>
+
       <div className="page-body">
-        {showForm && (
-          <div className="card" style={{ marginBottom: 24 }}>
-            <div className="card-header"><span className="card-title">{editingId ? 'Edit Investment' : 'New Investment'}</span></div>
-            <div className="card-body">
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Asset Type</label>
-                  <select className="input" value={formData.type} onChange={e => setFormData(prev => ({ ...prev, type: e.target.value }))}>
-                    {ASSET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Asset Name</label>
-                  <input className="input" placeholder="Gold Bullion 24K" value={formData.assetName} onChange={e => setFormData(prev => ({ ...prev, assetName: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Date</label>
-                  <input className="input" type="date" value={formData.date} onChange={e => setFormData(prev => ({ ...prev, date: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Purchase Value ({currency})</label>
-                  <input className="input" type="number" placeholder="0" value={formData.purchaseValue} onChange={e => setFormData(prev => ({ ...prev, purchaseValue: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Quantity</label>
-                  <input className="input" type="number" placeholder="0" value={formData.quantity} onChange={e => setFormData(prev => ({ ...prev, quantity: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Unit Price ({currency})</label>
-                  <input className="input" type="number" placeholder="0" value={formData.unitPrice} onChange={e => setFormData(prev => ({ ...prev, unitPrice: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Broker</label>
-                  <input className="input" placeholder="Broker name" value={formData.broker} onChange={e => setFormData(prev => ({ ...prev, broker: e.target.value }))} />
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
-                <Button variant="secondary" onClick={() => { setShowForm(false); setEditingId(null); resetForm() }}>Cancel</Button>
-                <Button variant="primary" onClick={editingId ? handleUpdate : handleAdd}>{editingId ? 'Update' : 'Add'} Investment</Button>
-              </div>
+        {investments.length > 0 && (
+          <div className="invest-summary-grid">
+            <div className="invest-summary-card">
+              <span className="invest-summary-label">Total Portfolio Value</span>
+              <span className="invest-summary-value">{fmt(summary.totalValue)}</span>
+              <span className="invest-summary-sub">{summary.count} investment{summary.count !== 1 ? 's' : ''}</span>
+            </div>
+            <div className="invest-summary-card">
+              <span className="invest-summary-label">Total Quantity</span>
+              <span className="invest-summary-value">{summary.totalQty.toLocaleString()}</span>
+            </div>
+            <div className="invest-summary-card">
+              <span className="invest-summary-label">Asset Types</span>
+              <span className="invest-summary-value">{summary.uniqueTypes}</span>
+              <span className="invest-summary-sub">of {ASSET_TYPES.length} available</span>
+            </div>
+            <div className="invest-summary-card">
+              <span className="invest-summary-label">Avg Investment</span>
+              <span className="invest-summary-value">{summary.count ? fmt(Math.round(summary.totalValue / summary.count)) : `${currency} 0`}</span>
             </div>
           </div>
         )}
 
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Date</th>
-                <th>Asset Name</th>
-                <th>Type</th>
-                <th className="numeric">Purchase Value</th>
-                <th className="numeric">Qty</th>
-                <th className="numeric">Unit Price</th>
-                <th>Broker</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {investments.map(inv => (
-                <tr key={inv.id}>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 'var(--font-size-xs)' }}>{inv.id}</td>
-                  <td className="text-secondary">{formatDate(inv.date, dateFormat)}</td>
-                  <td style={{ fontWeight: 500 }}>{inv.assetName}</td>
-                  <td><Badge variant="primary">{inv.type}</Badge></td>
-                  <td className="numeric" style={{ fontWeight: 600 }}>{fmt(inv.purchaseValue)}</td>
-                  <td className="numeric text-secondary">{inv.quantity.toLocaleString()}</td>
-                  <td className="numeric text-secondary">{fmt(inv.unitPrice)}</td>
-                  <td className="text-secondary">{inv.broker}</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(inv)} aria-label="Edit">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(inv.id)} aria-label="Delete" style={{ color: 'var(--danger)' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+        <DataTable
+          columns={columns}
+          data={filtered}
+          keyExtractor={inv => inv.id}
+          loading={loading}
+          pageSize={10}
+          searchable
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="Search by ID, name, type or broker..."
+          filterBar={
+            <div className="invest-filter-bar">
+              <Select
+                options={typeOptions}
+                value={typeFilter}
+                onChange={e => setTypeFilter(e.target.value)}
+              />
+            </div>
+          }
+          emptyState={
+            <div className="empty-state" style={{ padding: '64px 24px' }}>
+              <div className="empty-state-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                </svg>
+              </div>
+              <div className="empty-state-title">{investments.length === 0 ? 'No investments yet' : 'No matching investments'}</div>
+              <div className="empty-state-text">
+                {investments.length === 0
+                  ? 'Click "Add Investment" to start building your portfolio.'
+                  : 'Try adjusting your search or filters.'}
+              </div>
               {investments.length === 0 && (
-                <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
-                    No investments recorded yet. Click "Add Investment" to begin.
-                  </td>
-                </tr>
+                <div style={{ marginTop: 8 }}>
+                  <Button variant="primary" onClick={openAddForm}>
+                    <PlusIcon />
+                    Add Investment
+                  </Button>
+                </div>
               )}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          }
+        />
       </div>
+
+      <Modal
+        open={showForm}
+        onClose={() => { setShowForm(false); setEditingId(null); resetForm() }}
+        title={editingId ? 'Edit Investment' : 'New Investment'}
+        footer={
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button variant="secondary" onClick={() => { setShowForm(false); setEditingId(null); resetForm() }}>Cancel</Button>
+            <Button variant="primary" onClick={editingId ? handleUpdate : handleAdd}>{editingId ? 'Update' : 'Add'} Investment</Button>
+          </div>
+        }
+      >
+        <div className="form-row">
+          <Select
+            label="Asset Type"
+            options={ASSET_TYPES.map(t => ({ value: t, label: t }))}
+            value={formData.type}
+            onChange={e => setFormData(prev => ({ ...prev, type: e.target.value }))}
+          />
+          <Input
+            label="Asset Name"
+            placeholder="Gold Bullion 24K"
+            value={formData.assetName}
+            onChange={e => setFormData(prev => ({ ...prev, assetName: e.target.value }))}
+          />
+          <Input
+            label="Date"
+            type="date"
+            value={formData.date}
+            onChange={e => setFormData(prev => ({ ...prev, date: e.target.value }))}
+          />
+          <Input
+            label={`Purchase Value (${currency})`}
+            type="number"
+            placeholder="0"
+            value={formData.purchaseValue}
+            onChange={e => setFormData(prev => ({ ...prev, purchaseValue: e.target.value }))}
+          />
+          <Input
+            label="Quantity"
+            type="number"
+            placeholder="0"
+            value={formData.quantity}
+            onChange={e => setFormData(prev => ({ ...prev, quantity: e.target.value }))}
+          />
+          <Input
+            label={`Unit Price (${currency})`}
+            type="number"
+            placeholder="0"
+            value={formData.unitPrice}
+            onChange={e => setFormData(prev => ({ ...prev, unitPrice: e.target.value }))}
+          />
+          <Input
+            label="Broker"
+            placeholder="Broker name"
+            value={formData.broker}
+            onChange={e => setFormData(prev => ({ ...prev, broker: e.target.value }))}
+          />
+        </div>
+      </Modal>
+
+      <Modal
+        open={confirmDelete !== null}
+        onClose={() => setConfirmDelete(null)}
+        title="Delete Investment"
+        footer={
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancel</Button>
+            <Button variant="danger" onClick={confirmDeleteAction}>Delete</Button>
+          </div>
+        }
+      >
+        <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)', lineHeight: 1.6 }}>
+          Are you sure you want to delete this investment record? This action cannot be undone.
+        </p>
+      </Modal>
     </>
   )
 }
