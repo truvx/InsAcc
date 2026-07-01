@@ -1,8 +1,7 @@
-import React, { useState, useMemo } from 'react'
+import React, { useMemo } from 'react'
 import type { Profile } from '../data/sampleData'
-import { Badge, Button, Modal, Select, Input, PlusIcon, EditIcon, TrashIcon } from './design/DesignSystem'
+import { Badge, Select } from './design/DesignSystem'
 import { DataTable, type Column } from './design/Table'
-import Toast from './Toast'
 import { formatDate, t } from '../utils'
 
 interface Props {
@@ -11,8 +10,6 @@ interface Props {
   dateFormat?: string
   language?: string
   investments: Investment[]
-  setInvestments: React.Dispatch<React.SetStateAction<Investment[]>>
-  generateId: (type: string, index: number) => string
 }
 
 export interface Investment {
@@ -37,68 +34,11 @@ export function generateId(type: string, index: number): string {
   return `${prefix}-${String(index).padStart(3, '0')}`
 }
 
-const ASSET_TYPES = ['Gold', 'Silver', 'Bonds', 'Sukuk', 'Mutual Funds', 'ETF', 'Shares', 'Real Estate', 'Private Investment', 'Business Investment', 'Fixed Deposit', 'Others']
+const ASSET_TYPES: string[] = []
 
-export default function Investments({ currency = 'AED', dateFormat = 'DD/MM/YYYY', language = 'English', investments, setInvestments, generateId }: Props) {
-  const [showForm, setShowForm] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' })
-  const [searchQuery, setSearchQuery] = useState('')
-  const [typeFilter, setTypeFilter] = useState('')
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    type: 'Gold', assetName: '', purchaseValue: '', quantity: '', unitPrice: '', broker: '',
-    date: new Date().toISOString().split('T')[0],
-  })
-
-  const handleAdd = () => {
-    const count = investments.filter(i => i.type === formData.type).length + 1
-    if (!formData.assetName || !formData.purchaseValue) {
-      setToast({ visible: true, message: 'Please fill in Asset Name and Purchase Value', type: 'error' })
-      return
-    }
-    setInvestments(prev => [{
-      id: generateId(formData.type, count), date: formData.date, assetName: formData.assetName,
-      type: formData.type, purchaseValue: Number(formData.purchaseValue),
-      quantity: Number(formData.quantity), unitPrice: Number(formData.unitPrice), broker: formData.broker,
-    }, ...prev])
-    setShowForm(false)
-    setToast({ visible: true, message: 'Investment added successfully', type: 'success' })
-    resetForm()
-  }
-
-  const resetForm = () => setFormData({ type: 'Gold', assetName: '', purchaseValue: '', quantity: '', unitPrice: '', broker: '', date: new Date().toISOString().split('T')[0] })
-
-  const handleEdit = (inv: Investment) => {
-    setFormData({ type: inv.type, assetName: inv.assetName, purchaseValue: String(inv.purchaseValue), quantity: String(inv.quantity), unitPrice: String(inv.unitPrice), broker: inv.broker, date: inv.date })
-    setEditingId(inv.id)
-    setShowForm(true)
-  }
-
-  const handleUpdate = () => {
-    if (!formData.assetName || !formData.purchaseValue) { setToast({ visible: true, message: 'Please fill in all required fields', type: 'error' }); return }
-    setInvestments(prev => prev.map(inv => inv.id === editingId ? { ...inv, date: formData.date, assetName: formData.assetName, type: formData.type, purchaseValue: Number(formData.purchaseValue), quantity: Number(formData.quantity), unitPrice: Number(formData.unitPrice), broker: formData.broker } : inv))
-    setEditingId(null); setShowForm(false); setToast({ visible: true, message: 'Investment updated', type: 'success' }); resetForm()
-  }
-
-  const handleDelete = (id: string) => {
-    setConfirmDelete(id)
-  }
-
-  const confirmDeleteAction = () => {
-    if (confirmDelete) {
-      setInvestments(prev => prev.filter(inv => inv.id !== confirmDelete))
-      setToast({ visible: true, message: 'Investment deleted', type: 'success' })
-      setConfirmDelete(null)
-    }
-  }
-
-  const openAddForm = () => {
-    resetForm()
-    setEditingId(null)
-    setShowForm(true)
-  }
+export default function Investments({ currency = 'AED', dateFormat = 'DD/MM/YYYY', language = 'English', investments }: Props) {
+  const [searchQuery, setSearchQuery] = React.useState('')
+  const [typeFilter, setTypeFilter] = React.useState('')
 
   const fmt = (n: number) => `${currency} ${n.toLocaleString()}`
 
@@ -164,37 +104,16 @@ export default function Investments({ currency = 'AED', dateFormat = 'DD/MM/YYYY
       key: 'broker', header: 'Broker', sortable: true, width: '130px',
       render: inv => <span className="text-secondary">{inv.broker}</span>,
     },
-    {
-      key: 'actions', header: '', width: '80px',
-      render: inv => (
-        <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-          <Button variant="ghost" size="sm" onClick={() => handleEdit(inv)} aria-label="Edit">
-            <EditIcon />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => handleDelete(inv.id)} aria-label="Delete" style={{ color: 'var(--danger)' }}>
-            <TrashIcon />
-          </Button>
-        </div>
-      ),
-    },
   ]
 
   return (
     <>
-      <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={() => setToast(prev => ({ ...prev, visible: false }))} />
-
       <div className="page-header">
         <div className="page-header-left">
           <div>
             <div className="page-title">{t('investments', language)}</div>
             <div className="page-subtitle">{t('managePortfolio', language)}</div>
           </div>
-        </div>
-        <div className="page-header-right">
-          <Button variant="primary" size="sm" onClick={openAddForm}>
-            <PlusIcon />
-            Add Investment
-          </Button>
         </div>
       </div>
 
@@ -226,7 +145,6 @@ export default function Investments({ currency = 'AED', dateFormat = 'DD/MM/YYYY
           columns={columns}
           data={filtered}
           keyExtractor={inv => inv.id}
-          loading={loading}
           pageSize={10}
           searchable
           searchQuery={searchQuery}
@@ -252,97 +170,14 @@ export default function Investments({ currency = 'AED', dateFormat = 'DD/MM/YYYY
               <div className="empty-state-title">{investments.length === 0 ? 'No investments yet' : 'No matching investments'}</div>
               <div className="empty-state-text">
                 {investments.length === 0
-                  ? 'Click "Add Investment" to start building your portfolio.'
+                  ? 'Add purchases in Purchase Ledger to build your portfolio.'
                   : 'Try adjusting your search or filters.'}
               </div>
-              {investments.length === 0 && (
-                <div style={{ marginTop: 8 }}>
-                  <Button variant="primary" onClick={openAddForm}>
-                    <PlusIcon />
-                    Add Investment
-                  </Button>
-                </div>
-              )}
             </div>
           }
         />
       </div>
 
-      <Modal
-        open={showForm}
-        onClose={() => { setShowForm(false); setEditingId(null); resetForm() }}
-        title={editingId ? 'Edit Investment' : 'New Investment'}
-        footer={
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button variant="secondary" onClick={() => { setShowForm(false); setEditingId(null); resetForm() }}>Cancel</Button>
-            <Button variant="primary" onClick={editingId ? handleUpdate : handleAdd}>{editingId ? 'Update' : 'Add'} Investment</Button>
-          </div>
-        }
-      >
-        <div className="form-row">
-          <Select
-            label="Asset Type"
-            options={ASSET_TYPES.map(t => ({ value: t, label: t }))}
-            value={formData.type}
-            onChange={e => setFormData(prev => ({ ...prev, type: e.target.value }))}
-          />
-          <Input
-            label="Asset Name"
-            placeholder="Gold Bullion 24K"
-            value={formData.assetName}
-            onChange={e => setFormData(prev => ({ ...prev, assetName: e.target.value }))}
-          />
-          <Input
-            label="Date"
-            type="date"
-            value={formData.date}
-            onChange={e => setFormData(prev => ({ ...prev, date: e.target.value }))}
-          />
-          <Input
-            label={`Purchase Value (${currency})`}
-            type="number"
-            placeholder="0"
-            value={formData.purchaseValue}
-            onChange={e => setFormData(prev => ({ ...prev, purchaseValue: e.target.value }))}
-          />
-          <Input
-            label="Quantity"
-            type="number"
-            placeholder="0"
-            value={formData.quantity}
-            onChange={e => setFormData(prev => ({ ...prev, quantity: e.target.value }))}
-          />
-          <Input
-            label={`Unit Price (${currency})`}
-            type="number"
-            placeholder="0"
-            value={formData.unitPrice}
-            onChange={e => setFormData(prev => ({ ...prev, unitPrice: e.target.value }))}
-          />
-          <Input
-            label="Broker"
-            placeholder="Broker name"
-            value={formData.broker}
-            onChange={e => setFormData(prev => ({ ...prev, broker: e.target.value }))}
-          />
-        </div>
-      </Modal>
-
-      <Modal
-        open={confirmDelete !== null}
-        onClose={() => setConfirmDelete(null)}
-        title="Delete Investment"
-        footer={
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancel</Button>
-            <Button variant="danger" onClick={confirmDeleteAction}>Delete</Button>
-          </div>
-        }
-      >
-        <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)', lineHeight: 1.6 }}>
-          Are you sure you want to delete this investment record? This action cannot be undone.
-        </p>
-      </Modal>
     </>
   )
 }

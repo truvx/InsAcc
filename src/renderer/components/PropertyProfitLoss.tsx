@@ -1,0 +1,261 @@
+import React, { useMemo, useState } from 'react'
+import type { Account, Voucher } from '../accounting/types'
+import { buildAccountTree } from '../accounting/chartOfAccountsService'
+import { getAccountBalance } from '../accounting/ledgerService'
+import { EmptyState, Modal } from './design/DesignSystem'
+import AccountDrillDown from './AccountDrillDown'
+
+interface Props {
+  currency?: string
+  accounts: Account[]
+  vouchers: Voucher[]
+}
+
+interface TreeNode {
+  account: Account
+  children: TreeNode[]
+  depth: number
+}
+
+function flatRowsFromTree(
+  nodes: TreeNode[],
+  balances: Record<string, number>,
+  allowedTypes: string[],
+): Array<{ account: Account; depth: number; balance: number }> {
+  const rows: Array<{ account: Account; depth: number; balance: number }> = []
+  for (const node of nodes) {
+    if (!allowedTypes.includes(node.account.type)) continue
+    rows.push({ account: node.account, depth: node.depth, balance: balances[node.account.id] || 0 })
+    if (node.children.length > 0) {
+      rows.push(...flatRowsFromTree(node.children, balances, allowedTypes))
+    }
+  }
+  return rows
+}
+
+function computeTotal(
+  nodes: TreeNode[],
+  balances: Record<string, number>,
+  allowedTypes: string[],
+): number {
+  return nodes.reduce((sum, node) => {
+    if (!allowedTypes.includes(node.account.type)) return sum
+    const own = balances[node.account.id] || 0
+    const childrenTotal = node.children.length > 0
+      ? computeTotal(node.children, balances, allowedTypes)
+      : own
+    return sum + childrenTotal
+  }, 0)
+}
+
+export default function PropertyProfitLoss({ currency = 'AED', accounts, vouchers }: Props) {
+  const [drillAccountId, setDrillAccountId] = useState<string | null>(null)
+  const [drillAccountName, setDrillAccountName] = useState<string>('')
+
+  const balances = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const acct of accounts) {
+      if (acct.isActive) {
+        map[acct.id] = getAccountBalance(acct.id, vouchers, accounts)
+      }
+    }
+    return map
+  }, [accounts, vouchers])
+
+  const tree = useMemo(() => buildAccountTree(accounts) as unknown as TreeNode[], [accounts])
+
+  const revenueRows = useMemo(() => flatRowsFromTree(tree, balances, ['revenue']), [tree, balances])
+  const expenseRows = useMemo(() => flatRowsFromTree(tree, balances, ['expense']), [tree, balances])
+
+  const totalRevenue = useMemo(() => computeTotal(tree, balances, ['revenue']), [tree, balances])
+  const totalExpenses = useMemo(() => computeTotal(tree, balances, ['expense']), [tree, balances])
+  const netIncome = totalRevenue - totalExpenses
+
+  const hasAny = revenueRows.length > 0 || expenseRows.length > 0
+
+  const renderTable = (
+    title: string,
+    rows: Array<{ account: Account; depth: number; balance: number }>,
+    total: number,
+    accentColor: string,
+    totalColor: string,
+  ) => (
+    <div style={{ overflow: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            <th style={{ padding: '8px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--divider)', background: '#FAF8F4', position: 'sticky', top: 0 }}>Account</th>
+            <th style={{ padding: '8px 16px', textAlign: 'right', fontSize: 11, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--divider)', background: '#FAF8F4', position: 'sticky', top: 0, width: 160 }}>Amount ({currency})</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={2} style={{ padding: '24px 16px', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>
+                No {title.toLowerCase()} data
+              </td>
+            </tr>
+          ) : (
+            rows.map(row => {
+              const isGroup = row.depth === 0
+              const isSubGroup = row.depth === 1
+              return (
+                <tr
+                  key={row.account.id}
+                  onClick={() => {
+                    setDrillAccountId(row.account.id)
+                    setDrillAccountName(row.account.name)
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <td style={{ padding: isGroup ? '10px 16px' : '8px 16px', borderBottom: '1px solid #F9FAFB' }}>
+                    <div style={{ paddingLeft: isGroup ? 0 : isSubGroup ? 20 : 36 }}>
+                      {isGroup && <span style={{ fontWeight: 700, fontSize: 14, color: accentColor }}>{row.account.name}</span>}
+                      {!isGroup && (
+                        <>
+                          <span style={{ fontWeight: isSubGroup ? 600 : 400, fontSize: 13 }}>{row.account.name}</span>
+                          <span style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace', marginLeft: 8 }}>{row.account.code}</span>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                  <td style={{ padding: isGroup ? '10px 16px' : '8px 16px', textAlign: 'right', borderBottom: '1px solid #F9FAFB' }}>
+                    <span style={{
+                      fontFamily: 'monospace', fontSize: isGroup ? 14 : 13,
+                      fontWeight: isGroup ? 700 : 600,
+                      color: isGroup ? totalColor : row.balance >= 0 ? '#1F2937' : '#EF4444',
+                    }}>
+                      {row.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
+                  </td>
+                </tr>
+              )
+            })
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+
+  return (
+    <>
+      <Modal open={drillAccountId !== null} title={`Account Drill Down — ${drillAccountName}`} onClose={() => setDrillAccountId(null)}>
+        {drillAccountId && (
+          <AccountDrillDown
+            accountId={drillAccountId}
+            accountName={drillAccountName}
+            accounts={accounts}
+            vouchers={vouchers}
+            currency={currency}
+          />
+        )}
+      </Modal>
+
+      <div className="page-header">
+        <div className="page-header-left">
+          <div>
+            <div className="page-title">Profit & Loss</div>
+            <div className="page-subtitle">Revenue — Expenses = Net Income</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="page-body">
+        {!hasAny ? (
+          <div className="card">
+            <div className="card-body">
+              <EmptyState
+                icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>}
+                title="No profit & loss data"
+                text="Post vouchers to see profit & loss data."
+              />
+            </div>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', gap: 20, marginBottom: 24 }}>
+              <div className="card" style={{ padding: 0, overflow: 'hidden', flex: 1 }}>
+                <div style={{
+                  padding: '16px 20px', borderBottom: '1px solid var(--divider)',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                }}>
+                  <span style={{ fontSize: 18 }}>📈</span>
+                  <span style={{ fontWeight: 700, fontSize: 16, color: '#059669' }}>Revenue</span>
+                  <span style={{ fontSize: 12, color: '#9CA3AF', marginLeft: 'auto' }}>
+                    {revenueRows.filter(r => r.depth === 0).length} sections
+                  </span>
+                </div>
+                {renderTable('Revenue', revenueRows, totalRevenue, '#059669', '#059669')}
+                <div style={{
+                  padding: '12px 20px', borderTop: '2px solid var(--divider)',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  background: '#05966908',
+                }}>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: '#059669' }}>Total Revenue</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: '#059669' }}>
+                    {currency} {totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: 0, overflow: 'hidden', flex: 1 }}>
+                <div style={{
+                  padding: '16px 20px', borderBottom: '1px solid var(--divider)',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                }}>
+                  <span style={{ fontSize: 18 }}>📉</span>
+                  <span style={{ fontWeight: 700, fontSize: 16, color: '#DC2626' }}>Expenses</span>
+                  <span style={{ fontSize: 12, color: '#9CA3AF', marginLeft: 'auto' }}>
+                    {expenseRows.filter(r => r.depth === 0).length} sections
+                  </span>
+                </div>
+                {renderTable('Expenses', expenseRows, totalExpenses, '#DC2626', '#DC2626')}
+                <div style={{
+                  padding: '12px 20px', borderTop: '2px solid var(--divider)',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  background: '#DC262608',
+                }}>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: '#DC2626' }}>Total Expenses</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: '#DC2626' }}>
+                    {currency} {totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="card" style={{
+              padding: 0, overflow: 'hidden',
+              borderTop: `3px solid ${netIncome >= 0 ? '#22C55E' : '#EF4444'}`,
+            }}>
+              <div style={{
+                padding: '20px 24px',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                background: netIncome >= 0 ? '#22C55E08' : '#EF444408',
+              }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#6B7280', marginBottom: 2 }}>Net Profit / Loss</div>
+                  <div style={{ fontSize: 12, color: '#9CA3AF' }}>Revenue — Expenses</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{
+                    fontFamily: 'monospace', fontSize: 28, fontWeight: 700,
+                    color: netIncome >= 0 ? '#22C55E' : '#EF4444',
+                  }}>
+                    {currency} {netIncome.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </div>
+                  <div style={{
+                    fontSize: 12, fontWeight: 500,
+                    color: netIncome >= 0 ? '#22C55E' : '#EF4444',
+                    marginTop: 2,
+                  }}>
+                    {netIncome >= 0 ? '▲ Profitable' : '▼ Loss'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </>
+  )
+}

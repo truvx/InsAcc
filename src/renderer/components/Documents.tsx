@@ -1,234 +1,652 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useCallback, useRef } from 'react'
 import type { Profile } from '../data/sampleData'
-import type { PropertyTenant } from '../data/propertyData'
+
+import type { Investment } from '../components/Investments'
+import type { Transaction } from '../components/Transactions'
+import type { PurchaseRecord } from '../data/purchaseLedger'
+import type { BankAccount } from '../data/banking'
+import type { AuditEvent } from '../data/auditTypes'
+import { recordModuleEvent } from '../services/auditService'
 import Toast from './Toast'
 import { formatDate, t } from '../utils'
+import { Button, Input, Select, Badge, Card, EmptyState, UploadIcon, DownloadIcon, EditIcon, TrashIcon, PlusIcon, SearchIcon, CloseIcon, FilterIcon } from './design/DesignSystem'
+import { DataTable, type Column } from './design/Table'
+import ConfirmDialog from './design/ConfirmDialog'
+import EntityForm from './design/EntityForm'
+
+export interface DocItem {
+  id: string
+  title: string
+  description: string
+  fileName: string
+  fileSize: number
+  fileType: string
+  mimeType: string
+  data: string
+  uploadDate: string
+  lastModified: string
+  tags: string[]
+  notes: string
+  linkedType: 'investment' | 'transaction' | 'purchase' | 'bank' | 'property' | ''
+  linkedId: string
+}
 
 interface Props {
   profile: Profile
+  currency?: string
   dateFormat?: string
   language?: string
   documents: DocItem[]
   setDocuments: React.Dispatch<React.SetStateAction<DocItem[]>>
-  tenants?: PropertyTenant[]
+  tenants?: any[]
+  investments?: Investment[]
+  transactions?: Transaction[]
+  purchaseRecords?: PurchaseRecord[]
+  bankAccounts?: BankAccount[]
+  onAuditEvent?: (event: AuditEvent) => void
 }
 
-export interface DocItem {
-  name: string
-  type: string
-  date: string
-  size: string
-  icon: string
-  source?: string
+const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.webp']
+const MAX_FILE_SIZE = 20 * 1024 * 1024
+const FILE_TYPE_OPTIONS = ['All', 'PDF', 'Image']
+const LINKED_MODULE_OPTIONS = [
+  { value: '', label: 'All Modules' },
+  { value: 'investment', label: 'Investment' },
+  { value: 'transaction', label: 'Transaction' },
+  { value: 'purchase', label: 'Purchase Ledger' },
+  { value: 'bank', label: 'Bank Account' },
+] as const
+
+let _docCounter = 0
+
+function nextDocId(): string {
+  _docCounter++
+  return `DOC-${String(_docCounter).padStart(4, '0')}`
 }
 
-export const defaultDocuments: DocItem[] = [
-  { name: 'Gold Certificate - Bullion 500g.pdf', type: 'PDF', date: '2024-01-15', size: '2.4 MB', icon: '📄' },
-  { name: 'Bond Agreement - UAE 2029.pdf', type: 'PDF', date: '2024-03-10', size: '1.8 MB', icon: '📄' },
-  { name: 'Bank Statement - June 2024.pdf', type: 'PDF', date: '2024-07-01', size: '856 KB', icon: '📄' },
-  { name: 'Property Deed - Emaar Hills.pdf', type: 'PDF', date: '2024-05-12', size: '4.2 MB', icon: '📄' },
-  { name: 'Investment Portfolio Snapshot.xlsx', type: 'Excel', date: '2024-06-30', size: '1.1 MB', icon: '📊' },
-  { name: 'Sukuk Certificate - Al-Ijarah.pdf', type: 'PDF', date: '2024-04-05', size: '1.5 MB', icon: '📄' },
-  { name: 'Silver Vault Receipt.jpg', type: 'Image', date: '2024-02-20', size: '3.6 MB', icon: '🖼️' },
-]
-
-const TYPE_ORDER = ['PDF', 'Excel', 'Image', 'Word', 'Other', 'Contract']
-const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
-  PDF: { bg: 'rgba(239,68,68,0.1)', color: '#EF4444' },
-  Excel: { bg: 'rgba(46,139,87,0.1)', color: 'var(--green)' },
-  Image: { bg: 'rgba(99,102,241,0.1)', color: '#6366F1' },
-  Word: { bg: 'rgba(37,99,235,0.1)', color: '#2563EB' },
-  Other: { bg: 'rgba(107,114,128,0.1)', color: '#6B7280' },
-  Contract: { bg: 'rgba(212,175,55,0.1)', color: 'var(--gold)' },
+function formatFileSize(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)} KB`
+  return `${bytes} B`
 }
 
-function sizeFromBase64(data: string): string {
-  const bytes = (data.length * 3) / 4 - (data.endsWith('==') ? 2 : data.endsWith('=') ? 1 : 0)
-  const kb = bytes / 1024
-  return kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb.toFixed(0)} KB`
-}
-
-function mimeToType(mime: string): string {
+function mimeToFileType(mime: string): string {
   if (mime.startsWith('image/')) return 'Image'
   if (mime === 'application/pdf') return 'PDF'
-  if (mime.includes('spreadsheet') || mime.includes('excel')) return 'Excel'
-  if (mime.includes('word') || mime.includes('document')) return 'Word'
   return 'Other'
 }
 
-export default function Documents({ profile, dateFormat = 'DD/MM/YYYY', language = 'English', documents, setDocuments, tenants }: Props) {
-  const [preview, setPreview] = useState<string | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const [collapsed, setCollapsed] = useState<string[]>([])
-  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' })
+export const defaultDocuments: DocItem[] = []
 
-  const allDocs = useMemo(() => {
-    const contractDocs: DocItem[] = (tenants || []).flatMap(t =>
+function resolveLinkedName(
+  doc: DocItem,
+  investments?: Investment[],
+  transactions?: Transaction[],
+  purchaseRecords?: PurchaseRecord[],
+  bankAccounts?: BankAccount[],
+): string | null {
+  if (!doc.linkedType || !doc.linkedId) return null
+  switch (doc.linkedType) {
+    case 'investment':
+      return investments?.find(i => i.id === doc.linkedId)?.assetName || null
+    case 'transaction':
+      return transactions?.find(t => t.id === doc.linkedId)?.category || null
+    case 'purchase':
+      return purchaseRecords?.find(p => p.id === doc.linkedId)?.assetName || null
+    case 'bank':
+      return bankAccounts?.find(b => b.id === doc.linkedId)?.accountName || null
+    default:
+      return null
+  }
+}
+
+function getLinkedEntityOptions(
+  linkedType: string,
+  investments?: Investment[],
+  transactions?: Transaction[],
+  purchaseRecords?: PurchaseRecord[],
+  bankAccounts?: BankAccount[],
+): { value: string; label: string }[] {
+  switch (linkedType) {
+    case 'investment':
+      return (investments || []).map(i => ({ value: i.id, label: `${i.assetName} (${i.type})` }))
+    case 'transaction':
+      return (transactions || []).map(t => ({ value: t.id, label: `TXN ${t.id} - ${t.category} (${t.type})` }))
+    case 'purchase':
+      return (purchaseRecords || []).map(p => ({ value: p.id, label: `${p.assetName} (${p.assetType})` }))
+    case 'bank':
+      return (bankAccounts || []).map(b => ({ value: b.id, label: `${b.accountName} @ ${b.institution}` }))
+    default:
+      return []
+  }
+}
+
+export default function Documents({
+  profile, dateFormat = 'DD/MM/YYYY', language = 'English',
+  documents, setDocuments, tenants,
+  investments, transactions, purchaseRecords, bankAccounts,
+  onAuditEvent,
+}: Props) {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [typeFilter, setTypeFilter] = useState('All')
+  const [moduleFilter, setModuleFilter] = useState('')
+  const [previewDoc, setPreviewDoc] = useState<DocItem | null>(null)
+  const [previewZoom, setPreviewZoom] = useState(1)
+  const [editTarget, setEditTarget] = useState<DocItem | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [linkTarget, setLinkTarget] = useState<DocItem | null>(null)
+  const [linkFormType, setLinkFormType] = useState('')
+  const [linkFormEntity, setLinkFormEntity] = useState('')
+  const [dragOver, setDragOver] = useState(false)
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' })
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [editFormTitle, setEditFormTitle] = useState('')
+  const [editFormDescription, setEditFormDescription] = useState('')
+  const [editFormTags, setEditFormTags] = useState('')
+  const [editFormNotes, setEditFormNotes] = useState('')
+
+  const contractDocs = useMemo(() => {
+    if (!tenants) return []
+    return tenants.flatMap(t =>
       t.contractFile ? [{
-        name: t.contractFile.name,
-        type: 'Contract',
-        date: t.leaseStart || '',
-        size: sizeFromBase64(t.contractFile.data),
-        icon: '📋',
-        source: `Tenant: ${t.name}`,
+        id: nextDocId(),
+        title: `Contract - ${t.name}`,
+        description: `Lease contract for ${t.name}`,
+        fileName: t.contractFile.name,
+        fileSize: (t.contractFile.data.length * 3) / 4,
+        fileType: 'Contract',
+        mimeType: 'application/pdf',
+        data: t.contractFile.data,
+        uploadDate: t.leaseStart || new Date().toISOString().split('T')[0],
+        lastModified: new Date().toISOString(),
+        tags: ['contract', 'lease'],
+        notes: '',
+        linkedType: 'property' as const,
+        linkedId: t.id,
       }] : []
     )
-    return [...documents, ...contractDocs]
-  }, [documents, tenants])
+  }, [tenants])
 
-  const grouped = useMemo(() => {
-    const map: Record<string, DocItem[]> = {}
-    const seen = new Set<string>()
-    allDocs.forEach(doc => {
-      if (seen.has(doc.name)) return
-      seen.add(doc.name)
-      const key = doc.type
-      if (!map[key]) map[key] = []
-      map[key].push(doc)
-    })
-    return TYPE_ORDER
-      .filter(key => map[key])
-      .map(key => ({ category: key, items: map[key] }))
-      .concat(
-        Object.keys(map)
-          .filter(k => !TYPE_ORDER.includes(k))
-          .map(key => ({ category: key, items: map[key] }))
+  const allDocs = useMemo(() => {
+    return [...documents, ...contractDocs]
+  }, [documents, contractDocs])
+
+  const handleFiles = useCallback(async (files: FileList | File[]) => {
+    const fileArr = Array.from(files)
+    for (const file of fileArr) {
+      const ext = '.' + file.name.split('.').pop()?.toLowerCase()
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        setToast({ visible: true, message: `Unsupported file type: ${ext}`, type: 'error' })
+        continue
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        setToast({ visible: true, message: `${file.name} exceeds 20 MB limit`, type: 'error' })
+        continue
+      }
+      const dup = documents.find(d => d.fileName === file.name && d.fileSize === file.size)
+      if (dup) {
+        setToast({ visible: true, message: `Duplicate: ${file.name}`, type: 'error' })
+        continue
+      }
+
+      const buffer = await file.arrayBuffer()
+      const bytes = new Uint8Array(buffer)
+      let binary = ''
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i])
+      }
+      const base64 = btoa(binary)
+
+      const newDoc: DocItem = {
+        id: nextDocId(),
+        title: file.name.replace(/\.[^/.]+$/, ''),
+        description: '',
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: mimeToFileType(file.type),
+        mimeType: file.type,
+        data: base64,
+        uploadDate: new Date().toISOString().split('T')[0],
+        lastModified: new Date().toISOString(),
+        tags: [],
+        notes: '',
+        linkedType: '',
+        linkedId: '',
+      }
+      setDocuments(prev => [newDoc, ...prev])
+      onAuditEvent?.(recordModuleEvent('Documents', 'Upload', newDoc.title, newDoc.id, `Uploaded ${file.name} (${formatFileSize(file.size)})`))
+    }
+    setToast({ visible: true, message: `${fileArr.length} file(s) uploaded`, type: 'success' })
+  }, [documents, setDocuments, onAuditEvent])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOver(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOver(false)
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOver(false)
+    if (e.dataTransfer.files.length > 0) {
+      handleFiles(e.dataTransfer.files)
+    }
+  }, [handleFiles])
+
+  const handleBrowseUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleFiles(e.target.files)
+      e.target.value = ''
+    }
+  }, [handleFiles])
+
+  const handleDownload = useCallback((doc: DocItem) => {
+    const byteChars = atob(doc.data)
+    const byteNums = new Array(byteChars.length)
+    for (let i = 0; i < byteChars.length; i++) {
+      byteNums[i] = byteChars.charCodeAt(i)
+    }
+    const byteArr = new Uint8Array(byteNums)
+    const blob = new Blob([byteArr], { type: doc.mimeType || 'application/octet-stream' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = doc.fileName
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    setToast({ visible: true, message: 'Download started', type: 'success' })
+  }, [])
+
+  const handleOpenPreviewWindow = useCallback((doc: DocItem) => {
+    const byteChars = atob(doc.data)
+    const byteNums = new Array(byteChars.length)
+    for (let i = 0; i < byteChars.length; i++) {
+      byteNums[i] = byteChars.charCodeAt(i)
+    }
+    const byteArr = new Uint8Array(byteNums)
+    const blob = new Blob([byteArr], { type: doc.mimeType || 'application/octet-stream' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank')
+  }, [])
+
+  const openEdit = useCallback((doc: DocItem) => {
+    setEditTarget(doc)
+    setEditFormTitle(doc.title)
+    setEditFormDescription(doc.description)
+    setEditFormTags(doc.tags.join(', '))
+    setEditFormNotes(doc.notes)
+  }, [])
+
+  const saveEdit = useCallback(() => {
+    if (!editTarget) return
+    const updated = editTarget
+    updated.title = editFormTitle.trim()
+    updated.description = editFormDescription.trim()
+    updated.tags = editFormTags.split(',').map(t => t.trim()).filter(Boolean)
+    updated.notes = editFormNotes.trim()
+    updated.lastModified = new Date().toISOString()
+    setDocuments(prev => prev.map(d => d.id === updated.id ? updated : d))
+    setEditTarget(null)
+    setToast({ visible: true, message: 'Document updated', type: 'success' })
+  }, [editTarget, editFormTitle, editFormDescription, editFormTags, editFormNotes, setDocuments])
+
+  const handleDelete = useCallback(() => {
+    if (!deleteTarget) return
+    const deleted = documents.find(d => d.id === deleteTarget)
+    setDocuments(prev => prev.filter(d => d.id !== deleteTarget))
+    setDeleteTarget(null)
+    if (previewDoc?.id === deleteTarget) setPreviewDoc(null)
+    if (deleted) {
+      onAuditEvent?.(recordModuleEvent('Documents', 'Delete', deleted.title, deleted.id, `Deleted ${deleted.fileName}`))
+    }
+    setToast({ visible: true, message: 'Document deleted', type: 'success' })
+  }, [deleteTarget, setDocuments, previewDoc, onAuditEvent, documents])
+
+  const openLink = useCallback((doc: DocItem) => {
+    setLinkTarget(doc)
+    setLinkFormType(doc.linkedType || '')
+    setLinkFormEntity(doc.linkedId || '')
+  }, [])
+
+  const saveLink = useCallback(() => {
+    if (!linkTarget) return
+    setDocuments(prev => prev.map(d =>
+      d.id === linkTarget.id ? { ...d, linkedType: linkFormType as DocItem['linkedType'], linkedId: linkFormEntity } : d
+    ))
+    setLinkTarget(null)
+    setToast({ visible: true, message: 'Document link updated', type: 'success' })
+  }, [linkTarget, linkFormType, linkFormEntity, setDocuments])
+
+  const filtered = useMemo(() => {
+    let result = allDocs
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      result = result.filter(d =>
+        d.title.toLowerCase().includes(q) ||
+        d.description.toLowerCase().includes(q) ||
+        d.fileName.toLowerCase().includes(q) ||
+        d.tags.some(t => t.toLowerCase().includes(q)) ||
+        (resolveLinkedName(d, investments, transactions, purchaseRecords, bankAccounts) || '').toLowerCase().includes(q)
       )
+    }
+    if (typeFilter !== 'All') {
+      result = result.filter(d => d.fileType === typeFilter)
+    }
+    if (moduleFilter) {
+      result = result.filter(d => d.linkedType === moduleFilter)
+    }
+    return result
+  }, [allDocs, searchQuery, typeFilter, moduleFilter, investments, transactions, purchaseRecords, bankAccounts])
+
+  const tagList = useMemo(() => {
+    const set = new Set<string>()
+    allDocs.forEach(d => d.tags.forEach(t => set.add(t)))
+    return [...set].sort()
   }, [allDocs])
 
-  const handleUpload = () => {
-    setUploading(true)
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = '.pdf,.xlsx,.xls,.jpg,.jpeg,.png,.doc,.docx'
-    input.onchange = (e: any) => {
-      const file = e.target?.files?.[0]
-      if (file) {
-        const ext = file.name.split('.').pop()?.toUpperCase() || ''
-        const typeMap: Record<string, string> = { PDF: 'PDF', XLSX: 'Excel', XLS: 'Excel', JPG: 'Image', JPEG: 'Image', PNG: 'Image', DOC: 'Word', DOCX: 'Word' }
-        const type = typeMap[ext] || 'Other'
-        const iconMap: Record<string, string> = { PDF: '📄', Excel: '📊', Image: '🖼️', Word: '📝', Other: '📎' }
-        const newDoc: DocItem = {
-          name: file.name,
-          type,
-          date: new Date().toISOString().split('T')[0],
-          size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
-          icon: iconMap[type] || '📎',
-        }
-        setDocuments(prev => [newDoc, ...prev])
-      }
-      setUploading(false)
-    }
-    input.click()
-  }
+  const columns: Column<DocItem>[] = useMemo(() => [
+    {
+      key: 'title',
+      header: 'Title',
+      sortable: true,
+      render: doc => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span className={`doc-icon doc-icon-${doc.fileType.toLowerCase()}`}>
+            {doc.fileType === 'PDF' ? '📄' : doc.fileType === 'Image' ? '🖼️' : '📎'}
+          </span>
+          <div>
+            <div className="doc-title">{doc.title}</div>
+            <div className="doc-filename">{doc.fileName}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'fileType',
+      header: 'Type',
+      sortable: true,
+      width: '80px',
+      render: doc => (
+        <Badge variant={doc.fileType === 'PDF' ? 'warning' : 'primary'}>{doc.fileType}</Badge>
+      ),
+    },
+    {
+      key: 'fileSize',
+      header: 'Size',
+      sortable: true,
+      numeric: true,
+      width: '90px',
+      render: doc => <span className="text-secondary">{formatFileSize(doc.fileSize)}</span>,
+    },
+    {
+      key: 'uploadDate',
+      header: 'Date',
+      sortable: true,
+      width: '120px',
+      render: doc => <span className="text-secondary">{formatDate(doc.uploadDate, dateFormat)}</span>,
+    },
+    {
+      key: 'linkedType',
+      header: 'Linked To',
+      sortable: true,
+      width: '180px',
+      render: doc => {
+        const name = resolveLinkedName(doc, investments, transactions, purchaseRecords, bankAccounts)
+        if (!name) return <span className="text-muted">—</span>
+        return (
+          <div>
+            <Badge variant="success">{doc.linkedType}</Badge>
+            <div className="doc-linked-name">{name}</div>
+          </div>
+        )
+      },
+    },
+    {
+      key: 'actions',
+      header: '',
+      width: '160px',
+      render: doc => (
+        <div className="doc-actions">
+          <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setPreviewDoc(previewDoc?.id === doc.id ? null : doc) }} aria-label="Preview">
+            👁️
+          </Button>
+          <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); openLink(doc) }} aria-label="Link">
+            🔗
+          </Button>
+          <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); handleDownload(doc) }} aria-label="Download">
+            <DownloadIcon />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); openEdit(doc) }} aria-label="Edit">
+            <EditIcon />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setDeleteTarget(doc.id) }} aria-label="Delete">
+            <TrashIcon />
+          </Button>
+        </div>
+      ),
+    },
+  ], [dateFormat, previewDoc, investments, transactions, purchaseRecords, bankAccounts, handleDownload, openEdit, openLink])
 
-  const toggleCollapse = (cat: string) => {
-    setCollapsed(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat])
-  }
+  const emptyState = (
+    <EmptyState
+      icon={
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.4">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+          <polyline points="10 9 9 9 8 9" />
+        </svg>
+      }
+      title="No documents yet"
+      text="Upload your first document using the Upload button or drag & drop files here"
+      action={
+        <Button variant="primary" size="sm" onClick={() => fileInputRef.current?.click()}>
+          <PlusIcon /> Upload Document
+        </Button>
+      }
+    />
+  )
+
+  const filterBar = (
+    <div className="filter-bar" style={{ padding: 0 }}>
+      {FILE_TYPE_OPTIONS.map(f => (
+        <Button key={f} variant={typeFilter === f ? 'primary' : 'secondary'} size="sm" onClick={() => setTypeFilter(f)}>
+          {f}
+        </Button>
+      ))}
+      <Select
+        value={moduleFilter}
+        onChange={e => setModuleFilter(e.target.value)}
+        options={[...LINKED_MODULE_OPTIONS]}
+        className="doc-filter-select"
+      />
+    </div>
+  )
 
   return (
     <div className="main-content">
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        visible={toast.visible}
-        onClose={() => setToast(prev => ({ ...prev, visible: false }))}
+      <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={() => setToast(prev => ({ ...prev, visible: false }))} />
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Delete Document"
+        message="Are you sure you want to delete this document? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
       />
-      <div className="main-header">
-        <div>
-          <h1>{t('documents', language)}</h1>
-          <p>{t('manageDocs', language)}</p>
+
+      <EntityForm
+        open={editTarget !== null}
+        title="Edit Document"
+        submitLabel="Save"
+        onCancel={() => setEditTarget(null)}
+        onSubmit={saveEdit}
+      >
+        <div className="form-row">
+          <Input label="Title" value={editFormTitle} onChange={e => setEditFormTitle(e.target.value)} />
         </div>
-        <div className="header-actions">
-          <button className="header-btn" onClick={handleUpload} title="Upload Document" aria-label="Upload Document">{uploading ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="14" x2="12" y2="18"/></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>}</button>
+        <div className="form-row">
+          <Input label="Description" value={editFormDescription} onChange={e => setEditFormDescription(e.target.value)} />
+        </div>
+        <div className="form-row">
+          <Input label="Tags (comma-separated)" placeholder="e.g. tax, audit, 2026" value={editFormTags} onChange={e => setEditFormTags(e.target.value)} />
+        </div>
+        <div className="form-row">
+          <Input label="Notes" value={editFormNotes} onChange={e => setEditFormNotes(e.target.value)} />
+        </div>
+      </EntityForm>
+
+      <EntityForm
+        open={linkTarget !== null}
+        title={linkTarget ? `Link Document: ${linkTarget.title}` : 'Link Document'}
+        submitLabel="Save Link"
+        onCancel={() => setLinkTarget(null)}
+        onSubmit={saveLink}
+      >
+        <div className="form-row">
+          <Select
+            label="Linked Module"
+            value={linkFormType}
+            onChange={e => { setLinkFormType(e.target.value); setLinkFormEntity('') }}
+            options={[
+              { value: '', label: 'Select module' },
+              { value: 'investment', label: 'Investment' },
+              { value: 'transaction', label: 'Transaction' },
+              { value: 'purchase', label: 'Purchase Ledger' },
+              { value: 'bank', label: 'Bank Account' },
+            ]}
+          />
+        </div>
+        {linkFormType && (
+          <div className="form-row">
+            <Select
+              label="Linked Record"
+              value={linkFormEntity}
+              onChange={e => setLinkFormEntity(e.target.value)}
+              options={[
+                { value: '', label: 'Select record' },
+                ...getLinkedEntityOptions(linkFormType, investments, transactions, purchaseRecords, bankAccounts),
+              ]}
+            />
+          </div>
+        )}
+      </EntityForm>
+
+      <div className="page-header">
+        <div className="page-header-left">
+          <div>
+            <div className="page-title">{t('documents', language)}</div>
+            <div className="page-subtitle">{allDocs.length} document{allDocs.length !== 1 ? 's' : ''}</div>
+          </div>
+        </div>
+        <div className="page-header-right">
+          <Button variant="primary" size="sm" onClick={() => fileInputRef.current?.click()}>
+            <UploadIcon /> Upload
+          </Button>
         </div>
       </div>
 
-      <div className="scroll-content">
-        <div style={{ display: 'grid', gridTemplateColumns: preview ? '1fr 380px' : '1fr', gap: 20 }}>
-          <div className="chart-card">
-            <div className="chart-header">
-              <div className="chart-title">All Documents</div>
-              <div className="chart-subtitle">{allDocs.length} files</div>
-            </div>
-            {grouped.map(group => {
-              const tc = TYPE_COLORS[group.category]
-              const isCollapsed = collapsed.includes(group.category)
-              return (
-                <div key={group.category} style={{ marginBottom: 4 }}>
-                  <div
-                    onClick={() => toggleCollapse(group.category)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px',
-                      cursor: 'pointer', borderRadius: 6,
-                      fontSize: 12, fontWeight: 600, color: tc?.color || 'var(--text-secondary)',
-                      background: tc?.bg || 'transparent',
-                    }}
-                  >
-                    <span style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0)', transition: 'transform 0.2s', fontSize: 10 }}>▼</span>
-                    {group.category} ({group.items.length})
-                  </div>
-                  {!isCollapsed && group.items.map((doc, i) => (
-                    <div
-                      key={doc.name}
-                      onClick={() => setPreview(preview === doc.name ? null : doc.name)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 12, padding: '10px 8px 10px 24px',
-                        borderBottom: i < group.items.length - 1 ? '1px solid var(--border)' : 'none',
-                        cursor: 'pointer', borderRadius: 6,
-                        background: preview === doc.name ? 'var(--bg-secondary)' : 'transparent',
-                        transition: 'all 0.2s',
-                      }}
-                      onMouseEnter={e => { if (preview !== doc.name) e.currentTarget.style.background = 'var(--bg-secondary)' }}
-                      onMouseLeave={e => { if (preview !== doc.name) e.currentTarget.style.background = 'transparent' }}
-                    >
-                      <span style={{ fontSize: 20 }}>{doc.icon}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.name}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-                          {doc.date ? formatDate(doc.date, dateFormat) + ' · ' : ''}{doc.size}
-                          {doc.source && <span style={{ marginLeft: 6, opacity: 0.7 }}>({doc.source})</span>}
-                        </div>
-                      </div>
-                      <span style={{
-                        padding: '2px 8px', borderRadius: 8, fontSize: 10, fontWeight: 600,
-                        background: tc?.bg || 'rgba(107,114,128,0.1)',
-                        color: tc?.color || '#6B7280',
-                      }}>{doc.type}</span>
-                      <button className="header-btn" style={{ width: 32, height: 32 }} onClick={async e => {
-                        e.stopPropagation()
-                        const api = (window as any).api
-                        if (api?.saveFile) {
-                          const content = `${doc.name}\nType: ${doc.type}\nSize: ${doc.size}\nDate: ${doc.date}\n\n---\nThis document was exported from InsAcc on ${new Date().toLocaleString()}.\n`
-                          const savedPath = await api.saveFile(doc.name, content)
-                          setToast({ visible: true, message: `Saved to Downloads`, type: 'success' })
-                        } else {
-                          setToast({ visible: true, message: 'Download available in desktop app', type: 'error' })
-                        }
-                      }} aria-label="Download document"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
-                    </div>
-                  ))}
-                </div>
-              )
-            })}
-            {allDocs.length === 0 && (
-              <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>No documents yet</div>
-            )}
+      <div className="page-body">
+        <div
+          className={`doc-upload-zone${dragOver ? ' doc-upload-zone-active' : ''}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <UploadIcon />
+          <span>Drag & drop files here or click to browse</span>
+          <span className="doc-upload-hint">PDF, JPG, JPEG, PNG, WEBP (max 20 MB)</span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png,.webp"
+            multiple
+            style={{ display: 'none' }}
+            onChange={handleBrowseUpload}
+          />
+        </div>
+
+        <div className="doc-layout">
+          <div className="doc-list">
+            <DataTable<DocItem>
+              columns={columns}
+              data={filtered}
+              keyExtractor={doc => doc.id}
+              emptyState={emptyState}
+              pageSize={10}
+              searchable
+              searchPlaceholder="Search by title, description, tags, filename, linked entity..."
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              filterBar={filterBar}
+            />
           </div>
 
-          {preview && (
-            <div className="chart-card">
-              <div className="chart-header">
-                <div className="chart-title">Preview</div>
+          {previewDoc && (
+            <div className="doc-preview">
+              <div className="doc-preview-header">
+                <div className="doc-preview-title">{previewDoc.title}</div>
+                <div className="doc-preview-actions">
+                  <Button variant="ghost" size="sm" onClick={() => setPreviewZoom(z => Math.max(0.25, z - 0.25))} aria-label="Zoom out">−</Button>
+                  <span className="doc-preview-zoom-label">{Math.round(previewZoom * 100)}%</span>
+                  <Button variant="ghost" size="sm" onClick={() => setPreviewZoom(z => Math.min(3, z + 0.25))} aria-label="Zoom in">+</Button>
+                  <Button variant="ghost" size="sm" onClick={() => setPreviewZoom(1)} aria-label="Fit">⊡</Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleOpenPreviewWindow(previewDoc)} aria-label="Open in new window">↗</Button>
+                  <Button variant="ghost" size="sm" onClick={() => { setPreviewDoc(null); setPreviewZoom(1) }} aria-label="Close preview">
+                    <CloseIcon />
+                  </Button>
+                </div>
               </div>
-              <div style={{
-                background: 'var(--bg-secondary)', borderRadius: 8, padding: 32, textAlign: 'center',
-                color: 'var(--text-secondary)', fontSize: 14, border: '2px dashed var(--border)', minHeight: 300,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>📄</div>
-                <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>{preview}</div>
-                <div style={{ fontSize: 12 }}>Preview not available in demo mode</div>
+              <div className="doc-preview-body">
+                <div className="doc-preview-content" style={{ transform: `scale(${previewZoom})`, transformOrigin: 'top left' }}>
+                  {previewDoc.fileType === 'Image' ? (
+                    <img
+                      src={`data:${previewDoc.mimeType};base64,${previewDoc.data}`}
+                      alt={previewDoc.title}
+                      className="doc-preview-image"
+                    />
+                  ) : previewDoc.fileType === 'PDF' ? (
+                    <iframe
+                      src={`data:application/pdf;base64,${previewDoc.data}`}
+                      title={previewDoc.title}
+                      className="doc-preview-iframe"
+                    />
+                  ) : (
+                    <div className="doc-preview-placeholder">
+                      <span className="doc-preview-placeholder-icon">📄</span>
+                      <span>Preview not available for this file type</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="doc-preview-info">
+                <div className="doc-preview-info-row"><span>File</span><span>{previewDoc.fileName}</span></div>
+                <div className="doc-preview-info-row"><span>Size</span><span>{formatFileSize(previewDoc.fileSize)}</span></div>
+                <div className="doc-preview-info-row"><span>Type</span><span>{previewDoc.fileType}</span></div>
+                <div className="doc-preview-info-row"><span>Uploaded</span><span>{formatDate(previewDoc.uploadDate, dateFormat)}</span></div>
+                {previewDoc.tags.length > 0 && (
+                  <div className="doc-preview-info-row"><span>Tags</span><span>{previewDoc.tags.join(', ')}</span></div>
+                )}
+                {previewDoc.linkedType && (() => {
+                  const name = resolveLinkedName(previewDoc, investments, transactions, purchaseRecords, bankAccounts)
+                  return name ? (
+                    <div className="doc-preview-info-row"><span>Linked To</span><span>{name}</span></div>
+                  ) : null
+                })()}
               </div>
             </div>
           )}

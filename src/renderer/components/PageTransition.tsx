@@ -17,12 +17,14 @@ const pageTransition = {
 interface Props {
   children: React.ReactNode
   pageKey: string
+  module?: string
 }
 
-export default function PageTransition({ children, pageKey }: Props) {
+export default function PageTransition({ children, pageKey, module }: Props) {
   return (
     <motion.div
       key={pageKey}
+      data-module={module}
       initial="initial"
       animate="animate"
       exit="exit"

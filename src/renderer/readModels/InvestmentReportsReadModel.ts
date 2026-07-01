@@ -1,0 +1,469 @@
+import type { Account, Voucher, TrialBalanceEntry, BankMapping } from '../accounting/types'
+import { getAllAccountBalances, getAccountTypeBalance, getTrialBalance, getAccountBalance, getLinesForAccount, getAccountBalanceAtDate, getAllAccountBalancesAtDate, getAccountBalanceSummary, getTrialBalanceAtDate, getTrialBalanceTotals, invalidateBalanceCache } from '../accounting/ledgerService'
+import type { PurchaseRecord } from '../data/purchaseLedger'
+import type { BankAccount, BankTransaction } from '../data/banking'
+
+export interface BalanceSheetSection {
+  accountId: string
+  accountCode: string
+  accountName: string
+  balance: number
+  isParent: boolean
+  parentId: string | null
+  depth: number
+}
+
+export interface CashPositionReport {
+  cashOnHand: number
+  bankBalance: number
+  totalLiquid: number
+  investments: number
+  receivables: number
+  totalAssets: number
+}
+
+export interface InvestmentPositionRow {
+  assetType: string
+  assetName: string
+  accountCode: string
+  costBasis: number
+  currentValue: number
+  unrealizedGain: number
+  growthPercent: number
+}
+
+export interface PurchaseReportRow {
+  id: string
+  date: string
+  assetType: string
+  assetName: string
+  quantity: number
+  unitPrice: number
+  totalValue: number
+  accountCode: string
+  voucherNumber: string
+  status: string
+}
+
+export interface BankPositionRow {
+  bankName: string
+  accountNumber: string
+  ledgerBalance: number
+  bankBalance: number
+  difference: number
+}
+
+export interface CashFlowCategory {
+  category: string
+  type: 'Operating' | 'Investing' | 'Financing'
+  amount: number
+}
+
+export interface CashFlowReport {
+  operating: CashFlowCategory[]
+  totalOperating: number
+  investing: CashFlowCategory[]
+  totalInvesting: number
+  financing: CashFlowCategory[]
+  totalFinancing: number
+  netCashFlow: number
+}
+
+export interface JournalLineEntry {
+  accountCode: string
+  accountName: string
+  debit: number
+  credit: number
+  narration: string
+}
+
+export interface GeneralJournalEntry {
+  voucherNumber: string
+  date: string
+  voucherType: string
+  description: string
+  status: string
+  lines: JournalLineEntry[]
+  totalDebit: number
+  totalCredit: number
+}
+
+export interface GeneralLedgerRow {
+  accountCode: string
+  accountName: string
+  openingBalance: number
+  debitTotal: number
+  creditTotal: number
+  closingBalance: number
+}
+
+export interface ReportsProjection {
+  financialOverview: {
+    netWorth: number
+    cash: number
+    investments: number
+    bankBalance: number
+    revenue: number
+    expenses: number
+    totalAssets: number
+    totalLiabilities: number
+    netIncome: number
+  }
+  trialBalance: TrialBalanceEntry[]
+  balanceSheet: {
+    assets: BalanceSheetSection[]
+    liabilities: BalanceSheetSection[]
+    totalAssets: number
+    totalLiabilities: number
+    totalEquity: number
+  }
+  profitLoss: {
+    revenue: TrialBalanceEntry[]
+    expenses: TrialBalanceEntry[]
+    totalRevenue: number
+    totalExpenses: number
+    netIncome: number
+  }
+  cashPosition: CashPositionReport
+  investmentPosition: InvestmentPositionRow[]
+  purchaseReport: PurchaseReportRow[]
+  bankPosition: BankPositionRow[]
+  cashFlow: CashFlowReport
+  generalJournal: GeneralJournalEntry[]
+  generalLedger: GeneralLedgerRow[]
+}
+
+function buildBalanceSheetSections(
+  accounts: Account[],
+  allBals: Record<string, number>,
+  type: 'asset' | 'liability' | 'equity',
+  additionalBalance?: { accountId: string; amount: number },
+): { sections: BalanceSheetSection[]; total: number } {
+  const typeAccounts = accounts.filter(a => a.type === type && a.isActive).sort((a, b) => a.code.localeCompare(b.code))
+  const sections: BalanceSheetSection[] = typeAccounts.map(a => {
+    let balance = allBals[a.id] || 0
+
+    if (additionalBalance && additionalBalance.accountId === a.id) {
+      balance += additionalBalance.amount
+    }
+
+    return {
+      accountId: a.id,
+      accountCode: a.code,
+      accountName: a.name,
+      balance,
+      isParent: !a.parentId,
+      parentId: a.parentId,
+      depth: a.parentId ? 1 : 0,
+    }
+  })
+
+  if (type === 'equity') {
+    const hasRetainedEarnings = typeAccounts.some(a => a.code.startsWith('3120'))
+    if (additionalBalance && additionalBalance.amount !== 0) {
+      const retEarningsIdx = sections.findIndex(s => s.accountCode.startsWith('3120'))
+      if (retEarningsIdx >= 0) {
+        sections[retEarningsIdx] = {
+          ...sections[retEarningsIdx],
+          balance: (allBals[additionalBalance.accountId] || 0) + additionalBalance.amount,
+        }
+      } else if (!hasRetainedEarnings && additionalBalance.amount !== 0) {
+        sections.push({
+          accountId: 'retained-earnings',
+          accountCode: '3120',
+          accountName: 'Retained Earnings',
+          balance: additionalBalance.amount,
+          isParent: false,
+          parentId: accounts.find(a => a.code === '31')?.id ?? null,
+          depth: 1,
+        })
+      }
+    }
+  }
+
+  const total = sections.reduce((s, a) => s + a.balance, 0)
+  return { sections, total }
+}
+
+export function getReportsProjection(
+  accounts: Account[],
+  vouchers: Voucher[],
+  purchaseRecords: PurchaseRecord[] = [],
+  bankAccounts: BankAccount[] = [],
+  bankTransactions: BankTransaction[] = [],
+  bankMappings: BankMapping[] = [],
+): ReportsProjection {
+  const allBals = getAllAccountBalances(vouchers, accounts)
+
+  const cashId = accounts.find(a => a.code === '1110')?.id
+  const cash = cashId ? (allBals[cashId] || 0) : 0
+
+  const bankParent = accounts.find(a => a.code === '1120')
+  const bankBalance = bankParent
+    ? accounts.filter(a => a.parentId === bankParent.id && a.isActive).reduce((s, a) => s + (allBals[a.id] || 0), 0)
+    : 0
+
+  const investmentParent = accounts.find(a => a.code === '12')
+  const investments = investmentParent
+    ? accounts.filter(a => a.parentId === investmentParent.id && a.isActive).reduce((s, a) => s + (allBals[a.id] || 0), 0)
+    : 0
+
+  const totalRevenue = getAccountTypeBalance('revenue', vouchers, accounts)
+  const totalExpenses = getAccountTypeBalance('expense', vouchers, accounts)
+  const netIncome = totalRevenue - totalExpenses
+
+  const receivablesParent = accounts.find(a => a.code === '13')
+  const receivables = receivablesParent
+    ? accounts.filter(a => a.parentId === receivablesParent.id && a.isActive).reduce((s, a) => s + (allBals[a.id] || 0), 0)
+    : 0
+
+  const totalAssets = cash + bankBalance + investments + receivables
+  const totalLiabilitiesFromTypes = getAccountTypeBalance('liability', vouchers, accounts)
+
+  const tbEntries = getTrialBalance(vouchers, accounts)
+  const netIncomeForBS = totalRevenue - totalExpenses
+  const { sections: assets, total: totalAssetsVal } = buildBalanceSheetSections(accounts, allBals, 'asset')
+  const { sections: liabilities, total: totalLiabilitiesVal } = buildBalanceSheetSections(accounts, allBals, 'liability')
+
+  const retainedEarningsAccount = accounts.find(a => a.code === '3120')
+  const { sections: equityItems, total: totalEquity } = buildBalanceSheetSections(
+    accounts,
+    allBals,
+    'equity',
+    retainedEarningsAccount
+      ? { accountId: retainedEarningsAccount.id, amount: netIncomeForBS }
+      : { accountId: '', amount: netIncomeForBS },
+  )
+
+  const revenueEntries = tbEntries.filter(e => e.type === 'revenue')
+  const expenseEntries = tbEntries.filter(e => e.type === 'expense')
+
+  // Investment Position — asset-by-asset cost basis vs current value
+  const investmentPosition: InvestmentPositionRow[] = []
+  const invParent = accounts.find(a => a.code === '12')
+  if (invParent) {
+    const invChildIds = new Set(
+      accounts.filter(a => a.parentId === invParent.id && a.isActive).map(a => a.id),
+    )
+    const byAccount = new Map<string, PurchaseRecord[]>()
+    for (const p of purchaseRecords.filter(p => p.status === 'active' && p.accountId && invChildIds.has(p.accountId))) {
+      if (!byAccount.has(p.accountId)) byAccount.set(p.accountId, [])
+      byAccount.get(p.accountId)!.push(p)
+    }
+    for (const [acctId, purchases] of byAccount) {
+      const acct = accounts.find(a => a.id === acctId)
+      if (!acct) continue
+      const costBasis = purchases.reduce((s, p) => s + p.totalValue, 0)
+      const currentValue = allBals[acctId] || 0
+      const unrealizedGain = currentValue - costBasis
+      const growthPercent = costBasis > 0 ? (unrealizedGain / costBasis) * 100 : 0
+      investmentPosition.push({
+        assetType: purchases[0]?.assetType || acct.type,
+        assetName: acct.name,
+        accountCode: acct.code,
+        costBasis: Math.round(costBasis * 100) / 100,
+        currentValue: Math.round(currentValue * 100) / 100,
+        unrealizedGain: Math.round(unrealizedGain * 100) / 100,
+        growthPercent: Math.round(growthPercent * 10) / 10,
+      })
+    }
+  }
+
+  // Purchase Report
+  const purchaseReport: PurchaseReportRow[] = purchaseRecords
+    .filter(p => p.status === 'active')
+    .sort((a, b) => b.purchaseDate.localeCompare(a.purchaseDate))
+    .map(p => ({
+      id: p.id,
+      date: p.purchaseDate.substring(0, 10),
+      assetType: p.assetType,
+      assetName: p.assetName,
+      quantity: p.quantity,
+      unitPrice: p.unitPrice,
+      totalValue: p.totalValue,
+      accountCode: p.accountCode || '—',
+      voucherNumber: p.voucherNumber || '—',
+      status: p.status,
+    }))
+
+  // Bank Position — ledger balance vs bank account balance
+  const bankPosition: BankPositionRow[] = bankAccounts.map(ba => {
+    const mapping = bankMappings.find(m => m.bankAccountId === ba.id)
+    const ledgerBalance = mapping ? (allBals[mapping.accountId] || 0) : 0
+    const relatedTxns = bankTransactions.filter(t => t.accountId === ba.id)
+    const bankBalance = relatedTxns.reduce((s, t) => {
+      if (t.type === 'credit' || t.type === 'transfer_in') return s + t.amount
+      if (t.type === 'debit' || t.type === 'transfer_out') return s - t.amount
+      return s
+    }, ba.openingBalance)
+    return {
+      bankName: `${ba.institution} — ${ba.accountName}`,
+      accountNumber: ba.accountNumber,
+      ledgerBalance: Math.round(ledgerBalance * 100) / 100,
+      bankBalance: Math.round(bankBalance * 100) / 100,
+      difference: Math.round((ledgerBalance - bankBalance) * 100) / 100,
+    }
+  })
+
+  // Cash Flow Report — classify vouchers into Operating / Investing / Financing
+  const postedVouchers = vouchers.filter(v => v.status === 'Posted')
+  const operating: CashFlowCategory[] = []
+  const investing: CashFlowCategory[] = []
+  const financing: CashFlowCategory[] = []
+
+  const cashAndBankCodes = new Set<string>()
+  const cashAcct2 = accounts.find(a => a.code === '1110')
+  const bankParent2 = accounts.find(a => a.code === '1120')
+  if (cashAcct2) cashAndBankCodes.add(cashAcct2.id)
+  if (bankParent2) {
+    accounts.filter(a => a.parentId === bankParent2.id && a.isActive).forEach(a => cashAndBankCodes.add(a.id))
+  }
+
+  const isCashOrBank = (acctId: string): boolean => cashAndBankCodes.has(acctId)
+  const isInvestment = (acct: Account): boolean => acct.code.startsWith('12')
+  const isLoan = (acct: Account): boolean => acct.code.startsWith('22')
+  const isEquity = (acct: Account): boolean => acct.type === 'equity'
+
+  for (const v of postedVouchers) {
+    for (const l of v.lines) {
+      const acct = accounts.find(a => a.id === l.accountId)
+      if (!acct) continue
+      if (isCashOrBank(acct.id)) continue
+
+      const amount = l.type === 'Debit' ? l.baseAmount : -l.baseAmount
+      const sign = l.type === 'Debit' ? -1 : 1
+
+      if (acct.type === 'revenue' || acct.type === 'expense') {
+        const opAmount = acct.type === 'revenue' ? l.baseAmount : -l.baseAmount
+        operating.push({ category: acct.name, type: 'Operating', amount: opAmount })
+      } else if (isInvestment(acct)) {
+        investing.push({ category: acct.name, type: 'Investing', amount: -sign * l.baseAmount })
+      } else if (isLoan(acct)) {
+        financing.push({ category: acct.name, type: 'Financing', amount: -sign * l.baseAmount })
+      } else if (isEquity(acct)) {
+        financing.push({ category: acct.name, type: 'Financing', amount: sign * l.baseAmount })
+      } else if (acct.code.startsWith('21') || acct.code.startsWith('23')) {
+        operating.push({ category: acct.name, type: 'Operating', amount: -sign * l.baseAmount })
+      } else if (acct.code.startsWith('13') || acct.code.startsWith('14') || acct.code.startsWith('15')) {
+        operating.push({ category: acct.name, type: 'Operating', amount: -sign * l.baseAmount })
+      }
+    }
+  }
+  const totalOperating = operating.reduce((s, c) => s + c.amount, 0)
+  const totalInvesting = investing.reduce((s, c) => s + c.amount, 0)
+  const totalFinancing = financing.reduce((s, c) => s + c.amount, 0)
+  const cashFlow: CashFlowReport = {
+    operating: groupCashFlow(operating),
+    totalOperating: Math.round(totalOperating * 100) / 100,
+    investing: groupCashFlow(investing),
+    totalInvesting: Math.round(totalInvesting * 100) / 100,
+    financing: groupCashFlow(financing),
+    totalFinancing: Math.round(totalFinancing * 100) / 100,
+    netCashFlow: Math.round((totalOperating + totalInvesting + totalFinancing) * 100) / 100,
+  }
+
+  // General Journal — all vouchers with line items
+  const generalJournal: GeneralJournalEntry[] = postedVouchers
+    .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt))
+    .map(v => {
+      const lines = v.lines.map(l => {
+        const acct = accounts.find(a => a.id === l.accountId)
+        return {
+          accountCode: acct?.code || '',
+          accountName: acct?.name || 'Unknown',
+          debit: l.type === 'Debit' ? l.baseAmount : 0,
+          credit: l.type === 'Credit' ? l.baseAmount : 0,
+          narration: l.narration || '',
+        }
+      })
+      return {
+        voucherNumber: v.number,
+        date: v.date.substring(0, 10),
+        voucherType: v.type,
+        description: v.description,
+        status: v.status,
+        lines,
+        totalDebit: lines.reduce((s, l) => s + l.debit, 0),
+        totalCredit: lines.reduce((s, l) => s + l.credit, 0),
+      }
+    })
+
+  // General Ledger — account-by-account ledger with opening balances
+  const generalLedger: GeneralLedgerRow[] = accounts
+    .filter(a => a.isActive)
+    .map(a => {
+      const lines = getLinesForAccount(a.id, vouchers)
+      const totalDebit = lines.reduce((s, { line }) => s + (line.type === 'Debit' ? line.baseAmount : 0), 0)
+      const totalCredit = lines.reduce((s, { line }) => s + (line.type === 'Credit' ? line.baseAmount : 0), 0)
+      const closingBalance = allBals[a.id] || 0
+      const opening = a.openingBalance ?? 0
+      const openingBalance = opening + (closingBalance - (a.normalBalance === 'debit' ? totalDebit - totalCredit : totalCredit - totalDebit) - opening)
+      return {
+        accountCode: a.code,
+        accountName: a.name,
+        openingBalance: Math.round(opening * 100) / 100,
+        debitTotal: Math.round(totalDebit * 100) / 100,
+        creditTotal: Math.round(totalCredit * 100) / 100,
+        closingBalance: Math.round(closingBalance * 100) / 100,
+      }
+    })
+    .filter(r => r.debitTotal !== 0 || r.creditTotal !== 0 || r.closingBalance !== 0 || r.openingBalance !== 0)
+
+  return {
+    financialOverview: {
+      netWorth: totalAssets - totalLiabilitiesVal,
+      cash,
+      investments,
+      bankBalance,
+      revenue: totalRevenue,
+      expenses: totalExpenses,
+      totalAssets: totalAssetsVal,
+      totalLiabilities: totalLiabilitiesVal,
+      netIncome,
+    },
+    trialBalance: tbEntries,
+    balanceSheet: {
+      assets,
+      liabilities,
+      totalAssets: totalAssetsVal,
+      totalLiabilities: totalLiabilitiesVal,
+      totalEquity: totalEquity + netIncome,
+    },
+    profitLoss: {
+      revenue: revenueEntries,
+      expenses: expenseEntries,
+      totalRevenue,
+      totalExpenses,
+      netIncome,
+    },
+    cashPosition: {
+      cashOnHand: cash,
+      bankBalance,
+      totalLiquid: cash + bankBalance,
+      investments,
+      receivables,
+      totalAssets: totalAssetsVal,
+    },
+    investmentPosition,
+    purchaseReport,
+    bankPosition,
+    cashFlow,
+    generalJournal,
+    generalLedger,
+  }
+}
+
+function groupCashFlow(items: CashFlowCategory[]): CashFlowCategory[] {
+  const grouped = new Map<string, CashFlowCategory>()
+  for (const item of items) {
+    const existing = grouped.get(item.category)
+    if (existing) {
+      existing.amount += item.amount
+    } else {
+      grouped.set(item.category, { ...item })
+    }
+  }
+  return Array.from(grouped.values())
+    .map(c => ({ ...c, amount: Math.round(c.amount * 100) / 100 }))
+    .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
+}

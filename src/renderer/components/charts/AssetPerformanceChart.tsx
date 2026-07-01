@@ -1,17 +1,9 @@
 import React, { useMemo } from 'react'
 import type { AssetPerformance } from '../../data/sampleData'
+import { ASSET_TYPE_COLORS } from '../../styles/palette'
 
 interface Props {
   data: AssetPerformance[]
-}
-
-const ASSET_COLORS: Record<string, string> = {
-  Gold: '#D4AF37',
-  Silver: '#9CA3AF',
-  Bonds: '#1F4E79',
-  'Mutual Funds': '#2E8B57',
-  Shares: '#8B4513',
-  Others: '#6B5B95',
 }
 
 export default function AssetPerformanceChart({ data }: Props) {
@@ -31,9 +23,9 @@ export default function AssetPerformanceChart({ data }: Props) {
             <div
               className="performance-rank"
               style={{
-                background: ASSET_COLORS[asset.name] || 'var(--text-muted)',
-                boxShadow: ASSET_COLORS[asset.name]
-                  ? `0 2px 8px ${ASSET_COLORS[asset.name]}40`
+                background: ASSET_TYPE_COLORS[asset.name] || 'var(--text-muted)',
+                boxShadow: ASSET_TYPE_COLORS[asset.name]
+                  ? `0 2px 8px ${ASSET_TYPE_COLORS[asset.name]}40`
                   : '0 2px 8px transparent',
               }}
             >

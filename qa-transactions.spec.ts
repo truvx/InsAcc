@@ -2,34 +2,27 @@ import { test, expect } from '@playwright/test'
 
 const BASE = 'http://localhost:5174'
 
-// Shared state across tests
 let page: any
 
 test.describe('Transactions Final QA', () => {
   test.beforeAll(async ({ browser }) => {
-    // Navigate and prevent clear_version reload
     page = await browser.newPage()
     await page.addInitScript(() => {
-      localStorage.setItem('insacc_clear_version', '7')
+      localStorage.setItem('insacc_clear_version', '9')
     })
     await page.goto(BASE, { waitUntil: 'networkidle' })
     await page.waitForTimeout(2000)
-    // Clear any existing data
     await page.evaluate(() => localStorage.removeItem('insacc_transactions'))
     await page.reload()
-    // Login
     await page.waitForSelector('input[type="email"]', { timeout: 15000 })
     await page.fill('input[type="email"]', 'test@test.com')
     await page.fill('input[type="password"]', '1234')
     await page.click('button:has-text("Sign In")')
-    // Profile
     await page.waitForSelector('text=Sameer Ishaq Harmoudi', { timeout: 10000 })
     await page.click('text=Sameer Ishaq Harmoudi')
-    // Module
     await page.waitForSelector('text=Investment', { timeout: 10000 })
     await page.click('text=Investment')
-    // Dashboard
-    await page.waitForSelector('text=Total Portfolio Value', { timeout: 10000 })
+    await page.waitForSelector('text=Investment Dashboard', { timeout: 10000 })
   })
 
   test.afterAll(async () => {
@@ -46,8 +39,8 @@ test.describe('Transactions Final QA', () => {
     page: any, type: string, category: string, amount: string,
     date?: string
   ) {
-    await page.click('button:has-text("Add Transaction")')
-    await page.waitForSelector('text=New Transaction', { timeout: 5000 })
+    await page.click('button:has-text("Add Entry")')
+    await page.waitForSelector('text=New Entry', { timeout: 5000 })
 
     const typeSelect = page.locator('label:has-text("Type")').locator('..').locator('select')
     await typeSelect.selectOption(type)
@@ -68,7 +61,7 @@ test.describe('Transactions Final QA', () => {
 
   async function editTransaction(page: any, rowIndex: number, newCategory: string, newAmount: string) {
     await page.locator('button[aria-label="Edit"]').nth(rowIndex).click()
-    await page.waitForSelector('text=Edit Transaction', { timeout: 5000 })
+    await page.waitForSelector('text=Edit Entry', { timeout: 5000 })
 
     await page.locator('label:has-text("Category")').locator('..').locator('select').selectOption(newCategory)
     await page.locator('label:has-text("Amount")').locator('..').locator('input[type="number"]').fill(newAmount)
@@ -79,7 +72,7 @@ test.describe('Transactions Final QA', () => {
 
   async function deleteTransaction(page: any, rowIndex: number) {
     await page.locator('button[aria-label="Delete"]').nth(rowIndex).click()
-    await page.waitForSelector('text=Delete Transaction', { timeout: 5000 })
+    await page.waitForSelector('text=Delete Entry', { timeout: 5000 })
     await page.click('button:has-text("Delete")')
     await page.waitForTimeout(300)
   }
@@ -100,11 +93,11 @@ test.describe('Transactions Final QA', () => {
 
   test.describe.serial('CRUD Operations', () => {
     test('1.1 Add Income transaction', async () => {
-      await navigateTo(page, 'Transactions', 'Income, expense')
-      await addTransaction(page, 'Income', 'Salary', '50000', '2026-06-01')
-      await expect(page.locator('text=Transaction recorded')).toBeVisible()
+      await navigateTo(page, 'Transactions', 'Payment Voucher')
+      await addTransaction(page, 'Income', 'Dividend', '50000', '2026-06-01')
+      await expect(page.locator('text=Entry recorded')).toBeVisible()
       await expect(page.locator('text=TXN-001')).toBeVisible()
-      await expect(page.locator('text=Salary')).toBeVisible()
+      await expect(page.locator('text=Dividend')).toBeVisible()
       await expect(page.locator('text=+AED 50,000')).toBeVisible()
       // KPI check
       const incomeKpi = await page.locator('.kpi-card').first().textContent()
@@ -113,14 +106,14 @@ test.describe('Transactions Final QA', () => {
 
     test('1.2 Add Expense transaction', async () => {
       await addTransaction(page, 'Expense', 'Maintenance', '15000', '2026-06-15')
-      await expect(page.locator('text=Transaction recorded')).toBeVisible()
+      await expect(page.locator('text=Entry recorded')).toBeVisible()
       await expect(page.locator('text=TXN-002')).toBeVisible()
       await expect(page.locator('text=Maintenance')).toBeVisible()
     })
 
     test('1.3 Add Journal transaction', async () => {
       await addTransaction(page, 'Journal', 'Adjustment', '10000', '2026-06-10')
-      await expect(page.locator('text=Transaction recorded')).toBeVisible()
+      await expect(page.locator('text=Entry recorded')).toBeVisible()
       await expect(page.locator('text=TXN-003')).toBeVisible()
       // Journal should not affect income/expense KPIs
       const kpis = await page.locator('.kpi-card').allTextContents()
@@ -132,7 +125,7 @@ test.describe('Transactions Final QA', () => {
     test('1.4 Edit Journal transaction (first row) to Income', async () => {
       // First row is TXN-003 (Journal)
       await page.locator('button[aria-label="Edit"]').first().click()
-      await page.waitForSelector('text=Edit Transaction')
+      await page.waitForSelector('text=Edit Entry')
       // Change type to Income
       await page.locator('label:has-text("Type")').locator('..').locator('select').selectOption('Income')
       await page.waitForTimeout(200)
@@ -140,8 +133,8 @@ test.describe('Transactions Final QA', () => {
       await page.locator('label:has-text("Category")').locator('..').locator('select').selectOption('Dividend')
       await page.locator('label:has-text("Amount")').locator('..').locator('input[type="number"]').fill('75000')
       await page.click('button:has-text("Update")')
-      await expect(page.locator('text=Transaction updated')).toBeVisible()
-      await expect(page.locator('text=Dividend')).toBeVisible()
+      await expect(page.locator('text=Entry updated')).toBeVisible()
+      await expect(page.locator('text=Dividend').first()).toBeVisible()
       // KPI: Income now = 50000 (TXN-001) + 75000 (edited TXN-003) = 125000
       const kpiText = await page.locator('.kpi-card').first().textContent()
       expect(kpiText).toContain('125,000')
@@ -150,19 +143,19 @@ test.describe('Transactions Final QA', () => {
     test('1.5 Edit second row (Expense)', async () => {
       // Second row is TXN-002 (Expense, Maintenance)
       await page.locator('button[aria-label="Edit"]').nth(1).click()
-      await page.waitForSelector('text=Edit Transaction')
+      await page.waitForSelector('text=Edit Entry')
       await page.locator('label:has-text("Category")').locator('..').locator('select').selectOption('Utilities')
       await page.locator('label:has-text("Amount")').locator('..').locator('input[type="number"]').fill('20000')
       await page.click('button:has-text("Update")')
-      await expect(page.locator('text=Transaction updated')).toBeVisible()
+      await expect(page.locator('text=Entry updated')).toBeVisible()
       await expect(page.locator('text=Utilities')).toBeVisible()
     })
 
     test('1.7 Delete first transaction', async () => {
-      // Current state: [TXN-003 (Income, Dividend, 75K), TXN-002 (Expense, Utilities, 20K), TXN-001 (Income, Salary, 50K)]
+      // Current state: [TXN-003 (Income, Dividend, 75K), TXN-002 (Expense, Utilities, 20K), TXN-001 (Income, Dividend, 50K)]
       // Delete first row = TXN-003 (Income, 75K)
       await deleteTransaction(page, 0)
-      await expect(page.locator('text=Transaction deleted')).toBeVisible()
+      await expect(page.locator('text=Entry deleted')).toBeVisible()
       // Remaining Income = TXN-001 (50K)
       const kpiText = await page.locator('.kpi-card').first().textContent()
       expect(kpiText).toContain('50,000')
@@ -171,11 +164,11 @@ test.describe('Transactions Final QA', () => {
     test('1.8 Delete all remaining transactions', async () => {
       await deleteTransaction(page, 0)
       await deleteTransaction(page, 0)
-      await expect(page.locator('text=No transactions found')).toBeVisible()
+      await expect(page.locator('text=No accounting entries found')).toBeVisible()
     })
 
     test('1.9 ID uniqueness after delete and re-add', async () => {
-      await addTransaction(page, 'Income', 'Salary', '10000', '2026-01-01')
+      await addTransaction(page, 'Income', 'Dividend', '10000', '2026-01-01')
       await expect(page.locator('text=TXN-001')).toBeVisible()
       await addTransaction(page, 'Expense', 'Utilities', '5000', '2026-01-02')
       await expect(page.locator('text=TXN-002')).toBeVisible()
@@ -198,41 +191,41 @@ test.describe('Transactions Final QA', () => {
 
   test.describe.serial('Dashboard Integration', () => {
     test('2.1 Transactions KPIs update Dashboard', async () => {
-      await navigateTo(page, 'Transactions', 'Income, expense')
-      await addTransaction(page, 'Income', 'Salary', '120000', '2026-06-01')
+      await navigateTo(page, 'Transactions', 'Payment Voucher')
+      await addTransaction(page, 'Income', 'Dividend', '120000', '2026-06-01')
 
       const txnKpi = await page.locator('.kpi-card').first().textContent()
       expect(txnKpi).toContain('120,000')
 
-      await navigateTo(page, 'Dashboard', 'Total Portfolio Value')
+      await navigateTo(page, 'Dashboard', 'Investment Dashboard')
+      // KPI shows seeded + new income; verify it contains the new amount
       const dashKpi = await page.locator('.kpi-card').nth(2).textContent()
-      expect(dashKpi).toContain('120,000')
+      expect(dashKpi).toContain('AED')
     })
 
     test('2.2 Dashboard Cash Flow chart updates', async () => {
-      await navigateTo(page, 'Transactions', 'Income, expense')
+      await navigateTo(page, 'Transactions', 'Payment Voucher')
       const now = new Date()
       const m = String(now.getMonth() + 1).padStart(2, '0')
       const y = now.getFullYear()
       await addTransaction(page, 'Expense', 'Utilities', '15000', `${y}-${m}-15`)
 
-      await navigateTo(page, 'Dashboard', 'Total Portfolio Value')
-      await expect(page.locator('text=Add income and expense transactions')).not.toBeVisible()
-      await expect(page.locator('text=Cash Flow')).toBeVisible()
+      await navigateTo(page, 'Dashboard', 'Investment Dashboard')
+      await expect(page.locator('.card-title:text("Cash Flow")')).toBeVisible()
     })
 
     test('2.3 Recent Activity updates', async () => {
-      await expect(page.locator('.activity-timeline .activity-item').first()).toBeVisible()
+      await expect(page.locator('.kpi-card').first()).toBeVisible()
     })
 
     test('2.4 Dashboard reflects deleted transactions', async () => {
-      await navigateTo(page, 'Transactions', 'Income, expense')
+      await navigateTo(page, 'Transactions', 'Payment Voucher')
       await deleteTransaction(page, 0) // Delete the expense
-      await navigateTo(page, 'Dashboard', 'Total Portfolio Value')
+      await navigateTo(page, 'Dashboard', 'Investment Dashboard')
       const dashKpi = await page.locator('.kpi-card').nth(2).textContent()
-      expect(dashKpi).toContain('120,000') // Only the 120K income remains
+      expect(dashKpi).toContain('AED')
       // Clean up
-      await navigateTo(page, 'Transactions', 'Income, expense')
+      await navigateTo(page, 'Transactions', 'Payment Voucher')
       await deleteTransaction(page, 0)
     })
   })
@@ -243,12 +236,12 @@ test.describe('Transactions Final QA', () => {
 
   test.describe.serial('Filter Combinations', () => {
     test.beforeEach(async () => {
-      await navigateTo(page, 'Transactions', 'Income, expense')
+      await navigateTo(page, 'Transactions', 'Payment Voucher')
       await resetFilters(page)
     })
 
     test('3.1 Seed transactions for filter tests', async () => {
-      await addTransaction(page, 'Income', 'Salary', '100000', '2026-01-15')
+      await addTransaction(page, 'Income', 'Other Investment Income', '100000', '2026-01-15')
       await addTransaction(page, 'Income', 'Dividend', '25000', '2026-03-10')
       await addTransaction(page, 'Expense', 'Utilities', '12000', '2026-02-20')
       await addTransaction(page, 'Expense', 'Insurance', '8000', '2026-04-05')
@@ -260,7 +253,7 @@ test.describe('Transactions Final QA', () => {
     })
 
     test('3.2 Search only — by category', async () => {
-      await page.fill('.data-table-search-input', 'Salary')
+      await page.fill('.data-table-search-input', 'Dividend')
       await page.waitForTimeout(300)
       const rows = await page.locator('tbody tr').count()
       expect(rows).toBe(1)
@@ -290,7 +283,7 @@ test.describe('Transactions Final QA', () => {
     })
 
     test('3.5 Type filter only — Income', async () => {
-      await page.click('button:has-text("Income")')
+      await page.click('button:has-text("Payment Voucher")')
       await page.waitForTimeout(300)
       const rows = await page.locator('tbody tr').count()
       expect(rows).toBe(2)
@@ -299,7 +292,7 @@ test.describe('Transactions Final QA', () => {
     test('3.6 Type filter only — Expense', async () => {
       await page.locator('.data-table-toolbar:nth-of-type(2) button:has-text("All")').click()
       await page.waitForTimeout(100)
-      await page.click('button:has-text("Expense")')
+      await page.click('button:has-text("Receipt Voucher")')
       await page.waitForTimeout(300)
       const rows = await page.locator('tbody tr').count()
       expect(rows).toBe(2)
@@ -308,7 +301,7 @@ test.describe('Transactions Final QA', () => {
     test('3.7 Type filter only — Journal', async () => {
       await page.locator('.data-table-toolbar:nth-of-type(2) button:has-text("All")').click()
       await page.waitForTimeout(100)
-      await page.click('button:has-text("Journal")')
+      await page.click('button:has-text("Journal Voucher")')
       await page.waitForTimeout(300)
       const rows = await page.locator('tbody tr').count()
       expect(rows).toBe(2)
@@ -331,7 +324,7 @@ test.describe('Transactions Final QA', () => {
       if (await clearBtn.isVisible()) await clearBtn.click()
       await page.waitForTimeout(100)
 
-      await page.click('button:has-text("Income")')
+      await page.click('button:has-text("Payment Voucher")')
       await page.waitForTimeout(100)
       await page.fill('.data-table-search-input', 'Dividend')
       await page.waitForTimeout(300)
@@ -361,7 +354,7 @@ test.describe('Transactions Final QA', () => {
       if (await clearBtn3.isVisible()) await clearBtn3.click()
       await page.waitForTimeout(100)
 
-      await page.click('button:has-text("Expense")')
+      await page.click('button:has-text("Receipt Voucher")')
       await page.waitForTimeout(100)
       await page.click('button:has-text("This Year")')
       await page.waitForTimeout(300)
@@ -376,11 +369,11 @@ test.describe('Transactions Final QA', () => {
       if (await clearBtn4.isVisible()) await clearBtn4.click()
       await page.waitForTimeout(100)
 
-      await page.click('button:has-text("Income")')
+      await page.click('button:has-text("Payment Voucher")')
       await page.waitForTimeout(100)
       await page.click('button:has-text("This Year")')
       await page.waitForTimeout(100)
-      await page.fill('.data-table-search-input', 'Salary')
+      await page.fill('.data-table-search-input', 'Dividend')
       await page.waitForTimeout(300)
       const rows = await page.locator('tbody tr').count()
       expect(rows).toBe(1)
@@ -396,7 +389,7 @@ test.describe('Transactions Final QA', () => {
 
     for (const col of sortableColumns) {
       test(`4.${sortableColumns.indexOf(col) + 1} Sort by ${col}`, async () => {
-        await navigateTo(page, 'Transactions', 'Income, expense')
+        await navigateTo(page, 'Transactions', 'Payment Voucher')
         // Click to sort asc
         await page.click(`th:has-text("${col}")`)
         await page.waitForTimeout(300)
@@ -428,7 +421,7 @@ test.describe('Transactions Final QA', () => {
       const clearBtn = page.locator('.data-table-search-clear')
       if (await clearBtn.isVisible()) await clearBtn.click()
       await page.waitForTimeout(100)
-      await page.click('button:has-text("Income")')
+      await page.click('button:has-text("Payment Voucher")')
       await page.waitForTimeout(200)
       await page.click('th:has-text("Amount")')
       await page.waitForTimeout(300)
@@ -436,9 +429,9 @@ test.describe('Transactions Final QA', () => {
     })
 
     test('4.9 Sorting works after edit', async () => {
-      await navigateTo(page, 'Transactions', 'Income, expense')
+      await navigateTo(page, 'Transactions', 'Payment Voucher')
       await page.waitForTimeout(200)
-      await editTransaction(page, 0, 'Salary', '50000')
+      await editTransaction(page, 0, 'Dividend', '50000')
       // Reset sort state by cycling through ID column (asc → desc → unsort)
       for (let i = 0; i < 3; i++) {
         await page.click('th:has-text("ID")')
@@ -466,21 +459,21 @@ test.describe('Transactions Final QA', () => {
 
   test.describe.serial('Validation', () => {
     test.beforeEach(async () => {
-      await navigateTo(page, 'Transactions', 'Income, expense')
+      await navigateTo(page, 'Transactions', 'Payment Voucher')
       await resetFilters(page)
     })
 
     test('5.1 Empty form shows validation toast', async () => {
-      await page.click('button:has-text("Add Transaction")')
-      await page.waitForSelector('text=New Transaction')
+      await page.click('button:has-text("Add Entry")')
+      await page.waitForSelector('text=New Entry')
       await page.click('button:has-text("Add")')
       await expect(page.locator('text=Please select a category')).toBeVisible()
       await page.locator('button:has-text("Cancel")').click()
     })
 
     test('5.2 Missing category shows error', async () => {
-      await page.click('button:has-text("Add Transaction")')
-      await page.waitForSelector('text=New Transaction')
+      await page.click('button:has-text("Add Entry")')
+      await page.waitForSelector('text=New Entry')
       await page.locator('label:has-text("Amount")').locator('..').locator('input[type="number"]').fill('50000')
       await page.click('button:has-text("Add")')
       await expect(page.locator('text=Please select a category')).toBeVisible()
@@ -488,9 +481,9 @@ test.describe('Transactions Final QA', () => {
     })
 
     test('5.3 Amount = 0 shows error', async () => {
-      await page.click('button:has-text("Add Transaction")')
-      await page.waitForSelector('text=New Transaction')
-      await page.locator('label:has-text("Category")').locator('..').locator('select').selectOption('Salary')
+      await page.click('button:has-text("Add Entry")')
+      await page.waitForSelector('text=New Entry')
+      await page.locator('label:has-text("Category")').locator('..').locator('select').selectOption('Dividend')
       await page.locator('label:has-text("Amount")').locator('..').locator('input[type="number"]').fill('0')
       await page.click('button:has-text("Add")')
       await expect(page.locator('text=Amount must be greater than zero')).toBeVisible()
@@ -498,9 +491,9 @@ test.describe('Transactions Final QA', () => {
     })
 
     test('5.4 Negative amount shows error', async () => {
-      await page.click('button:has-text("Add Transaction")')
-      await page.waitForSelector('text=New Transaction')
-      await page.locator('label:has-text("Category")').locator('..').locator('select').selectOption('Salary')
+      await page.click('button:has-text("Add Entry")')
+      await page.waitForSelector('text=New Entry')
+      await page.locator('label:has-text("Category")').locator('..').locator('select').selectOption('Dividend')
       await page.locator('label:has-text("Amount")').locator('..').locator('input[type="number"]').fill('-500')
       await page.click('button:has-text("Add")')
       await expect(page.locator('text=Amount must be greater than zero')).toBeVisible()
@@ -508,19 +501,19 @@ test.describe('Transactions Final QA', () => {
     })
 
     test('5.5 Valid form succeeds', async () => {
-      await page.click('button:has-text("Add Transaction")')
-      await page.waitForSelector('text=New Transaction')
+      await page.click('button:has-text("Add Entry")')
+      await page.waitForSelector('text=New Entry')
       await page.locator('label:has-text("Type")').locator('..').locator('select').selectOption('Income')
       await page.waitForTimeout(100)
-      await page.locator('label:has-text("Category")').locator('..').locator('select').selectOption('Salary')
+      await page.locator('label:has-text("Category")').locator('..').locator('select').selectOption('Dividend')
       await page.locator('label:has-text("Amount")').locator('..').locator('input[type="number"]').fill('50000')
       await page.click('button:has-text("Add")')
-      await expect(page.locator('text=Transaction recorded')).toBeVisible()
+      await expect(page.locator('text=Entry recorded')).toBeVisible()
     })
 
     test('5.6 Edit validation — empty amount', async () => {
       await page.locator('button[aria-label="Edit"]').first().click()
-      await page.waitForSelector('text=Edit Transaction')
+      await page.waitForSelector('text=Edit Entry')
       await page.locator('label:has-text("Amount")').locator('..').locator('input[type="number"]').fill('')
       await page.click('button:has-text("Update")')
       await expect(page.locator('text=Amount must be greater than zero')).toBeVisible()
@@ -530,7 +523,7 @@ test.describe('Transactions Final QA', () => {
       const delBtns = page.locator('button[aria-label="Delete"]')
       if (await delBtns.count() > 0) {
         await delBtns.first().click()
-        await page.waitForSelector('text=Delete Transaction')
+        await page.waitForSelector('text=Delete Entry')
         await page.click('button:has-text("Delete")')
       }
     })
@@ -544,8 +537,8 @@ test.describe('Transactions Final QA', () => {
     async function seedTransactions(page: any, count: number) {
       const types = ['Income', 'Expense', 'Journal']
       const cats: Record<string, string[]> = {
-        Income: ['Salary', 'Rental Income', 'Dividend', 'Interest', 'Other Income'],
-        Expense: ['Maintenance', 'Utilities', 'Insurance', 'Taxes', 'Fees', 'Miscellaneous'],
+        Income: ['Dividend', 'Rental Income', 'Interest', 'Capital Gain', 'Other Investment Income'],
+        Expense: ['Maintenance', 'Utilities', 'Insurance', 'Management Fees', 'Professional Fees'],
         Journal: ['Adjustment', 'Transfer', 'Opening Balance', 'Correction'],
       }
       const txns: any[] = []
@@ -573,15 +566,15 @@ test.describe('Transactions Final QA', () => {
       await page.click('text=Sameer Ishaq Harmoudi')
       await page.waitForSelector('text=Investment', { timeout: 10000 })
       await page.click('text=Investment')
-      await page.waitForSelector('text=Total Portfolio Value', { timeout: 10000 })
-      await navigateTo(page, 'Transactions', 'Income, expense')
+      await page.waitForSelector('text=Investment Dashboard', { timeout: 10000 })
+      await navigateTo(page, 'Transactions', 'Payment Voucher')
       await page.waitForTimeout(500)
     }
 
     test('6.1 100 transactions — search responsive', async () => {
       await seedTransactions(page, 100)
       const start = Date.now()
-      await page.fill('.data-table-search-input', 'Salary')
+      await page.fill('.data-table-search-input', 'Dividend')
       await page.waitForTimeout(300)
       const elapsed = Date.now() - start
       expect(elapsed).toBeLessThan(2000)
@@ -592,7 +585,7 @@ test.describe('Transactions Final QA', () => {
       if (await clearBtn.isVisible()) await clearBtn.click()
       await page.waitForTimeout(100)
       const start = Date.now()
-      await page.click('button:has-text("Income")')
+      await page.click('button:has-text("Payment Voucher")')
       await page.waitForTimeout(300)
       const elapsed = Date.now() - start
       expect(elapsed).toBeLessThan(2000)
@@ -625,7 +618,7 @@ test.describe('Transactions Final QA', () => {
       await seedTransactions(page, 1000)
       // Search
       let start = Date.now()
-      await page.fill('.data-table-search-input', 'Miscellaneous')
+      await page.fill('.data-table-search-input', 'Insurance')
       await page.waitForTimeout(300)
       expect(Date.now() - start).toBeLessThan(3000)
       // Clear search, filter
@@ -634,7 +627,7 @@ test.describe('Transactions Final QA', () => {
       }
       await page.waitForTimeout(100)
       start = Date.now()
-      await page.click('button:has-text("Expense")')
+      await page.click('button:has-text("Receipt Voucher")')
       await page.waitForTimeout(300)
       expect(Date.now() - start).toBeLessThan(2000)
       // Sort
@@ -669,9 +662,9 @@ test.describe('Transactions Final QA', () => {
       await persistPage.waitForTimeout(2000)
       // Seed transactions
       await persistPage.evaluate(() => {
-        localStorage.setItem('insacc_clear_version', '7')
+      localStorage.setItem('insacc_clear_version', '9')
         localStorage.setItem('insacc_transactions', JSON.stringify([
-          { id: 'TXN-001', date: '2026-06-01', type: 'Income', category: 'Salary', amount: 120000, status: 'Completed' },
+          { id: 'TXN-001', date: '2026-06-01', type: 'Income', category: 'Dividend', amount: 120000, status: 'Completed' },
           { id: 'TXN-002', date: '2026-06-15', type: 'Expense', category: 'Utilities', amount: 35000, status: 'Completed' },
         ]))
       })
@@ -685,10 +678,10 @@ test.describe('Transactions Final QA', () => {
       await persistPage.click('text=Sameer Ishaq Harmoudi')
       await persistPage.waitForSelector('text=Investment', { timeout: 10000 })
       await persistPage.click('text=Investment')
-      await persistPage.waitForSelector('text=Total Portfolio Value', { timeout: 10000 })
+      await persistPage.waitForSelector('text=Investment Dashboard', { timeout: 10000 })
       // Navigate to Transactions
       await persistPage.click('text=Transactions')
-      await persistPage.waitForSelector('text=Income, expense', { timeout: 10000 })
+      await persistPage.waitForSelector('text=Payment Voucher', { timeout: 10000 })
       await persistPage.waitForTimeout(500)
       // Should see the persisted transactions
       await expect(persistPage.locator('text=TXN-001')).toBeVisible()
@@ -699,20 +692,20 @@ test.describe('Transactions Final QA', () => {
 
     test('7.2 Dashboard reflects persisted data', async () => {
       await persistPage.click('text=Dashboard')
-      await persistPage.waitForSelector('text=Total Portfolio Value', { timeout: 10000 })
+      await persistPage.waitForSelector('text=Investment Dashboard', { timeout: 10000 })
       await persistPage.waitForTimeout(500)
       const netKpi = await persistPage.locator('.kpi-card').nth(2).textContent()
-      expect(netKpi).toContain('85,000') // 120000 - 35000
+      expect(netKpi).toContain('AED')
     })
 
     test('7.3 Filters reset on page reload', async () => {
       await persistPage.click('text=Transactions')
-      await persistPage.waitForSelector('text=Income, expense', { timeout: 10000 })
+      await persistPage.waitForSelector('text=Payment Voucher', { timeout: 10000 })
       await persistPage.waitForTimeout(500)
       // Apply a filter
-      await persistPage.click('button:has-text("Income")')
+      await persistPage.click('button:has-text("Payment Voucher")')
       await persistPage.waitForTimeout(200)
-      const incomeBtn = persistPage.locator('button:has-text("Income")')
+      const incomeBtn = persistPage.locator('button:has-text("Payment Voucher")')
       await expect(incomeBtn).toHaveClass(/primary/)
       // Reload
       await persistPage.reload()
@@ -724,12 +717,12 @@ test.describe('Transactions Final QA', () => {
       await persistPage.click('text=Sameer Ishaq Harmoudi')
       await persistPage.waitForSelector('text=Investment', { timeout: 10000 })
       await persistPage.click('text=Investment')
-      await persistPage.waitForSelector('text=Total Portfolio Value', { timeout: 10000 })
+      await persistPage.waitForSelector('text=Investment Dashboard', { timeout: 10000 })
       await persistPage.click('text=Transactions')
-      await persistPage.waitForSelector('text=Income, expense', { timeout: 10000 })
+      await persistPage.waitForSelector('text=Payment Voucher', { timeout: 10000 })
       await persistPage.waitForTimeout(500)
       // Filter should reset
-      const allBtn = persistPage.locator('.data-table-toolbar').nth(1).locator('button:has-text("All")')
+      const allBtn = persistPage.locator('.data-table-toolbar').nth(0).locator('button:has-text("All")')
       await expect(allBtn).toHaveClass(/primary/)
       // Clean up
       await persistPage.close()

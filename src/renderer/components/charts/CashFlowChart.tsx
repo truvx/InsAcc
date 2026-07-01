@@ -10,6 +10,7 @@ import {
   Legend,
 } from 'recharts'
 import type { MonthlyCashFlow } from '../../data/sampleData'
+import SegmentedControl from '../design/SegmentedControl'
 
 interface Props {
   dataByPeriod?: Record<string, MonthlyCashFlow[]>
@@ -31,19 +32,13 @@ export default function CashFlowChart({ dataByPeriod }: Props) {
           <div className="chart-title">Cash Flow</div>
           <div className="chart-subtitle">{subtitle}</div>
         </div>
-        <div className="chart-periods">
-          {['Daily', 'Monthly', 'Yearly'].map((p) => (
-            <button
-              key={p}
-              className={`chart-period ${period === p ? 'active' : ''}`}
-              onClick={() => setPeriod(p)}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          options={['Daily', 'Monthly', 'Yearly']}
+          value={period}
+          onChange={setPeriod}
+        />
       </div>
-      <div style={{ width: '100%', height: 280 }}>
+      <div className="chart-container">
         <ResponsiveContainer>
           <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />

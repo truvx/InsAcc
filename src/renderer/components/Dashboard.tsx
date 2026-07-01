@@ -7,12 +7,7 @@ import type { StatementEntry } from './BankAccounts'
 import { computeAverages } from '../services/purchaseService'
 import ActivityTimeline, { type ActivityEntry } from './ActivityTimeline'
 
-const TYPE_COLORS: Record<string, string> = {
-  'Gold': '#D4AF37', 'Silver': '#9CA3AF', 'Bonds': '#1F4E79',
-  'Sukuk': '#059669', 'Mutual Funds': '#2E8B57', 'ETF': '#6366F1',
-  'Real Estate': '#8B5CF6', 'Shares': '#8B4513', 'Private Investment': '#06B6D4',
-  'Business Investment': '#F59E0B', 'Fixed Deposit': '#EC4899', 'Others': '#6B5B95',
-}
+import { ASSET_TYPE_COLORS as TYPE_COLORS } from '../styles/palette'
 import AssetAllocationPie from './charts/AssetAllocationPie'
 import InvestmentGrowthChart from './charts/InvestmentGrowthChart'
 import CashFlowChart from './charts/CashFlowChart'

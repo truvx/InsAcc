@@ -1,0 +1,562 @@
+import type { PostingRule, PostingRuleEntry, RuleContext, AccountingEvent } from './types'
+
+export const POSTING_RULES: PostingRule[] = [
+  {
+    event: 'RENT_RECEIVED',
+    description: 'Rent received and deposited into bank account',
+    voucherType: 'Receipt',
+    debit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Rent deposited to bank' },
+    ],
+    credit: [
+      { account: '4120', narration: 'Rental income' },
+    ],
+  },
+
+  {
+    event: 'FUTURE_PDC_RECEIVED',
+    description: 'Future-dated PDC received from tenant',
+    voucherType: 'Journal',
+    debit: [
+      { account: '1410', narration: 'Post-dated cheque received' },
+    ],
+    credit: [
+      { account: '1320', narration: 'Rental receivable' },
+    ],
+  },
+
+  {
+    event: 'PDC_DEPOSITED',
+    description: 'PDC deposited to bank account upon maturity',
+    voucherType: 'Receipt',
+    debit: [
+      { account: ctx => ctx.bankAccount!, narration: 'PDC deposited to bank' },
+    ],
+    credit: [
+      { account: '1410', narration: 'PDC matured' },
+    ],
+  },
+
+  {
+    event: 'SECURITY_DEPOSIT_RECEIVED',
+    description: 'Security deposit received from tenant',
+    voucherType: 'Receipt',
+    debit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Security deposit received' },
+    ],
+    credit: [
+      { account: '2120', narration: 'Security deposit liability' },
+    ],
+  },
+
+  {
+    event: 'ASSET_PURCHASE',
+    description: 'Purchase of an asset funded from a bank account',
+    voucherType: 'Payment',
+    debit: [
+      { account: ctx => ctx.assetAccount!, narration: 'Asset purchase' },
+    ],
+    credit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Payment for asset' },
+    ],
+  },
+
+  {
+    event: 'ASSET_SALE',
+    description: 'Sale of an asset with proceeds deposited to bank',
+    voucherType: 'Receipt',
+    debit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Sale proceeds received' },
+    ],
+    credit: [
+      { account: ctx => ctx.assetAccount!, narration: 'Asset disposal' },
+    ],
+  },
+
+  {
+    event: 'DIVIDEND_RECEIVED',
+    description: 'Dividend income received into a bank account',
+    voucherType: 'Receipt',
+    debit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Dividend received' },
+    ],
+    credit: [
+      { account: '4110', narration: 'Dividend income' },
+    ],
+  },
+
+  {
+    event: 'RENTAL_INCOME',
+    description: 'Rental income received into a bank account',
+    voucherType: 'Receipt',
+    debit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Rent received' },
+    ],
+    credit: [
+      { account: '4120', narration: 'Rental income' },
+    ],
+  },
+
+  {
+    event: 'MAINTENANCE_PAID',
+    description: 'Maintenance expense paid from a bank account',
+    voucherType: 'Payment',
+    debit: [
+      { account: '5120', narration: 'Maintenance expense' },
+    ],
+    credit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Maintenance payment' },
+    ],
+  },
+
+  {
+    event: 'BANK_TRANSFER',
+    description: 'Transfer between two bank accounts',
+    voucherType: 'Journal',
+    debit: [
+      { account: ctx => ctx.creditAccount!, narration: 'Transfer received' },
+    ],
+    credit: [
+      { account: ctx => ctx.debitAccount!, narration: 'Transfer sent' },
+    ],
+  },
+
+  {
+    event: 'BANK_DEPOSIT',
+    description: 'Cash deposit into a bank account',
+    voucherType: 'Receipt',
+    debit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Deposit to bank' },
+    ],
+    credit: [
+      { account: '1110', narration: 'Cash deposit' },
+    ],
+  },
+
+  {
+    event: 'BANK_WITHDRAWAL',
+    description: 'Cash withdrawal from a bank account',
+    voucherType: 'Payment',
+    debit: [
+      { account: '1110', narration: 'Cash withdrawal' },
+    ],
+    credit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Withdrawal from bank' },
+    ],
+  },
+
+  {
+    event: 'EXPENSE_PAID',
+    description: 'Expense paid from a bank account',
+    voucherType: 'Payment',
+    debit: [
+      { account: ctx => ctx.debitAccount!, narration: 'Expense' },
+    ],
+    credit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Expense payment' },
+    ],
+  },
+
+  {
+    event: 'INCOME_RECEIVED',
+    description: 'Income received into a bank account',
+    voucherType: 'Receipt',
+    debit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Income received' },
+    ],
+    credit: [
+      { account: ctx => ctx.creditAccount!, narration: 'Income' },
+    ],
+  },
+
+  {
+    event: 'OPENING_BALANCE',
+    description: 'Opening balance journal entry',
+    voucherType: 'Journal',
+    debit: [
+      { account: ctx => ctx.debitAccount!, narration: 'Opening balance debit' },
+    ],
+    credit: [
+      { account: ctx => ctx.creditAccount!, narration: 'Opening balance credit' },
+    ],
+  },
+
+  {
+    event: 'PROPERTY_ACQUISITION',
+    description: 'Property acquisition funded from a bank account',
+    voucherType: 'Payment',
+    debit: [
+      { account: ctx => ctx.assetAccount!, narration: 'Property acquisition' },
+    ],
+    credit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Payment for property' },
+    ],
+  },
+
+  {
+    event: 'ASSET_DISPOSAL',
+    description: 'Disposal of an asset with gain/loss recognition',
+    voucherType: 'Journal',
+    debit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Asset disposal proceeds' },
+    ],
+    credit: [
+      { account: ctx => ctx.assetAccount!, narration: 'Asset cost removal' },
+    ],
+  },
+
+  {
+    event: 'INTEREST_INCOME',
+    description: 'Interest income received into bank account',
+    voucherType: 'Receipt',
+    debit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Interest income received' },
+    ],
+    credit: [
+      { account: '4140', narration: 'Interest income' },
+    ],
+  },
+
+  {
+    event: 'INTEREST_EXPENSE',
+    description: 'Interest expense paid from bank account',
+    voucherType: 'Payment',
+    debit: [
+      { account: '5170', narration: 'Interest expense' },
+    ],
+    credit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Interest payment' },
+    ],
+  },
+
+  {
+    event: 'TAX_PAID',
+    description: 'Tax payment from bank account',
+    voucherType: 'Payment',
+    debit: [
+      { account: '5180', narration: 'Tax expense' },
+    ],
+    credit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Tax payment' },
+    ],
+  },
+
+  {
+    event: 'LOAN_DISBURSEMENT',
+    description: 'Loan disbursement received into bank account',
+    voucherType: 'Receipt',
+    debit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Loan proceeds received' },
+    ],
+    credit: [
+      { account: '2210', narration: 'Loan payable' },
+    ],
+  },
+
+  {
+    event: 'LOAN_REPAYMENT',
+    description: 'Loan repayment from bank account',
+    voucherType: 'Payment',
+    debit: [
+      { account: '2210', narration: 'Loan repayment' },
+    ],
+    credit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Loan payment' },
+    ],
+  },
+
+  {
+    event: 'DEPRECIATION',
+    description: 'Depreciation expense entry',
+    voucherType: 'Journal',
+    debit: [
+      { account: '5190', narration: 'Depreciation expense' },
+    ],
+    credit: [
+      { account: ctx => ctx.assetAccount!, narration: 'Accumulated depreciation' },
+    ],
+  },
+
+  {
+    event: 'ACCRUED_INCOME',
+    description: 'Accrued income recognition',
+    voucherType: 'Journal',
+    debit: [
+      { account: '1310', narration: 'Accrued income receivable' },
+    ],
+    credit: [
+      { account: ctx => ctx.creditAccount!, narration: 'Accrued income' },
+    ],
+  },
+
+  {
+    event: 'ACCRUED_EXPENSE',
+    description: 'Accrued expense recognition',
+    voucherType: 'Journal',
+    debit: [
+      { account: ctx => ctx.debitAccount!, narration: 'Accrued expense' },
+    ],
+    credit: [
+      { account: '2130', narration: 'Accrued expense payable' },
+    ],
+  },
+
+  {
+    event: 'CONTRA_ENTRY',
+    description: 'Contra entry between accounts',
+    voucherType: 'Contra',
+    debit: [
+      { account: ctx => ctx.debitAccount!, narration: 'Contra debit' },
+    ],
+    credit: [
+      { account: ctx => ctx.creditAccount!, narration: 'Contra credit' },
+    ],
+  },
+
+  {
+    event: 'CAPITAL_CONTRIBUTION',
+    description: 'Capital contribution into the business',
+    voucherType: 'Receipt',
+    debit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Capital contribution received' },
+    ],
+    credit: [
+      { account: '3110', narration: 'Owner capital contribution' },
+    ],
+  },
+
+  {
+    event: 'CAPITAL_WITHDRAWAL',
+    description: 'Capital withdrawal from the business',
+    voucherType: 'Payment',
+    debit: [
+      { account: '3130', narration: 'Owner drawings' },
+    ],
+    credit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Capital withdrawal' },
+    ],
+  },
+
+  {
+    event: 'DIVIDEND_PAID',
+    description: 'Dividend payment from bank account',
+    voucherType: 'Payment',
+    debit: [
+      { account: '3140', narration: 'Dividends paid' },
+    ],
+    credit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Dividend payment' },
+    ],
+  },
+
+  {
+    event: 'UTILITY_RECOVERY',
+    description: 'Utility recovery from tenant',
+    voucherType: 'Receipt',
+    debit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Utility recovery received' },
+    ],
+    credit: [
+      { account: '5140', narration: 'Utility recovery (expense reduction)' },
+    ],
+  },
+
+  {
+    event: 'LATE_FEE',
+    description: 'Late fee charged to tenant',
+    voucherType: 'Receipt',
+    debit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Late fee received' },
+    ],
+    credit: [
+      { account: '4150', narration: 'Late fee income' },
+    ],
+  },
+
+  {
+    event: 'DEPOSIT_REFUND',
+    description: 'Security deposit refund to tenant',
+    voucherType: 'Payment',
+    debit: [
+      { account: '2120', narration: 'Security deposit liability settlement' },
+    ],
+    credit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Deposit refund payment' },
+    ],
+  },
+
+  {
+    event: 'PREPAID_EXPENSE',
+    description: 'Prepaid expense recorded',
+    voucherType: 'Payment',
+    debit: [
+      { account: '1510', narration: 'Prepaid expense' },
+    ],
+    credit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Prepaid payment' },
+    ],
+  },
+
+  {
+    event: 'DEFERRED_REVENUE',
+    description: 'Deferred revenue recorded',
+    voucherType: 'Receipt',
+    debit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Deferred revenue received' },
+    ],
+    credit: [
+      { account: '2310', narration: 'Deferred revenue liability' },
+    ],
+  },
+
+  {
+    event: 'REALIZED_GAIN',
+    description: 'Realized gain on asset sale',
+    voucherType: 'Journal',
+    debit: [
+      { account: ctx => ctx.assetAccount!, narration: 'Gain realization adjustment' },
+    ],
+    credit: [
+      { account: '4130', narration: 'Realized capital gain' },
+    ],
+  },
+
+  {
+    event: 'REALIZED_LOSS',
+    description: 'Realized loss on asset sale',
+    voucherType: 'Journal',
+    debit: [
+      { account: '5210', narration: 'Realized capital loss' },
+    ],
+    credit: [
+      { account: ctx => ctx.assetAccount!, narration: 'Loss realization adjustment' },
+    ],
+  },
+
+  {
+    event: 'UNREALIZED_GAIN',
+    description: 'Unrealized gain on investment revaluation',
+    voucherType: 'Journal',
+    debit: [
+      { account: ctx => ctx.assetAccount!, narration: 'Unrealized gain increase' },
+    ],
+    credit: [
+      { account: '4160', narration: 'Unrealized gain on investments' },
+    ],
+  },
+
+  {
+    event: 'UNREALIZED_LOSS',
+    description: 'Unrealized loss on investment revaluation',
+    voucherType: 'Journal',
+    debit: [
+      { account: '5220', narration: 'Unrealized loss on investments' },
+    ],
+    credit: [
+      { account: ctx => ctx.assetAccount!, narration: 'Unrealized loss decrease' },
+    ],
+  },
+
+  {
+    event: 'GOODS_PURCHASE',
+    description: 'Purchase of goods on credit or cash',
+    voucherType: 'Payment',
+    debit: [
+      { account: ctx => ctx.debitAccount!, narration: 'Goods purchase' },
+    ],
+    credit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Payment for goods' },
+    ],
+  },
+
+  {
+    event: 'GOODS_SALE',
+    description: 'Sale of goods for cash or credit',
+    voucherType: 'Receipt',
+    debit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Sale proceeds' },
+    ],
+    credit: [
+      { account: ctx => ctx.creditAccount!, narration: 'Sales revenue' },
+    ],
+  },
+
+  {
+    event: 'SALARY_PAID',
+    description: 'Salary payment to employees',
+    voucherType: 'Payment',
+    debit: [
+      { account: '5230', narration: 'Salary expense' },
+    ],
+    credit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Salary payment' },
+    ],
+  },
+
+  {
+    event: 'SERVICE_INCOME',
+    description: 'Service income received',
+    voucherType: 'Receipt',
+    debit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Service income received' },
+    ],
+    credit: [
+      { account: ctx => ctx.creditAccount!, narration: 'Service revenue' },
+    ],
+  },
+
+  {
+    event: 'PURCHASE_RETURN',
+    description: 'Return of goods to supplier',
+    voucherType: 'Journal',
+    debit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Purchase return refund' },
+    ],
+    credit: [
+      { account: ctx => ctx.debitAccount!, narration: 'Purchase return' },
+    ],
+  },
+
+  {
+    event: 'SALES_RETURN',
+    description: 'Customer returns goods',
+    voucherType: 'Journal',
+    debit: [
+      { account: ctx => ctx.creditAccount!, narration: 'Sales return' },
+    ],
+    credit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Sales return refund' },
+    ],
+  },
+]
+
+export function getRule(event: AccountingEvent): PostingRule | undefined {
+  return POSTING_RULES.find(r => r.event === event)
+}
+
+function resolveEntry(
+  entry: PostingRuleEntry,
+  context: RuleContext,
+): { accountId: string; narration?: string } {
+  if (typeof entry.account === 'function') {
+    return { accountId: entry.account(context), narration: entry.narration }
+  }
+  return { accountId: entry.account, narration: entry.narration }
+}
+
+export function resolveRule(
+  rule: PostingRule,
+  context: RuleContext,
+): {
+  debit: Array<{ accountId: string; narration?: string }>
+  credit: Array<{ accountId: string; narration?: string }>
+} {
+  return {
+    debit: rule.debit.map(e => resolveEntry(e, context)),
+    credit: rule.credit.map(e => resolveEntry(e, context)),
+  }
+}
+
+export function isKnownEvent(event: string): event is AccountingEvent {
+  return POSTING_RULES.some(r => r.event === event)
+}

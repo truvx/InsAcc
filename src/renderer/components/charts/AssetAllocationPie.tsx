@@ -61,7 +61,7 @@ export default function AssetAllocationPie({ data }: Props) {
           <div className="chart-subtitle">Total: AED {total.toLocaleString()}</div>
         </div>
       </div>
-      <div style={{ width: '100%', height: 300 }}>
+      <div className="chart-container-lg">
         <ResponsiveContainer>
           <PieChart>
             <Pie
@@ -84,27 +84,15 @@ export default function AssetAllocationPie({ data }: Props) {
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginTop: 'var(--space-2)' }}>
+      <div className="chart-legend">
         {data.map((item, i) => (
           <div
             key={item.name}
+            className={`chart-legend-item${activeIndex === i ? ' active' : ''}`}
             onClick={() => setActiveIndex(i)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '4px 10px',
-              borderRadius: 20,
-              cursor: 'pointer',
-              background: activeIndex === i ? 'var(--gold-light)' : 'transparent',
-              border: activeIndex === i ? '1px solid var(--gold-border)' : '1px solid transparent',
-              transition: 'all 0.2s',
-            }}
           >
-            <div style={{ width: 10, height: 10, borderRadius: '50%', background: item.color }} />
-            <span style={{ fontSize: 12, color: activeIndex === i ? 'var(--gold)' : 'var(--text-secondary)', fontWeight: activeIndex === i ? 600 : 400 }}>
-              {item.name}
-            </span>
+            <div className="chart-legend-dot" style={{ background: item.color }} />
+            <span className="chart-legend-label">{item.name}</span>
           </div>
         ))}
       </div>

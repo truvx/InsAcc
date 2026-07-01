@@ -2,7 +2,7 @@ const LANG: Record<string, Record<string, string>> = {
   English: {
     dashboard: 'Dashboard',
     investments: 'Investments',
-    transactions: 'Transactions',
+    accounting: 'Accounting',
     'bank-accounts': 'Bank Accounts',
     reports: 'Reports',
     documents: 'Documents',
@@ -19,7 +19,7 @@ const LANG: Record<string, Record<string, string>> = {
     monthlyExpense: 'Monthly Expense',
     vsLastMonth: 'vs last month',
     managePortfolio: 'Manage your investment portfolio',
-    trackTransactions: 'Income, expense & journal entry tracking',
+    trackAccounting: 'Payment Voucher, Receipt Voucher & Journal Voucher tracking',
     manageAccounts: 'Manage your bank accounts and balances',
     generateReports: 'Generate financial reports and statements',
     manageDocs: 'Store and manage investment documents',
@@ -34,7 +34,7 @@ const LANG: Record<string, Record<string, string>> = {
   Arabic: {
     dashboard: 'لوحة التحكم',
     investments: 'الاستثمارات',
-    transactions: 'المعاملات',
+    accounting: 'المحاسبة',
     'bank-accounts': 'الحسابات البنكية',
     reports: 'التقارير',
     documents: 'المستندات',
@@ -51,7 +51,7 @@ const LANG: Record<string, Record<string, string>> = {
     monthlyExpense: 'المصروفات الشهرية',
     vsLastMonth: 'مقارنة بالشهر الماضي',
     managePortfolio: 'إدارة محفظتك الاستثمارية',
-    trackTransactions: 'تتبع الدخل والمصروفات والقيود',
+    trackAccounting: 'تتبع سندات الدفع والاستلام والقيود',
     manageAccounts: 'إدارة حساباتك البنكية والأرصدة',
     generateReports: 'إنشاء التقارير المالية',
     manageDocs: 'تخزين وإدارة مستندات الاستثمار',
@@ -66,7 +66,7 @@ const LANG: Record<string, Record<string, string>> = {
   French: {
     dashboard: 'Tableau de bord',
     investments: 'Investissements',
-    transactions: 'Transactions',
+    accounting: 'Comptabilité',
     'bank-accounts': 'Comptes bancaires',
     reports: 'Rapports',
     documents: 'Documents',
@@ -83,7 +83,7 @@ const LANG: Record<string, Record<string, string>> = {
     monthlyExpense: 'Dépenses mensuelles',
     vsLastMonth: 'vs mois dernier',
     managePortfolio: 'Gérer votre portefeuille',
-    trackTransactions: 'Suivi des revenus, dépenses et écritures',
+    trackAccounting: 'Suivi des reçus, paiements et écritures',
     manageAccounts: 'Gérer vos comptes bancaires',
     generateReports: 'Générer des rapports financiers',
     manageDocs: 'Stocker et gérer les documents',
@@ -109,4 +109,9 @@ export function formatDate(dateStr: string, format: string = 'DD/MM/YYYY'): stri
   if (format === 'MM/DD/YYYY') return `${m}/${d}/${y}`
   if (format === 'YYYY-MM-DD') return `${y}-${m}-${d}`
   return `${d}/${m}/${y}`
+}
+
+export function maskAccountNumber(accountNumber: string): string {
+  if (!accountNumber || accountNumber === '----') return ''
+  return `****${accountNumber.slice(-4)}`
 }

@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import type { InvestmentHistory } from '../../data/sampleData'
+import SegmentedControl from '../design/SegmentedControl'
 
 interface Props {
   dataByPeriod?: Record<string, InvestmentHistory[]>
@@ -28,19 +29,13 @@ export default function InvestmentGrowthChart({ dataByPeriod }: Props) {
           <div className="chart-title">Investment Growth</div>
           <div className="chart-subtitle">Portfolio value over time</div>
         </div>
-        <div className="chart-periods">
-          {['Daily', 'Monthly', 'Yearly'].map((p) => (
-            <button
-              key={p}
-              className={`chart-period ${period === p ? 'active' : ''}`}
-              onClick={() => setPeriod(p)}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          options={['Daily', 'Monthly', 'Yearly']}
+          value={period}
+          onChange={setPeriod}
+        />
       </div>
-      <div style={{ width: '100%', height: 280 }}>
+      <div className="chart-container">
         <ResponsiveContainer>
           <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>

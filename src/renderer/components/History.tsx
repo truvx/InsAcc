@@ -1,173 +1,440 @@
-import React, { useState, useMemo } from 'react'
-import type { Profile } from '../data/sampleData'
-import type { Investment } from './Investments'
-import type { Transaction } from './Transactions'
-import { t } from '../utils'
+import React, { useState, useMemo, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import type { AuditEvent, AuditModule, AuditAction, AuditSeverity } from '../data/auditTypes'
+import { Badge, Button, EmptyState, CloseIcon, SearchIcon } from './design/DesignSystem'
+import { formatDate, t } from '../utils'
 
 interface Props {
-  profile: Profile
+  auditEvents: AuditEvent[]
   language?: string
-  investments: Investment[]
-  transactions: Transaction[]
 }
 
-export default function History({ profile, language = 'English', investments, transactions }: Props) {
-  const currentYear = new Date().getFullYear()
-  const years = useMemo(() => {
-    const arr: string[] = []
-    for (let y = 2015; y <= currentYear; y++) arr.push(String(y))
-    return arr.reverse()
-  }, [currentYear])
+const MODULE_COLORS: Record<string, string> = {
+  Investments: '#0A0A6F',
+  'Purchase Ledger': '#3BA549',
+  Transactions: '#059669',
+  'Bank Accounts': '#06B6D4',
+  Documents: '#D97706',
+  Reports: '#DE8DA9',
+  Settings: 'var(--text-muted)',
+}
 
-  const [selectedYear, setSelectedYear] = useState(String(currentYear))
-  const [selectedDate, setSelectedDate] = useState('')
+const SEVERITY_VARIANTS: Record<string, 'primary' | 'warning' | 'danger'> = {
+  Info: 'primary',
+  Warning: 'warning',
+  Critical: 'danger',
+}
 
-  const yearInvestments = useMemo(() => {
-    return investments.filter(inv => inv.date?.startsWith(selectedYear))
-  }, [investments, selectedYear])
+function formatTime(iso: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+}
 
-  const yearTransactions = useMemo(() => {
-    return transactions.filter(tx => tx.date?.startsWith(selectedYear))
-  }, [transactions, selectedYear])
+function getGroupLabel(date: Date): string {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const eventDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
 
-  const totalValue = yearInvestments.reduce((sum, inv) => sum + (inv.purchaseValue || 0), 0)
-  const investmentsCount = yearInvestments.length
+  if (eventDate.getTime() === today.getTime()) return 'Today'
+  if (eventDate.getTime() === yesterday.getTime()) return 'Yesterday'
 
-  const topAsset = useMemo(() => {
-    if (yearInvestments.length === 0) return 'N/A'
-    const byType: Record<string, number> = {}
-    yearInvestments.forEach(inv => {
-      byType[inv.type] = (byType[inv.type] || 0) + (inv.purchaseValue || 0)
+  const dayOfWeek = today.getDay()
+  const monday = new Date(today)
+  monday.setDate(monday.getDate() - ((dayOfWeek + 6) % 7))
+
+  if (eventDate >= monday) return 'This Week'
+
+  if (eventDate.getMonth() === today.getMonth() && eventDate.getFullYear() === today.getFullYear()) return 'This Month'
+
+  return 'Older'
+}
+
+type GroupKey = 'Today' | 'Yesterday' | 'This Week' | 'This Month' | 'Older'
+
+const GROUP_ORDER: GroupKey[] = ['Today', 'Yesterday', 'This Week', 'This Month', 'Older']
+
+const MODULE_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: 'All Modules' },
+  { value: 'Investments', label: 'Investments' },
+  { value: 'Purchase Ledger', label: 'Purchase Ledger' },
+  { value: 'Transactions', label: 'Transactions' },
+  { value: 'Bank Accounts', label: 'Bank Accounts' },
+  { value: 'Documents', label: 'Documents' },
+  { value: 'Reports', label: 'Reports' },
+  { value: 'Settings', label: 'Settings' },
+]
+
+const ACTION_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: 'All Actions' },
+  { value: 'Create', label: 'Create' },
+  { value: 'Update', label: 'Update' },
+  { value: 'Delete', label: 'Delete' },
+  { value: 'Export', label: 'Export' },
+  { value: 'Upload', label: 'Upload' },
+  { value: 'Download', label: 'Download' },
+  { value: 'Transfer', label: 'Transfer' },
+  { value: 'System', label: 'System' },
+]
+
+const SEVERITY_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: 'All Severities' },
+  { value: 'Info', label: 'Info' },
+  { value: 'Warning', label: 'Warning' },
+  { value: 'Critical', label: 'Critical' },
+]
+
+function ModuleIcon({ module }: { module: string }) {
+  const color = MODULE_COLORS[module] || '#6B7280'
+  const letter = module === 'Purchase Ledger' ? 'PL' : module === 'Bank Accounts' ? 'BA' : module[0]
+  return (
+    <div className="module-icon" style={{ background: color }}>
+      {letter}
+    </div>
+  )
+}
+
+const itemVariants = {
+  initial: { opacity: 0, x: -8 },
+  animate: { opacity: 1, x: 0 },
+}
+
+export default function History({ auditEvents, language = 'English' }: Props) {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterModule, setFilterModule] = useState('')
+  const [filterAction, setFilterAction] = useState('')
+  const [filterSeverity, setFilterSeverity] = useState('')
+  const [filterDateStart, setFilterDateStart] = useState('')
+  const [filterDateEnd, setFilterDateEnd] = useState('')
+  const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null)
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(GROUP_ORDER))
+
+  const toggleGroup = useCallback((group: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(group)) {
+        next.delete(group)
+      } else {
+        next.add(group)
+      }
+      return next
     })
-    return Object.entries(byType).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A'
-  }, [yearInvestments])
+  }, [])
 
-  const dayEvents = useMemo(() => {
-    if (!selectedDate) return []
-    return [
-      ...investments.filter(inv => inv.date === selectedDate).map(inv => ({
-        date: inv.date,
-        event: `${inv.type} - ${inv.assetName || ''}`,
-        value: `AED ${(inv.purchaseValue || 0).toLocaleString()}`,
-        type: 'buy' as const,
-      })),
-      ...transactions.filter(tx => tx.date === selectedDate).map(tx => ({
-        date: tx.date,
-        event: `${tx.type} - ${tx.category || ''}`,
-        value: `AED ${(tx.amount || 0).toLocaleString()}`,
-        type: (tx.type === 'Income' ? 'income' : 'buy') as 'income' | 'buy',
-      })),
-    ].sort((a, b) => (a.date || '').localeCompare(b.date || ''))
-  }, [selectedDate, investments, transactions])
+  const filtered = useMemo(() => {
+    let result = auditEvents
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      result = result.filter(e =>
+        e.entityName.toLowerCase().includes(q) ||
+        e.description.toLowerCase().includes(q) ||
+        e.module.toLowerCase().includes(q) ||
+        e.action.toLowerCase().includes(q) ||
+        e.id.toLowerCase().includes(q)
+      )
+    }
+    if (filterModule) result = result.filter(e => e.module === filterModule)
+    if (filterAction) result = result.filter(e => e.action === filterAction)
+    if (filterSeverity) result = result.filter(e => e.severity === filterSeverity)
+    if (filterDateStart) result = result.filter(e => e.timestamp >= filterDateStart)
+    if (filterDateEnd) result = result.filter(e => e.timestamp <= filterDateEnd + 'T23:59:59.999Z')
+    return result
+  }, [auditEvents, searchQuery, filterModule, filterAction, filterSeverity, filterDateStart, filterDateEnd])
+
+  const grouped = useMemo(() => {
+    const groups = new Map<string, AuditEvent[]>()
+    filtered.forEach(event => {
+      const label = getGroupLabel(new Date(event.timestamp))
+      if (!groups.has(label)) groups.set(label, [])
+      groups.get(label)!.push(event)
+    })
+    return GROUP_ORDER
+      .filter(g => groups.has(g))
+      .map(g => ({ group: g, events: groups.get(g)!.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()) }))
+  }, [filtered])
+
+  const hasFilters = filterModule || filterAction || filterSeverity || filterDateStart || filterDateEnd
+
+  const clearFilters = () => {
+    setFilterModule('')
+    setFilterAction('')
+    setFilterSeverity('')
+    setFilterDateStart('')
+    setFilterDateEnd('')
+  }
 
   return (
-    <div className="main-content">
-      <div className="main-header">
-        <div>
-          <h1>{t('history', language)}</h1>
-          <p>{t('viewHistory', language)}</p>
+    <motion.div
+      className="main-content"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2 }}
+    >
+      <div className="page-header">
+        <div className="page-header-left">
+          <div>
+            <div className="page-title">{t('history', language)}</div>
+            <div className="page-subtitle">{auditEvents.length} total event{auditEvents.length !== 1 ? 's' : ''}</div>
+          </div>
         </div>
       </div>
 
-      <div className="scroll-content">
-        <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {years.map(year => (
-              <button
-                key={year}
-                className={`chart-period ${selectedYear === year ? 'active' : ''}`}
-                onClick={() => { setSelectedYear(year); setSelectedDate('') }}
-                style={{ fontSize: 14, padding: '6px 18px' }}
+      <div className="page-body">
+        <div className="data-table-toolbar">
+          <div className="data-table-filters">
+            <div className="filter-bar">
+              <select
+                className="input"
+                value={filterModule}
+                onChange={e => setFilterModule(e.target.value)}
               >
-                {year}
-              </button>
-            ))}
+                {MODULE_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              <select
+                className="input"
+                value={filterAction}
+                onChange={e => setFilterAction(e.target.value)}
+              >
+                {ACTION_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              <select
+                className="input"
+                value={filterSeverity}
+                onChange={e => setFilterSeverity(e.target.value)}
+              >
+                {SEVERITY_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              <input
+                type="date"
+                className="input"
+                value={filterDateStart}
+                onChange={e => setFilterDateStart(e.target.value)}
+              />
+              <input
+                type="date"
+                className="input"
+                value={filterDateEnd}
+                onChange={e => setFilterDateEnd(e.target.value)}
+              />
+              {hasFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  Clear
+                </Button>
+              )}
+            </div>
           </div>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Calendar:</label>
+          <div className="data-table-search">
+            <SearchIcon />
             <input
-              type="date"
-              className="settings-input"
-              style={{ width: 180 }}
-              value={selectedDate}
-              onChange={e => { setSelectedDate(e.target.value); if (e.target.value) setSelectedYear(e.target.value.slice(0, 4)) }}
+              type="text"
+              className="data-table-search-input"
+              placeholder="Search by module, entity, action, description..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
             />
-            {selectedDate && (
-              <button className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setSelectedDate('')}>
-                Clear
+            {searchQuery && (
+              <button className="data-table-search-clear" onClick={() => setSearchQuery('')} aria-label="Clear search">
+                <CloseIcon />
               </button>
             )}
           </div>
         </div>
 
-        <div className="dashboard-grid" style={{ marginBottom: 24 }}>
-          {[
-            { label: 'Total Investments', value: `AED ${totalValue.toLocaleString()}`, icon: 'investment', color: 'var(--gold)' },
-            { label: 'Investments Made', value: `${investmentsCount}`, icon: 'chart', color: 'var(--blue)' },
-            { label: 'Profit Generated', value: 'AED 0', icon: 'trophy', color: 'var(--green)' },
-            { label: 'Top Performing Asset', value: topAsset, icon: 'star', color: '#D4AF37' },
-          ].map((card, i) => (
-            <div key={i} className="chart-card" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <span style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, background: 'rgba(212,175,55,0.1)', color: card.color, flexShrink: 0 }}>
-                {card.icon === 'investment' ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> :
-                 card.icon === 'chart' ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> :
-                 card.icon === 'trophy' ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg> :
-                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>}
-              </span>
-              <div>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{card.label}</div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: card.color }}>{card.value}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="chart-card">
-          <div className="chart-header">
-            <div className="chart-title">
-              {selectedDate ? `Events on ${selectedDate}` : `Timeline - ${selectedYear}`}
-            </div>
-            <div className="chart-subtitle">Key investment events</div>
-          </div>
-          <div style={{ position: 'relative', paddingLeft: 24 }}>
-            <div style={{ position: 'absolute', left: 8, top: 0, bottom: 0, width: 2, background: 'var(--border)' }} />
-            {(selectedDate ? dayEvents : [...yearTransactions.map(tx => ({
-              date: tx.date,
-              event: `${tx.type} - ${tx.category || ''}`,
-              value: `AED ${tx.amount.toLocaleString()}`,
-              type: (tx.type === 'Income' ? 'income' : 'buy') as 'income' | 'buy',
-            })), ...yearInvestments.map(inv => ({
-              date: inv.date,
-              event: `${inv.type} - ${inv.assetName || ''}`,
-              value: `AED ${(inv.purchaseValue || 0).toLocaleString()}`,
-              type: 'buy' as const,
-            }))].sort((a, b) => (a.date || '').localeCompare(b.date || '')).map((item, i) => (
-              <div key={i} style={{ position: 'relative', padding: '0 0 20px 24px' }}>
-                <div style={{
-                  position: 'absolute', left: -20, top: 4, width: 12, height: 12, borderRadius: '50%',
-                  background: item.type === 'income' ? 'var(--green)' : item.type === 'buy' ? 'var(--blue)' : 'var(--gold)',
-                  border: '2px solid var(--bg)',
-                }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>{item.event}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{item.date}</div>
+        {filtered.length === 0 ? (
+          <EmptyState
+            icon={
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.4">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            }
+            title="No events found"
+            text="Events from all modules will appear here automatically"
+          />
+        ) : (
+          <div className="history-layout">
+            <div className="history-timeline">
+              {grouped.map(({ group, events }) => {
+                const isExpanded = expandedGroups.has(group)
+                return (
+                  <div key={group} className="history-group">
+                    <div className="history-group-header" onClick={() => toggleGroup(group)}>
+                      <span className="history-group-toggle">{isExpanded ? '▼' : '▶'}</span>
+                      <span className="history-group-label">{group}</span>
+                      <span className="history-group-count">{events.length} event{events.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    {isExpanded && (
+                      <div className="history-group-body">
+                        {events.map((event, i) => {
+                          const sevVariant = SEVERITY_VARIANTS[event.severity] || 'primary'
+                          const isSelected = selectedEvent?.id === event.id
+                          return (
+                            <motion.div
+                              key={event.id}
+                              className={`activity-item${isSelected ? ' selected' : ''}`}
+                              variants={itemVariants}
+                              initial="initial"
+                              animate="animate"
+                              transition={{ duration: 0.2, delay: i * 0.02 }}
+                              onClick={() => setSelectedEvent(event)}
+                            >
+                              <div className="activity-item-line" />
+                              <ModuleIcon module={event.module} />
+                              <div className="activity-item-content">
+                                <div className="activity-item-title">
+                                  {event.entityName || event.action}
+                                  <span style={{ marginLeft: 8, fontWeight: 400 }}>
+                                    <Badge variant={sevVariant}>{event.action}</Badge>
+                                  </span>
+                                </div>
+                                <div className="activity-item-desc">{event.description}</div>
+                              </div>
+                              <div className="activity-item-right">
+                                <div className="activity-item-date">{formatTime(event.timestamp)}</div>
+                              </div>
+                            </motion.div>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
-                  <div style={{
-                    fontSize: 13, fontWeight: 700,
-                    color: item.type === 'income' ? 'var(--green)' : item.type === 'buy' ? 'var(--blue)' : 'var(--gold)',
-                  }}>{item.value}</div>
-                </div>
-              </div>
-            )))}
-            {(selectedDate ? dayEvents.length === 0 : yearTransactions.length === 0 && yearInvestments.length === 0) && (
-              <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>
-                No events found
-              </div>
-            )}
+                )
+              })}
+            </div>
+
+            <AnimatePresence>
+              {selectedEvent && (
+                <>
+                  <motion.div
+                    className="history-detail-overlay"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    onClick={() => setSelectedEvent(null)}
+                  />
+                  <motion.div
+                    className="history-detail-drawer"
+                    initial={{ x: 420 }}
+                    animate={{ x: 0 }}
+                    exit={{ x: 420 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  >
+                    <div className="history-drawer-header">
+                      <div className="history-drawer-title">Event Details</div>
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedEvent(null)}>
+                        <CloseIcon />
+                      </Button>
+                    </div>
+                    <div className="history-drawer-body">
+                      <div className="history-detail-section">
+                        <div className="history-detail-section-title">Overview</div>
+                        <div className="history-detail-row">
+                          <span className="history-detail-label">Module</span>
+                          <span className="history-detail-value">
+                            <Badge variant="primary">{selectedEvent.module}</Badge>
+                          </span>
+                        </div>
+                        <div className="history-detail-row">
+                          <span className="history-detail-label">Action</span>
+                          <span className="history-detail-value">
+                            <Badge variant={SEVERITY_VARIANTS[selectedEvent.severity] || 'primary'}>{selectedEvent.action}</Badge>
+                          </span>
+                        </div>
+                        <div className="history-detail-row">
+                          <span className="history-detail-label">Severity</span>
+                          <span className="history-detail-value">
+                            <Badge variant={SEVERITY_VARIANTS[selectedEvent.severity] || 'primary'}>{selectedEvent.severity}</Badge>
+                          </span>
+                        </div>
+                        <div className="history-detail-row">
+                          <span className="history-detail-label">Date</span>
+                          <span className="history-detail-value">
+                            {formatDate(selectedEvent.timestamp.split('T')[0], language === 'Arabic' ? 'DD/MM/YYYY' : 'DD/MM/YYYY')}
+                          </span>
+                        </div>
+                        <div className="history-detail-row">
+                          <span className="history-detail-label">Time</span>
+                          <span className="history-detail-value">{formatTime(selectedEvent.timestamp)}</span>
+                        </div>
+                      </div>
+
+                      <div className="history-detail-section">
+                        <div className="history-detail-section-title">Entity</div>
+                        <div className="history-detail-row">
+                          <span className="history-detail-label">Name</span>
+                          <span className="history-detail-value">{selectedEvent.entityName || '—'}</span>
+                        </div>
+                        <div className="history-detail-row">
+                          <span className="history-detail-label">ID</span>
+                          <span className="history-detail-value">{selectedEvent.entityId || '—'}</span>
+                        </div>
+                        <div className="history-detail-row">
+                          <span className="history-detail-label">Event ID</span>
+                          <span className="history-detail-value" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>{selectedEvent.id}</span>
+                        </div>
+                      </div>
+
+                      <div className="history-detail-section">
+                        <div className="history-detail-section-title">Description</div>
+                        <div className="history-detail-desc">{selectedEvent.description}</div>
+                      </div>
+
+                      {selectedEvent.before && Object.keys(selectedEvent.before).length > 0 && (
+                        <div className="history-detail-section">
+                          <div className="history-detail-section-title">Changed Fields</div>
+                          {Object.entries(selectedEvent.before).map(([key, value]) => {
+                            const afterVal = selectedEvent.after?.[key]
+                            return (
+                              <div key={key} style={{ marginBottom: 12 }}>
+                                <div className="history-detail-changed-label">{key}</div>
+                                <div className="history-detail-before">
+                                  <div className="history-detail-changed-row">
+                                    <span className="history-detail-changed-key">Before</span>
+                                    <span className="history-detail-changed-value">{String(value)}</span>
+                                  </div>
+                                </div>
+                                {afterVal !== undefined && (
+                                  <div className="history-detail-after">
+                                    <div className="history-detail-changed-row">
+                                      <span className="history-detail-changed-key">After</span>
+                                      <span className="history-detail-changed-value">{String(afterVal)}</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      {(!selectedEvent.before || Object.keys(selectedEvent.before).length === 0) && selectedEvent.after && Object.keys(selectedEvent.after).length > 0 && (
+                        <div className="history-detail-section">
+                          <div className="history-detail-section-title">Details</div>
+                          {Object.entries(selectedEvent.after).map(([key, value]) => (
+                            <div key={key} className="history-detail-row">
+                              <span className="history-detail-label">{key}</span>
+                              <span className="history-detail-value">{String(value)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </div>
-        </div>
+        )}
       </div>
-    </div>
+    </motion.div>
   )
 }

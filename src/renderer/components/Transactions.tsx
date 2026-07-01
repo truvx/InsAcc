@@ -1,11 +1,15 @@
 import React, { useState, useMemo, useCallback } from 'react'
 import type { Profile } from '../data/sampleData'
+import type { AuditEvent } from '../data/auditTypes'
+import { recordModuleEvent } from '../services/auditService'
 import { Badge, Button, EditIcon, TrashIcon, PlusIcon, KpiCard, EmptyState, Select, Input, SearchIcon, CloseIcon } from './design/DesignSystem'
 import { DataTable, type Column } from './design/Table'
 import ConfirmDialog from './design/ConfirmDialog'
 import EntityForm from './design/EntityForm'
 import Toast from './Toast'
 import { formatDate, t } from '../utils'
+import { incomeCategories, expenseCategories, journalCategories } from '../data/transactionCategories'
+import { CUSTOM_OPTION, normalizeCategoryName, findDuplicate, mergeCategories } from '../services/customCategoryService'
 
 interface Props {
   profile: Profile
@@ -14,6 +18,11 @@ interface Props {
   language?: string
   transactions: Transaction[]
   setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>
+  incomeCustomCategories: string[]
+  expenseCustomCategories: string[]
+  setIncomeCustomCategories: React.Dispatch<React.SetStateAction<string[]>>
+  setExpenseCustomCategories: React.Dispatch<React.SetStateAction<string[]>>
+  onAuditEvent?: (event: AuditEvent) => void
 }
 
 export interface Transaction {
@@ -25,17 +34,38 @@ export interface Transaction {
   status: string
 }
 
-type DateRange = 'all' | 'today' | 'week' | 'month' | 'year' | 'custom'
+const TYPE_DISPLAY: Record<string, string> = {
+  Income: 'Payment Voucher',
+  Expense: 'Receipt Voucher',
+  Journal: 'Journal Voucher',
+}
 
-const incomeCategories = ['Salary', 'Rental Income', 'Dividend', 'Interest', 'Other Income']
-const expenseCategories = ['Maintenance', 'Utilities', 'Insurance', 'Taxes', 'Fees', 'Miscellaneous']
-const journalCategories = ['Adjustment', 'Transfer', 'Opening Balance', 'Correction']
+const TYPE_VALUE: Record<string, 'Income' | 'Expense' | 'Journal'> = {
+  Income: 'Income',
+  Expense: 'Expense',
+  Journal: 'Journal',
+}
+
+type DateRange = 'all' | 'today' | 'week' | 'month' | 'year' | 'custom'
 
 const typeColors: Record<string, { color: string; bg: string }> = {
   Income: { color: 'var(--success)', bg: 'var(--success-light)' },
   Expense: { color: 'var(--text-muted)', bg: 'var(--bg-tertiary)' },
-  Journal: { color: '#6366F1', bg: 'rgba(99,102,241,0.1)' },
+  Journal: { color: 'var(--primary-text)', bg: 'var(--primary-light)' },
 }
+
+const TYPE_OPTIONS = [
+  { value: 'Income', label: 'Payment Voucher' },
+  { value: 'Expense', label: 'Receipt Voucher' },
+  { value: 'Journal', label: 'Journal Voucher' },
+]
+
+const TYPE_FILTER_OPTIONS = [
+  { value: 'All', label: 'All' },
+  { value: 'Income', label: 'Payment Voucher' },
+  { value: 'Expense', label: 'Receipt Voucher' },
+  { value: 'Journal', label: 'Journal Voucher' },
+] as const
 
 const dateRangeLabels: { value: DateRange; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -46,7 +76,7 @@ const dateRangeLabels: { value: DateRange; label: string }[] = [
   { value: 'custom', label: 'Custom' },
 ]
 
-const typeFilterOptions = ['All', 'Income', 'Expense', 'Journal'] as const
+const TYPE_FILTER_VALUES = ['All', 'Income', 'Expense', 'Journal'] as const
 
 function getDateRange(range: DateRange, customStart?: string, customEnd?: string): [string, string] {
   const now = new Date()
@@ -78,7 +108,13 @@ function getDateRange(range: DateRange, customStart?: string, customEnd?: string
   }
 }
 
-export default function Transactions({ currency = 'AED', dateFormat = 'DD/MM/YYYY', language = 'English', transactions, setTransactions }: Props) {
+export default function Transactions({
+  currency = 'AED', dateFormat = 'DD/MM/YYYY', language = 'English',
+  transactions, setTransactions,
+  incomeCustomCategories, expenseCustomCategories,
+  setIncomeCustomCategories, setExpenseCustomCategories,
+  onAuditEvent,
+}: Props) {
   const [typeFilter, setTypeFilter] = useState<string>('All')
   const [dateRange, setDateRange] = useState<DateRange>('all')
   const [customStart, setCustomStart] = useState('')
@@ -92,20 +128,56 @@ export default function Transactions({ currency = 'AED', dateFormat = 'DD/MM/YYY
   const [formCategory, setFormCategory] = useState('')
   const [formAmount, setFormAmount] = useState('')
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0])
+  const [customCategoryName, setCustomCategoryName] = useState('')
 
-  const categories = formType === 'Income' ? incomeCategories : formType === 'Expense' ? expenseCategories : journalCategories
+  const customCategories = formType === 'Income' ? incomeCustomCategories : formType === 'Expense' ? expenseCustomCategories : []
+
+  const allHardcoded = formType === 'Income' ? incomeCategories : formType === 'Expense' ? expenseCategories : journalCategories
+
+  const categoryOptions = useMemo(() => {
+    const merged = mergeCategories(allHardcoded, customCategories)
+    const base: { value: string; label: string }[] = merged.map(c => ({ value: c, label: c }))
+    if (formType !== 'Journal') {
+      base.push({ value: CUSTOM_OPTION, label: CUSTOM_OPTION })
+    }
+    if (editingId && formCategory && !merged.includes(formCategory)) {
+      base.unshift({ value: formCategory, label: formCategory })
+    }
+    return [{ value: '', label: 'Select category' }, ...base]
+  }, [allHardcoded, customCategories, editingId, formCategory, formType])
 
   const resetForm = () => {
     setFormType('Income')
     setFormCategory('')
+    setCustomCategoryName('')
     setFormAmount('')
     setFormDate(new Date().toISOString().split('T')[0])
   }
 
   const validate = () => {
-    if (!formCategory) {
-      setToast({ visible: true, message: 'Please select a category', type: 'error' })
-      return false
+    if (formCategory === CUSTOM_OPTION) {
+      const name = customCategoryName.trim()
+      if (!name) {
+        setToast({ visible: true, message: 'Please enter a custom category name', type: 'error' })
+        return false
+      }
+      if (name.length < 2) {
+        setToast({ visible: true, message: 'Category name must be at least 2 characters', type: 'error' })
+        return false
+      }
+      if (name.length > 60) {
+        setToast({ visible: true, message: 'Category name must be 60 characters or less', type: 'error' })
+        return false
+      }
+      if (findDuplicate(name, allHardcoded, customCategories)) {
+        setToast({ visible: true, message: 'Category already exists', type: 'error' })
+        return false
+      }
+    } else {
+      if (!formCategory) {
+        setToast({ visible: true, message: 'Please select a category', type: 'error' })
+        return false
+      }
     }
     if (!formDate) {
       setToast({ visible: true, message: 'Please enter a valid date', type: 'error' })
@@ -121,16 +193,24 @@ export default function Transactions({ currency = 'AED', dateFormat = 'DD/MM/YYY
 
   const handleAdd = () => {
     if (!validate()) return
-    setTransactions(prev => [{
-      id: `TXN-${String(prev.length + 1).padStart(3, '0')}`,
+    let category = formCategory
+    if (formCategory === CUSTOM_OPTION) {
+      category = normalizeCategoryName(customCategoryName)
+      const setter = formType === 'Income' ? setIncomeCustomCategories : setExpenseCustomCategories
+      setter(prev => prev.includes(category) ? prev : [...prev, category])
+    }
+    const newTxn = {
+      id: `TXN-${String(transactions.length + 1).padStart(3, '0')}`,
       date: formDate,
       type: formType,
-      category: formCategory,
+      category,
       amount: Number(formAmount),
       status: 'Completed',
-    }, ...prev])
+    }
+    setTransactions(prev => [newTxn, ...prev])
+    onAuditEvent?.(recordModuleEvent('Accounting', 'Create', `${formType} - ${category}`, newTxn.id, `${formType} entry: ${category} ${currency}${Number(formAmount).toLocaleString()}`))
     setShowForm(false)
-    setToast({ visible: true, message: 'Transaction recorded', type: 'success' })
+    setToast({ visible: true, message: 'Entry recorded', type: 'success' })
     resetForm()
   }
 
@@ -145,20 +225,35 @@ export default function Transactions({ currency = 'AED', dateFormat = 'DD/MM/YYY
 
   const handleUpdate = () => {
     if (!validate()) return
+    let category = formCategory
+    if (formCategory === CUSTOM_OPTION) {
+      category = normalizeCategoryName(customCategoryName)
+      const setter = formType === 'Income' ? setIncomeCustomCategories : setExpenseCustomCategories
+      setter(prev => prev.includes(category) ? prev : [...prev, category])
+    }
+    const prevTxn = transactions.find(t => t.id === editingId)
     setTransactions(prev => prev.map(t =>
-      t.id === editingId ? { ...t, date: formDate, type: formType, category: formCategory, amount: Number(formAmount) } : t
+      t.id === editingId ? { ...t, date: formDate, type: formType, category, amount: Number(formAmount) } : t
     ))
+    if (prevTxn) {
+      onAuditEvent?.(recordModuleEvent('Accounting', 'Update', `${formType} - ${category}`, editingId!, `Updated entry: ${category} ${currency}${Number(formAmount).toLocaleString()}`, 'Info', prevTxn as any, { date: formDate, type: formType, category, amount: Number(formAmount) }))
+    }
     setEditingId(null)
     setShowForm(false)
-    setToast({ visible: true, message: 'Transaction updated', type: 'success' })
+    setToast({ visible: true, message: 'Entry updated', type: 'success' })
     resetForm()
   }
 
   const handleDelete = () => {
     if (!deleteTarget) return
+    const deleted = transactions.find(t => t.id === deleteTarget)
     setTransactions(prev => prev.filter(t => t.id !== deleteTarget))
     setDeleteTarget(null)
-    setToast({ visible: true, message: 'Transaction deleted', type: 'success' })
+    if (deleted) {
+    onAuditEvent?.(recordModuleEvent('Accounting', 'Delete', `${deleted.type} - ${deleted.category}`, deleted.id, `Deleted ${deleted.type} entry: ${deleted.category} ${currency}${deleted.amount.toLocaleString()}`))
+    }
+    setDeleteTarget(null)
+    setToast({ visible: true, message: 'Entry deleted', type: 'success' })
   }
 
   const fmt = useCallback((n: number) => `${currency} ${n.toLocaleString()}`, [currency])
@@ -189,7 +284,8 @@ export default function Transactions({ currency = 'AED', dateFormat = 'DD/MM/YYY
       result = result.filter(t =>
         t.category.toLowerCase().includes(q) ||
         t.id.toLowerCase().includes(q) ||
-        t.type.toLowerCase().includes(q)
+        t.type.toLowerCase().includes(q) ||
+        (TYPE_DISPLAY[t.type] ?? '').toLowerCase().includes(q)
       )
     }
     return result
@@ -227,7 +323,7 @@ export default function Transactions({ currency = 'AED', dateFormat = 'DD/MM/YYY
       sortable: true,
       render: txn => (
         <Badge variant={txn.type === 'Income' ? 'success' : txn.type === 'Expense' ? 'neutral' : 'primary'}>
-          {txn.type}
+          {TYPE_DISPLAY[txn.type] ?? txn.type}
         </Badge>
       ),
     },
@@ -284,7 +380,7 @@ export default function Transactions({ currency = 'AED', dateFormat = 'DD/MM/YYY
           <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
         </svg>
       }
-      title="No transactions found"
+      title="No accounting entries found"
       text="Try adjusting your search or filters"
     />
   )
@@ -295,8 +391,8 @@ export default function Transactions({ currency = 'AED', dateFormat = 'DD/MM/YYY
 
       <ConfirmDialog
         open={deleteTarget !== null}
-        title="Delete Transaction"
-        message="Are you sure you want to delete this transaction? This action cannot be undone."
+        title="Delete Entry"
+        message="Are you sure you want to delete this accounting entry? This action cannot be undone."
         confirmLabel="Delete"
         variant="danger"
         onConfirm={handleDelete}
@@ -305,7 +401,7 @@ export default function Transactions({ currency = 'AED', dateFormat = 'DD/MM/YYY
 
       <EntityForm
         open={showForm}
-        title={editingId ? 'Edit Transaction' : 'New Transaction'}
+        title={editingId ? 'Edit Entry' : 'New Entry'}
         submitLabel={editingId ? 'Update' : 'Add'}
         onCancel={() => { setShowForm(false); setEditingId(null); resetForm() }}
         onSubmit={editingId ? handleUpdate : handleAdd}
@@ -315,23 +411,17 @@ export default function Transactions({ currency = 'AED', dateFormat = 'DD/MM/YYY
             label="Type"
             value={formType}
             onChange={e => {
-              setFormType(e.target.value as any)
+              setFormType(e.target.value as 'Income' | 'Expense' | 'Journal')
               setFormCategory('')
+              setCustomCategoryName('')
             }}
-            options={[
-              { value: 'Income', label: 'Income' },
-              { value: 'Expense', label: 'Expense' },
-              { value: 'Journal', label: 'Journal (Non-Cash)' },
-            ]}
+            options={TYPE_OPTIONS}
           />
           <Select
             label="Category"
             value={formCategory}
             onChange={e => setFormCategory(e.target.value)}
-            options={[
-              { value: '', label: 'Select category' },
-              ...categories.map(c => ({ value: c, label: c })),
-            ]}
+            options={categoryOptions}
           />
           <Input label="Date" type="date" value={formDate} onChange={e => setFormDate(e.target.value)} />
           <Input
@@ -342,21 +432,31 @@ export default function Transactions({ currency = 'AED', dateFormat = 'DD/MM/YYY
             onChange={e => setFormAmount(e.target.value)}
           />
         </div>
+        {formCategory === CUSTOM_OPTION && (
+          <div className="form-row" style={{ marginTop: 0 }}>
+            <Input
+              label="Custom Category Name"
+              placeholder="Enter category name..."
+              value={customCategoryName}
+              onChange={e => setCustomCategoryName(e.target.value)}
+            />
+          </div>
+        )}
       </EntityForm>
 
       <div className="page-header">
         <div className="page-header-left">
           <div>
-            <div className="page-title">{t('transactions', language)}</div>
-            <div className="page-subtitle">{t('trackTransactions', language)}</div>
+            <div className="page-title">{t('accounting', language)}</div>
+            <div className="page-subtitle">{t('trackAccounting', language)}</div>
           </div>
         </div>
       </div>
 
       <div className="page-body">
         <div className="kpi-grid">
-          <KpiCard label="Total Income" value={fmt(totalIncome)} accentColor="var(--success)" />
-          <KpiCard label="Total Expenses" value={fmt(totalExpense)} accentColor="var(--text-muted)" />
+          <KpiCard label="Total Receipts" value={fmt(totalIncome)} accentColor="var(--success)" />
+          <KpiCard label="Total Payments" value={fmt(totalExpense)} accentColor="var(--text-muted)" />
           <KpiCard
             label="Net Cash Flow"
             value={fmt(Math.abs(netCashFlow))}
@@ -406,16 +506,16 @@ export default function Transactions({ currency = 'AED', dateFormat = 'DD/MM/YYY
         <div className="data-table-toolbar" style={{ marginTop: 0 }}>
           <div className="data-table-filters">
             <div className="filter-bar" style={{ padding: 0 }}>
-              {typeFilterOptions.map(f => (
-                <Button key={f} variant={typeFilter === f ? 'primary' : 'secondary'} size="sm" onClick={() => setTypeFilter(f)}>
-                  {f}
+              {TYPE_FILTER_OPTIONS.map(fo => (
+                <Button key={fo.value} variant={typeFilter === fo.value ? 'primary' : 'secondary'} size="sm" onClick={() => setTypeFilter(fo.value)}>
+                  {fo.label}
                 </Button>
               ))}
             </div>
           </div>
           <Button variant="primary" size="sm" onClick={() => { setShowForm(true); setEditingId(null); resetForm() }}>
             <PlusIcon />
-            Add Transaction
+            Add Entry
           </Button>
         </div>
 

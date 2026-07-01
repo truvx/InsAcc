@@ -20,7 +20,7 @@ export function Button({ variant = 'secondary', size = 'md', loading, icon, chil
       whileHover={{ scale: disabled ? 1 : 1.02 }}
       whileTap={{ scale: disabled ? 1 : 0.98 }}
       transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-      {...props}
+      {...(props as any)}
     >
       {loading ? <span className="btn-spinner" /> : icon ? icon : null}
       {children}
@@ -37,7 +37,7 @@ export function IconButton({ variant = 'ghost', size = 'md', icon, label, classN
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.9 }}
       transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-      {...props}
+      {...(props as any)}
     >
       {icon}
     </motion.button>
