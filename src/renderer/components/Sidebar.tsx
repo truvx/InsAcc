@@ -29,6 +29,7 @@ const PROP_NAV: NavItem[] = [
   { id: 'properties', label: 'Properties' },
   { id: 'tenants', label: 'Tenants' },
   { id: 'leases', label: 'Leases' },
+  { id: 'transactions', label: 'Transactions' },
   { id: 'bank-accounts', label: 'Bank Accounts' },
   { id: 'reports', label: 'Reports' },
   { id: 'documents', label: 'Documents' },
@@ -48,6 +49,7 @@ const PROP_ACCOUNTS_GROUP: NavGroup = {
     { id: 'balance-sheet', label: 'Balance Sheet' },
     { id: 'profit-loss', label: 'Profit & Loss' },
     { id: 'pdc-manager', label: 'PDC Manager' },
+    { id: 'deposit-manager', label: 'Security Deposits' },
   ],
 }
 
@@ -91,6 +93,7 @@ function NavIcon({ id }: { id: string }) {
     'balance-sheet': <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /></svg>,
     'profit-loss': <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>,
     'pdc-manager': <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>,
+    'deposit-manager': <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M12 2L3 7v4c0 5.25 3.84 10.14 9 11 5.16-.86 9-5.75 9-11V7l-9-5z" /></svg>,
   }
   return <>{icons[id] || null}</>
 }

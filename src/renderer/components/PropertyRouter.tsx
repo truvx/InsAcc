@@ -1,6 +1,6 @@
 import React from 'react'
 import type { Account, Voucher, BankMapping, BankReconciliationRecord } from '../accounting/types'
-import type { PropAccount, PropTransaction, PropertyEntry, UnitEntry, TenantEntry, LeaseEntry, PdcCheque, MainCategory, PropProperty, IncomeCategory, Customer } from '../data/propertyTypes'
+import type { PropAccount, PropTransaction, PropertyEntry, UnitEntry, TenantEntry, LeaseEntry, PdcCheque, MainCategory, PropProperty, IncomeCategory, Customer, SecurityDeposit, SecurityDepositGlMappings } from '../data/propertyTypes'
 import type { AuditEvent } from '../data/auditTypes'
 import type { AccountingEngine } from '../accounting/accountingEngine'
 import PropertyDashboard from './PropertyDashboard'
@@ -18,6 +18,7 @@ import PropertyTrialBalance from './PropertyTrialBalance'
 import PropertyBalanceSheet from './PropertyBalanceSheet'
 import PropertyProfitLoss from './PropertyProfitLoss'
 import PropertyPdcManager from './PropertyPdcManager'
+import PropertyDepositManager from './PropertyDepositManager'
 import PropertyReports from './PropertyReports'
 import PropertyDocuments from './PropertyDocuments'
 import PropertySettings from './PropertySettings'
@@ -62,6 +63,10 @@ interface Props {
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>
   bankReconciliations: BankReconciliationRecord[]
   setBankReconciliations: React.Dispatch<React.SetStateAction<BankReconciliationRecord[]>>
+  securityDeposits: SecurityDeposit[]
+  setSecurityDeposits: React.Dispatch<React.SetStateAction<SecurityDeposit[]>>
+  depositMappings: SecurityDepositGlMappings
+  setDepositMappings: React.Dispatch<React.SetStateAction<SecurityDepositGlMappings>>
 }
 
 export default function PropertyRouter(props: Props) {
@@ -79,6 +84,8 @@ export default function PropertyRouter(props: Props) {
     incomeCategories, setIncomeCategories,
     customers, setCustomers,
     bankReconciliations, setBankReconciliations,
+    securityDeposits, setSecurityDeposits,
+    depositMappings, setDepositMappings,
   } = props
 
   switch (activePage) {
@@ -112,6 +119,7 @@ export default function PropertyRouter(props: Props) {
         setUnits={setPropUnits}
         pdcCheques={pdcCheques} setPdcCheques={setPdcCheques}
         accounts={accounts} vouchers={vouchers}
+        securityDeposits={securityDeposits}
       />
     case 'transactions':
       return <PropertyTransactions
@@ -125,6 +133,11 @@ export default function PropertyRouter(props: Props) {
         propTransactions={propTransactions} setPropTransactions={setPropTransactions}
         bankReconciliations={bankReconciliations}
         setBankReconciliations={setBankReconciliations}
+        accounts={accounts}
+        vouchers={vouchers}
+        setVouchers={setVouchers}
+        accountingEngine={accountingEngine}
+        onAuditEvent={setPropAuditEvents ? (e => setPropAuditEvents(prev => [e, ...prev])) : undefined}
       />
     case 'receipt-voucher':
       return <PropertyReceiptVoucher
@@ -173,6 +186,27 @@ export default function PropertyRouter(props: Props) {
         pdcCheques={pdcCheques} setPdcCheques={setPdcCheques}
         leases={propLeases} tenants={propTenants}
         dateFormat={dateFormat} currency={currency}
+        accounts={accounts}
+        vouchers={vouchers}
+        setVouchers={setVouchers}
+        accountingEngine={accountingEngine}
+        propAccounts={propAccounts}
+        bankMappings={bankMappings}
+      />
+    case 'deposit-manager':
+      return <PropertyDepositManager
+        leases={propLeases} tenants={propTenants}
+        dateFormat={dateFormat} currency={currency}
+        accounts={accounts}
+        vouchers={vouchers}
+        setVouchers={setVouchers}
+        accountingEngine={accountingEngine}
+        propAccounts={propAccounts}
+        bankMappings={bankMappings}
+        securityDeposits={securityDeposits}
+        setSecurityDeposits={setSecurityDeposits}
+        depositMappings={depositMappings}
+        setDepositMappings={setDepositMappings}
       />
     case 'reports':
       return <PropertyReports

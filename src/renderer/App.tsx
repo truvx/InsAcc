@@ -7,7 +7,7 @@ import type { Profile } from './data/sampleData'
 import type { UserEntry, LogEntry } from './data/types'
 import type { BankAccount, BankTransaction } from './data/banking'
 import type { AuditEvent } from './data/auditTypes'
-import type { PropAccount, PropTransaction, PropertyEntry, UnitEntry, TenantEntry, LeaseEntry, PdcCheque, PropDocItem, MainCategory, PropProperty, IncomeCategory, Customer } from './data/propertyTypes'
+import type { PropAccount, PropTransaction, PropertyEntry, UnitEntry, TenantEntry, LeaseEntry, PdcCheque, PropDocItem, MainCategory, PropProperty, IncomeCategory, Customer, SecurityDeposit, SecurityDepositGlMappings } from './data/propertyTypes'
 import type { Investment } from './components/Investments'
 import type { Transaction } from './components/Transactions'
 import type { DocItem } from './components/Documents'
@@ -74,6 +74,11 @@ const [propUnits, setPropUnits] = usePersistedState<UnitEntry[]>('insacc_prop_un
   const [propTenants, setPropTenants] = usePersistedState<TenantEntry[]>('insacc_prop_tenants', [])
   const [propLeases, setPropLeases] = usePersistedState<LeaseEntry[]>('insacc_prop_leases', [])
   const [pdcCheques, setPdcCheques] = usePersistedState<PdcCheque[]>('insacc_pdc_cheques', [])
+  const [securityDeposits, setSecurityDeposits] = usePersistedState<SecurityDeposit[]>('insacc_security_deposits', [])
+  const [depositMappings, setDepositMappings] = usePersistedState<SecurityDepositGlMappings>('insacc_security_deposit_mappings', {
+    liabilityAccountId: '',
+    forfeitureIncomeAccountId: '',
+  })
   const [propDocuments, setPropDocuments] = usePersistedState<PropDocItem[]>('insacc_prop_documents', [])
   const [propAuditEvents, setPropAuditEvents] = usePersistedState<import('./data/auditTypes').AuditEvent[]>('insacc_prop_audit_events', [])
 
@@ -262,6 +267,10 @@ const [propUnits, setPropUnits] = usePersistedState<UnitEntry[]>('insacc_prop_un
             setCustomers={setCustomers}
             bankReconciliations={bankReconciliations}
             setBankReconciliations={setBankReconciliations}
+            securityDeposits={securityDeposits}
+            setSecurityDeposits={setSecurityDeposits}
+            depositMappings={depositMappings}
+            setDepositMappings={setDepositMappings}
           />
         )
       }

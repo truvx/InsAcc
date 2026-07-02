@@ -48,20 +48,94 @@ export function generatePdcSlots(lease: LeaseEntry, startMonth: number, startYea
   return slots
 }
 
+export function validatePdcTransition(from: PdcCheque['status'], to: PdcCheque['status']): boolean {
+  if (from === to) return true
+  switch (from) {
+    case 'Pending':
+      return to === 'Deposited' || to === 'Cancelled' || to === 'Replaced'
+    case 'Deposited':
+      return to === 'Cleared' || to === 'Bounced' || to === 'Cancelled' || to === 'Replaced'
+    case 'Cleared':
+      return to === 'Bounced'
+    case 'Bounced':
+      return to === 'Deposited' || to === 'Cancelled' || to === 'Replaced'
+    default:
+      return false
+  }
+}
+
+export function transitionPdcCheque(
+  cheques: PdcCheque[],
+  chequeId: string,
+  newStatus: PdcCheque['status'],
+  params: {
+    bankAccountId?: string | null
+    bounceReason?: string | null
+    bounceFee?: number | null
+    penaltyAmount?: number | null
+    user?: string
+    timestamp?: string
+    clearedVoucherId?: string | null
+    bouncedVoucherId?: string | null
+    feeVoucherId?: string | null
+    penaltyVoucherId?: string | null
+  } = {}
+): PdcCheque[] {
+  const now = params.timestamp || new Date().toISOString()
+  const user = params.user || 'system'
+
+  return cheques.map(chq => {
+    if (chq.id !== chequeId) return chq
+
+    if (!validatePdcTransition(chq.status, newStatus)) {
+      throw new Error(`Invalid PDC transition from ${chq.status} to ${newStatus}`)
+    }
+
+    const previousStatus = chq.status
+    const auditEntry = {
+      timestamp: now,
+      previousState: previousStatus,
+      newState: newStatus,
+      user,
+      reason: params.bounceReason || undefined,
+      voucherId: params.clearedVoucherId || params.bouncedVoucherId || null
+    }
+
+    const updatedHistory = [...(chq.auditHistory || []), auditEntry]
+
+    const update: Partial<PdcCheque> = {
+      status: newStatus,
+      updatedAt: now,
+      auditHistory: updatedHistory,
+      bankAccountId: params.bankAccountId !== undefined ? params.bankAccountId : chq.bankAccountId,
+      bounceReason: params.bounceReason !== undefined ? params.bounceReason : chq.bounceReason,
+      bounceFee: params.bounceFee !== undefined ? params.bounceFee : chq.bounceFee,
+      penaltyAmount: params.penaltyAmount !== undefined ? params.penaltyAmount : chq.penaltyAmount,
+      clearedVoucherId: params.clearedVoucherId !== undefined ? params.clearedVoucherId : chq.clearedVoucherId,
+      bouncedVoucherId: params.bouncedVoucherId !== undefined ? params.bouncedVoucherId : chq.bouncedVoucherId,
+      feeVoucherId: params.feeVoucherId !== undefined ? params.feeVoucherId : chq.feeVoucherId,
+      penaltyVoucherId: params.penaltyVoucherId !== undefined ? params.penaltyVoucherId : chq.penaltyVoucherId,
+    }
+
+    if (newStatus === 'Deposited') update.depositedAt = now
+    if (newStatus === 'Cleared') update.clearedAt = now
+    if (newStatus === 'Bounced') update.bouncedAt = now
+
+    return { ...chq, ...update }
+  })
+}
+
 export function updatePdcStatus(
   cheques: PdcCheque[],
   chequeId: string,
   status: PdcCheque['status'],
 ): PdcCheque[] {
-  const now = new Date().toISOString()
-  return cheques.map(chq => {
-    if (chq.id !== chequeId) return chq
-    const update: Partial<PdcCheque> = { status, updatedAt: now }
-    if (status === 'Deposited') update.depositedAt = now
-    if (status === 'Cleared') update.clearedAt = now
-    if (status === 'Bounced') update.bouncedAt = now
-    return { ...chq, ...update }
-  })
+  try {
+    return transitionPdcCheque(cheques, chequeId, status)
+  } catch (e) {
+    console.error(e)
+    return cheques
+  }
 }
 
 export function replaceCheque(

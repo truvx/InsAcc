@@ -104,6 +104,15 @@ export interface LeaseEntry {
   updatedAt: string
 }
 
+export interface PdcAuditEntry {
+  timestamp: string
+  previousState: string
+  newState: string
+  user: string
+  reason?: string
+  voucherId?: string | null
+}
+
 export interface PdcCheque {
   id: string
   leaseId: string
@@ -121,6 +130,15 @@ export interface PdcCheque {
   createdBy: string
   createdAt: string
   updatedAt: string
+  bankAccountId?: string | null
+  bounceReason?: string | null
+  bounceFee?: number | null
+  penaltyAmount?: number | null
+  clearedVoucherId?: string | null
+  bouncedVoucherId?: string | null
+  feeVoucherId?: string | null
+  penaltyVoucherId?: string | null
+  auditHistory?: PdcAuditEntry[]
 }
 
 export interface PropDocItem {
@@ -167,3 +185,63 @@ export const PROP_TRANSACTION_CATEGORIES: { income: string[]; expense: string[] 
 export const LEASE_STATUS_OPTIONS: { value: string; label: string }[] = []
 
 export const PAYMENT_FREQUENCY_OPTIONS: { value: number; label: string }[] = []
+
+export type SecurityDepositStatus =
+  | 'Expected'
+  | 'Received'
+  | 'Held'
+  | 'Partially Refunded'
+  | 'Fully Refunded'
+  | 'Partially Forfeited'
+  | 'Fully Forfeited'
+  | 'Closed'
+
+export type SecurityDepositTxType =
+  | 'Charge'      // Expected amount (initial or top-up)
+  | 'Receipt'     // Collected payment
+  | 'Refund'      // Returned to tenant
+  | 'Forfeit'     // Transferred to other income
+  | 'Adjustment'  // Manual correction/transfer
+
+export interface SecurityDepositTransaction {
+  id: string
+  depositId: string
+  type: SecurityDepositTxType
+  amount: number
+  date: string
+  bankAccountId?: string | null     // bank account for receipts/refunds
+  voucherId?: string | null         // linked GL voucher
+  notes?: string
+  status: 'Draft' | 'Posted' | 'Cancelled'
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SecurityDepositAuditEntry {
+  timestamp: string
+  previousStatus: SecurityDepositStatus
+  newStatus: SecurityDepositStatus
+  user: string
+  amount?: number
+  notes?: string
+  voucherId?: string | null
+}
+
+export interface SecurityDeposit {
+  id: string
+  leaseId: string
+  tenantId: string
+  status: SecurityDepositStatus
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+  transactions: SecurityDepositTransaction[]
+  auditHistory: SecurityDepositAuditEntry[]
+}
+
+export interface SecurityDepositGlMappings {
+  liabilityAccountId: string        // GL account for Dr/Cr Security Deposit Liability
+  forfeitureIncomeAccountId: string // GL account for Cr Deposit Forfeiture Income
+}
+

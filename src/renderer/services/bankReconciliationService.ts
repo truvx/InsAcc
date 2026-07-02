@@ -106,16 +106,28 @@ export function parseCSVStatement(
 export function calculateMatchScore(
   stmtLine: { date: string; amount: number; description: string; reference?: string },
   voucher: Voucher,
-  vLine: VoucherLine
+  vLine: VoucherLine,
+  rejectedVoucherLineIds?: string[]
 ): number {
+  if (rejectedVoucherLineIds && rejectedVoucherLineIds.includes(vLine.id)) {
+    return 0 // Hard rejection on previously rejected match
+  }
+
   // Amount must match exactly (accounting absolute values matching debit/credit polarity)
   const stmtAbs = Math.abs(stmtLine.amount)
   const vLineAbs = Math.abs(vLine.amount)
   if (Math.abs(stmtAbs - vLineAbs) > 0.001) {
     return 0 // Hard rejection on amount mismatch
   }
+
+  // Polarity match (Deposit -> Debit, Withdrawal -> Credit)
+  const isDeposit = stmtLine.amount >= 0
+  const isDebitLine = vLine.type === 'Debit'
+  if (isDeposit !== isDebitLine) {
+    return 0 // Hard rejection on polarity mismatch
+  }
   
-  let score = 50 // Base score for exact amount match
+  let score = 50 // Base score for exact amount & polarity match
   
   // Date match calculation
   const stmtTime = new Date(stmtLine.date).getTime()
@@ -124,31 +136,40 @@ export function calculateMatchScore(
   
   if (diffDays === 0) {
     score += 30
-  } else if (diffDays <= 1) {
-    score += 20
   } else if (diffDays <= 3) {
-    score += 10
-  } else if (diffDays > 7) {
+    score += 15
+  } else if (diffDays <= 7) {
+    score += 5
+  } else {
     return 0 // Rejects matches separated by more than 7 days
   }
   
-  // Description and reference string matching
-  const stmtDesc = stmtLine.description.toLowerCase()
-  const vDesc = (voucher.description + ' ' + (vLine.narration ?? '')).toLowerCase()
-  
-  if (stmtDesc.includes(vDesc) || vDesc.includes(stmtDesc)) {
-    score += 15
+  // Voucher Number matching
+  if (stmtLine.reference && voucher.number) {
+    const stmtRef = stmtLine.reference.toLowerCase()
+    const vNum = voucher.number.toLowerCase()
+    if (stmtRef.includes(vNum) || vNum.includes(stmtRef)) {
+      score += 20
+    }
   }
   
+  // Reference matching
   if (stmtLine.reference && voucher.reference) {
     const stmtRef = stmtLine.reference.toLowerCase()
     const vRef = voucher.reference.toLowerCase()
     if (stmtRef.includes(vRef) || vRef.includes(stmtRef)) {
-      score += 5
+      score += 20
     }
   }
+
+  // Description similarity
+  const stmtDesc = stmtLine.description.toLowerCase()
+  const vDesc = (voucher.description + ' ' + (vLine.narration ?? '')).toLowerCase()
+  if (stmtDesc.includes(vDesc) || vDesc.includes(stmtDesc)) {
+    score += 10
+  }
   
-  return score
+  return Math.min(score, 100)
 }
 
 /**
@@ -157,7 +178,8 @@ export function calculateMatchScore(
 export function autoMatchStatement(
   statementLines: Omit<BankStatementLine, 'matchedVoucherLineId' | 'matchConfidence' | 'status'>[],
   vouchers: Voucher[],
-  bankAccountId: string
+  bankAccountId: string,
+  rejectedMatchesMap?: Record<string, string[]> // maps stmtLine.id to rejected voucherLine.ids
 ): BankStatementLine[] {
   const result: BankStatementLine[] = []
   
@@ -178,11 +200,12 @@ export function autoMatchStatement(
   for (const stmt of statementLines) {
     let bestScore = 0
     let bestMatchLineId: string | undefined
+    const rejected = rejectedMatchesMap?.[stmt.id] || []
     
     for (const item of bankVoucherLines) {
       if (matchedLedgerLineIds.has(item.line.id)) continue
       
-      const score = calculateMatchScore(stmt, item.voucher, item.line)
+      const score = calculateMatchScore(stmt, item.voucher, item.line, rejected)
       if (score > bestScore) {
         bestScore = score
         bestMatchLineId = item.line.id
@@ -193,20 +216,21 @@ export function autoMatchStatement(
     let status: 'Unmatched' | 'Matched' = 'Unmatched'
     let matchedLineId: string | undefined
     
-    if (bestScore >= 80 && bestMatchLineId) {
+    if (bestScore >= 95 && bestMatchLineId) {
       confidence = 'High'
       status = 'Matched'
       matchedLineId = bestMatchLineId
       matchedLedgerLineIds.add(bestMatchLineId)
-    } else if (bestScore >= 50 && bestMatchLineId) {
+    } else if (bestScore >= 80 && bestMatchLineId) {
       confidence = 'Medium'
-      // Medium match is not pre-selected to prevent false auto-posts
+      // Medium match is suggested but not auto-selected
       matchedLineId = bestMatchLineId
     }
     
     result.push({
       ...stmt,
       matchedVoucherLineId: matchedLineId,
+      matchedVoucherLineIds: matchedLineId ? [matchedLineId] : [],
       matchConfidence: confidence,
       status,
     })

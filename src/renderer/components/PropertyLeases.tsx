@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import type { LeaseEntry, TenantEntry, UnitEntry, PropertyEntry, PdcCheque } from '../data/propertyTypes'
+import type { LeaseEntry, TenantEntry, UnitEntry, PropertyEntry, PdcCheque, SecurityDeposit } from '../data/propertyTypes'
 import type { Account, Voucher } from '../accounting/types'
 import { Badge, Button, PlusIcon, Input, Select, Modal, SearchIcon, CloseIcon, EditIcon, EmptyState, KpiCard } from './design/DesignSystem'
 import { DataTable, type Column } from './design/Table'
@@ -7,6 +7,7 @@ import { formatDate } from '../utils'
 import { LEASE_STATUS_OPTIONS, PAYMENT_FREQUENCY_OPTIONS } from '../data/propertyTypes'
 import { getChequesByLease, generatePdcSlots } from '../services/propertyPdcService'
 import { getAccountBalance } from '../accounting/ledgerService'
+import { computeDepositBalances } from '../services/propertyDepositService'
 import VoucherTimeline from './VoucherTimeline'
 import AccountDrillDown from './AccountDrillDown'
 import Toast from './Toast'
@@ -25,6 +26,7 @@ interface Props {
   setPdcCheques: React.Dispatch<React.SetStateAction<PdcCheque[]>>
   accounts?: Account[]
   vouchers?: Voucher[]
+  securityDeposits?: SecurityDeposit[]
 }
 
 export default function PropertyLeases({
@@ -33,6 +35,7 @@ export default function PropertyLeases({
   setUnits,
   pdcCheques, setPdcCheques,
   accounts = [], vouchers = [],
+  securityDeposits = [],
 }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('All')
@@ -229,6 +232,16 @@ export default function PropertyLeases({
     if (!selectedLeaseId) return null
     return leases.find(l => l.id === selectedLeaseId) || null
   }, [selectedLeaseId, leases])
+
+  const leaseDepositRecord = useMemo(() => {
+    if (!selectedLeaseId) return null
+    return securityDeposits.find(d => d.leaseId === selectedLeaseId) || null
+  }, [selectedLeaseId, securityDeposits])
+
+  const depositBalances = useMemo(() => {
+    if (!leaseDepositRecord) return null
+    return computeDepositBalances(leaseDepositRecord)
+  }, [leaseDepositRecord])
 
   const selectedTenant = useMemo(() => {
     if (!selectedLease) return null
@@ -485,10 +498,43 @@ export default function PropertyLeases({
                   {fmt(leaseFinancials.outstandingRent)}
                 </span>
               </div>
-              <div className="settings-field" style={{ margin: 0, marginBottom: 4 }}>
-                <span className="settings-field-label">Security Deposit</span>
-                <span className="fw-600">{fmt(selectedLease.deposit)}</span>
-              </div>
+              {depositBalances && leaseDepositRecord ? (
+                <>
+                  <div className="settings-field" style={{ margin: 0, marginBottom: 4 }}>
+                    <span className="settings-field-label">Deposit Required</span>
+                    <span className="fw-600">{fmt(depositBalances.expectedAmount)}</span>
+                  </div>
+                  <div className="settings-field" style={{ margin: 0, marginBottom: 4 }}>
+                    <span className="settings-field-label">Deposit Held</span>
+                    <span className="fw-600 text-success">{fmt(depositBalances.currentBalance)}</span>
+                  </div>
+                  <div className="settings-field" style={{ margin: 0, marginBottom: 4 }}>
+                    <span className="settings-field-label">Deposit Outstanding</span>
+                    <span className={`fw-600 ${depositBalances.outstandingAmount > 0 ? 'text-warning' : ''}`}>{fmt(depositBalances.outstandingAmount)}</span>
+                  </div>
+                  <div className="settings-field" style={{ margin: 0, marginBottom: 4 }}>
+                    <span className="settings-field-label">Deposit Refunded</span>
+                    <span className="fw-600 text-secondary">{fmt(depositBalances.refundedAmount)}</span>
+                  </div>
+                  <div className="settings-field" style={{ margin: 0, marginBottom: 4 }}>
+                    <span className="settings-field-label">Deposit Forfeited</span>
+                    <span className="fw-600 text-danger">{fmt(depositBalances.forfeitedAmount)}</span>
+                  </div>
+                  <div className="settings-field" style={{ margin: 0, marginBottom: 4 }}>
+                    <span className="settings-field-label">Deposit Status</span>
+                    <Badge variant={
+                      leaseDepositRecord.status === 'Fully Refunded' ? 'success' :
+                      leaseDepositRecord.status === 'Fully Forfeited' ? 'danger' :
+                      leaseDepositRecord.status === 'Expected' ? 'warning' : 'neutral'
+                    }>{leaseDepositRecord.status}</Badge>
+                  </div>
+                </>
+              ) : (
+                <div className="settings-field" style={{ margin: 0, marginBottom: 4 }}>
+                  <span className="settings-field-label">Security Deposit</span>
+                  <span className="fw-600">{fmt(selectedLease.deposit)}</span>
+                </div>
+              )}
               <div className="settings-field" style={{ margin: 0 }}>
                 <span className="settings-field-label">Security Cheque</span>
                 <span className="text-mono text-sm">{selectedLease.securityChequeNumber || '—'}</span>

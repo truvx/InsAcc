@@ -7,6 +7,7 @@ import {
 import type { PropertyEntry, UnitEntry, LeaseEntry, PropTransaction, PropAccount } from '../data/propertyTypes'
 import type { Account, Voucher } from '../accounting/types'
 import { getAllAccountBalances, getAccountTypeBalance } from '../accounting/ledgerService'
+import { EmptyState } from './design/DesignSystem'
 
 interface Props {
   currency?: string
@@ -216,7 +217,12 @@ export default function PropertyDashboard({
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
           <ChartCard title="Occupancy Rate" subtitle={`${occupiedUnits.length}/${units.length} units occupied`}>
             {units.length === 0 ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 240, color: '#9CA3AF', fontSize: 13 }}>No units</div>
+              <div style={{ padding: '24px 0' }}>
+                <EmptyState
+                  title="No Units Registered"
+                  text="Configure properties and units on the Properties page to begin tracking portfolio occupancy."
+                />
+              </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, height: 240, justifyContent: 'center' }}>
                 <ResponsiveContainer width="100%" height={160}>
@@ -235,36 +241,59 @@ export default function PropertyDashboard({
           </ChartCard>
 
           <ChartCard title="Income vs Expenses" subtitle="Monthly comparison">
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={incomeVsExpenseData.slice(-6)}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => fmt(v)} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-                <Bar dataKey="Income" fill={primaryColor} radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Expenses" fill="#EF4444" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {incomeVsExpenseData.length === 0 ? (
+              <div style={{ padding: '24px 0' }}>
+                <EmptyState
+                  title="No Transactions Recorded"
+                  text="Record Receipt, Payment, or Journal vouchers in the Accounts sub-menu to display financial charts."
+                />
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={incomeVsExpenseData.slice(-6)}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => fmt(v)} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                  <Bar dataKey="Income" fill={primaryColor} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Expenses" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </ChartCard>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
           <ChartCard title="Top Properties by Value" subtitle="Highest valued">
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={topPropertiesData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6B7280' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => fmt(v)} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="value" fill={primaryColor} radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {properties.length === 0 ? (
+              <div style={{ padding: '24px 0' }}>
+                <EmptyState
+                  title="No Properties Registered"
+                  text="Register properties on the Properties page to visualize asset valuation breakdowns."
+                />
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={topPropertiesData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6B7280' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => fmt(v)} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="value" fill={primaryColor} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </ChartCard>
 
           <ChartCard title="Lease Expiry Timeline" subtitle="Months remaining">
             {leaseExpiryData.length === 0 ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200, color: '#9CA3AF', fontSize: 13 }}>No upcoming expiries</div>
+              <div style={{ padding: '24px 0' }}>
+                <EmptyState
+                  title="No Active Leases"
+                  text="Add active tenant leases on the Leases page to track contract expiries."
+                />
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={leaseExpiryData}>
@@ -285,17 +314,26 @@ export default function PropertyDashboard({
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
           <ChartCard title="Cash Flow" subtitle="Income, Expenses & Net over time">
-            <ResponsiveContainer width="100%" height={240}>
-              <AreaChart data={cashFlowData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => fmt(v)} />
-                <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="Income" stroke={primaryColor} fill={`${primaryColor}20`} strokeWidth={2} />
-                <Area type="monotone" dataKey="Expenses" stroke="#EF4444" fill="#EF444420" strokeWidth={2} />
-                <Area type="monotone" dataKey="Net" stroke="#5C63A6" fill="#5C63A620" strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
+            {cashFlowData.length === 0 ? (
+              <div style={{ padding: '24px 0' }}>
+                <EmptyState
+                  title="No Cash Flow History"
+                  text="Cash flow tracking will populate automatically once vouchers are posted and reconciled."
+                />
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <AreaChart data={cashFlowData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => fmt(v)} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Area type="monotone" dataKey="Income" stroke={primaryColor} fill={`${primaryColor}20`} strokeWidth={2} />
+                  <Area type="monotone" dataKey="Expenses" stroke="#EF4444" fill="#EF444420" strokeWidth={2} />
+                  <Area type="monotone" dataKey="Net" stroke="#5C63A6" fill="#5C63A620" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </ChartCard>
         </div>
       </div>

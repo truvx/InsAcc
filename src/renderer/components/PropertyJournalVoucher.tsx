@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import type { Account, Voucher, PostingResult } from '../accounting/types'
-import { Button, Input, Select, Badge, EmptyState, SearchIcon, CloseIcon, KpiCard, Modal } from './design/DesignSystem'
+import { Button, Input, Select, Badge, EmptyState, SearchIcon, CloseIcon, KpiCard } from './design/DesignSystem'
 import { DataTable, type Column } from './design/Table'
 import EntityForm from './design/EntityForm'
 import Toast from './Toast'
@@ -8,7 +8,9 @@ import { formatDate } from '../utils'
 import { createVoucher, getNextSequence } from '../accounting/voucherService'
 import { validateNewVoucher } from '../accounting/postingValidator'
 import type { AccountingEngine } from '../accounting/accountingEngine'
-import VoucherTimeline from './VoucherTimeline'
+import { useVoucherLifecycle } from '../hooks/useVoucherLifecycle'
+import VoucherStatusBadge from './design/VoucherStatusBadge'
+import VoucherDetailsModal from './design/VoucherDetailsModal'
 
 interface Props {
   currency?: string
@@ -24,16 +26,20 @@ export default function PropertyJournalVoucher({
   currency = 'AED', dateFormat = 'DD/MM/YYYY',
   accounts, vouchers, setVouchers, accountingEngine,
 }: Props) {
+  const {
+    detailVoucher, setDetailVoucher,
+    toast, showToast, hideToast, loading,
+    handlePost, handleApprove, handleCancel, handleDiscard, handleReverse
+  } = useVoucherLifecycle(accountingEngine, accounts, setVouchers)
+
   const [searchQuery, setSearchQuery] = useState('')
   const [showForm, setShowForm] = useState(false)
-  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' })
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0])
   const [formDescription, setFormDescription] = useState('')
   const [formDebitAccount, setFormDebitAccount] = useState('')
   const [formCreditAccount, setFormCreditAccount] = useState('')
   const [formAmount, setFormAmount] = useState('')
   const [formReference, setFormReference] = useState('')
-  const [detailVoucher, setDetailVoucher] = useState<Voucher | null>(null)
 
   const journalVouchers = useMemo(() =>
     vouchers.filter(v => v.type === 'Journal').sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
@@ -75,19 +81,19 @@ export default function PropertyJournalVoucher({
   const handleCreateVoucher = () => {
     const amt = Number(formAmount)
     if (!formAmount || amt <= 0) {
-      setToast({ visible: true, message: 'Amount must be greater than zero', type: 'error' })
+      showToast('Amount must be greater than zero', 'error')
       return
     }
     if (!formDebitAccount || !formCreditAccount) {
-      setToast({ visible: true, message: 'Please select both debit and credit accounts', type: 'error' })
+      showToast('Please select both debit and credit accounts', 'error')
       return
     }
     if (formDebitAccount === formCreditAccount) {
-      setToast({ visible: true, message: 'Debit and credit accounts must be different', type: 'error' })
+      showToast('Debit and credit accounts must be different', 'error')
       return
     }
     if (!formDescription) {
-      setToast({ visible: true, message: 'Description is required', type: 'error' })
+      showToast('Description is required', 'error')
       return
     }
 
@@ -111,26 +117,14 @@ export default function PropertyJournalVoucher({
     )
 
     if (!result.success || !result.voucher) {
-      setToast({ visible: true, message: result.errors.map(e => e.message).join(', '), type: 'error' })
+      showToast(result.errors.map(e => e.message).join(', '), 'error')
       return
     }
 
-    const approveResult = accountingEngine.approve(result.voucher, 'user')
-    const postResult = accountingEngine.post(approveResult.voucher!, 'user', accounts, vouchers)
-    if (!postResult.success || !postResult.voucher) {
-      setToast({ visible: true, message: 'Voucher created but posting failed', type: 'error' })
-      return
-    }
-
-    setVouchers(prev => [postResult.voucher!, ...prev])
+    setVouchers(prev => [result.voucher!, ...prev])
     setShowForm(false)
-    setToast({ visible: true, message: `Journal voucher ${postResult.voucher.number} created and posted`, type: 'success' })
+    showToast(`Draft journal voucher ${result.voucher.number} created`, 'success')
     resetForm()
-  }
-
-  const getStatusBadge = (status: string) => {
-    const v = status === 'Posted' ? 'success' : status === 'Approved' ? 'primary' : status === 'Cancelled' ? 'danger' : 'warning'
-    return <Badge variant={v as any}>{status}</Badge>
   }
 
   const columns: Column<Voucher>[] = useMemo(() => [
@@ -165,7 +159,7 @@ export default function PropertyJournalVoucher({
       key: 'status',
       header: 'Status',
       sortable: true,
-      render: v => getStatusBadge(v.status),
+      render: v => <VoucherStatusBadge status={v.status} />,
     },
     {
       key: 'createdAt',
@@ -177,12 +171,12 @@ export default function PropertyJournalVoucher({
 
   return (
     <>
-      <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={() => setToast(prev => ({ ...prev, visible: false }))} />
+      <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={hideToast} />
 
       <EntityForm
         open={showForm}
         title="New Journal Voucher"
-        submitLabel="Create & Post"
+        submitLabel="Create Draft"
         onCancel={() => { setShowForm(false); resetForm() }}
         onSubmit={handleCreateVoucher}
       >
@@ -200,77 +194,20 @@ export default function PropertyJournalVoucher({
         </div>
       </EntityForm>
 
-      {/* Voucher Detail Modal */}
-      <Modal open={detailVoucher !== null} title="Voucher Details" onClose={() => setDetailVoucher(null)}>
-        {detailVoucher && (
-          <div style={{ minWidth: 480, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div className="grid-2" style={{ gap: 8 }}>
-              <div className="settings-field" style={{ margin: 0 }}>
-                <div className="settings-field-label">Voucher #</div>
-                <div className="text-mono text-xs fw-600">{detailVoucher.number}</div>
-              </div>
-              <div className="settings-field" style={{ margin: 0 }}>
-                <div className="settings-field-label">Date</div>
-                <div className="text-xs">{formatDate(detailVoucher.date, dateFormat)}</div>
-              </div>
-              <div className="settings-field" style={{ margin: 0 }}>
-                <div className="settings-field-label">Status</div>
-                {getStatusBadge(detailVoucher.status)}
-              </div>
-              <div className="settings-field" style={{ margin: 0 }}>
-                <div className="settings-field-label">Type</div>
-                <Badge variant="neutral">{detailVoucher.type}</Badge>
-              </div>
-            </div>
-
-            <div>
-              <div className="text-sm fw-600 mb-1" style={{ color: 'var(--primary)' }}>Voucher Timeline</div>
-              <div className="card-accent-purple" style={{ padding: '8px 12px', borderRadius: 8 }}>
-                <VoucherTimeline voucher={detailVoucher} dateFormat={dateFormat} />
-              </div>
-            </div>
-
-            <div>
-              <div className="text-sm fw-600 mb-1" style={{ color: 'var(--primary)' }}>Ledger Entries</div>
-              <table className="property-table" style={{ width: '100%' }}>
-                <thead>
-                  <tr>
-                    <th className="text-xs">Account</th>
-                    <th className="text-xs">Debit</th>
-                    <th className="text-xs">Credit</th>
-                    <th className="text-xs">Narration</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detailVoucher.lines.map((line, i) => {
-                    const acct = accounts.find(a => a.id === line.accountId)
-                    return (
-                      <tr key={i}>
-                        <td className="text-xs fw-500">{acct?.name || line.accountId}</td>
-                        <td className="text-xs text-mono">{line.type === 'Debit' ? `${currency} ${line.baseAmount.toLocaleString()}` : '—'}</td>
-                        <td className="text-xs text-mono">{line.type === 'Credit' ? `${currency} ${line.baseAmount.toLocaleString()}` : '—'}</td>
-                        <td className="text-xs text-secondary">{line.narration || '—'}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {detailVoucher.reference && (
-              <div className="settings-field" style={{ margin: 0 }}>
-                <div className="settings-field-label">Reference</div>
-                <div className="text-xs">{detailVoucher.reference}</div>
-              </div>
-            )}
-
-            <div className="settings-field" style={{ margin: 0 }}>
-              <div className="settings-field-label">Description</div>
-              <div className="text-sm">{detailVoucher.description}</div>
-            </div>
-          </div>
-        )}
-      </Modal>
+      <VoucherDetailsModal
+        open={detailVoucher !== null}
+        voucher={detailVoucher}
+        accounts={accounts}
+        currency={currency}
+        dateFormat={dateFormat}
+        loading={loading}
+        onClose={() => setDetailVoucher(null)}
+        onPost={handlePost}
+        onApprove={handleApprove}
+        onCancel={handleCancel}
+        onDiscard={handleDiscard}
+        onReverse={handleReverse}
+      />
 
       <div className="page-header">
         <div className="page-header-left">

@@ -284,7 +284,18 @@ export function validateExistingVoucher(
   accounts: Account[],
   existingVouchers: Voucher[],
 ): ValidationResult {
-  const errors: ValidationError[] = [
+  const errors: ValidationError[] = []
+
+  if (voucher.status === 'Posted') {
+    errors.push({
+      code: 'VOUCHER_POSTED',
+      field: 'status',
+      message: 'Cannot modify a posted voucher',
+    })
+    return { valid: false, errors }
+  }
+
+  errors.push(
     ...validateRequired({
       date: voucher.date,
       type: voucher.type,
@@ -316,7 +327,7 @@ export function validateExistingVoucher(
     }),
     ...validateLines(voucher.lines, accounts),
     ...validateReferences(voucher.lines),
-  ]
+  )
 
   const numErr = validateVoucherNumber(voucher.number, existingVouchers)
   if (numErr) {

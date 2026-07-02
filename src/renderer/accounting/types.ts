@@ -42,7 +42,12 @@ export type AccountingEvent =
   | 'RENT_RECEIVED'
   | 'FUTURE_PDC_RECEIVED'
   | 'PDC_DEPOSITED'
+  | 'PDC_BOUNCED'
+  | 'PDC_BOUNCE_FEE'
+  | 'PDC_PENALTY'
   | 'SECURITY_DEPOSIT_RECEIVED'
+  | 'SECURITY_DEPOSIT_REFUNDED'
+  | 'SECURITY_DEPOSIT_FORFEITED'
   | 'INTEREST_INCOME'
   | 'INTEREST_EXPENSE'
   | 'TAX_PAID'
@@ -261,6 +266,8 @@ export interface BankStatementLine {
   description: string
   reference?: string
   matchedVoucherLineId?: string
+  matchedVoucherLineIds?: string[]
+  allocations?: { voucherLineId: string; amount: number }[]
   matchConfidence: 'High' | 'Medium' | 'None'
   status: 'Unmatched' | 'Matched' | 'Adjusted'
 }

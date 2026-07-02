@@ -112,7 +112,7 @@ Call log:
               - option "➕ Custom..."
           - generic [ref=e104]:
             - generic [ref=e105]: Date
-            - textbox [ref=e106]: 2026-07-01
+            - textbox [ref=e106]: 2026-07-02
           - generic [ref=e107]:
             - generic [ref=e108]: Amount (AED)
             - spinbutton [ref=e109]

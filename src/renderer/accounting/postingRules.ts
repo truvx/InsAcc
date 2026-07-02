@@ -38,6 +38,42 @@ export const POSTING_RULES: PostingRule[] = [
   },
 
   {
+    event: 'PDC_BOUNCED',
+    description: 'Bounced post-dated cheque reverses clearing',
+    voucherType: 'Journal',
+    debit: [
+      { account: '1320', narration: 'Bounced cheque tenant receivable restored' },
+    ],
+    credit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Bounced cheque bank withdrawal' },
+    ],
+  },
+
+  {
+    event: 'PDC_BOUNCE_FEE',
+    description: 'Bank charge expense for bounced cheque',
+    voucherType: 'Payment',
+    debit: [
+      { account: '5120', narration: 'Bank bounced cheque charge' },
+    ],
+    credit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Bank charge payment' },
+    ],
+  },
+
+  {
+    event: 'PDC_PENALTY',
+    description: 'Penalty charged to tenant for bounced cheque',
+    voucherType: 'Journal',
+    debit: [
+      { account: '1320', narration: 'Bounced cheque penalty receivable' },
+    ],
+    credit: [
+      { account: '4150', narration: 'Late fee income' },
+    ],
+  },
+
+  {
     event: 'SECURITY_DEPOSIT_RECEIVED',
     description: 'Security deposit received from tenant',
     voucherType: 'Receipt',
@@ -45,7 +81,31 @@ export const POSTING_RULES: PostingRule[] = [
       { account: ctx => ctx.bankAccount!, narration: 'Security deposit received' },
     ],
     credit: [
-      { account: '2120', narration: 'Security deposit liability' },
+      { account: ctx => ctx.creditAccount!, narration: 'Security deposit liability' },
+    ],
+  },
+
+  {
+    event: 'SECURITY_DEPOSIT_REFUNDED',
+    description: 'Security deposit refunded to tenant',
+    voucherType: 'Payment',
+    debit: [
+      { account: ctx => ctx.debitAccount!, narration: 'Security deposit liability settlement' },
+    ],
+    credit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Deposit refund payment' },
+    ],
+  },
+
+  {
+    event: 'SECURITY_DEPOSIT_FORFEITED',
+    description: 'Security deposit forfeited to landlord',
+    voucherType: 'Journal',
+    debit: [
+      { account: ctx => ctx.debitAccount!, narration: 'Security deposit liability forfeiture' },
+    ],
+    credit: [
+      { account: ctx => ctx.creditAccount!, narration: 'Forfeiture income recognition' },
     ],
   },
 

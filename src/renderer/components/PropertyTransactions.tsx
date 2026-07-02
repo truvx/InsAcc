@@ -218,15 +218,20 @@ export default function PropertyTransactions({
     {
       key: 'actions',
       header: 'Actions',
-      width: '80px',
       render: txn => (
-        <div style={{ display: 'flex', gap: 4 }}>
-          <Button variant="ghost" size="sm" onClick={() => handleEdit(txn)} aria-label="Edit">
-            <EditIcon />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(txn.id)} aria-label="Delete">
-            <TrashIcon />
-          </Button>
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          {txn.status !== 'cleared' && txn.status !== 'reconciled' ? (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => handleEdit(txn)} aria-label="Edit">
+                <EditIcon />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(txn.id)} aria-label="Delete">
+                <TrashIcon />
+              </Button>
+            </>
+          ) : (
+            <span className="text-secondary text-xs fw-500" style={{ background: '#F1F5F9', padding: '2px 6px', borderRadius: 4 }}>Posted</span>
+          )}
         </div>
       ),
     },

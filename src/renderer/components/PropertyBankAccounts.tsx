@@ -44,6 +44,10 @@ const accountTypeOptions = [
 type DialogType = 'addAccount' | 'deposit' | 'withdraw' | 'transfer' | null
 type TxnFilter = 'all' | 'deposits' | 'withdrawals' | 'transfers'
 
+import type { AccountingEngine } from '../accounting/accountingEngine'
+import type { Account, Voucher } from '../accounting/types'
+import BankReconciliationDashboard from './BankReconciliationDashboard'
+
 interface Props {
   currency?: string
   dateFormat?: string
@@ -55,9 +59,13 @@ interface Props {
   onAuditEvent?: (event: AuditEvent) => void
   bankReconciliations: BankReconciliationRecord[]
   setBankReconciliations: React.Dispatch<React.SetStateAction<BankReconciliationRecord[]>>
+  accounts: Account[]
+  vouchers: Voucher[]
+  setVouchers: React.Dispatch<React.SetStateAction<Voucher[]>>
+  accountingEngine: AccountingEngine
 }
 
-export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'DD/MM/YYYY', language = 'English', propAccounts, setPropAccounts, propTransactions, setPropTransactions, onAuditEvent, bankReconciliations, setBankReconciliations }: Props) {
+export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'DD/MM/YYYY', language = 'English', propAccounts, setPropAccounts, propTransactions, setPropTransactions, onAuditEvent, bankReconciliations, setBankReconciliations, accounts, vouchers, setVouchers, accountingEngine }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [dialog, setDialog] = useState<{ type: DialogType; accountId?: string }>({ type: null })
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
@@ -67,6 +75,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
   const [txnFilter, setTxnFilter] = useState<TxnFilter>('all')
   const [importOpen, setImportOpen] = useState(false)
   const [selectedHistoryRec, setSelectedHistoryRec] = useState<BankReconciliationRecord | null>(null)
+  const [selectedReconRec, setSelectedReconRec] = useState<BankReconciliationRecord | null>(null)
 
   const handleImportStatement = (lines: Omit<BankStatementLine, 'matchedVoucherLineId' | 'matchConfidence' | 'status'>[]) => {
     if (lines.length === 0) return
@@ -843,9 +852,15 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
                               <Badge variant={rec.status === 'Reconciled' ? 'success' : 'neutral'}>
                                 {rec.status}
                               </Badge>
-                              <Button size="sm" variant="secondary" onClick={() => setSelectedHistoryRec(rec)}>
-                                View Summary
-                              </Button>
+                              {rec.status === 'Draft' ? (
+                                <Button size="sm" variant="primary" onClick={() => setSelectedReconRec(rec)}>
+                                  Reconcile
+                                </Button>
+                              ) : (
+                                <Button size="sm" variant="secondary" onClick={() => setSelectedHistoryRec(rec)}>
+                                  View Summary
+                                </Button>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -971,6 +986,23 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
             </div>
           </div>
         </Modal>
+      )}
+      {selectedReconRec && (
+        <BankReconciliationDashboard
+          open={!!selectedReconRec}
+          onClose={() => setSelectedReconRec(null)}
+          reconciliationRecord={selectedReconRec}
+          onSave={(updated) => {
+            setBankReconciliations(prev => prev.map(rec => rec.id === updated.id ? updated : rec))
+          }}
+          accounts={accounts}
+          vouchers={vouchers}
+          setVouchers={setVouchers}
+          accountingEngine={accountingEngine}
+          currency={currency}
+          dateFormat={dateFormat}
+          onAuditEvent={onAuditEvent}
+        />
       )}
     </>
   )

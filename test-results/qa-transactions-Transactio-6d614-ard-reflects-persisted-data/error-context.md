@@ -86,13 +86,13 @@ Call log:
         - generic [ref=e93]:
           - generic [ref=e94]:
             - generic [ref=e95]: Total Receipts
-            - generic [ref=e96]: AED 16,355,952
+            - generic [ref=e96]: AED 17,185,515
           - generic [ref=e97]:
             - generic [ref=e98]: Total Payments
-            - generic [ref=e99]: AED 17,060,288
+            - generic [ref=e99]: AED 17,051,536
           - generic [ref=e100]:
             - generic [ref=e101]: Net Cash Flow
-            - generic [ref=e102]: AED 704,336
+            - generic [ref=e102]: AED 133,979
         - generic [ref=e103]:
           - generic [ref=e105]:
             - button "All" [ref=e106] [cursor=pointer]
@@ -127,207 +127,167 @@ Call log:
                 - columnheader "Status" [ref=e139] [cursor=pointer]
                 - columnheader "Actions" [ref=e140]
             - rowgroup [ref=e141]:
-              - row "TXN-029 01/05/2026 Receipt Voucher Management Fees -AED 5,298 Completed Edit Delete" [ref=e142]:
-                - cell "TXN-029" [ref=e143]
-                - cell "01/05/2026" [ref=e144]
+              - row "TXN-170 02/02/2026 Receipt Voucher Professional Fees -AED 3,577 Completed Posted" [ref=e142]:
+                - cell "TXN-170" [ref=e143]
+                - cell "02/02/2026" [ref=e144]
                 - cell "Receipt Voucher" [ref=e145]:
                   - generic [ref=e146]: Receipt Voucher
-                - cell "Management Fees" [ref=e147]
-                - cell "-AED 5,298" [ref=e148]:
-                  - generic [ref=e149]: "-AED 5,298"
+                - cell "Professional Fees" [ref=e147]
+                - cell "-AED 3,577" [ref=e148]:
+                  - generic [ref=e149]: "-AED 3,577"
                 - cell "Completed" [ref=e150]:
                   - generic [ref=e151]: Completed
-                - cell "Edit Delete" [ref=e152]:
-                  - generic [ref=e153]:
-                    - button "Edit" [ref=e154] [cursor=pointer]:
-                      - img [ref=e155]
-                    - button "Delete" [ref=e158] [cursor=pointer]:
-                      - img [ref=e159]
-              - row "TXN-716 16/08/2026 Receipt Voucher Maintenance -AED 5,721 Completed Edit Delete" [ref=e162]:
-                - cell "TXN-716" [ref=e163]
-                - cell "16/08/2026" [ref=e164]
-                - cell "Receipt Voucher" [ref=e165]:
-                  - generic [ref=e166]: Receipt Voucher
-                - cell "Maintenance" [ref=e167]
-                - cell "-AED 5,721" [ref=e168]:
-                  - generic [ref=e169]: "-AED 5,721"
-                - cell "Completed" [ref=e170]:
-                  - generic [ref=e171]: Completed
-                - cell "Edit Delete" [ref=e172]:
-                  - generic [ref=e173]:
-                    - button "Edit" [ref=e174] [cursor=pointer]:
-                      - img [ref=e175]
-                    - button "Delete" [ref=e178] [cursor=pointer]:
-                      - img [ref=e179]
-              - row "TXN-449 01/05/2026 Receipt Voucher Management Fees -AED 6,270 Completed Edit Delete" [ref=e182]:
-                - cell "TXN-449" [ref=e183]
-                - cell "01/05/2026" [ref=e184]
-                - cell "Receipt Voucher" [ref=e185]:
-                  - generic [ref=e186]: Receipt Voucher
-                - cell "Management Fees" [ref=e187]
-                - cell "-AED 6,270" [ref=e188]:
-                  - generic [ref=e189]: "-AED 6,270"
-                - cell "Completed" [ref=e190]:
-                  - generic [ref=e191]: Completed
-                - cell "Edit Delete" [ref=e192]:
-                  - generic [ref=e193]:
-                    - button "Edit" [ref=e194] [cursor=pointer]:
-                      - img [ref=e195]
-                    - button "Delete" [ref=e198] [cursor=pointer]:
-                      - img [ref=e199]
-              - row "TXN-743 15/11/2026 Receipt Voucher Insurance -AED 6,476 Completed Edit Delete" [ref=e202]:
-                - cell "TXN-743" [ref=e203]
-                - cell "15/11/2026" [ref=e204]
-                - cell "Receipt Voucher" [ref=e205]:
-                  - generic [ref=e206]: Receipt Voucher
-                - cell "Insurance" [ref=e207]
-                - cell "-AED 6,476" [ref=e208]:
-                  - generic [ref=e209]: "-AED 6,476"
-                - cell "Completed" [ref=e210]:
-                  - generic [ref=e211]: Completed
-                - cell "Edit Delete" [ref=e212]:
-                  - generic [ref=e213]:
-                    - button "Edit" [ref=e214] [cursor=pointer]:
-                      - img [ref=e215]
-                    - button "Delete" [ref=e218] [cursor=pointer]:
-                      - img [ref=e219]
-              - row "TXN-143 03/11/2026 Receipt Voucher Insurance -AED 6,672 Completed Edit Delete" [ref=e222]:
-                - cell "TXN-143" [ref=e223]
-                - cell "03/11/2026" [ref=e224]
-                - cell "Receipt Voucher" [ref=e225]:
-                  - generic [ref=e226]: Receipt Voucher
-                - cell "Insurance" [ref=e227]
-                - cell "-AED 6,672" [ref=e228]:
-                  - generic [ref=e229]: "-AED 6,672"
-                - cell "Completed" [ref=e230]:
-                  - generic [ref=e231]: Completed
-                - cell "Edit Delete" [ref=e232]:
-                  - generic [ref=e233]:
-                    - button "Edit" [ref=e234] [cursor=pointer]:
-                      - img [ref=e235]
-                    - button "Delete" [ref=e238] [cursor=pointer]:
-                      - img [ref=e239]
-              - row "TXN-434 14/02/2026 Receipt Voucher Management Fees -AED 7,029 Completed Edit Delete" [ref=e242]:
-                - cell "TXN-434" [ref=e243]
-                - cell "14/02/2026" [ref=e244]
-                - cell "Receipt Voucher" [ref=e245]:
-                  - generic [ref=e246]: Receipt Voucher
-                - cell "Management Fees" [ref=e247]
-                - cell "-AED 7,029" [ref=e248]:
-                  - generic [ref=e249]: "-AED 7,029"
-                - cell "Completed" [ref=e250]:
-                  - generic [ref=e251]: Completed
-                - cell "Edit Delete" [ref=e252]:
-                  - generic [ref=e253]:
-                    - button "Edit" [ref=e254] [cursor=pointer]:
-                      - img [ref=e255]
-                    - button "Delete" [ref=e258] [cursor=pointer]:
-                      - img [ref=e259]
-              - row "TXN-503 27/11/2026 Receipt Voucher Insurance -AED 7,410 Completed Edit Delete" [ref=e262]:
-                - cell "TXN-503" [ref=e263]
-                - cell "27/11/2026" [ref=e264]
-                - cell "Receipt Voucher" [ref=e265]:
-                  - generic [ref=e266]: Receipt Voucher
-                - cell "Insurance" [ref=e267]
-                - cell "-AED 7,410" [ref=e268]:
-                  - generic [ref=e269]: "-AED 7,410"
-                - cell "Completed" [ref=e270]:
-                  - generic [ref=e271]: Completed
-                - cell "Edit Delete" [ref=e272]:
-                  - generic [ref=e273]:
-                    - button "Edit" [ref=e274] [cursor=pointer]:
-                      - img [ref=e275]
-                    - button "Delete" [ref=e278] [cursor=pointer]:
-                      - img [ref=e279]
-              - row "TXN-551 19/11/2026 Receipt Voucher Maintenance -AED 7,663 Completed Edit Delete" [ref=e282]:
-                - cell "TXN-551" [ref=e283]
-                - cell "19/11/2026" [ref=e284]
-                - cell "Receipt Voucher" [ref=e285]:
-                  - generic [ref=e286]: Receipt Voucher
-                - cell "Maintenance" [ref=e287]
-                - cell "-AED 7,663" [ref=e288]:
-                  - generic [ref=e289]: "-AED 7,663"
-                - cell "Completed" [ref=e290]:
-                  - generic [ref=e291]: Completed
-                - cell "Edit Delete" [ref=e292]:
-                  - generic [ref=e293]:
-                    - button "Edit" [ref=e294] [cursor=pointer]:
-                      - img [ref=e295]
-                    - button "Delete" [ref=e298] [cursor=pointer]:
-                      - img [ref=e299]
-              - row "TXN-521 17/05/2026 Receipt Voucher Maintenance -AED 8,281 Completed Edit Delete" [ref=e302]:
-                - cell "TXN-521" [ref=e303]
-                - cell "17/05/2026" [ref=e304]
-                - cell "Receipt Voucher" [ref=e305]:
-                  - generic [ref=e306]: Receipt Voucher
-                - cell "Maintenance" [ref=e307]
-                - cell "-AED 8,281" [ref=e308]:
-                  - generic [ref=e309]: "-AED 8,281"
-                - cell "Completed" [ref=e310]:
-                  - generic [ref=e311]: Completed
-                - cell "Edit Delete" [ref=e312]:
-                  - generic [ref=e313]:
-                    - button "Edit" [ref=e314] [cursor=pointer]:
-                      - img [ref=e315]
-                    - button "Delete" [ref=e318] [cursor=pointer]:
-                      - img [ref=e319]
-              - row "TXN-083 27/11/2026 Receipt Voucher Insurance -AED 8,348 Completed Edit Delete" [ref=e322]:
-                - cell "TXN-083" [ref=e323]
-                - cell "27/11/2026" [ref=e324]
-                - cell "Receipt Voucher" [ref=e325]:
-                  - generic [ref=e326]: Receipt Voucher
-                - cell "Insurance" [ref=e327]
-                - cell "-AED 8,348" [ref=e328]:
-                  - generic [ref=e329]: "-AED 8,348"
-                - cell "Completed" [ref=e330]:
-                  - generic [ref=e331]: Completed
-                - cell "Edit Delete" [ref=e332]:
-                  - generic [ref=e333]:
-                    - button "Edit" [ref=e334] [cursor=pointer]:
-                      - img [ref=e335]
-                    - button "Delete" [ref=e338] [cursor=pointer]:
-                      - img [ref=e339]
-          - generic [ref=e342]:
-            - generic [ref=e343]: 11–20 of 333
-            - generic [ref=e344]:
-              - button [ref=e345] [cursor=pointer]:
-                - img [ref=e346]
-              - button "1" [ref=e348] [cursor=pointer]
-              - button "2" [active] [ref=e349] [cursor=pointer]
-              - button "3" [ref=e350] [cursor=pointer]
-              - button "4" [ref=e351] [cursor=pointer]
-              - button "5" [ref=e352] [cursor=pointer]
-              - button "6" [ref=e353] [cursor=pointer]
-              - button "7" [ref=e354] [cursor=pointer]
-              - button "8" [ref=e355] [cursor=pointer]
-              - button "9" [ref=e356] [cursor=pointer]
-              - button "10" [ref=e357] [cursor=pointer]
-              - button "11" [ref=e358] [cursor=pointer]
-              - button "12" [ref=e359] [cursor=pointer]
-              - button "13" [ref=e360] [cursor=pointer]
-              - button "14" [ref=e361] [cursor=pointer]
-              - button "15" [ref=e362] [cursor=pointer]
-              - button "16" [ref=e363] [cursor=pointer]
-              - button "17" [ref=e364] [cursor=pointer]
-              - button "18" [ref=e365] [cursor=pointer]
-              - button "19" [ref=e366] [cursor=pointer]
-              - button "20" [ref=e367] [cursor=pointer]
-              - button "21" [ref=e368] [cursor=pointer]
-              - button "22" [ref=e369] [cursor=pointer]
-              - button "23" [ref=e370] [cursor=pointer]
-              - button "24" [ref=e371] [cursor=pointer]
-              - button "25" [ref=e372] [cursor=pointer]
-              - button "26" [ref=e373] [cursor=pointer]
-              - button "27" [ref=e374] [cursor=pointer]
-              - button "28" [ref=e375] [cursor=pointer]
-              - button "29" [ref=e376] [cursor=pointer]
-              - button "30" [ref=e377] [cursor=pointer]
-              - button "31" [ref=e378] [cursor=pointer]
-              - button "32" [ref=e379] [cursor=pointer]
-              - button "33" [ref=e380] [cursor=pointer]
-              - button "34" [ref=e381] [cursor=pointer]
-              - button [ref=e382] [cursor=pointer]:
-                - img [ref=e384]
+                - cell "Posted" [ref=e152]:
+                  - generic [ref=e154]: Posted
+              - row "TXN-086 02/02/2026 Receipt Voucher Maintenance -AED 4,924 Completed Posted" [ref=e155]:
+                - cell "TXN-086" [ref=e156]
+                - cell "02/02/2026" [ref=e157]
+                - cell "Receipt Voucher" [ref=e158]:
+                  - generic [ref=e159]: Receipt Voucher
+                - cell "Maintenance" [ref=e160]
+                - cell "-AED 4,924" [ref=e161]:
+                  - generic [ref=e162]: "-AED 4,924"
+                - cell "Completed" [ref=e163]:
+                  - generic [ref=e164]: Completed
+                - cell "Posted" [ref=e165]:
+                  - generic [ref=e167]: Posted
+              - row "TXN-824 12/08/2026 Receipt Voucher Management Fees -AED 4,958 Completed Posted" [ref=e168]:
+                - cell "TXN-824" [ref=e169]
+                - cell "12/08/2026" [ref=e170]
+                - cell "Receipt Voucher" [ref=e171]:
+                  - generic [ref=e172]: Receipt Voucher
+                - cell "Management Fees" [ref=e173]
+                - cell "-AED 4,958" [ref=e174]:
+                  - generic [ref=e175]: "-AED 4,958"
+                - cell "Completed" [ref=e176]:
+                  - generic [ref=e177]: Completed
+                - cell "Posted" [ref=e178]:
+                  - generic [ref=e180]: Posted
+              - row "TXN-776 20/08/2026 Receipt Voucher Maintenance -AED 4,963 Completed Posted" [ref=e181]:
+                - cell "TXN-776" [ref=e182]
+                - cell "20/08/2026" [ref=e183]
+                - cell "Receipt Voucher" [ref=e184]:
+                  - generic [ref=e185]: Receipt Voucher
+                - cell "Maintenance" [ref=e186]
+                - cell "-AED 4,963" [ref=e187]:
+                  - generic [ref=e188]: "-AED 4,963"
+                - cell "Completed" [ref=e189]:
+                  - generic [ref=e190]: Completed
+                - cell "Posted" [ref=e191]:
+                  - generic [ref=e193]: Posted
+              - row "TXN-071 15/11/2026 Receipt Voucher Maintenance -AED 4,977 Completed Posted" [ref=e194]:
+                - cell "TXN-071" [ref=e195]
+                - cell "15/11/2026" [ref=e196]
+                - cell "Receipt Voucher" [ref=e197]:
+                  - generic [ref=e198]: Receipt Voucher
+                - cell "Maintenance" [ref=e199]
+                - cell "-AED 4,977" [ref=e200]:
+                  - generic [ref=e201]: "-AED 4,977"
+                - cell "Completed" [ref=e202]:
+                  - generic [ref=e203]: Completed
+                - cell "Posted" [ref=e204]:
+                  - generic [ref=e206]: Posted
+              - row "TXN-788 04/08/2026 Receipt Voucher Insurance -AED 5,475 Completed Posted" [ref=e207]:
+                - cell "TXN-788" [ref=e208]
+                - cell "04/08/2026" [ref=e209]
+                - cell "Receipt Voucher" [ref=e210]:
+                  - generic [ref=e211]: Receipt Voucher
+                - cell "Insurance" [ref=e212]
+                - cell "-AED 5,475" [ref=e213]:
+                  - generic [ref=e214]: "-AED 5,475"
+                - cell "Completed" [ref=e215]:
+                  - generic [ref=e216]: Completed
+                - cell "Posted" [ref=e217]:
+                  - generic [ref=e219]: Posted
+              - row "TXN-314 06/02/2026 Receipt Voucher Management Fees -AED 5,784 Completed Posted" [ref=e220]:
+                - cell "TXN-314" [ref=e221]
+                - cell "06/02/2026" [ref=e222]
+                - cell "Receipt Voucher" [ref=e223]:
+                  - generic [ref=e224]: Receipt Voucher
+                - cell "Management Fees" [ref=e225]
+                - cell "-AED 5,784" [ref=e226]:
+                  - generic [ref=e227]: "-AED 5,784"
+                - cell "Completed" [ref=e228]:
+                  - generic [ref=e229]: Completed
+                - cell "Posted" [ref=e230]:
+                  - generic [ref=e232]: Posted
+              - row "TXN-896 28/08/2026 Receipt Voucher Maintenance -AED 5,814 Completed Posted" [ref=e233]:
+                - cell "TXN-896" [ref=e234]
+                - cell "28/08/2026" [ref=e235]
+                - cell "Receipt Voucher" [ref=e236]:
+                  - generic [ref=e237]: Receipt Voucher
+                - cell "Maintenance" [ref=e238]
+                - cell "-AED 5,814" [ref=e239]:
+                  - generic [ref=e240]: "-AED 5,814"
+                - cell "Completed" [ref=e241]:
+                  - generic [ref=e242]: Completed
+                - cell "Posted" [ref=e243]:
+                  - generic [ref=e245]: Posted
+              - row "TXN-287 07/11/2026 Receipt Voucher Utilities -AED 6,190 Completed Posted" [ref=e246]:
+                - cell "TXN-287" [ref=e247]
+                - cell "07/11/2026" [ref=e248]
+                - cell "Receipt Voucher" [ref=e249]:
+                  - generic [ref=e250]: Receipt Voucher
+                - cell "Utilities" [ref=e251]
+                - cell "-AED 6,190" [ref=e252]:
+                  - generic [ref=e253]: "-AED 6,190"
+                - cell "Completed" [ref=e254]:
+                  - generic [ref=e255]: Completed
+                - cell "Posted" [ref=e256]:
+                  - generic [ref=e258]: Posted
+              - row "TXN-794 10/02/2026 Receipt Voucher Management Fees -AED 6,204 Completed Posted" [ref=e259]:
+                - cell "TXN-794" [ref=e260]
+                - cell "10/02/2026" [ref=e261]
+                - cell "Receipt Voucher" [ref=e262]:
+                  - generic [ref=e263]: Receipt Voucher
+                - cell "Management Fees" [ref=e264]
+                - cell "-AED 6,204" [ref=e265]:
+                  - generic [ref=e266]: "-AED 6,204"
+                - cell "Completed" [ref=e267]:
+                  - generic [ref=e268]: Completed
+                - cell "Posted" [ref=e269]:
+                  - generic [ref=e271]: Posted
+          - generic [ref=e272]:
+            - generic [ref=e273]: 11–20 of 333
+            - generic [ref=e274]:
+              - button [ref=e275] [cursor=pointer]:
+                - img [ref=e276]
+              - button "1" [ref=e278] [cursor=pointer]
+              - button "2" [active] [ref=e279] [cursor=pointer]
+              - button "3" [ref=e280] [cursor=pointer]
+              - button "4" [ref=e281] [cursor=pointer]
+              - button "5" [ref=e282] [cursor=pointer]
+              - button "6" [ref=e283] [cursor=pointer]
+              - button "7" [ref=e284] [cursor=pointer]
+              - button "8" [ref=e285] [cursor=pointer]
+              - button "9" [ref=e286] [cursor=pointer]
+              - button "10" [ref=e287] [cursor=pointer]
+              - button "11" [ref=e288] [cursor=pointer]
+              - button "12" [ref=e289] [cursor=pointer]
+              - button "13" [ref=e290] [cursor=pointer]
+              - button "14" [ref=e291] [cursor=pointer]
+              - button "15" [ref=e292] [cursor=pointer]
+              - button "16" [ref=e293] [cursor=pointer]
+              - button "17" [ref=e294] [cursor=pointer]
+              - button "18" [ref=e295] [cursor=pointer]
+              - button "19" [ref=e296] [cursor=pointer]
+              - button "20" [ref=e297] [cursor=pointer]
+              - button "21" [ref=e298] [cursor=pointer]
+              - button "22" [ref=e299] [cursor=pointer]
+              - button "23" [ref=e300] [cursor=pointer]
+              - button "24" [ref=e301] [cursor=pointer]
+              - button "25" [ref=e302] [cursor=pointer]
+              - button "26" [ref=e303] [cursor=pointer]
+              - button "27" [ref=e304] [cursor=pointer]
+              - button "28" [ref=e305] [cursor=pointer]
+              - button "29" [ref=e306] [cursor=pointer]
+              - button "30" [ref=e307] [cursor=pointer]
+              - button "31" [ref=e308] [cursor=pointer]
+              - button "32" [ref=e309] [cursor=pointer]
+              - button "33" [ref=e310] [cursor=pointer]
+              - button "34" [ref=e311] [cursor=pointer]
+              - button [ref=e312] [cursor=pointer]:
+                - img [ref=e314]
 ```
 
 # Test source

@@ -327,11 +327,17 @@ export default function PurchaseLedger({
       render: r => statusBadge(r.status),
     },
     {
-      key: 'actions', header: '', width: '55px',
+      key: 'actions', header: '', width: '65px',
       render: r => (
         <div className="table-actions">
-          <Button variant="ghost" size="sm" icon={<EditIcon />} onClick={() => openEditForm(r)} aria-label="Edit purchase" />
-          <Button variant="ghost" size="sm" icon={<TrashIcon />} onClick={() => setDeleteTargetId(r.id)} aria-label="Delete purchase" />
+          {!r.voucherId ? (
+            <div style={{ display: 'flex', gap: 4 }}>
+              <Button variant="ghost" size="sm" icon={<EditIcon />} onClick={() => openEditForm(r)} aria-label="Edit purchase" />
+              <Button variant="ghost" size="sm" icon={<TrashIcon />} onClick={() => setDeleteTargetId(r.id)} aria-label="Delete purchase" />
+            </div>
+          ) : (
+            <span className="text-secondary text-xs fw-500" style={{ background: '#F1F5F9', padding: '2px 6px', borderRadius: 4, display: 'inline-block' }}>Posted</span>
+          )}
         </div>
       ),
     },

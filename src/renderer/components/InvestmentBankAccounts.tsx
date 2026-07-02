@@ -15,6 +15,7 @@ import Toast from './Toast'
 import { formatDate, maskAccountNumber, t } from '../utils'
 import type { BankReconciliationRecord, BankStatementLine } from '../accounting/types'
 import BankImportModal from './BankImportModal'
+import BankReconciliationDashboard from './BankReconciliationDashboard'
 import { getBankDashboardProjection, getAccountStatementProjection } from '../readModels/InvestmentBankReadModel'
 import BankAccountAvatar from './BankAccountAvatar'
 
@@ -53,6 +54,7 @@ export default function InvestmentBankAccounts({
   const [txnFilter, setTxnFilter] = useState<'all' | 'deposits' | 'withdrawals' | 'transfers'>('all')
   const [importOpen, setImportOpen] = useState(false)
   const [selectedHistoryRec, setSelectedHistoryRec] = useState<BankReconciliationRecord | null>(null)
+  const [selectedReconRec, setSelectedReconRec] = useState<BankReconciliationRecord | null>(null)
 
   const handleImportStatement = (lines: Omit<BankStatementLine, 'matchedVoucherLineId' | 'matchConfidence' | 'status'>[]) => {
     if (lines.length === 0) return
@@ -655,13 +657,19 @@ export default function InvestmentBankAccounts({
                             </div>
                           </div>
                           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            <Badge variant={rec.status === 'Reconciled' ? 'success' : 'neutral'}>
-                              {rec.status}
-                            </Badge>
-                            <Button size="sm" variant="secondary" onClick={() => setSelectedHistoryRec(rec)}>
-                              View Summary
-                            </Button>
-                          </div>
+                             <Badge variant={rec.status === 'Reconciled' ? 'success' : 'neutral'}>
+                               {rec.status}
+                             </Badge>
+                             {rec.status === 'Draft' ? (
+                               <Button size="sm" variant="primary" onClick={() => setSelectedReconRec(rec)}>
+                                 Reconcile
+                               </Button>
+                             ) : (
+                               <Button size="sm" variant="secondary" onClick={() => setSelectedHistoryRec(rec)}>
+                                 View Summary
+                               </Button>
+                             )}
+                           </div>
                         </div>
                       ))}
                     </div>
@@ -748,6 +756,23 @@ export default function InvestmentBankAccounts({
             </div>
           </div>
         </Modal>
+      )}
+      {selectedReconRec && (
+        <BankReconciliationDashboard
+          open={!!selectedReconRec}
+          onClose={() => setSelectedReconRec(null)}
+          reconciliationRecord={selectedReconRec}
+          onSave={(updated) => {
+            setBankReconciliations(prev => prev.map(rec => rec.id === updated.id ? updated : rec))
+          }}
+          accounts={accounts}
+          vouchers={vouchers}
+          setVouchers={setVouchers}
+          accountingEngine={accountingEngine}
+          currency={currency}
+          dateFormat={dateFormat}
+          onAuditEvent={onAuditEvent}
+        />
       )}
     </>
   )
