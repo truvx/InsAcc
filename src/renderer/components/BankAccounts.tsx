@@ -3,6 +3,8 @@ import type { BankAccount, BankTransaction } from '../data/banking'
 import type { AuditEvent } from '../data/auditTypes'
 import { recordModuleEvent } from '../services/auditService'
 import { deriveBalance } from '../services/bankingService'
+import { deleteBankTransaction } from '../services/bankTransactionService'
+import { TransactionLifecycleService } from '../services/transactionLifecycleService'
 import {
   Badge, Button, KpiCard, EmptyState, PlusIcon, TrashIcon,
   PortfolioIcon, TrendingUpIcon, ActivityIcon,
@@ -378,12 +380,16 @@ export default function BankAccounts({ currency = 'AED', dateFormat = 'DD/MM/YYY
 
   const handleDeleteTransaction = () => {
     if (!deleteTarget) return
-    const deleted = bankTransactions.find(t => t.id === deleteTarget)
-    setBankTransactions(prev => prev.filter(t => t.id !== deleteTarget))
+    const result = deleteBankTransaction(deleteTarget, bankTransactions, bankAccounts, currency)
+    if (!result.success) {
+      setToast({ visible: true, message: result.error!, type: 'error' })
+      setDeleteTarget(null)
+      return
+    }
+    setBankTransactions(result.updatedTransactions)
     setDeleteTarget(null)
-    if (deleted) {
-      const account = bankAccounts.find(a => a.id === deleted.accountId)
-      onAuditEvent?.(recordModuleEvent('Bank Accounts', 'Delete', account?.accountName || 'unknown', deleted.id, `Deleted ${deleted.type} transaction: ${deleted.description} ${currency}${deleted.amount.toLocaleString()}`))
+    if (result.auditDetails) {
+      onAuditEvent?.(recordModuleEvent('Bank Accounts', result.auditDetails.action, result.auditDetails.entityName, result.auditDetails.entityId, result.auditDetails.description))
     }
     setToast({ visible: true, message: 'Transaction deleted', type: 'success' })
   }
@@ -469,7 +475,7 @@ export default function BankAccounts({ currency = 'AED', dateFormat = 'DD/MM/YYY
       header: '',
       width: '50px',
       render: txn => (
-        <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(txn.id)} aria-label="Delete transaction">
+        <Button variant="ghost" size="sm" disabled={!TransactionLifecycleService.canDelete('BankTransaction', txn)} onClick={() => setDeleteTarget(txn.id)} aria-label="Delete transaction">
           <TrashIcon />
         </Button>
       ),

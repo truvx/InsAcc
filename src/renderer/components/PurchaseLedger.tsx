@@ -36,6 +36,7 @@ import {
 } from './design/DesignSystem'
 import Toast from './Toast'
 import { formatDate } from '../utils'
+import { TransactionLifecycleService } from '../services/transactionLifecycleService'
 import { formatCurrency } from '../utils/reportFormatters'
 
 interface Props {
@@ -330,7 +331,7 @@ export default function PurchaseLedger({
       key: 'actions', header: '', width: '65px',
       render: r => (
         <div className="table-actions">
-          {!r.voucherId ? (
+          {TransactionLifecycleService.canDelete('Purchase', r) ? (
             <div style={{ display: 'flex', gap: 4 }}>
               <Button variant="ghost" size="sm" icon={<EditIcon />} onClick={() => openEditForm(r)} aria-label="Edit purchase" />
               <Button variant="ghost" size="sm" icon={<TrashIcon />} onClick={() => setDeleteTargetId(r.id)} aria-label="Delete purchase" />
