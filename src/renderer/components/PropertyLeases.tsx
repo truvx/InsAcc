@@ -938,8 +938,15 @@ export default function PropertyLeases({
         // Automatically post the security deposit GL voucher
         if (accountingEngine && depositMappings) {
           const isCheque = depositReceived && depositPaymentMode === 'Security Cheque'
-          const effectiveBankId = depositReceived && depositBankId ? depositBankId : defaultBank?.id || propAccounts?.[0]?.id
-          const coaBankAccountId = effectiveBankId ? getPropertyBankAccountId(effectiveBankId, propAccounts, bankMappings) : undefined
+          const isCash = depositReceived && depositPaymentMode === 'Cash'
+          
+          let coaBankAccountId: string | undefined
+          if (isCash) {
+            coaBankAccountId = accounts?.find(a => a.code === '1110')?.id
+          } else if (depositReceived && depositPaymentMode === 'Bank Transfer') {
+            const effectiveBankId = depositBankId || defaultBank?.id || propAccounts?.[0]?.id
+            coaBankAccountId = effectiveBankId ? getPropertyBankAccountId(effectiveBankId, propAccounts, bankMappings) : undefined
+          }
           
           if (isCheque || coaBankAccountId) {
             const desc = `Security Deposit Receipt (${depositReceived ? depositPaymentMode : 'Bank Transfer'}): Lease ${leaseNumber} — Tenant: ${getTenantName(formTenantId)}`
@@ -1328,13 +1335,10 @@ export default function PropertyLeases({
                   <Input label="Security Deposit" type="number" value={formDeposit} onChange={e => setFormDeposit(e.target.value)} placeholder="0" />
                   <Select
                     label="Security Deposit Mode *"
-                    value={depositPaymentMode === 'Security Cheque' ? 'Cheque' : depositPaymentMode}
-                    onChange={e => {
-                      const val = e.target.value
-                      setDepositPaymentMode(val === 'Cheque' ? 'Security Cheque' : val as any)
-                    }}
+                    value={depositPaymentMode}
+                    onChange={e => setDepositPaymentMode(e.target.value as any)}
                     options={[
-                      { value: 'Cheque', label: 'Cheque' },
+                      { value: 'Security Cheque', label: 'Security Cheque Received' },
                       { value: 'Bank Transfer', label: 'Bank Transfer' },
                       { value: 'Cash', label: 'Cash' }
                     ]}
@@ -1349,7 +1353,7 @@ export default function PropertyLeases({
                       onChange={e => setDepositDateReceived(e.target.value)}
                       required
                     />
-                    {depositPaymentMode !== 'Security Cheque' && (
+                    {depositPaymentMode === 'Bank Transfer' && (
                       <div style={{ gridColumn: 'span 2' }}>
                         <Select
                           label="Receiving Trust Account *"

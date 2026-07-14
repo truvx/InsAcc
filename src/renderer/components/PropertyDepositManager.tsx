@@ -542,21 +542,33 @@ export default function PropertyDepositManager({
       return
     }
 
-    if (!selectedPropBankId) {
-      setToast({ visible: true, message: 'Please select a bank account.', type: 'error' })
-      return
+    const isPdcMode = formPaymentMode === 'Post Dated Cheque (PDC)'
+    const isCashMode = formPaymentMode === 'Cash'
+
+    let coaBankAccountId: string | undefined
+    if (!isPdcMode) {
+      if (isCashMode) {
+        coaBankAccountId = accounts.find(a => a.code === '1110')?.id
+        if (!coaBankAccountId) {
+          setToast({ visible: true, message: 'Cash In Hand account (1110) not found.', type: 'error' })
+          return
+        }
+      } else {
+        if (!selectedPropBankId) {
+          setToast({ visible: true, message: 'Please select a bank account.', type: 'error' })
+          return
+        }
+        const linkResult = validateBankChartLink(selectedPropBankId, propAccounts, bankMappings)
+        if (!linkResult.valid) {
+          setToast({ visible: true, message: linkResult.error + ' Open Bank Accounts to fix it.', type: 'error' })
+          return
+        }
+        coaBankAccountId = linkResult.chartAccountId
+      }
     }
-    const linkResult = validateBankChartLink(selectedPropBankId, propAccounts, bankMappings)
-    if (!linkResult.valid) {
-      setToast({ visible: true, message: linkResult.error + ' Open Bank Accounts to fix it.', type: 'error' })
-      return
-    }
-    const coaBankAccountId = linkResult.chartAccountId
 
     const desc = `Security Deposit Receipt: Lease ${activeDeposit.id.split('-')[2] || ''} — Tenant: ${tenantMap.get(activeDeposit.tenantId)}`
     
-    const isPdcMode = formPaymentMode === 'Post Dated Cheque (PDC)'
-
     // Create Draft Voucher in AccountingEngine
     const draftResult = accountingEngine.processAccountingEvent(
       isPdcMode ? 'SECURITY_DEPOSIT_PDC_RECEIVED' : 'SECURITY_DEPOSIT_RECEIVED',
@@ -1349,28 +1361,26 @@ export default function PropertyDepositManager({
               value={formPaymentMode}
               onChange={e => setFormPaymentMode(e.target.value)}
               options={[
-                { value: 'Cash', label: 'Cash' },
+                { value: 'Post Dated Cheque (PDC)', label: 'Security Cheque Received' },
                 { value: 'Bank Transfer', label: 'Bank Transfer' },
-                { value: 'Cheque', label: 'Cheque' },
-                { value: 'Post Dated Cheque (PDC)', label: 'Post Dated Cheque (PDC)' },
-                { value: 'Online Transfer', label: 'Online Transfer' },
-                { value: 'Card', label: 'Card' },
-                { value: 'Other', label: 'Other' }
+                { value: 'Cash', label: 'Cash' }
               ]}
             />
           </div>
-          <div className="form-group" style={{ marginTop: 12 }}>
-            <Select
-              label="Deposit Bank Account"
-              value={selectedPropBankId}
-              onChange={e => setSelectedPropBankId(e.target.value)}
-              options={propAccounts.map(b => ({
-                value: b.id,
-                label: `${b.institution} (${b.currency})`
-              }))}
-              required
-            />
-          </div>
+          {formPaymentMode === 'Bank Transfer' && (
+            <div className="form-group" style={{ marginTop: 12 }}>
+              <Select
+                label="Deposit Bank Account"
+                value={selectedPropBankId}
+                onChange={e => setSelectedPropBankId(e.target.value)}
+                options={propAccounts.map(b => ({
+                  value: b.id,
+                  label: `${b.institution} (${b.currency})`
+                }))}
+                required
+              />
+            </div>
+          )}
           <div className="form-group" style={{ marginTop: 12 }}>
             <Input 
               label="Reference Number (optional)" 
