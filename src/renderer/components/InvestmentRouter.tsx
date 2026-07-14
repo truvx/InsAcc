@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react'
 import type { Account, Voucher, BankMapping, FiscalYear } from '../accounting/types'
+import type { LoginEntry } from '../App'
 import type { AccountingEngine } from '../accounting/accountingEngine'
 import type { BankAccount, BankTransaction } from '../data/banking'
 import type { DocItem } from './Documents'
@@ -80,6 +81,9 @@ interface Props {
   setSupabaseKey?: React.Dispatch<React.SetStateAction<string>>
   supabaseEnabled?: boolean
   setSupabaseEnabled?: React.Dispatch<React.SetStateAction<boolean>>
+
+  loginEntries?: LoginEntry[]
+  setLoginEntries?: React.Dispatch<React.SetStateAction<LoginEntry[]>>
 }
 
 export default function InvestmentRouter(props: Props) {
@@ -315,6 +319,8 @@ export default function InvestmentRouter(props: Props) {
           onSetSupabaseKey={props.setSupabaseKey}
           supabaseEnabled={props.supabaseEnabled}
           onSetSupabaseEnabled={props.setSupabaseEnabled}
+          loginEntries={props.loginEntries}
+          setLoginEntries={props.setLoginEntries}
         />
       )
     default:

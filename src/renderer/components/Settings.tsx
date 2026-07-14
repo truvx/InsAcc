@@ -48,6 +48,8 @@ interface Props {
   onSetSupabaseEnabled?: (enabled: boolean) => void
 
   onClearTransactions?: () => void
+  loginEntries?: LoginEntry[]
+  setLoginEntries?: React.Dispatch<React.SetStateAction<LoginEntry[]>>
 }
 
 export default function Settings({
@@ -68,9 +70,16 @@ export default function Settings({
   supabaseEnabled = false,
   onSetSupabaseEnabled,
   onClearTransactions,
+  loginEntries = [],
+  setLoginEntries,
 }: Props) {
   const [activeTab, setActiveTab] = useState('general')
   const [showAddUser, setShowAddUser] = useState(false)
+  const [showAddLogin, setShowAddLogin] = useState(false)
+  const [newLoginName, setNewLoginName] = useState('')
+  const [newLoginEmail, setNewLoginEmail] = useState('')
+  const [newLoginPassword, setNewLoginPassword] = useState('')
+  const [newLoginRole, setNewLoginRole] = useState<'Admin' | 'Accounts'>('Admin')
   const [newUserName, setNewUserName] = useState('')
   const [newUserRole, setNewUserRole] = useState('Accounts')
 
@@ -386,7 +395,108 @@ export default function Settings({
                 </div>
               </div>
               <button className="btn btn-primary" style={{ width: '100%' }} onClick={handlePasswordChange}>Update Password</button>
-              <div style={{ fontSize: 12, color: 'var(--text-light)', textAlign: 'center' }}>Default password: 1234</div>
+              <div style={{ fontSize: 12, color: 'var(--text-light)', textAlign: 'center' }}>Default passcode: 1234</div>
+
+              <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Email & Password Logins</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
+                  Manage credentials used to log in via the "Email & Password" login tab.
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {loginEntries.map((entry, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'var(--bg-secondary)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 500 }}>{entry.name} <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginLeft: 8 }}>({entry.role})</span></div>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{entry.email}</div>
+                      </div>
+                      <button
+                        className="btn btn-secondary"
+                        style={{ padding: '4px 12px', fontSize: 12, border: '1px solid var(--danger)', color: 'var(--danger)', background: 'transparent' }}
+                        onClick={() => {
+                          if (loginEntries.length <= 1) {
+                            alert('Cannot delete the last login entry. You must have at least one account to log in.')
+                            return
+                          }
+                          if (confirm(`Are you sure you want to remove the login entry for ${entry.email}?`)) {
+                            setLoginEntries?.(prev => prev.filter((_, i) => i !== idx))
+                            setToast({ visible: true, message: 'Login entry removed successfully.', type: 'success' })
+                          }
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ marginTop: 16 }}>
+                  <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => setShowAddLogin(!showAddLogin)}>
+                    {showAddLogin ? 'Cancel' : '+ Add Login Account'}
+                  </button>
+                </div>
+
+                {showAddLogin && (
+                  <div style={{ marginTop: 12, padding: 16, background: 'var(--bg-secondary)', borderRadius: 8, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Full Name</label>
+                        <input className="input" placeholder="e.g. Sameer" value={newLoginName} onChange={e => setNewLoginName(e.target.value)} />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Role</label>
+                        <Select
+                          value={newLoginRole}
+                          onChange={e => setNewLoginRole(e.target.value as any)}
+                          options={[
+                            { value: 'Admin', label: 'Admin' },
+                            { value: 'Accounts', label: 'Accounts' }
+                          ]}
+                          style={{ margin: 0 }}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Email Address</label>
+                        <input className="input" type="email" placeholder="email@company.com" value={newLoginEmail} onChange={e => setNewLoginEmail(e.target.value)} />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Password</label>
+                        <input className="input" type="password" placeholder="••••••••" value={newLoginPassword} onChange={e => setNewLoginPassword(e.target.value)} />
+                      </div>
+                    </div>
+                    <button
+                      className="btn btn-primary"
+                      style={{ width: '100%', marginTop: 8 }}
+                      onClick={() => {
+                        if (!newLoginName || !newLoginEmail || !newLoginPassword) {
+                          alert('Please fill out all fields.')
+                          return
+                        }
+                        if (loginEntries.some(e => e.email.toLowerCase() === newLoginEmail.toLowerCase())) {
+                          alert('An account with this email address already exists.')
+                          return
+                        }
+                        setLoginEntries?.(prev => [...prev, {
+                          name: newLoginName,
+                          email: newLoginEmail,
+                          password: newLoginPassword,
+                          role: newLoginRole as any
+                        }])
+                        setNewLoginName('')
+                        setNewLoginEmail('')
+                        setNewLoginPassword('')
+                        setNewLoginRole('Admin')
+                        setShowAddLogin(false)
+                        setToast({ visible: true, message: 'New login account created successfully.', type: 'success' })
+                      }}
+                    >
+                      Create Account
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
             <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
               <div className="chart-title" style={{ marginBottom: 12 }}>Activity Log</div>

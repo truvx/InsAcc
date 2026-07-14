@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
+import type { LoginEntry } from '../App'
+
 interface Props {
   onSuccess: () => void
   storedPassword?: string
   onBackToModule?: () => void
+  loginEntries?: LoginEntry[]
 }
 
 type LoginTab = 'email' | 'passcode'
@@ -91,7 +94,7 @@ function BriefcaseIcon() {
   )
 }
 
-export default function Login({ onSuccess, storedPassword = '1234', onBackToModule }: Props) {
+export default function Login({ onSuccess, storedPassword = '1234', onBackToModule, loginEntries = [] }: Props) {
   const [activeTab, setActiveTab] = useState<LoginTab>('email')
   const [emailValue, setEmailValue] = useState('')
   const [passwordValue, setPasswordValue] = useState('')
@@ -106,7 +109,17 @@ export default function Login({ onSuccess, storedPassword = '1234', onBackToModu
     e.preventDefault()
     if (!emailValue) { setError('Enter your email'); return }
     if (!passwordValue) { setError('Enter your password'); return }
-    if (passwordValue === storedPassword) {
+    
+    const normalizedEmail = emailValue.trim().toLowerCase()
+    
+    // Default admin fallback
+    const isDefaultAdmin = normalizedEmail === 'admin@insacc.com' && passwordValue === storedPassword
+
+    const match = loginEntries.find(
+      entry => entry.email.trim().toLowerCase() === normalizedEmail && entry.password === passwordValue
+    )
+    
+    if (match || isDefaultAdmin) {
       onSuccess()
     } else {
       setError('Invalid email or password')

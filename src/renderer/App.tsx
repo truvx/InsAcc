@@ -35,6 +35,13 @@ import { useLazyPersistedState, clearPersistedCache } from './utils/lazyPersiste
 import { MasterDataProvider } from './contexts/MasterDataContext'
 import SupabaseSyncManager from './components/SupabaseSyncManager'
 
+export interface LoginEntry {
+  email: string
+  password: string
+  name: string
+  role: 'Admin' | 'Accounts'
+}
+
 // One-time localStorage migrations (fast on warm boot — only checks migration keys)
 function runMigrations() {
   try {
@@ -704,6 +711,10 @@ export default function App() {
   const [supabaseUrl, setSupabaseUrl] = useLazyPersistedState<string>('insacc_supabase_url', '')
   const [supabaseKey, setSupabaseKey] = useLazyPersistedState<string>('insacc_supabase_key', '')
   const [supabaseEnabled, setSupabaseEnabled] = useLazyPersistedState<boolean>('insacc_supabase_enabled', false)
+
+  const [loginEntries, setLoginEntries] = useLazyPersistedState<LoginEntry[]>('insacc_login_entries', [
+    { email: 'admin@insacc.com', password: '1234', name: 'Sameer Ish...', role: 'Admin' }
+  ])
 
   const propEngine = useMemo(() => createAccountingEngine(), [])
   const invEngine = useMemo(() => createAccountingEngine(), [])
@@ -1987,6 +1998,8 @@ export default function App() {
           setSupabaseEnabled={setSupabaseEnabled}
           onClearTransactions={handleClearTransactions}
           onResetAllData={handleResetAllData}
+          loginEntries={loginEntries}
+          setLoginEntries={setLoginEntries}
           accounts={propChartAccounts}
           setAccounts={setPropChartAccounts}
           vouchers={propVouchers}
@@ -2049,6 +2062,8 @@ export default function App() {
         supabaseEnabled={supabaseEnabled}
         setSupabaseEnabled={setSupabaseEnabled}
         onClearTransactions={handleClearTransactions}
+        loginEntries={loginEntries}
+        setLoginEntries={setLoginEntries}
         accounts={accounts}
         setAccounts={setAccounts}
         vouchers={vouchers}
@@ -2111,12 +2126,18 @@ export default function App() {
     investmentAssets, setInvestmentAssets, propFiscalYears, setPropFiscalYears,
     invFiscalYears, setInvFiscalYears,
     supabaseUrl, setSupabaseUrl, supabaseKey, setSupabaseKey, supabaseEnabled, setSupabaseEnabled,
+    loginEntries, setLoginEntries,
   ])
 
   if (screen === 'login') {
     return (
       <Suspense fallback={<LoadingFallback />}>
-        <Login onSuccess={handleLoginSuccess} storedPassword={storedPassword} onBackToModule={selectedProfile ? handleBackToModule : undefined} />
+        <Login
+          onSuccess={handleLoginSuccess}
+          storedPassword={storedPassword}
+          onBackToModule={selectedProfile ? handleBackToModule : undefined}
+          loginEntries={loginEntries}
+        />
       </Suspense>
     )
   }

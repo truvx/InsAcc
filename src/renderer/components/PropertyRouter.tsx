@@ -1,5 +1,6 @@
 import React from 'react'
 import type { Account, Voucher, BankMapping, BankReconciliationRecord, FiscalYear } from '../accounting/types'
+import type { LoginEntry } from '../App'
 import type { PropAccount, PropTransaction, PropertyEntry, UnitEntry, TenantEntry, LeaseEntry, PdcCheque, MainCategory, PropProperty, IncomeCategory, Customer, SecurityDeposit, SecurityDepositGlMappings, PropertyTransactionCategory, PropertyExpense } from '../data/propertyTypes'
 import type { AuditEvent } from '../data/auditTypes'
 import type { AccountingEngine } from '../accounting/accountingEngine'
@@ -87,6 +88,9 @@ interface Props {
   setSupabaseKey?: React.Dispatch<React.SetStateAction<string>>
   supabaseEnabled?: boolean
   setSupabaseEnabled?: React.Dispatch<React.SetStateAction<boolean>>
+
+  loginEntries?: LoginEntry[]
+  setLoginEntries?: React.Dispatch<React.SetStateAction<LoginEntry[]>>
 
   onClearTransactions?: () => void
   onResetAllData?: () => void
@@ -423,6 +427,8 @@ export default function PropertyRouter(props: Props) {
         supabaseEnabled={props.supabaseEnabled} onSetSupabaseEnabled={props.setSupabaseEnabled}
         onClearTransactions={props.onClearTransactions}
         onResetAllData={props.onResetAllData}
+        loginEntries={props.loginEntries}
+        setLoginEntries={props.setLoginEntries}
       />
     default:
       return <PropertyDashboard
