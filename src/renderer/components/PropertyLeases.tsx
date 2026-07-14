@@ -432,7 +432,7 @@ export default function PropertyLeases({
 
 
   // Security Deposit payment capture
-  const [depositReceived, setDepositReceived] = useState(false)
+  const [depositReceived, setDepositReceived] = useState(true)
   const defaultBank = useMemo(() => getDefaultPropertyReceiptBankAccount(propAccounts), [propAccounts])
   const [depositBankId, setDepositBankId] = useState(defaultBank ? defaultBank.id : '')
   const [depositPaymentMode, setDepositPaymentMode] = useState<'Cash' | 'Security Cheque' | 'Bank Transfer'>('Bank Transfer')
@@ -1324,6 +1324,43 @@ export default function PropertyLeases({
                 <div className="form-row">
                   <Input label="Annual Rent" type="number" value={formAnnualRent} onChange={e => handleAnnualRentChange(e.target.value)} placeholder="0" />
                   <Input label="Security Deposit" type="number" value={formDeposit} onChange={e => setFormDeposit(e.target.value)} placeholder="0" />
+                </div>
+                {Number(formDeposit) > 0 && (
+                  <div className="form-row" style={{ background: 'var(--bg-secondary)', padding: 12, borderRadius: 8, border: '1px solid var(--border)', display: 'grid', gap: 12, gridTemplateColumns: '1fr 1fr', marginBottom: 12 }}>
+                    <Select
+                      label="Deposit Payment Mode *"
+                      value={depositPaymentMode}
+                      onChange={e => setDepositPaymentMode(e.target.value as any)}
+                      options={[
+                        { value: 'Bank Transfer', label: 'Bank Transfer' },
+                        { value: 'Cash', label: 'Cash' },
+                        { value: 'Security Cheque', label: 'Security Cheque' }
+                      ]}
+                    />
+                    <Input
+                      label="Deposit Date Taken *"
+                      type="date"
+                      value={depositDateReceived}
+                      onChange={e => setDepositDateReceived(e.target.value)}
+                      required
+                    />
+                    {depositPaymentMode !== 'Security Cheque' && (
+                      <div style={{ gridColumn: 'span 2' }}>
+                        <Select
+                          label="Receiving Trust Account *"
+                          value={depositBankId}
+                          onChange={e => setDepositBankId(e.target.value)}
+                          options={[{ value: '', label: 'Select Trust Bank' }, ...propAccounts.map(ba => ({
+                            value: ba.id,
+                            label: ba.institution
+                          }))]}
+                          required
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className="form-row">
                   <Input label="Payment Due Day" type="number" value={formDueDay} onChange={e => setFormDueDay(e.target.value)} placeholder="1" />
                 </div>
                 <div className="form-row">
@@ -1348,76 +1385,20 @@ export default function PropertyLeases({
                 <Input label="Lease Notes" value={formNotes} onChange={e => setFormNotes(e.target.value)} placeholder="Additional notes or references" />
               </div>
 
-              {/* PDC and Security Deposit collection wizard inside creation */}
+              {/* PDC scheduler toggle inside creation */}
               {!editingId && (
-                <>
-                  {/* PDC scheduler toggle */}
-                  <div style={{ background: 'var(--bg-secondary)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--primary)' }}>Post-Dated Cheques Schedule</span>
-                        <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Automatically generate schedule based on contract details</div>
-                      </div>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
-                        <input type="checkbox" checked={generatePdcSchedule} onChange={e => setGeneratePdcSchedule(e.target.checked)} />
-                        Generate PDC slots
-                      </label>
+                <div style={{ background: 'var(--bg-secondary)', padding: 12, borderRadius: 8, border: '1px solid var(--border)', marginTop: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--primary)' }}>Post-Dated Cheques Schedule</span>
+                      <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Automatically generate schedule based on contract details</div>
                     </div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
+                      <input type="checkbox" checked={generatePdcSchedule} onChange={e => setGeneratePdcSchedule(e.target.checked)} />
+                      Generate PDC slots
+                    </label>
                   </div>
-
-                  {/* Security Deposit receipt capture */}
-                  {Number(formDeposit) > 0 && (
-                    <div style={{ background: 'var(--bg-secondary)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                        <div>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--primary)' }}>Deposit Processing</span>
-                          <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Process initial deposit receipt voucher inline</div>
-                        </div>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
-                          <input type="checkbox" checked={depositReceived} onChange={e => setDepositReceived(e.target.checked)} />
-                          Mark as Received
-                        </label>
-                      </div>
-                      {depositReceived && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
-                          <div className="form-row">
-                            <Input
-                              label="Date Taken *"
-                              type="date"
-                              value={depositDateReceived}
-                              onChange={e => setDepositDateReceived(e.target.value)}
-                              required
-                            />
-                            <Select
-                              label="Payment Mode *"
-                              value={depositPaymentMode}
-                              onChange={e => setDepositPaymentMode(e.target.value as any)}
-                              options={[
-                                { value: 'Bank Transfer', label: 'Bank Transfer' },
-                                { value: 'Cash', label: 'Cash' },
-                                { value: 'Security Cheque', label: 'Security Cheque' }
-                              ]}
-                            />
-                          </div>
-                          {depositPaymentMode !== 'Security Cheque' && (
-                            <div className="form-row">
-                              <Select
-                                label="Receiving Trust Account *"
-                                value={depositBankId}
-                                onChange={e => setDepositBankId(e.target.value)}
-                                options={[{ value: '', label: 'Select Trust Bank' }, ...propAccounts.map(ba => ({
-                                  value: ba.id,
-                                  label: ba.institution
-                                }))]}
-                                required
-                              />
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
+                </div>
               )}
             </>
           )}
