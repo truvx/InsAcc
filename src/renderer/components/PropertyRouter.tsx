@@ -128,6 +128,12 @@ export default function PropertyRouter(props: Props) {
   // Helper to extract floor from unit name
   const getFloorFromUnitName = (name: string): string => {
     const lowercase = name.toLowerCase()
+    if (lowercase.includes('rent with parking') || lowercase.includes('rent with partking')) {
+      return 'Rent with Parking'
+    }
+    if (lowercase.includes('parking')) {
+      return 'Parking'
+    }
     const unitMatch = lowercase.match(/unit\s+(\d+)/)
     if (unitMatch) {
       const num = unitMatch[1]

@@ -149,7 +149,13 @@ function LeaseFilters({
         label="Floor"
         value={selectedFloor}
         onChange={e => { setSelectedFloor(e.target.value); setSelectedUnit('') }}
-        options={[{ value: '', label: 'All Floors' }, ...uniqueFloors.map(f => ({ value: f, label: `Floor ${f}` }))]}
+        options={[
+          { value: '', label: 'All Floors' },
+          ...uniqueFloors.map(f => ({
+            value: f,
+            label: f.toLowerCase().includes('parking') ? f : `Floor ${f}`
+          }))
+        ]}
       />
       <Select
         label="Unit"
@@ -1259,7 +1265,21 @@ export default function PropertyLeases({
                     label="Floor"
                     value={formFloor}
                     onChange={e => { setFormFloor(e.target.value); setFormUnitId('') }}
-                    options={[{ value: '', label: 'Select Floor' }, ...formFloors.map(f => ({ value: f, label: `Floor ${f}` }))]}
+                    options={(() => {
+                      const base = [{ value: '', label: 'Select Floor' }]
+                      const floorOptions = formFloors.map(f => ({
+                        value: f,
+                        label: f.toLowerCase().includes('parking') ? f : `Floor ${f}`
+                      }))
+                      const extra = []
+                      if (!formFloors.some(f => f.toLowerCase() === 'parking')) {
+                        extra.push({ value: 'Parking', label: 'Parking' })
+                      }
+                      if (!formFloors.some(f => f.toLowerCase() === 'rent with parking')) {
+                        extra.push({ value: 'Rent with Parking', label: 'Rent with Parking' })
+                      }
+                      return [...base, ...floorOptions, ...extra]
+                    })()}
                     disabled={!formPropertyId}
                   />
                   <Select
