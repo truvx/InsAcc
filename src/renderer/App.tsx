@@ -703,6 +703,58 @@ export default function App() {
   const [masterCustomers, setMasterCustomers] = useLazyPersistedState<MasterCustomer[]>('insacc_master_customers', [])
   const [masterAssetTypes, setMasterAssetTypes] = useLazyPersistedState<AssetType[]>('insacc_master_asset_types', [])
   const [masterFixedAssets, setMasterFixedAssets] = useLazyPersistedState<FixedAsset[]>('insacc_master_fixed_assets', [])
+
+  // Automatically repair due dates of existing pending PDCs
+  React.useEffect(() => {
+    if (pdcCheques.length === 0 || propLeases.length === 0) return
+    
+    let updated = false
+    const newCheques = pdcCheques.map(cheque => {
+      if (cheque.status !== 'Pending') return cheque
+      
+      const lease = propLeases.find(l => l.id === cheque.leaseId)
+      if (!lease) return cheque
+      
+      const s = new Date(lease.startDate + 'T00:00:00')
+      const e = new Date(lease.endDate + 'T00:00:00')
+      if (e <= s) return cheque
+      const rawMonths = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth())
+      const leaseMonths = e.getDate() >= s.getDate() ? rawMonths + 1 : rawMonths
+      const count = lease.pdcCount
+      if (!count) return cheque
+      
+      const firstCheque = pdcCheques.find(c => c.leaseId === lease.id && c.slotIndex === 0)
+      if (!firstCheque) return cheque
+      
+      const fcDate = new Date(firstCheque.chequeDate + 'T00:00:00')
+      const startMonth = fcDate.getMonth() + 1
+      const startYear = fcDate.getFullYear()
+      const pdcStartDay = fcDate.getDate()
+      
+      const nextIdx = cheque.slotIndex + 1
+      const nextMonthOffset = Math.floor(nextIdx * leaseMonths / count)
+      const nextDueMonth = ((startMonth - 1 + nextMonthOffset) % 12) + 1
+      const nextDueYear = startYear + Math.floor((startMonth - 1 + nextMonthOffset) / 12)
+      
+      const nextChequeDateObj = new Date(nextDueYear, nextDueMonth - 1, pdcStartDay)
+      const expectedDueDateObj = new Date(nextChequeDateObj.getFullYear(), nextChequeDateObj.getMonth(), nextChequeDateObj.getDate() - 1)
+      
+      const y = expectedDueDateObj.getFullYear()
+      const m = String(expectedDueDateObj.getMonth() + 1).padStart(2, '0')
+      const d = String(expectedDueDateObj.getDate()).padStart(2, '0')
+      const expectedDueDateStr = `${y}-${m}-${d}`
+      
+      if (cheque.dueDate !== expectedDueDateStr) {
+        updated = true
+        return { ...cheque, dueDate: expectedDueDateStr }
+      }
+      return cheque
+    })
+    
+    if (updated) {
+      setPdcCheques(newCheques)
+    }
+  }, [propLeases, pdcCheques, setPdcCheques])
   const [bankReconciliations, setBankReconciliations] = useLazyPersistedState<BankReconciliationRecord[]>('insacc_bank_reconciliations', [])
   const [propBankReconciliations, setPropBankReconciliations] = useLazyPersistedState<BankReconciliationRecord[]>('insacc_prop_bank_reconciliations', [])
   const [propFiscalYears, setPropFiscalYears] = useLazyPersistedState<FiscalYear[]>('insacc_prop_fiscal_years', [])
