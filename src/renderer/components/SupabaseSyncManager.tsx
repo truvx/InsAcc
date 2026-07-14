@@ -15,9 +15,14 @@ export default function SupabaseSyncManager() {
     }
 
     const initSync = async () => {
-      const enabled = localStorage.getItem('insacc_supabase_enabled') === 'true'
-      const url = localStorage.getItem('insacc_supabase_url') || ''
-      const anonKey = localStorage.getItem('insacc_supabase_key') || ''
+      const enabledVal = localStorage.getItem('insacc_supabase_enabled')
+      const enabled = enabledVal ? JSON.parse(enabledVal) === true : false
+
+      const rawUrl = localStorage.getItem('insacc_supabase_url')
+      const url = rawUrl ? JSON.parse(rawUrl) : ''
+
+      const rawKey = localStorage.getItem('insacc_supabase_key')
+      const anonKey = rawKey ? JSON.parse(rawKey) : ''
 
       if (!enabled || !url || !anonKey) {
         (window as any).supabaseSyncInitialized = true

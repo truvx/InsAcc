@@ -54,9 +54,15 @@ export function useLazyPersistedState<T>(key: string, defaultValue: T): [T, Reac
 
       // Sync to Supabase if enabled and initialized
       if (key !== 'insacc_supabase_url' && key !== 'insacc_supabase_key' && key !== 'insacc_supabase_enabled') {
-        const enabled = localStorage.getItem('insacc_supabase_enabled') === 'true'
-        const url = localStorage.getItem('insacc_supabase_url') || ''
-        const anonKey = localStorage.getItem('insacc_supabase_key') || ''
+        const enabledVal = localStorage.getItem('insacc_supabase_enabled')
+        const enabled = enabledVal ? JSON.parse(enabledVal) === true : false
+        
+        const rawUrl = localStorage.getItem('insacc_supabase_url')
+        const url = rawUrl ? JSON.parse(rawUrl) : ''
+        
+        const rawKey = localStorage.getItem('insacc_supabase_key')
+        const anonKey = rawKey ? JSON.parse(rawKey) : ''
+        
         if (enabled && url && anonKey && (window as any).supabaseSyncInitialized) {
           import('../services/supabaseSyncService').then(({ getSupabaseClient, pushState }) => {
             const client = getSupabaseClient(url, anonKey)
