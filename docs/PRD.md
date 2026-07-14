@@ -105,8 +105,8 @@ InsAcc replaces spreadsheets with a structured, persistent desktop application t
 **Purpose:** Record and manage investment holdings.
 
 **Implemented features:**
-- Table listing: ID, Date, Asset Name, Type, Purchase Value, Quantity, Unit Price, Broker
-- Add investment form with fields: type (12 asset types), asset name, purchase value, quantity, unit price, broker, date
+- Table listing: ID, Date, Asset Name, Type, Purchase Value, Quantity, Unit Price, Buyer
+- Add investment form with fields: type (12 asset types), asset name, purchase value, quantity, unit price, buyer, date
 - Edit existing investments (gold accent edit button)
 - Delete investments (red trash button with confirmation)
 - Auto-generated investment IDs (prefix + serial, e.g., GLD-001)
@@ -317,7 +317,7 @@ Investment
   ├── purchaseValue: number
   ├── quantity: number
   ├── unitPrice: number
-  └── broker: string
+  └── buyer: string
 
 Transaction
   ├── id: string

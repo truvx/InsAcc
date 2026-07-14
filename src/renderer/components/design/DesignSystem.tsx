@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
@@ -69,21 +70,232 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   }
 )
 
-interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
+interface SelectProps {
   label?: string
   error?: string
   options: { value: string; label: string }[]
+  value?: string
+  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void
+  disabled?: boolean
+  className?: string
+  name?: string
+  placeholder?: string
+  style?: React.CSSProperties
+  required?: boolean
+  [key: string]: any
 }
 
-export function Select({ label, error, options, className = '', ...props }: SelectProps) {
+export function Select({
+  label,
+  error,
+  options,
+  value = '',
+  onChange,
+  disabled,
+  className = '',
+  name,
+  placeholder,
+  style,
+  ...props
+}: SelectProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [highlightedIndex, setHighlightedIndex] = useState(-1)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLDivElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const [dropdownCoords, setDropdownCoords] = useState({ top: 0, left: 0, width: 0 })
+
+  // Find active option label
+  const selectedOption = options.find(o => String(o.value) === String(value))
+  const displayLabel = selectedOption ? selectedOption.label : (placeholder || 'Select Option')
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const isInsideTrigger = containerRef.current && containerRef.current.contains(event.target as Node)
+      const isInsideDropdown = dropdownRef.current && dropdownRef.current.contains(event.target as Node)
+      if (!isInsideTrigger && !isInsideDropdown) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Update overlay position dynamically
+  const updateCoords = () => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      setDropdownCoords({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      })
+    }
+  }
+
+  useEffect(() => {
+    if (isOpen) {
+      updateCoords()
+      window.addEventListener('resize', updateCoords)
+      window.addEventListener('scroll', updateCoords, { capture: true })
+    }
+    return () => {
+      window.removeEventListener('resize', updateCoords)
+      window.removeEventListener('scroll', updateCoords, { capture: true })
+    }
+  }, [isOpen])
+
+  // Reset highlight index when opening
+  useEffect(() => {
+    if (isOpen) {
+      const idx = options.findIndex(o => String(o.value) === String(value))
+      setHighlightedIndex(idx >= 0 ? idx : 0)
+    }
+  }, [isOpen, value, options])
+
+  const handleSelect = (val: string) => {
+    if (onChange) {
+      onChange({
+        target: { value: val, name: name || '' },
+        currentTarget: { value: val, name: name || '' }
+      } as any)
+    }
+    setIsOpen(false)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (disabled) return
+
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      if (!isOpen) {
+        setIsOpen(true)
+      } else if (highlightedIndex >= 0 && highlightedIndex < options.length) {
+        handleSelect(options[highlightedIndex].value)
+      }
+    } else if (e.key === 'Escape') {
+      setIsOpen(false)
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      if (!isOpen) {
+        setIsOpen(true)
+      } else {
+        setHighlightedIndex(prev => (prev + 1) % options.length)
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (!isOpen) {
+        setIsOpen(true)
+      } else {
+        setHighlightedIndex(prev => (prev - 1 + options.length) % options.length)
+      }
+    }
+  }
+
   return (
-    <div className="form-group">
+    <div
+      className={`form-group custom-select-container ${disabled ? 'disabled' : ''} ${className}`}
+      ref={containerRef}
+      style={{ position: 'relative', ...style }}
+    >
       {label && <label className="form-label">{label}</label>}
-      <select className={`input${error ? ' input-error' : ''}${className ? ' ' + className : ''}`} {...props}>
-        {options.map(o => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
+      
+      <div
+        ref={triggerRef}
+        tabIndex={disabled ? -1 : 0}
+        className={`input custom-select-trigger ${error ? 'input-error' : ''} ${isOpen ? 'active' : ''}`}
+        onClick={() => { if (!disabled) setIsOpen(!isOpen) }}
+        onKeyDown={handleKeyDown}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          userSelect: 'none',
+          paddingRight: '12px'
+        }}
+      >
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {displayLabel}
+        </span>
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="var(--text-secondary)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform var(--transition-fast)',
+            flexShrink: 0
+          }}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </div>
+
+      {isOpen && createPortal(
+        <div
+          ref={dropdownRef}
+          className="custom-select-dropdown"
+          style={{
+            position: 'absolute',
+            top: `${dropdownCoords.top}px`,
+            left: `${dropdownCoords.left}px`,
+            width: `${dropdownCoords.width}px`,
+            maxHeight: '220px',
+            overflowY: 'auto',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: 'var(--shadow-lg)',
+            zIndex: 99999
+          }}
+        >
+          {options.map((option, index) => {
+            const isSelected = String(option.value) === String(value)
+            const isHighlighted = index === highlightedIndex
+            return (
+              <div
+                key={option.value}
+                className={`custom-select-option ${isSelected ? 'selected' : ''} ${isHighlighted ? 'highlighted' : ''}`}
+                onMouseDown={(e) => { e.preventDefault(); handleSelect(option.value) }}
+                onClick={() => handleSelect(option.value)}
+                onMouseEnter={() => setHighlightedIndex(index)}
+                style={{
+                  padding: '10px var(--space-3)',
+                  fontSize: 'var(--font-size-sm)',
+                  cursor: 'pointer',
+                  background: isSelected
+                    ? 'var(--primary-light)'
+                    : isHighlighted
+                    ? 'var(--hover-bg)'
+                    : 'transparent',
+                  color: isSelected ? 'var(--primary-text)' : 'var(--text-primary)',
+                  fontWeight: isSelected ? 600 : 400,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  transition: 'background var(--transition-fast)',
+                }}
+              >
+                <span>{option.label}</span>
+                {isSelected && (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </div>
+            )
+          })}
+        </div>,
+        document.body
+      )}
+
       {error && <span className="form-error">{error}</span>}
     </div>
   )
@@ -128,7 +340,7 @@ export function Card({ title, children, className = '', actions }: CardProps) {
 
 interface KpiCardProps {
   label: string
-  value: string
+  value: React.ReactNode
   change?: { value: string; direction: 'up' | 'down' | 'neutral' }
   delay?: number
   icon?: React.ReactNode

@@ -1,16 +1,20 @@
 import React, { useState, useMemo } from 'react'
 import type { Account, Voucher, PostingResult } from '../accounting/types'
-import { Button, Input, Select, Badge, EmptyState, SearchIcon, CloseIcon, KpiCard } from './design/DesignSystem'
+import { Button, Input, Select, EmptyState, SearchIcon, CloseIcon, KpiCard } from './design/DesignSystem'
 import { DataTable, type Column } from './design/Table'
 import EntityForm from './design/EntityForm'
 import Toast from './Toast'
-import { formatDate } from '../utils'
-import { createVoucher, getNextSequence } from '../accounting/voucherService'
-import { validateNewVoucher } from '../accounting/postingValidator'
+import { formatDate, formatModifiedDateTime } from '../utils'
 import type { AccountingEngine } from '../accounting/accountingEngine'
-import { useVoucherLifecycle } from '../hooks/useVoucherLifecycle'
+import { useVoucherLifecycle, autoPostVoucher } from '../hooks/useVoucherLifecycle'
+import { invalidateBalanceCache } from '../accounting/ledgerService'
 import VoucherStatusBadge from './design/VoucherStatusBadge'
 import VoucherDetailsModal from './design/VoucherDetailsModal'
+import ActionsMenu from './design/ActionsMenu'
+import AuditTrailModal from './design/AuditTrailModal'
+import { printVoucher } from '../utils/printVoucherHelper'
+import { exportVoucherToPDF } from '../utils/pdfVoucherHelper'
+import type { AuditEvent } from '../data/auditTypes'
 
 interface Props {
   currency?: string
@@ -20,11 +24,15 @@ interface Props {
   vouchers: Voucher[]
   setVouchers: React.Dispatch<React.SetStateAction<Voucher[]>>
   accountingEngine: AccountingEngine
+  onAuditEvent?: (event: AuditEvent) => void
+  auditEvents?: AuditEvent[]
 }
 
 export default function PropertyJournalVoucher({
   currency = 'AED', dateFormat = 'DD/MM/YYYY',
   accounts, vouchers, setVouchers, accountingEngine,
+  onAuditEvent,
+  auditEvents = [],
 }: Props) {
   const {
     detailVoucher, setDetailVoucher,
@@ -41,8 +49,12 @@ export default function PropertyJournalVoucher({
   const [formAmount, setFormAmount] = useState('')
   const [formReference, setFormReference] = useState('')
 
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [showAuditModal, setShowAuditModal] = useState(false)
+  const [auditVoucher, setAuditVoucher] = useState<Voucher | null>(null)
+
   const journalVouchers = useMemo(() =>
-    vouchers.filter(v => v.type === 'Journal').sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    vouchers.filter(v => v.type === 'Journal' && !v.isDeleted).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [vouchers]
   )
 
@@ -76,6 +88,60 @@ export default function PropertyJournalVoucher({
     setFormCreditAccount('')
     setFormAmount('')
     setFormReference('')
+    setEditingId(null)
+  }
+
+  const openEditForm = (v: Voucher) => {
+    const debitLine = v.lines.find(l => l.type === 'Debit')
+    const creditLine = v.lines.find(l => l.type === 'Credit')
+
+    setFormDate(v.date)
+    setFormAmount(String(debitLine?.amount || 0))
+    setFormDescription(v.description)
+    setFormDebitAccount(debitLine?.accountId || '')
+    setFormCreditAccount(creditLine?.accountId || '')
+    setFormReference(v.reference)
+
+    setEditingId(v.id)
+    setShowForm(true)
+  }
+
+  const handleDuplicate = (v: Voucher) => {
+    openEditForm(v)
+    setEditingId(null)
+    setFormDate(new Date().toISOString().split('T')[0])
+    setFormDescription(`Copy of ${v.description}`)
+  }
+
+  const handleDelete = (v: Voucher) => {
+    if (v.isReconciled) {
+      showToast('Cannot delete reconciled vouchers', 'error')
+      return
+    }
+    if (v.isLocked) {
+      showToast('Cannot delete locked vouchers', 'error')
+      return
+    }
+    if (window.confirm(`Are you sure you want to delete journal voucher ${v.number}?`)) {
+      const updatedVoucher = { ...v, isDeleted: true }
+      setVouchers(prev => prev.map(item => item.id === v.id ? updatedVoucher : item))
+      invalidateBalanceCache()
+      showToast(`Voucher ${v.number} deleted successfully`, 'success')
+
+      onAuditEvent?.({
+        id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: new Date().toISOString(),
+        module: 'Accounting' as const,
+        action: 'Delete' as const,
+        entityName: 'Voucher',
+        entityId: v.id,
+        description: `Soft deleted journal voucher ${v.number}`,
+        user: 'user',
+        icon: 'trash',
+        severity: 'Warning' as const,
+        before: v as any,
+      })
+    }
   }
 
   const handleCreateVoucher = () => {
@@ -97,34 +163,98 @@ export default function PropertyJournalVoucher({
       return
     }
 
-    const result: PostingResult = accountingEngine.processAccountingEvent(
-      'OPENING_BALANCE',
-      {
-        amount: amt,
+    if (editingId) {
+      const oldVoucher = vouchers.find(v => v.id === editingId)
+      if (!oldVoucher) return
+
+      const updatedVoucher: Voucher = {
+        ...oldVoucher,
         date: formDate,
         description: formDescription,
-        currency,
-        exchangeRate: 1,
-        baseCurrency: 'AED',
-        debitAccount: formDebitAccount,
-        creditAccount: formCreditAccount,
-        referenceType: 'Property',
-        referenceId: formReference || undefined,
-        createdBy: 'user',
-      },
-      accounts,
-      vouchers,
-    )
+        reference: formReference || '',
+        modifiedAt: new Date().toISOString(),
+        modifiedBy: 'user',
+        lines: oldVoucher.lines.map(line => {
+          if (line.type === 'Debit') {
+            return {
+              ...line,
+              accountId: formDebitAccount,
+              amount: amt,
+              baseAmount: amt,
+              narration: formDescription,
+            }
+          } else {
+            return {
+              ...line,
+              accountId: formCreditAccount,
+              amount: amt,
+              baseAmount: amt,
+              narration: formDescription,
+            }
+          }
+        })
+      }
 
-    if (!result.success || !result.voucher) {
-      showToast(result.errors.map(e => e.message).join(', '), 'error')
-      return
+      setVouchers(prev => prev.map(v => v.id === editingId ? updatedVoucher : v))
+      invalidateBalanceCache()
+
+      // Record Audit Event
+      onAuditEvent?.({
+        id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: new Date().toISOString(),
+        module: 'Accounting' as const,
+        action: 'Update' as const,
+        entityName: 'Voucher',
+        entityId: oldVoucher.id,
+        description: `Edited journal voucher ${oldVoucher.number}`,
+        user: 'user',
+        icon: 'edit',
+        severity: 'Info' as const,
+        before: oldVoucher as any,
+        after: updatedVoucher as any,
+      })
+
+      setShowForm(false)
+      showToast(`Journal voucher ${oldVoucher.number} updated`, 'success')
+      resetForm()
+    } else {
+      const result: PostingResult = accountingEngine.processAccountingEvent(
+        'OPENING_BALANCE',
+        {
+          amount: amt,
+          date: formDate,
+          description: formDescription,
+          currency,
+          exchangeRate: 1,
+          baseCurrency: 'AED',
+          debitAccount: formDebitAccount,
+          creditAccount: formCreditAccount,
+          referenceType: 'Property',
+          referenceId: formReference || undefined,
+          createdBy: 'user',
+        },
+        accounts,
+        vouchers,
+      )
+
+      if (!result.success || !result.voucher) {
+        showToast(result.errors.map(e => e.message).join(', '), 'error')
+        return
+      }
+
+      const postResult = autoPostVoucher(accountingEngine, result.voucher, accounts)
+      if (!postResult.success || !postResult.voucher) {
+        showToast(postResult.errors.map(e => e.message).join(', '), 'error')
+        return
+      }
+
+      const newVch: Voucher = { ...postResult.voucher }
+
+      setVouchers(prev => [newVch, ...prev])
+      setShowForm(false)
+      showToast(`Journal voucher ${newVch.number} created and posted`, 'success')
+      resetForm()
     }
-
-    setVouchers(prev => [result.voucher!, ...prev])
-    setShowForm(false)
-    showToast(`Draft journal voucher ${result.voucher.number} created`, 'success')
-    resetForm()
   }
 
   const columns: Column<Voucher>[] = useMemo(() => [
@@ -142,7 +272,17 @@ export default function PropertyJournalVoucher({
       key: 'date',
       header: 'Date',
       sortable: true,
-      render: v => <span className="text-secondary text-xs">{formatDate(v.date, dateFormat)}</span>,
+      render: v => (
+        <div>
+          <span className="text-secondary text-xs">{formatDate(v.date, dateFormat)}</span>
+          {v.modifiedAt && (
+            <div style={{ fontSize: '10px', color: '#B91C1C', marginTop: '2px', fontWeight: 500 }} title={`Last modified on ${v.modifiedAt}`}>
+              Edited<br/>
+              <span style={{ fontSize: '9px', color: '#6B7280', fontWeight: 'normal' }}>{formatModifiedDateTime(v.modifiedAt)}</span>
+            </div>
+          )}
+        </div>
+      ),
     },
     {
       key: 'description',
@@ -162,12 +302,27 @@ export default function PropertyJournalVoucher({
       render: v => <VoucherStatusBadge status={v.status} />,
     },
     {
-      key: 'createdAt',
-      header: 'Created',
-      sortable: true,
-      render: v => <span className="text-secondary text-xs">{formatDate(v.createdAt.split('T')[0], dateFormat)}</span>,
+      key: 'actions',
+      header: 'Actions',
+      render: v => (
+        <div className="table-actions" style={{ display: 'flex', justifyContent: 'center' }}>
+          <ActionsMenu
+            onView={() => setDetailVoucher(v)}
+            onEdit={() => openEditForm(v)}
+            onDuplicate={() => handleDuplicate(v)}
+            onPrint={() => printVoucher(v, accounts, currency)}
+            onExportPDF={() => exportVoucherToPDF(v, accounts, currency)}
+            onDelete={() => handleDelete(v)}
+            onAuditTrail={() => {
+              setAuditVoucher(v)
+              setShowAuditModal(true)
+            }}
+            canDelete={!v.isReconciled && !v.isLocked}
+          />
+        </div>
+      ),
     },
-  ], [dateFormat])
+  ], [dateFormat, accounts, currency])
 
   return (
     <>
@@ -175,8 +330,8 @@ export default function PropertyJournalVoucher({
 
       <EntityForm
         open={showForm}
-        title="New Journal Voucher"
-        submitLabel="Create Draft"
+        title={editingId ? "Edit Journal Voucher" : "New Journal Voucher"}
+        submitLabel={editingId ? "Save Changes" : "Create"}
         onCancel={() => { setShowForm(false); resetForm() }}
         onSubmit={handleCreateVoucher}
       >
@@ -209,6 +364,13 @@ export default function PropertyJournalVoucher({
         onReverse={handleReverse}
       />
 
+      <AuditTrailModal
+        open={showAuditModal}
+        voucher={auditVoucher}
+        auditEvents={auditEvents}
+        onClose={() => setShowAuditModal(false)}
+      />
+
       <div className="page-header">
         <div className="page-header-left">
           <div>
@@ -229,7 +391,7 @@ export default function PropertyJournalVoucher({
 
         <div className="data-table-toolbar">
           <div className="data-table-filters" />
-          <div className="data-table-search" style={{ minWidth: 260 }}>
+          <div className="data-table-search">
             <SearchIcon />
             <input
               type="text"

@@ -4,6 +4,8 @@ import { Badge, Select } from './design/DesignSystem'
 import { DataTable, type Column } from './design/Table'
 import { formatDate, t } from '../utils'
 
+import { VALID_ASSET_TYPES } from '../data/purchaseLedger'
+
 interface Props {
   profile: Profile
   currency?: string
@@ -20,21 +22,19 @@ export interface Investment {
   purchaseValue: number
   quantity: number
   unitPrice: number
-  broker: string
+  buyer: string
 }
 
 export function generateId(type: string, index: number): string {
   const shortForms: Record<string, string> = {
     'Gold': 'GLD', 'Silver': 'SLV', 'Bonds': 'BND', 'Sukuk': 'SUK',
-    'Mutual Funds': 'MUF', 'ETF': 'ETF', 'Real Estate': 'RST',
-    'Shares': 'SHR', 'Private Investment': 'PRI', 'Business Investment': 'BSN',
-    'Fixed Deposit': 'FXD', 'Others': 'OTH',
+    'Mutual Funds': 'MUF', 'ETF': 'ETF',
+    'Shares': 'SHR', 'Stocks': 'STK', 'Private Investment': 'PRI',
+    'Fixed Deposit': 'FXD', 'Crypto': 'CRP', 'Commodities': 'CMD', 'Others': 'OTH',
   }
   const prefix = shortForms[type] || type.substring(0, 3).toUpperCase()
   return `${prefix}-${String(index).padStart(3, '0')}`
 }
-
-const ASSET_TYPES: string[] = []
 
 export default function Investments({ currency = 'AED', dateFormat = 'DD/MM/YYYY', language = 'English', investments }: Props) {
   const [searchQuery, setSearchQuery] = React.useState('')
@@ -50,7 +50,7 @@ export default function Investments({ currency = 'AED', dateFormat = 'DD/MM/YYYY
         inv.id.toLowerCase().includes(q) ||
         inv.assetName.toLowerCase().includes(q) ||
         inv.type.toLowerCase().includes(q) ||
-        inv.broker.toLowerCase().includes(q)
+        inv.buyer.toLowerCase().includes(q)
       )
     }
     if (typeFilter) {
@@ -66,9 +66,14 @@ export default function Investments({ currency = 'AED', dateFormat = 'DD/MM/YYYY
     return { totalValue, totalQty, uniqueTypes: types.size, count: investments.length }
   }, [investments])
 
+  const uniqueTypes = useMemo(() => {
+    const set = new Set(investments.map(i => i.type))
+    return Array.from(set).sort()
+  }, [investments])
+
   const typeOptions = [
     { value: '', label: 'All Types' },
-    ...ASSET_TYPES.map(t => ({ value: t, label: t })),
+    ...uniqueTypes.map(t => ({ value: t, label: t })),
   ]
 
   const columns: Column<Investment>[] = [
@@ -101,8 +106,8 @@ export default function Investments({ currency = 'AED', dateFormat = 'DD/MM/YYYY
       render: inv => <span className="text-secondary">{fmt(inv.unitPrice)}</span>,
     },
     {
-      key: 'broker', header: 'Broker', sortable: true, width: '130px',
-      render: inv => <span className="text-secondary">{inv.broker}</span>,
+      key: 'buyer', header: 'Buyer', sortable: true, width: '130px',
+      render: inv => <span className="text-secondary">{inv.buyer}</span>,
     },
   ]
 
@@ -132,7 +137,7 @@ export default function Investments({ currency = 'AED', dateFormat = 'DD/MM/YYYY
             <div className="invest-summary-card">
               <span className="invest-summary-label">Asset Types</span>
               <span className="invest-summary-value">{summary.uniqueTypes}</span>
-              <span className="invest-summary-sub">of {ASSET_TYPES.length} available</span>
+              <span className="invest-summary-sub">of {VALID_ASSET_TYPES.length} available</span>
             </div>
             <div className="invest-summary-card">
               <span className="invest-summary-label">Avg Investment</span>
@@ -149,7 +154,7 @@ export default function Investments({ currency = 'AED', dateFormat = 'DD/MM/YYYY
           searchable
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          searchPlaceholder="Search by ID, name, type or broker..."
+          searchPlaceholder="Search by ID, name, type or buyer..."
           filterBar={
             <div className="invest-filter-bar">
               <Select

@@ -2,8 +2,38 @@ import { test, expect } from '@playwright/test'
 
 const BASE = 'http://localhost:5174'
 const MODAL_INPUT = (label: string) => `.modal .form-group:has(.form-label:text("${label}")) input`
-const MODAL_SELECT = `.modal .form-group:has(.form-label:text("Asset Type")) select`
 const MODAL_BTN = (text: string) => `.modal .modal-footer button:has-text("${text}")`
+
+async function selectCustomOption(page: any, label: string, optionTextOrIndex: string | number) {
+  const container = page.locator(`.modal .form-group:has-text("${label}")`).first()
+  const trigger = container.locator('.custom-select-trigger')
+  await trigger.click()
+  await page.waitForTimeout(500)
+  
+  const dropdown = page.locator('.custom-select-dropdown').last()
+  if (typeof optionTextOrIndex === 'number') {
+    const options = await dropdown.locator('.custom-select-option').all()
+    if (options.length > optionTextOrIndex) {
+      await options[optionTextOrIndex].click()
+    } else {
+      throw new Error(`Option index ${optionTextOrIndex} not found in dropdown for label ${label}`)
+    }
+  } else {
+    const option = dropdown.locator(`.custom-select-option:has-text("${optionTextOrIndex}")`).first()
+    await option.click()
+  }
+  await page.waitForTimeout(500)
+}
+
+async function selectFilterOption(page: any, triggerText: string, optionText: string) {
+  const trigger = page.locator(`.custom-select-trigger:has-text("${triggerText}")`).first()
+  await trigger.click()
+  await page.waitForTimeout(500)
+  const dropdown = page.locator('.custom-select-dropdown').last()
+  const option = dropdown.locator(`.custom-select-option:has-text("${optionText}")`).first()
+  await option.click()
+  await page.waitForTimeout(500)
+}
 
 test.describe('Purchase Ledger UI', () => {
   let page: any
@@ -12,8 +42,38 @@ test.describe('Purchase Ledger UI', () => {
     page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
     await page.addInitScript(() => {
       localStorage.setItem('insacc_clear_version', '9')
+      localStorage.setItem('insacc_all_datasets_cleared_v3', 'true')
+      localStorage.setItem('insacc_purchases_ledger', JSON.stringify([
+        {
+          id: 'PL-1',
+          lotId: 'LOT-1',
+          assetType: 'Gold',
+          assetName: '24K Gold Bar 1kg',
+          purchaseDate: '2026-06-01',
+          quantity: 1,
+          unitPrice: 280000,
+          totalValue: 280000,
+          broker: 'Dubai Gold Exchange',
+          notes: '',
+          attachments: [],
+          tags: [],
+          status: 'active',
+          accountCode: '1000',
+          accountId: '1',
+          voucherId: '1',
+          voucherNumber: 'V-1',
+          fundingBankAccountId: 'ba-eib-invest',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          createdBy: 'system',
+          updatedBy: 'system'
+        }
+      ]))
     })
     await page.goto(BASE, { waitUntil: 'networkidle' })
+    page.on('console', (msg: any) => {
+      console.log(`[Browser Console] ${msg.type()}: ${msg.text()}`)
+    })
     await page.waitForTimeout(1500)
 
     await page.waitForSelector('input[type="email"]', { timeout: 15000 })
@@ -55,11 +115,16 @@ test.describe('Purchase Ledger UI', () => {
     await page.locator('button:has-text("Add Purchase")').first().click()
     await page.waitForTimeout(200)
 
-    await page.locator(MODAL_INPUT('Asset Name')).fill('24K Gold Bar 1kg')
+    // Select Asset Type Gold
+    await selectCustomOption(page, 'Asset Type', 'Gold')
+    
+    // Select Asset Name 24K Gold Bar 1kg
+    await selectCustomOption(page, 'Asset Name', '24K Gold Bar 1kg')
+
     await page.locator(MODAL_INPUT('Purchase Date')).fill('2026-06-15')
     await page.locator(MODAL_INPUT('Quantity')).fill('1')
     await page.locator(MODAL_INPUT('Unit Price')).fill('280000')
-    await page.locator(MODAL_INPUT('Broker')).fill('Dubai Gold Exchange')
+    await page.locator(MODAL_INPUT('Buyer')).fill('Dubai Gold Exchange')
 
     await page.locator(MODAL_BTN('Record')).click()
     await page.waitForTimeout(500)
@@ -74,8 +139,12 @@ test.describe('Purchase Ledger UI', () => {
     await page.locator('button:has-text("Add Purchase")').first().click()
     await page.waitForTimeout(200)
 
-    await page.locator(MODAL_SELECT).selectOption('Silver')
-    await page.locator(MODAL_INPUT('Asset Name')).fill('Silver Bar 1kg')
+    // Select Asset Type Silver
+    await selectCustomOption(page, 'Asset Type', 'Silver')
+
+    // Select Asset Name 999 Silver Bar
+    await selectCustomOption(page, 'Asset Name', '999 Silver Bar')
+
     await page.locator(MODAL_INPUT('Purchase Date')).fill('2026-06-10')
     await page.locator(MODAL_INPUT('Quantity')).fill('2')
     await page.locator(MODAL_INPUT('Unit Price')).fill('3500')
@@ -84,14 +153,14 @@ test.describe('Purchase Ledger UI', () => {
     await page.waitForTimeout(500)
 
     await expect(page.locator('.toast-success')).toBeVisible()
-    await expect(page.locator('table')).toContainText('Silver Bar 1kg')
+    await expect(page.locator('table')).toContainText('999 Silver Bar')
   })
 
   test('4.0 KPI cards visible with correct values', async () => {
     await page.waitForTimeout(200)
     const kpiCards = await page.locator('.kpi-card').all()
-    expect(kpiCards.length).toBe(4)
-    const labels = ['Total Invested', 'Total Quantity', 'Weighted Average', 'Active Lots']
+    expect(kpiCards.length).toBe(3)
+    const labels = ['Total Invested', 'Total Quantity', 'Active Lots']
     for (let i = 0; i < kpiCards.length; i++) {
       const text = await kpiCards[i].textContent()
       expect(text).toContain(labels[i])
@@ -99,16 +168,14 @@ test.describe('Purchase Ledger UI', () => {
   })
 
   test('5.0 Filter by asset type', async () => {
-    const filterSelect = page.locator('.data-table-filters select').first()
-    await filterSelect.selectOption('Silver')
+    await selectFilterOption(page, 'All Types', 'Silver')
     await page.waitForTimeout(500)
-    // Table rows should all contain Silver, or table may be empty
     const rows = await page.locator('table tbody tr').count()
     if (rows > 0) {
       await expect(page.locator('table')).toContainText('Silver')
     }
     // Reset
-    await filterSelect.selectOption('')
+    await selectFilterOption(page, 'Silver', 'All Types')
     await page.waitForTimeout(300)
   })
 
@@ -116,15 +183,18 @@ test.describe('Purchase Ledger UI', () => {
     const searchInput = page.locator('.data-table-search-input')
     await searchInput.fill('Silver')
     await page.waitForTimeout(500)
-    await expect(page.locator('table')).toContainText('Silver Bar 1kg')
+    await expect(page.locator('table')).toContainText('999 Silver Bar')
     await expect(page.locator('table')).not.toContainText('24K Gold')
     await searchInput.fill('')
     await page.waitForTimeout(200)
   })
 
   test('6.0 Edit a purchase', async () => {
-    await page.locator('button[aria-label="Edit purchase"]').first().click()
-    await page.waitForTimeout(200)
+    // Click actions button first to open custom actions menu using evaluate to avoid scroll auto-close
+    await page.locator('table tbody tr').first().locator('button[aria-label="Actions"]').evaluate((el: HTMLElement) => el.click())
+    await page.waitForTimeout(500)
+    await page.locator('body').getByRole('button', { name: 'Edit' }).last().click()
+    await page.waitForTimeout(500)
     await expect(page.locator('.modal-header')).toContainText('Edit Purchase')
 
     await page.locator(MODAL_INPUT('Quantity')).fill('3')
@@ -134,8 +204,10 @@ test.describe('Purchase Ledger UI', () => {
   })
 
   test('7.0 Delete a purchase', async () => {
-    await page.locator('button[aria-label="Delete purchase"]').first().click()
-    await page.waitForTimeout(200)
+    await page.locator('table tbody tr').first().locator('button[aria-label="Actions"]').evaluate((el: HTMLElement) => el.click())
+    await page.waitForTimeout(500)
+    await page.locator('body').getByRole('button', { name: 'Delete' }).last().click()
+    await page.waitForTimeout(500)
     await expect(page.locator('.modal')).toBeVisible()
     await expect(page.locator('.modal-header')).toContainText('Delete Purchase')
     await page.locator(MODAL_BTN('Delete')).click()
@@ -145,16 +217,14 @@ test.describe('Purchase Ledger UI', () => {
   })
 
   test('8.0 Form validation shows errors', async () => {
-    // Close any prior modal
     await page.locator('body').click({ position: { x: 0, y: 0 } })
     await page.waitForTimeout(200)
     await page.locator('button:has-text("Add Purchase")').first().click()
     await page.waitForTimeout(200)
-    await page.locator(MODAL_INPUT('Asset Name')).fill('')
-    await page.locator(MODAL_INPUT('Quantity')).fill('')
+    // Try to record without selecting type/name
     await page.locator(MODAL_BTN('Record')).click()
     await page.waitForTimeout(200)
-    await expect(page.locator('.input-error').first()).toBeVisible()
+    await expect(page.locator('.form-error').first()).toBeVisible()
     await page.locator(MODAL_BTN('Cancel')).click()
     await page.waitForTimeout(300)
   })
@@ -162,7 +232,7 @@ test.describe('Purchase Ledger UI', () => {
   test('9.0 Status badge renders', async () => {
     await page.locator('body').click({ position: { x: 0, y: 0 } })
     await page.waitForTimeout(300)
-    const badge = page.locator('table .badge-success').first()
+    const badge = page.locator('table tbody tr').first().locator('.badge-success').last()
     await expect(badge).toContainText('active')
   })
 
@@ -184,9 +254,9 @@ test.describe('Purchase Ledger UI', () => {
     page.on('console', (msg: any) => {
       if (msg.type() === 'error') errors.push(msg.text())
     })
-    await page.locator('.data-table-filters select').first().selectOption('Gold')
+    await selectFilterOption(page, 'All Types', 'Gold')
     await page.waitForTimeout(200)
-    await page.locator('.data-table-filters select').first().selectOption('')
+    await selectFilterOption(page, 'Gold', 'All Types')
     await page.waitForTimeout(200)
     expect(errors.length).toBe(0)
   })

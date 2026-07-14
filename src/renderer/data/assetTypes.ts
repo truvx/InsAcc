@@ -26,7 +26,7 @@ export interface AssetHolding {
   assetName: string
   totalQuantity: number
   totalInvested: number
-  averageCost: number
+  avgPurchaseValue: number
   currentValue: number
   marketValue: number
   unrealizedGain: number
@@ -37,4 +37,7 @@ export interface AssetHolding {
   purchaseRecordIds: string[]
   voucherIds: string[]
   voucherNumbers: string[]
+  simpleAvgPrice?: number
+  simpleAvgValue?: number
+  simpleAvgQty?: number
 }

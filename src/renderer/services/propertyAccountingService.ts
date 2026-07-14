@@ -1,10 +1,13 @@
 import type { Account, Voucher, BankMapping } from '../accounting/types'
 import type { PdcCheque, PropAccount } from '../data/propertyTypes'
 import { getAccountIdForBank } from '../accounting/bankAccountMapping'
+import { createChildAccount } from '../accounting/chartOfAccountsService'
 
 const PDC_ACCOUNT_CODE = '1410'
 const RENTAL_RECEIVABLE_CODE = '1320'
-const RENTAL_INCOME_CODE = '4120'
+const RENTAL_INCOME_CODE = '4120' // Building Rental Income
+const VILLA_RENTAL_INCOME_CODE = '4200' // Villa Rental Income
+const APARTMENT_RENTAL_INCOME_CODE = '4210' // Apartment Rental Income
 const SECURITY_DEPOSIT_LIABILITY_CODE = '2120'
 
 export function getPdcAccountId(accounts: Account[]): string | undefined {
@@ -17,6 +20,22 @@ export function getRentalReceivableAccountId(accounts: Account[]): string | unde
 
 export function getRentalIncomeAccountId(accounts: Account[]): string | undefined {
   return accounts.find(a => a.code === RENTAL_INCOME_CODE)?.id
+}
+
+export function getVillaRentalIncomeAccountId(accounts: Account[]): string | undefined {
+  return accounts.find(a => a.code === VILLA_RENTAL_INCOME_CODE && a.module === 'property')?.id
+}
+
+export function getApartmentRentalIncomeAccountId(accounts: Account[]): string | undefined {
+  return accounts.find(a => a.code === APARTMENT_RENTAL_INCOME_CODE)?.id
+}
+
+export function getAllRentalIncomeAccountIds(accounts: Account[]): string[] {
+  return [
+    getRentalIncomeAccountId(accounts),
+    getVillaRentalIncomeAccountId(accounts),
+    getApartmentRentalIncomeAccountId(accounts),
+  ].filter((id): id is string => Boolean(id))
 }
 
 export function getSecurityDepositLiabilityAccountId(accounts: Account[]): string | undefined {
@@ -42,58 +61,63 @@ export function getPropertyBankAccountId(
 ): string | undefined {
   const propAcct = propAccounts.find(a => a.id === propAccountId)
   if (!propAcct) return undefined
+  if (propAcct.chartAccountId) return propAcct.chartAccountId
   const mapping = mappings.find(m => m.bankAccountId === propAcct.id)
   return mapping?.accountId
+}
+
+export function validateBankChartLink(
+  propAccountId: string,
+  propAccounts: PropAccount[],
+  mappings: BankMapping[],
+): { valid: boolean; chartAccountId?: string; error?: string } {
+  const propAcct = propAccounts.find(a => a.id === propAccountId)
+  if (!propAcct) return { valid: false, error: 'Bank account not found.' }
+
+  const coaId = propAcct.chartAccountId || mappings.find(m => m.bankAccountId === propAcct.id)?.accountId
+  if (!coaId) {
+    return { valid: false, error: 'This bank account is not linked to a Chart of Accounts account.' }
+  }
+  return { valid: true, chartAccountId: coaId }
 }
 
 export function ensurePropertyBankMappings(
   propAccounts: PropAccount[],
   accounts: Account[],
   existingMappings: BankMapping[],
-): { accounts: Account[]; mappings: BankMapping[] } {
+): { accounts: Account[]; mappings: BankMapping[]; propAccounts: PropAccount[] } {
   let updatedAccounts = [...accounts]
   const mappings = [...existingMappings]
   const mappedBankIds = new Set(mappings.map(m => m.bankAccountId))
-  const bankParent = accounts.find(a => a.code === '1120')
-  if (!bankParent) return { accounts, mappings }
+  const updatedPropAccounts = propAccounts.map(bank => {
+    if (bank.chartAccountId) return bank
+    const mapping = mappings.find(m => m.bankAccountId === bank.id)
+    if (mapping) return { ...bank, chartAccountId: mapping.accountId }
+    return bank
+  })
 
-  for (const bank of propAccounts) {
-    if (mappedBankIds.has(bank.id)) continue
-    const childCode = generateChildAccountCode('1120', updatedAccounts)
-    const n = new Date().toISOString()
-    const account: Account = {
-      id: `acc-${childCode}`,
-      code: childCode,
-      name: `Property - ${bank.institution} - ${bank.accountName}`,
-      type: 'asset',
-      normalBalance: 'debit',
-      parentId: bankParent.id,
-      isActive: true,
-      description: `Property bank account: ${bank.id}`,
-      currency: bank.currency,
-      createdAt: n,
-      updatedAt: n,
-    }
-    updatedAccounts.push(account)
-    mappings.push({
+  for (const bank of updatedPropAccounts) {
+    if (mappedBankIds.has(bank.id) || bank.chartAccountId) continue
+    const childName = bank.accountNumber ? `${bank.institution} - ${bank.accountNumber}` : bank.institution
+    const { account, updatedAccounts: nextAccounts } = createChildAccount(
+      '1120',
+      childName,
+      updatedAccounts,
+      { description: `Bank account: ${bank.id}`, currency: bank.currency },
+    )
+    updatedAccounts = nextAccounts
+    const mapping: BankMapping = {
       bankAccountId: bank.id,
       accountId: account.id,
       accountCode: account.code,
       accountName: account.name,
-    })
+    }
+    mappings.push(mapping)
+    const idx = updatedPropAccounts.indexOf(bank)
+    if (idx >= 0) updatedPropAccounts[idx] = { ...bank, chartAccountId: account.id }
   }
 
-  return { accounts: updatedAccounts, mappings }
-}
-
-function generateChildAccountCode(parentCode: string, accounts: Account[]): string {
-  const children = accounts
-    .filter(a => a.code.startsWith(parentCode) && a.code.length > parentCode.length)
-    .map(a => parseInt(a.code.slice(parentCode.length), 10))
-    .filter(n => !isNaN(n))
-    .sort((a, b) => a - b)
-  const next = children.length > 0 ? children[children.length - 1] + 1 : 1
-  return `${parentCode}${String(next).padStart(2, '0')}`
+  return { accounts: updatedAccounts, mappings, propAccounts: updatedPropAccounts }
 }
 
 export function createPropertyVoucherContext(

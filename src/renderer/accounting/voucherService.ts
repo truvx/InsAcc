@@ -7,6 +7,7 @@ import type {
   CreateVoucherInput,
 } from './types'
 import { now } from '../../shared/utils/dateUtils'
+import { VoucherNumberService } from '../services/voucherNumberService'
 
 let _idCounter = 0
 
@@ -52,8 +53,6 @@ export function createVoucher(input: CreateVoucherInput, existingVouchers: Vouch
   const exchangeRate = input.exchangeRate ?? 1
   const lineCurrency = input.currency ?? baseCurrency
   const n = now()
-  const year = new Date(input.date).getFullYear()
-  const sequence = getNextSequence(existingVouchers, input.type, year)
   const id = generateId()
 
   const lines: VoucherLine[] = input.lines.map(l => ({
@@ -71,9 +70,12 @@ export function createVoucher(input: CreateVoucherInput, existingVouchers: Vouch
     referenceId: l.referenceId,
   }))
 
+  const isPurchase = VoucherNumberService.getNumberType(input.type, input.description, lines, input.reference) === 'Purchase'
+  const number = VoucherNumberService.generateNextNumber(input.type, input.date, existingVouchers, isPurchase)
+
   return {
     id,
-    number: generateVoucherNumber(input.type, year, sequence),
+    number,
     date: input.date,
     type: input.type,
     reference: input.reference ?? '',
@@ -226,7 +228,7 @@ export function isVoucherPosted(v: Voucher): boolean {
 }
 
 export function isVoucherActive(v: Voucher): boolean {
-  return v.status !== 'Cancelled' && v.status !== 'Reversed'
+  return v.status !== 'Cancelled' && v.status !== 'Reversed' && !v.isDeleted
 }
 
 export function getPostedVouchers(vouchers: Voucher[]): Voucher[] {

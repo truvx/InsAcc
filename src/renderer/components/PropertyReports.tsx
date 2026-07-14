@@ -1,16 +1,19 @@
 import React, { useState, useMemo, useRef } from 'react'
-import type { PropertyEntry, UnitEntry, TenantEntry, LeaseEntry, PropTransaction, PropAccount } from '../data/propertyTypes'
-import type { Account, Voucher, TrialBalanceEntry } from '../accounting/types'
+import type { PropertyEntry, UnitEntry, TenantEntry, LeaseEntry, PropTransaction, PropAccount, PropertyExpense } from '../data/propertyTypes'
+import type { Account, Voucher, TrialBalanceEntry, BankMapping } from '../accounting/types'
+import { SystemAccountRegistry } from '../accounting/systemAccountRegistry'
 import type { AuditEvent } from '../data/auditTypes'
 import { recordModuleEvent } from '../services/auditService'
+import { validateLedgerBalance } from '../accounting/ledgerService'
 import { formatCurrency, formatPercentage } from '../utils/reportFormatters'
 import { KpiCard, ChartCard, Button, Badge, EmptyState, ChevronDownIcon, PortfolioIcon, ActivityIcon, TrendingUpIcon } from './design/DesignSystem'
 import PeriodSelector, { type PeriodOption, getPeriodDates } from './PeriodSelector'
 import { t } from '../utils'
-import { getAccountBalance, getAccountTypeBalance, getTrialBalance, getAllAccountBalances } from '../accounting/ledgerService'
-import { buildAccountTree } from '../accounting/chartOfAccountsService'
-import { getNetIncome, getBalanceSheetTree, getProfitLossTree, flattenStatementRows } from '../services/propertyFinancialStatements'
+import { getPropertyFinancialSummary } from '../services/propertyFinancialAggregationService'
+import { getBalanceSheetTree, getProfitLossTree, flattenStatementRows } from '../services/propertyFinancialStatements'
 import { formatDate } from '../utils'
+import { exportAccountingExcel } from '../services/reportExportService'
+import ExportReportModal from './design/ExportReportModal'
 
 function BuildingIcon() {
   return (
@@ -25,18 +28,19 @@ interface Props {
   units: UnitEntry[]
   tenants: TenantEntry[]
   leases: LeaseEntry[]
-  propTransactions: PropTransaction[]
   propAccounts: PropAccount[]
   accounts: Account[]
   vouchers: Voucher[]
+  bankMappings: BankMapping[]
   currency?: string
   dateFormat?: string
   language?: string
   onAuditEvent?: (event: AuditEvent) => void
   onNavigate?: (page: string) => void
+  expenses?: PropertyExpense[]
 }
 
-type ReportTab = 'overview' | 'balance-sheet' | 'profit-loss' | 'trial-balance' | 'rent-collection' | 'pdc-summary' | 'lease-expiry'
+type ReportTab = 'overview' | 'balance-sheet' | 'profit-loss' | 'trial-balance' | 'rent-collection' | 'pdc-summary' | 'lease-expiry' | 'expense-report'
 
 function getPropAccountBalance(account: PropAccount, transactions: PropTransaction[]): number {
   const txns = transactions.filter(t => t.accountId === account.id)
@@ -44,14 +48,15 @@ function getPropAccountBalance(account: PropAccount, transactions: PropTransacti
     if (t.type === 'credit' || t.type === 'transfer_in') return bal + t.amount
     if (t.type === 'debit' || t.type === 'transfer_out') return bal - t.amount
     return bal
-  }, account.openingBalance)
+  }, 0)
 }
 
 export default function PropertyReports({
-  properties, units, tenants, leases, propTransactions, propAccounts,
-  accounts, vouchers,
+  properties, units, tenants, leases, propAccounts,
+  accounts, vouchers, bankMappings,
   currency = 'AED', dateFormat = 'DD/MM/YYYY', language = 'English', onAuditEvent,
   onNavigate,
+  expenses = [],
 }: Props) {
   const [period, setPeriod] = useState<PeriodOption>('this-month')
   const [customStart, setCustomStart] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0])
@@ -59,6 +64,47 @@ export default function PropertyReports({
   const [exportOpen, setExportOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<ReportTab>('overview')
   const exportRef = useRef<HTMLDivElement>(null)
+
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+  const [filterStart, setFilterStart] = useState('2026-01-01')
+  const [filterEnd, setFilterEnd] = useState('2026-12-31')
+  const [filterVType, setFilterVType] = useState('All')
+  const [filterStatus, setFilterStatus] = useState('All')
+  const [filterBank, setFilterBank] = useState('All')
+  const [filterAccount, setFilterAccount] = useState('All')
+  const [filterBuilding, setFilterBuilding] = useState('All')
+  const [filterTenant, setFilterTenant] = useState('All')
+
+  const handleExcelGeneration = async () => {
+    setIsExportModalOpen(false)
+    try {
+      await exportAccountingExcel({
+        companyName: 'INSACC',
+        reportTitle: 'GENERAL LEDGER REPORT',
+        module: 'Property',
+        periodLabel: `${filterStart} - ${filterEnd}`,
+        generatedBy: 'User',
+        currency,
+        accounts,
+        vouchers,
+        filters: {
+          dateRange: { start: filterStart, end: filterEnd },
+          bankAccountId: filterBank,
+          accountId: filterAccount,
+          buildingName: filterBuilding,
+          tenantName: filterTenant,
+          voucherType: filterVType,
+          status: filterStatus
+        },
+        properties,
+        units,
+        tenants,
+        leases
+      })
+    } catch (e) {
+      console.error(e)
+    }
+  }
 
   const periodDates = useMemo(() => getPeriodDates(period, customStart, customEnd), [period, customStart, customEnd])
 
@@ -70,34 +116,27 @@ export default function PropertyReports({
     { id: 'rent-collection', label: 'Rent Collection' },
     { id: 'pdc-summary', label: 'PDC Summary' },
     { id: 'lease-expiry', label: 'Lease Expiry' },
+    { id: 'expense-report', label: 'Expense Report' },
   ]
 
   const fmt = (n: number) => `${currency} ${n.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
 
   // ── Accounting KPIs ──
   const accountingKpis = useMemo(() => {
-    const allBals = getAllAccountBalances(vouchers, accounts)
-    const cashId = accounts.find(a => a.code === '1110')?.id
-    const bankParent = accounts.find(a => a.code === '1120')
-    const pdcId = accounts.find(a => a.code === '1410')?.id
-    const rentalId = accounts.find(a => a.code === '4120')?.id
-    const totalAssets = getAccountTypeBalance('asset', vouchers, accounts)
-    const totalLiabilities = getAccountTypeBalance('liability', vouchers, accounts)
-    const totalEquity = getAccountTypeBalance('equity', vouchers, accounts)
-    const totalRevenue = getAccountTypeBalance('revenue', vouchers, accounts)
-    const totalExpenses = getAccountTypeBalance('expense', vouchers, accounts)
-
+    const summary = getPropertyFinancialSummary(accounts, vouchers, propAccounts, bankMappings)
     return {
-      cash: cashId ? (allBals[cashId] || 0) : 0,
-      bankBalance: bankParent
-        ? accounts.filter(a => a.parentId === bankParent.id && a.isActive).reduce((s, a) => s + (allBals[a.id] || 0), 0)
-        : 0,
-      pdc: pdcId ? (allBals[pdcId] || 0) : 0,
-      rentalIncome: rentalId ? (allBals[rentalId] || 0) : 0,
-      totalAssets, totalLiabilities, totalEquity, totalRevenue, totalExpenses,
-      netIncome: totalRevenue - totalExpenses,
+      cash: summary.cash,
+      bankBalance: summary.bankBalance,
+      pdc: summary.pdc,
+      rentalIncome: summary.rentalIncome,
+      totalAssets: summary.totalAssets,
+      totalLiabilities: summary.totalLiabilities,
+      totalEquity: summary.totalEquity,
+      totalRevenue: summary.totalRevenue,
+      totalExpenses: summary.totalExpenses,
+      netIncome: summary.netIncome,
     }
-  }, [accounts, vouchers])
+  }, [accounts, vouchers, propAccounts, bankMappings])
 
   // ── Balance Sheet Tree ──
   const bsTree = useMemo(() => getBalanceSheetTree(accounts, vouchers), [accounts, vouchers])
@@ -108,7 +147,13 @@ export default function PropertyReports({
   const plRows = useMemo(() => flattenStatementRows(plTree), [plTree])
 
   // ── Trial Balance ──
-  const tbEntries = useMemo(() => getTrialBalance(vouchers, accounts), [accounts, vouchers])
+  const tbEntries = useMemo(() => {
+    const summary = getPropertyFinancialSummary(accounts, vouchers, propAccounts, bankMappings)
+    return summary.tb
+  }, [accounts, vouchers, propAccounts, bankMappings])
+
+  // ── Accounting Integrity Validation ──
+  const ledgerValidation = useMemo(() => validateLedgerBalance(vouchers, accounts), [vouchers, accounts])
 
   // ── Rent Collection ──
   const rentCollection = useMemo(() => {
@@ -128,16 +173,14 @@ export default function PropertyReports({
 
   // ── PDC Summary ──
   const pdcSummary = useMemo(() => {
-    const allBals = getAllAccountBalances(vouchers, accounts)
-    const rentalId = accounts.find(a => a.code === '4120')?.id
     return {
       pending: '—',
       deposited: '—',
       cleared: '—',
       totalValue: accountingKpis.pdc,
-      rentalIncome: rentalId ? (allBals[rentalId] || 0) : 0,
+      rentalIncome: accountingKpis.rentalIncome,
     }
-  }, [accounts, vouchers, accountingKpis.pdc])
+  }, [accountingKpis.pdc, accountingKpis.rentalIncome])
 
   // ── Lease Expiry ──
   const leaseExpiry = useMemo(() => {
@@ -151,6 +194,37 @@ export default function PropertyReports({
   }, [leases])
 
   const renderTabContent = () => {
+    // Accounting Integrity Check - show error if ledger is unbalanced
+    if (!ledgerValidation.isBalanced) {
+      return (
+        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+          <div style={{
+            maxWidth: 500,
+            margin: '0 auto',
+            padding: '24px',
+            backgroundColor: 'var(--danger-bg, #FEF2F2)',
+            border: '1px solid var(--danger, #EF4444)',
+            borderRadius: 8,
+          }}>
+            <h3 style={{ color: 'var(--danger, #EF4444)', marginBottom: 12, marginTop: 0 }}>Accounting Integrity Error</h3>
+            <p style={{ color: 'var(--text-primary)', marginBottom: 16, lineHeight: 1.5 }}>
+              The ledger is not balanced. Trial Balance validation failed:
+            </p>
+            <div style={{ backgroundColor: 'white', padding: 16, borderRadius: 6, marginBottom: 16, fontFamily: 'monospace', fontSize: 14 }}>
+              <div>Total Debit: {ledgerValidation.totalDebit}</div>
+              <div>Total Credit: {ledgerValidation.totalCredit}</div>
+              <div style={{ color: 'var(--danger, #EF4444)', fontWeight: 600, marginTop: 8 }}>
+                Difference: {ledgerValidation.difference}
+              </div>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 0 }}>
+              Financial reports cannot be displayed until the ledger is balanced. Please review journal vouchers for errors.
+            </p>
+          </div>
+        </div>
+      )
+    }
+
     switch (activeTab) {
       case 'overview':
         return (
@@ -458,19 +532,84 @@ export default function PropertyReports({
             </div>
           </div>
         )
+      case 'expense-report': {
+        const periodExpenses = expenses.filter(e => {
+          return e.date >= periodDates.start && e.date <= periodDates.end
+        })
+        const totalExp = periodExpenses.reduce((s, e) => s + e.totalAmount, 0)
+        const maintenanceExp = periodExpenses.filter(e => e.category.toLowerCase().includes('repairs') || e.category.toLowerCase().includes('maintenance') || e.category.toLowerCase().includes('plumbing') || e.category.toLowerCase().includes('cleaning')).reduce((s, e) => s + e.totalAmount, 0)
+        const utilityExp = periodExpenses.filter(e => e.category.toLowerCase().includes('utility') || e.category.toLowerCase().includes('water') || e.category.toLowerCase().includes('electricity') || e.category.toLowerCase().includes('internet')).reduce((s, e) => s + e.totalAmount, 0)
+        
+        return (
+          <div className="card card-table">
+            <div className="card-body">
+              <div className="kpi-grid" style={{ marginBottom: 20, gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                <div className="kpi-card" style={{ borderTop: '2px solid var(--danger)' }}>
+                  <div className="kpi-label">Total Expenses</div>
+                  <div className="kpi-value" style={{ fontSize: 22 }}>{fmt(totalExp)}</div>
+                </div>
+                <div className="kpi-card" style={{ borderTop: '2px solid var(--accent)' }}>
+                  <div className="kpi-label">Maintenance Expenses</div>
+                  <div className="kpi-value" style={{ fontSize: 22 }}>{fmt(maintenanceExp)}</div>
+                </div>
+                <div className="kpi-card" style={{ borderTop: '2px solid var(--warning)' }}>
+                  <div className="kpi-label">Utility Expenses</div>
+                  <div className="kpi-value" style={{ fontSize: 22 }}>{fmt(utilityExp)}</div>
+                </div>
+              </div>
+              
+              {periodExpenses.length === 0 ? (
+                <EmptyState title="No expenses recorded" text="There are no expenses in the selected date range." />
+              ) : (
+                <table className="property-table" style={{ width: '100%' }}>
+                  <thead>
+                    <tr>
+                      <th>Expense No.</th>
+                      <th>Date</th>
+                      <th>Property</th>
+                      <th>Category</th>
+                      <th>Paid To</th>
+                      <th>Method</th>
+                      <th style={{ textAlign: 'right' }}>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {periodExpenses.map(e => {
+                      const propName = properties.find(p => p.id === e.propertyId)?.name || 'Unknown'
+                      return (
+                        <tr key={e.id}>
+                          <td className="text-mono text-xs fw-600">{e.expenseNo}</td>
+                          <td className="text-xs text-secondary">{formatDate(e.date, dateFormat)}</td>
+                          <td className="text-sm">{propName}</td>
+                          <td>
+                            <Badge variant="neutral">{e.category}</Badge>
+                          </td>
+                          <td className="text-sm">{e.paidTo}</td>
+                          <td className="text-xs">{e.paymentMethod}</td>
+                          <td className="text-mono text-xs fw-600" style={{ textAlign: 'right' }}>{fmt(e.totalAmount)}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        )
+      }
     }
   }
 
   return (
     <>
-      <div className="page-header">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div className="page-header-left">
           <div>
             <div className="page-title">{t('reports', language)}</div>
             <div className="page-subtitle">Accounting-driven property reports</div>
           </div>
         </div>
-        <div className="page-header-right">
+        <div className="page-header-right" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <PeriodSelector
             period={period}
             onPeriodChange={setPeriod}
@@ -479,6 +618,23 @@ export default function PropertyReports({
             onCustomStartChange={setCustomStart}
             onCustomEndChange={setCustomEnd}
           />
+          <button
+            onClick={() => setIsExportModalOpen(true)}
+            style={{
+              backgroundColor: 'var(--primary)',
+              color: 'white',
+              border: 'none',
+              borderRadius: 'var(--radius)',
+              padding: '8px 16px',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow: 'var(--shadow-sm)',
+              height: 38
+            }}
+          >
+            Export Excel (Professional)
+          </button>
         </div>
       </div>
 
@@ -496,6 +652,36 @@ export default function PropertyReports({
         </div>
         {renderTabContent()}
       </div>
+
+      <ExportReportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={handleExcelGeneration}
+        module="Property"
+        accounts={accounts}
+        filters={{
+          filterStart,
+          filterEnd,
+          filterVType,
+          filterStatus,
+          filterBank,
+          filterAccount,
+          filterBuilding,
+          filterTenant,
+        }}
+        onFiltersChange={(partial) => {
+          if (partial.filterStart !== undefined) setFilterStart(partial.filterStart)
+          if (partial.filterEnd !== undefined) setFilterEnd(partial.filterEnd)
+          if (partial.filterVType !== undefined) setFilterVType(partial.filterVType)
+          if (partial.filterStatus !== undefined) setFilterStatus(partial.filterStatus)
+          if (partial.filterBank !== undefined) setFilterBank(partial.filterBank)
+          if (partial.filterAccount !== undefined) setFilterAccount(partial.filterAccount)
+          if (partial.filterBuilding !== undefined) setFilterBuilding(partial.filterBuilding)
+          if (partial.filterTenant !== undefined) setFilterTenant(partial.filterTenant)
+        }}
+        properties={properties}
+        tenants={tenants}
+      />
     </>
   )
 }

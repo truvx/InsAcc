@@ -29,7 +29,9 @@ export function getInvestmentHoldingsProjection(
     const [assetType, assetName] = key.split('::')
     const totalQty = group.reduce((s, p) => s + p.quantity, 0)
     const totalInvested = group.reduce((s, p) => s + p.totalValue, 0)
-    const avgCost = totalQty > 0 ? totalInvested / totalQty : 0
+    const purchaseCount = group.length
+    const sumUnitPrice = group.reduce((s, p) => s + p.unitPrice, 0)
+    const avgPurchaseValue = purchaseCount > 0 ? sumUnitPrice / purchaseCount : 0
     const portfolioPercentage = grandTotalInvested > 0 ? (totalInvested / grandTotalInvested) * 100 : 0
 
     const account = group.find(p => p.accountId)
@@ -54,7 +56,7 @@ export function getInvestmentHoldingsProjection(
       assetName,
       totalQuantity: totalQty,
       totalInvested,
-      averageCost: avgCost,
+      avgPurchaseValue,
       currentValue: currentBalance,
       marketValue,
       unrealizedGain,

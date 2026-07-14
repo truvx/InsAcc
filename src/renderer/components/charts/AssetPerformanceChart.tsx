@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react'
 import type { AssetPerformance } from '../../data/sampleData'
-import { ASSET_TYPE_COLORS } from '../../styles/palette'
+import { getAssetAllocationColor } from '../../styles/ChartTheme'
+import { CurrencyText } from '../design/CurrencyText'
 
 interface Props {
   data: AssetPerformance[]
@@ -23,9 +24,9 @@ export default function AssetPerformanceChart({ data }: Props) {
             <div
               className="performance-rank"
               style={{
-                background: ASSET_TYPE_COLORS[asset.name] || 'var(--text-muted)',
-                boxShadow: ASSET_TYPE_COLORS[asset.name]
-                  ? `0 2px 8px ${ASSET_TYPE_COLORS[asset.name]}40`
+                background: getAssetAllocationColor(asset.name) || 'var(--text-muted)',
+                boxShadow: getAssetAllocationColor(asset.name)
+                  ? `0 2px 8px ${getAssetAllocationColor(asset.name)}40`
                   : '0 2px 8px transparent',
               }}
             >
@@ -34,7 +35,7 @@ export default function AssetPerformanceChart({ data }: Props) {
             <div className="performance-info">
               <div className="performance-name">{asset.name}</div>
               <div className="performance-value">
-                AED {asset.value.toLocaleString()}
+                <CurrencyText value={asset.value} />
               </div>
             </div>
             <div className={`performance-roi ${asset.roi >= 0 ? 'positive' : 'negative'}`}>

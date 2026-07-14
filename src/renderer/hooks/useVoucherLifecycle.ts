@@ -1,6 +1,31 @@
 import { useState, useCallback } from 'react'
-import type { Voucher, Account } from '../accounting/types'
+import type { Voucher, Account, FiscalYear, PostingResult } from '../accounting/types'
 import type { AccountingEngine } from '../accounting/accountingEngine'
+import { invalidateBalanceCache } from '../accounting/ledgerService'
+
+/**
+ * Immediately approve + post a freshly-created Draft voucher.
+ * Call this right after accountingEngine.processAccountingEvent() returns a
+ * Draft voucher so that no Draft state is ever stored in the UI.
+ */
+export function autoPostVoucher(
+  accountingEngine: AccountingEngine,
+  draftVoucher: Voucher,
+  accounts: Account[],
+): PostingResult {
+  const approveResult = accountingEngine.approve(draftVoucher, 'user')
+  if (!approveResult.success || !approveResult.voucher) {
+    return approveResult
+  }
+
+  const postResult = accountingEngine.post(approveResult.voucher, 'user', accounts, [])
+  if (!postResult.success || !postResult.voucher) {
+    return postResult
+  }
+
+  invalidateBalanceCache()
+  return { success: true, voucher: postResult.voucher, errors: [] }
+}
 
 interface ToastState {
   visible: boolean
@@ -11,7 +36,7 @@ interface ToastState {
 export function useVoucherLifecycle(
   accountingEngine: AccountingEngine,
   accounts: Account[],
-  setVouchers: React.Dispatch<React.SetStateAction<Voucher[]>>
+  setVouchers: React.Dispatch<React.SetStateAction<Voucher[]>>,
 ) {
   const [detailVoucher, setDetailVoucher] = useState<Voucher | null>(null)
   const [toast, setToast] = useState<ToastState>({ visible: false, message: '', type: 'success' })
@@ -45,6 +70,7 @@ export function useVoucherLifecycle(
       }
 
       setVouchers(prev => prev.map(item => item.id === v.id ? postResult.voucher! : item))
+      invalidateBalanceCache()
       showToast(`Voucher ${postResult.voucher.number} posted successfully`, 'success')
       setDetailVoucher(null)
     } catch (err: any) {
@@ -63,6 +89,7 @@ export function useVoucherLifecycle(
         return
       }
       setVouchers(prev => prev.map(item => item.id === v.id ? approveResult.voucher! : item))
+      invalidateBalanceCache()
       showToast(`Voucher ${approveResult.voucher.number} approved`, 'success')
       setDetailVoucher(null)
     } catch (err: any) {
@@ -81,6 +108,7 @@ export function useVoucherLifecycle(
         return
       }
       setVouchers(prev => prev.map(item => item.id === v.id ? cancelResult.voucher! : item))
+      invalidateBalanceCache()
       showToast(`Voucher ${cancelResult.voucher.number} cancelled/voided`, 'success')
       setDetailVoucher(null)
     } catch (err: any) {
@@ -92,6 +120,7 @@ export function useVoucherLifecycle(
 
   const handleDiscard = useCallback((v: Voucher) => {
     setVouchers(prev => prev.filter(item => item.id !== v.id))
+    invalidateBalanceCache()
     showToast('Draft voucher discarded', 'success')
     setDetailVoucher(null)
   }, [setVouchers, showToast])
@@ -114,6 +143,7 @@ export function useVoucherLifecycle(
         })
         return [reverseResult.voucher!, ...updated]
       })
+      invalidateBalanceCache()
       showToast(`Voucher ${v.number} reversed successfully`, 'success')
       setDetailVoucher(null)
     } catch (err: any) {

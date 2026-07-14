@@ -1,20 +1,15 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
-console.log('[Preload] Setting up IPC bridge')
-
 contextBridge.exposeInMainWorld('api', {
-  saveFile: (filename, content) => {
-    console.log('[Preload] api.saveFile called:', filename)
-    return ipcRenderer.invoke('save-file', filename, content)
-  },
-  showSaveDialog: (options) => {
-    console.log('[Preload] api.showSaveDialog called:', JSON.stringify(options))
-    return ipcRenderer.invoke('show-save-dialog', options)
-  },
-  writeFileBuffer: (filePath, buffer) => {
-    console.log('[Preload] api.writeFileBuffer called:', filePath)
-    return ipcRenderer.invoke('write-file-buffer', filePath, buffer)
-  },
-})
+  saveFile: (filename, content) => ipcRenderer.invoke('save-file', filename, content),
+  showSaveDialog: (options) => ipcRenderer.invoke('show-save-dialog', options),
+  writeFileBuffer: (filePath, buffer) => ipcRenderer.invoke('write-file-buffer', filePath, buffer),
 
-console.log('[Preload] IPC bridge ready')
+  openFileDialog: (options) => ipcRenderer.invoke('open-file-dialog', options),
+  copyFileToStorage: (data) => ipcRenderer.invoke('copy-file-to-storage', data),
+  deleteFile: (filePath) => ipcRenderer.invoke('delete-file', filePath),
+  readFilePreview: (filePath) => ipcRenderer.invoke('read-file-preview', filePath),
+  openFileInOs: (filePath) => ipcRenderer.invoke('open-file-in-os', filePath),
+  renameFileInStorage: (data) => ipcRenderer.invoke('rename-file-in-storage', data),
+  generateStoragePath: (data) => ipcRenderer.invoke('generate-storage-path', data),
+})

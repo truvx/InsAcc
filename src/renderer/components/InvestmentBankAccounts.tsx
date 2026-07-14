@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import type { Account, Voucher, BankMapping } from '../accounting/types'
 import type { BankAccount, BankTransaction } from '../data/banking'
+import type { PurchaseRecord } from '../data/purchaseLedger'
 import type { AuditEvent } from '../data/auditTypes'
 import type { AccountingEngine } from '../accounting/accountingEngine'
 import { recordModuleEvent } from '../services/auditService'
@@ -12,9 +13,12 @@ import { DataTable, type Column } from './design/Table'
 import EntityForm from './design/EntityForm'
 import ConfirmDialog from './design/ConfirmDialog'
 import Toast from './Toast'
-import { formatDate, maskAccountNumber, t } from '../utils'
+import { formatDate, t } from '../utils'
 import type { BankReconciliationRecord, BankStatementLine } from '../accounting/types'
 import BankImportModal from './BankImportModal'
+import BankAccountActionsMenu from './design/BankAccountActionsMenu'
+import { invalidateBalanceCache, getAccountBalance } from '../accounting/ledgerService'
+import { CurrencyText } from './design/CurrencyText'
 import BankReconciliationDashboard from './BankReconciliationDashboard'
 import { getBankDashboardProjection, getAccountStatementProjection } from '../readModels/InvestmentBankReadModel'
 import BankAccountAvatar from './BankAccountAvatar'
@@ -26,37 +30,60 @@ interface Props {
   dateFormat?: string
   language?: string
   accounts: Account[]
+  setAccounts: React.Dispatch<React.SetStateAction<Account[]>>
   vouchers: Voucher[]
   setVouchers: React.Dispatch<React.SetStateAction<Voucher[]>>
   bankAccounts: BankAccount[]
   setBankAccounts: React.Dispatch<React.SetStateAction<BankAccount[]>>
-  bankTransactions: BankTransaction[]
-  setBankTransactions: React.Dispatch<React.SetStateAction<BankTransaction[]>>
+  bankTransactions?: BankTransaction[]
+  setBankTransactions?: React.Dispatch<React.SetStateAction<BankTransaction[]>>
   bankMappings: BankMapping[]
+  setBankMappings: React.Dispatch<React.SetStateAction<BankMapping[]>>
   accountingEngine: AccountingEngine
-  onAuditEvent?: (event: AuditEvent) => void
   bankReconciliations: BankReconciliationRecord[]
   setBankReconciliations: React.Dispatch<React.SetStateAction<BankReconciliationRecord[]>>
+  purchaseRecords?: PurchaseRecord[]
+  onAuditEvent?: (event: AuditEvent) => void
 }
 
-type DialogType = 'addAccount' | 'deposit' | 'withdraw' | 'transfer' | null
+type DialogType = 'addAccount' | 'editAccount' | 'deposit' | 'withdraw' | 'transfer' | null
 
 export default function InvestmentBankAccounts({
   currency = 'AED', dateFormat = 'DD/MM/YYYY', language = 'English',
-  accounts, vouchers, setVouchers,
-  bankAccounts, setBankAccounts, bankTransactions, setBankTransactions,
-  bankMappings, accountingEngine, onAuditEvent,
+  accounts, setAccounts, vouchers, setVouchers,
+  bankAccounts, setBankAccounts,
+  bankTransactions = [], setBankTransactions = () => {},
+  bankMappings, setBankMappings, accountingEngine, onAuditEvent,
   bankReconciliations, setBankReconciliations,
+  purchaseRecords = [],
 }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [dialog, setDialog] = useState<{ type: DialogType; accountId?: string }>({ type: null })
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [deleteAccountTarget, setDeleteAccountTarget] = useState<BankAccount | null>(null)
+  const [activeMenuAccountId, setActiveMenuAccountId] = useState<string | null>(null)
+  const [formIban, setFormIban] = useState('')
+  const [formSwift, setFormSwift] = useState('')
+  const [formBranch, setFormBranch] = useState('')
+  const [formStatus, setFormStatus] = useState<'active' | 'archived' | 'closed' | 'hidden'>('active')
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' })
   const [searchQuery, setSearchQuery] = useState('')
   const [txnFilter, setTxnFilter] = useState<'all' | 'deposits' | 'withdrawals' | 'transfers'>('all')
   const [importOpen, setImportOpen] = useState(false)
   const [selectedHistoryRec, setSelectedHistoryRec] = useState<BankReconciliationRecord | null>(null)
   const [selectedReconRec, setSelectedReconRec] = useState<BankReconciliationRecord | null>(null)
+
+  useEffect(() => {
+    const handleDocumentClick = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('.card-action-menu-wrap')) {
+        setActiveMenuAccountId(null)
+      }
+    }
+    document.addEventListener('click', handleDocumentClick)
+    return () => {
+      document.removeEventListener('click', handleDocumentClick)
+    }
+  }, [])
 
   const handleImportStatement = (lines: Omit<BankStatementLine, 'matchedVoucherLineId' | 'matchConfidence' | 'status'>[]) => {
     if (lines.length === 0) return
@@ -87,9 +114,7 @@ export default function InvestmentBankAccounts({
   }
 
   const [formInstitution, setFormInstitution] = useState('')
-  const [formAccountName, setFormAccountName] = useState('')
   const [formAccountNumber, setFormAccountNumber] = useState('')
-  const [formAccountType, setFormAccountType] = useState<'checking' | 'savings' | 'cash' | 'credit'>('checking')
   const [formOpeningBalance, setFormOpeningBalance] = useState('')
   const [formTheme, setFormTheme] = useState('emerald')
   const [formAmount, setFormAmount] = useState('')
@@ -104,24 +129,36 @@ export default function InvestmentBankAccounts({
   }, [bankReconciliations, selectedId])
 
   const bankProjection = useMemo(
-    () => getBankDashboardProjection(bankAccounts, bankTransactions, accounts, vouchers),
-    [bankAccounts, bankTransactions, accounts, vouchers],
+    () => getBankDashboardProjection(bankAccounts, bankMappings, accounts, vouchers),
+    [bankAccounts, bankMappings, accounts, vouchers],
   )
 
   const accountStatement = useMemo(() => {
-    if (!selectedId) return { transactions: [], runningBalances: {} as Record<string, number>, stats: { deposits: 0, withdrawals: 0, transfers: 0 } }
-    return getAccountStatementProjection(selectedId, bankAccounts, bankTransactions, accounts, vouchers)
-  }, [selectedId, bankAccounts, bankTransactions, accounts, vouchers])
+    if (!selectedId) return { statement: [], stats: { deposits: 0, withdrawals: 0, transfers: 0 } }
+    return getAccountStatementProjection(selectedId, bankAccounts, bankMappings, accounts, vouchers)
+  }, [selectedId, bankAccounts, bankMappings, accounts, vouchers])
 
-  const accountTransactions = accountStatement.transactions
+  const accountTransactions = useMemo(() => {
+    return (accountStatement.statement || []).map((t, idx) => ({
+      id: `${t.voucherNumber}-${idx}`,
+      date: t.date,
+      description: t.description,
+      amount: t.debit > 0 ? t.debit : t.credit,
+      type: t.debit > 0 ? ('credit' as const) : ('debit' as const),
+      status: 'cleared' as const,
+      balanceAfter: t.balance,
+      debit: t.debit,
+      credit: t.credit,
+      voucherNumber: t.voucherNumber,
+    }))
+  }, [accountStatement.statement])
+
   const accountStats = accountStatement.stats
-  const runningBalances = accountStatement.runningBalances
 
   const filteredTransactions = useMemo(() => {
     let result = accountTransactions
     if (txnFilter === 'deposits') result = result.filter(t => t.type === 'credit')
     else if (txnFilter === 'withdrawals') result = result.filter(t => t.type === 'debit')
-    else if (txnFilter === 'transfers') result = result.filter(t => t.type === 'transfer_in' || t.type === 'transfer_out')
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
       result = result.filter(t =>
@@ -133,28 +170,27 @@ export default function InvestmentBankAccounts({
   }, [accountTransactions, txnFilter, searchQuery])
 
   const tableData = useMemo(() => {
-    return filteredTransactions.map(t => ({
-      ...t,
-      balanceAfter: runningBalances[t.id] ?? 0,
-    }))
-  }, [filteredTransactions, runningBalances])
+    return filteredTransactions
+  }, [filteredTransactions])
 
   const formatAmount = (txn: typeof tableData[0]) => {
-    const sign = txn.type === 'credit' || txn.type === 'transfer_in' ? '+' : '-'
+    const sign = txn.type === 'credit' ? '+' : '-'
     return `${sign}${currency} ${txn.amount.toLocaleString()}`
   }
 
   const resetForm = () => {
     setFormInstitution('')
-    setFormAccountName('')
     setFormAccountNumber('')
-    setFormAccountType('checking')
     setFormOpeningBalance('')
     setFormTheme('emerald')
     setFormAmount('')
     setFormDesc('')
     setFormDate(new Date().toISOString().split('T')[0])
     setFormToAccount('')
+    setFormIban('')
+    setFormSwift('')
+    setFormBranch('')
+    setFormStatus('active')
   }
 
   const openDialog = (type: DialogType, accountId?: string) => {
@@ -167,31 +203,307 @@ export default function InvestmentBankAccounts({
   }
 
   const handleAddAccount = () => {
-    if (!formInstitution || !formAccountName) {
-      setToast({ visible: true, message: 'Institution and account name are required', type: 'error' })
+    if (!formInstitution) {
+      setToast({ visible: true, message: 'Bank is required', type: 'error' })
+      return
+    }
+    if (formOpeningBalance !== '' && isNaN(Number(formOpeningBalance))) {
+      setToast({ visible: true, message: 'Current balance must be a valid number', type: 'error' })
       return
     }
     const newAccount: BankAccount = {
       id: `ba-${Date.now()}`,
       institution: formInstitution,
-      accountName: formAccountName,
       accountNumber: formAccountNumber || '----',
       currency,
-      openingBalance: Number(formOpeningBalance) || 0,
-      accountType: formAccountType,
+      openingBalance: 0,
       theme: formTheme,
       icon: 'bank',
       status: 'active',
+      iban: formIban,
+      swift: formSwift,
+      branch: formBranch,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       createdBy: 'user',
       updatedBy: 'user',
     }
     setBankAccounts(prev => [...prev, newAccount])
-    onAuditEvent?.(recordModuleEvent('Bank Accounts', 'Create', newAccount.accountName, newAccount.id, `Added account: ${newAccount.accountName} @ ${newAccount.institution}`))
+
+    const ledgerAcct = {
+      id: `acct-${Date.now()}`,
+      code: `1120${Math.floor(Math.random() * 90) + 10}`,
+      name: formInstitution,
+      type: 'asset' as any,
+      normalBalance: 'debit' as any,
+      classification: 'current' as any,
+      currency,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdBy: 'user',
+      parentId: '1120',
+      description: 'Bank Account',
+      openingBalance: 0, // Set to 0 to prevent raw injection, balanced JV is used instead
+      module: 'investment' as const,
+    }
+    setAccounts(prev => [...prev, ledgerAcct])
+    setBankMappings(prev => [...prev, { bankAccountId: newAccount.id, accountId: ledgerAcct.id, accountCode: ledgerAcct.code, accountName: ledgerAcct.name }])
+
+    // Automatically generate opening balance journal voucher from Current Balance
+    const initialBal = Number(formOpeningBalance) || 0
+    if (initialBal > 0) {
+      const ref = `OB-${newAccount.id}`
+      const result = accountingEngine.processAccountingEvent(
+        'OPENING_BALANCE',
+        {
+          amount: initialBal,
+          date: new Date().toISOString().split('T')[0],
+          description: `Opening balance for ${newAccount.institution}`,
+          currency,
+          exchangeRate: 1,
+          baseCurrency: 'AED',
+          debitAccount: ledgerAcct.id,
+          creditAccount: '2200-inv',
+          referenceType: 'Investment',
+          referenceId: newAccount.id,
+          createdBy: 'user',
+        },
+        [...accounts, ledgerAcct],
+        vouchers,
+      )
+
+      if (result.success && result.voucher) {
+        const approveResult = accountingEngine.approve(result.voucher, 'user')
+        if (approveResult.success && approveResult.voucher) {
+          const postResult = accountingEngine.post(approveResult.voucher, 'user', [...accounts, ledgerAcct], [])
+          if (postResult.success && postResult.voucher) {
+            const finalVoucher: Voucher = {
+              ...postResult.voucher,
+              reference: ref,
+            }
+            setVouchers(prev => [finalVoucher, ...prev])
+          }
+        }
+      }
+    }
+
+    const accDesc = newAccount.institution;
+    onAuditEvent?.(recordModuleEvent('Bank Accounts', 'Create', accDesc, newAccount.id, `Added account: ${accDesc}`))
     setDialog({ type: null })
     setToast({ visible: true, message: 'Account added', type: 'success' })
     resetForm()
+  }
+
+  const openEditDialog = (acct: BankAccount) => {
+    resetForm()
+    setFormInstitution(acct.institution)
+    setFormAccountNumber(acct.accountNumber && acct.accountNumber !== '----' ? acct.accountNumber : '')
+    // Pre-fill with current ledger balance
+    const mapping = bankMappings.find(m => m.bankAccountId === acct.id)
+    const currentLedgerBal = mapping ? getAccountBalance(mapping.accountId, vouchers, accounts) : 0
+    setFormOpeningBalance(String(currentLedgerBal))
+    setFormTheme(acct.theme)
+    setFormIban(acct.iban || '')
+    setFormSwift(acct.swift || '')
+    setFormBranch(acct.branch || '')
+    setFormStatus(acct.status || 'active')
+    setDialog({ type: 'editAccount', accountId: acct.id })
+  }
+
+  const handleEditAccount = () => {
+    if (!dialog.accountId) return
+    if (!formInstitution) {
+      setToast({ visible: true, message: 'Bank is required', type: 'error' })
+      return
+    }
+    if (formOpeningBalance !== '' && isNaN(Number(formOpeningBalance))) {
+      setToast({ visible: true, message: 'Current balance must be a valid number', type: 'error' })
+      return
+    }
+
+    const targetBalance = Number(formOpeningBalance) || 0
+
+    setBankAccounts(prev => prev.map(a => {
+      if (a.id === dialog.accountId) {
+        return {
+          ...a,
+          institution: formInstitution,
+          accountNumber: formAccountNumber || '----',
+          theme: formTheme,
+          openingBalance: 0,
+          iban: formIban,
+          swift: formSwift,
+          branch: formBranch,
+          status: formStatus,
+          updatedAt: new Date().toISOString(),
+          updatedBy: 'user'
+        }
+      }
+      return a
+    }))
+
+     const mapping = bankMappings.find(m => m.bankAccountId === dialog.accountId)
+     if (mapping) {
+        const updatedName = formInstitution
+       setAccounts(prev => prev.map(acct => {
+         if (acct.id === mapping.accountId) {
+           return {
+             ...acct,
+             name: updatedName,
+             description: 'Bank Account',
+             openingBalance: 0,
+             updatedAt: new Date().toISOString()
+           }
+         }
+         return acct
+       }))
+       setBankMappings(prev => prev.map(m => {
+         if (m.bankAccountId === dialog.accountId) {
+           return {
+             ...m,
+             accountName: updatedName
+           }
+         }
+         return m
+       }))
+
+       // Compute adjustment amount: target - current ledger balance
+       const currentLedgerBal = getAccountBalance(mapping.accountId, vouchers, accounts)
+       const adjustment = Math.round((targetBalance - currentLedgerBal) * 100) / 100
+
+       if (Math.abs(adjustment) > 0.001) {
+         const adjustmentDate = new Date().toISOString().split('T')[0]
+         const isIncrease = adjustment > 0
+         const result = accountingEngine.processAccountingEvent(
+           'OPENING_BALANCE',
+           {
+             amount: Math.abs(adjustment),
+             date: adjustmentDate,
+             description: `Balance adjustment: ${formInstitution} (${isIncrease ? '+' : ''}${adjustment})`,
+             currency,
+             exchangeRate: 1,
+             baseCurrency: 'AED',
+             debitAccount: isIncrease ? mapping.accountId : '2200-inv',
+             creditAccount: isIncrease ? '2200-inv' : mapping.accountId,
+             referenceType: 'Investment',
+             referenceId: dialog.accountId,
+             createdBy: 'user',
+           },
+           accounts,
+           vouchers,
+         )
+
+         if (result.success && result.voucher) {
+           const approveResult = accountingEngine.approve(result.voucher, 'user')
+           if (approveResult.success && approveResult.voucher) {
+             const postResult = accountingEngine.post(approveResult.voucher, 'user', accounts, [])
+              if (postResult.success && postResult.voucher) {
+                const adjVoucher: Voucher = { ...postResult.voucher, reference: `ADJ-${dialog.accountId}-${Date.now()}` }
+                setVouchers(prev => [adjVoucher, ...prev])
+              }
+           }
+         }
+       }
+     }
+
+    invalidateBalanceCache()
+
+    const accDesc = formInstitution;
+    onAuditEvent?.(recordModuleEvent('Bank Accounts', 'Update', accDesc, dialog.accountId, `Updated account: ${accDesc}`))
+    setDialog({ type: null })
+    setToast({ visible: true, message: 'Account updated', type: 'success' })
+    resetForm()
+  }
+
+  const checkIsBankReferenced = (acctId: string): { referenced: boolean; count: number; reason?: string } => {
+    const mapping = bankMappings.find(m => m.bankAccountId === acctId)
+    const glAccountId = mapping?.accountId
+    let count = 0
+
+    if (glAccountId) {
+      count += vouchers.filter(v => v.reference !== `OB-${acctId}` && v.lines.some(l => l.accountId === glAccountId)).length
+    }
+
+    if (purchaseRecords) {
+      count += purchaseRecords.filter(pr => pr.fundingBankAccountId === acctId).length
+    }
+
+    if (bankReconciliations) {
+      count += bankReconciliations.filter(r => r.bankAccountId === acctId).length
+    }
+
+    if (count > 0) {
+      return {
+        referenced: true,
+        count,
+        reason: `This bank account cannot be deleted because it is referenced by ${count} accounting records. Please transfer the transactions to another account.`
+      }
+    }
+
+    return { referenced: false, count: 0 }
+  }
+
+  const handleDeleteAccountConfirm = () => {
+    if (!deleteAccountTarget) return
+
+    const refCheck = checkIsBankReferenced(deleteAccountTarget.id)
+    if (refCheck.referenced) {
+      setToast({
+        visible: true,
+        message: refCheck.reason || 'This bank account is already used in accounting records and cannot be deleted.',
+        type: 'error'
+      })
+      setDeleteAccountTarget(null)
+      return
+    }
+
+    const acctId = deleteAccountTarget.id
+    setBankAccounts(prev => prev.filter(a => a.id !== acctId))
+
+    const mapping = bankMappings.find(m => m.bankAccountId === acctId)
+    if (mapping) {
+      setBankMappings(prev => prev.filter(m => m.bankAccountId !== acctId))
+    }
+
+    // Safely remove the child account representing the bank from the Chart of Accounts.
+    // Never remove the root parent account ('1120' or '1120-prop').
+    setAccounts(prev => prev.filter(acct => {
+      if (acct.id === '1120' || acct.code === '1120') return true
+      if (mapping && acct.id === mapping.accountId) return false
+      
+      const isChild = acct.parentId === '1120' || acct.parentId === '1120-prop' || (acct.code && acct.code.startsWith('1120') && acct.code !== '1120')
+      if (isChild) {
+        const cleanAcctName = acct.name.toLowerCase()
+        const cleanInst = deleteAccountTarget.institution.toLowerCase()
+        if (cleanAcctName.includes(cleanInst) || (deleteAccountTarget.accountNumber && cleanAcctName.includes(deleteAccountTarget.accountNumber.toLowerCase()))) {
+          return false
+        }
+      }
+      return true
+    }))
+
+    setBankReconciliations(prev => prev.filter(r => r.bankAccountId !== acctId))
+    
+    // Remove the opening balance JV voucher
+    setVouchers(prev => prev.filter(v => v.reference !== `OB-${acctId}`))
+
+    invalidateBalanceCache()
+
+    if (selectedId === acctId) {
+      const remaining = bankAccounts.filter(a => a.id !== acctId)
+      if (remaining.length > 0) {
+        setSelectedId((remaining.find(a => a.status === 'active') || remaining[0]).id)
+      } else {
+        setSelectedId(null)
+      }
+    }
+
+    const accDesc = deleteAccountTarget.institution;
+    onAuditEvent?.(recordModuleEvent('Bank Accounts', 'Delete', accDesc, deleteAccountTarget.id, `Deleted account: ${accDesc}`))
+
+    setDeleteAccountTarget(null)
+    setToast({ visible: true, message: 'Bank account deleted successfully', type: 'success' })
   }
 
   const handleDeposit = () => {
@@ -205,26 +517,41 @@ export default function InvestmentBankAccounts({
       setToast({ visible: true, message: 'No account selected', type: 'error' })
       return
     }
-    const txn: BankTransaction = {
-      id: `bt-${Date.now()}`,
-      accountId: targetId,
-      date: formDate,
-      type: 'credit',
-      amount: amt,
-      description: formDesc || 'Deposit',
-      category: '',
-      status: 'cleared',
-      reference: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      createdBy: 'user',
-      updatedBy: 'user',
+    const mapping = bankMappings.find(m => m.bankAccountId === targetId)
+    if (!mapping) {
+      setToast({ visible: true, message: 'Bank account is not mapped to the ledger.', type: 'error' })
+      return
     }
-    setBankTransactions(prev => [txn, ...prev])
-    const targetAccount = bankAccounts.find(a => a.id === targetId)
-    onAuditEvent?.(recordModuleEvent('Bank Accounts', 'Create', targetAccount?.accountName || 'account', txn.id, `Deposit ${currency}${amt.toLocaleString()} to ${targetAccount?.accountName || 'account'}`))
-    setToast({ visible: true, message: 'Deposit recorded', type: 'success' })
-    setDialog({ type: null })
+
+    try {
+      const draftResult = accountingEngine.processAccountingEvent(
+        'BANK_DEPOSIT',
+        {
+          amount: amt,
+          date: formDate,
+          description: formDesc || 'Deposit',
+          currency,
+          bankAccount: mapping.accountId,
+        },
+        accounts,
+        vouchers
+      )
+      if (!draftResult.success || !draftResult.voucher) throw new Error(draftResult.errors.map(e => e.message).join(', '))
+      
+      const approveResult = accountingEngine.approve(draftResult.voucher, 'system')
+      if (!approveResult.success || !approveResult.voucher) throw new Error(approveResult.errors.map(e => e.message).join(', '))
+      
+      const postResult = accountingEngine.post(approveResult.voucher, 'system', accounts, vouchers)
+      if (!postResult.success || !postResult.voucher) throw new Error(postResult.errors.map(e => e.message).join(', '))
+      
+      setVouchers(prev => [...prev, postResult.voucher!])
+      invalidateBalanceCache()
+      onAuditEvent?.(recordModuleEvent('Bank Accounts', 'Update', dialog.accountId || 'account', '', `Deposited ${currency}${amt.toLocaleString()}`))
+      setDialog({ type: null })
+      setToast({ visible: true, message: 'Deposit recorded', type: 'success' })
+    } catch (e: any) {
+      setToast({ visible: true, message: e.message || 'Failed to record deposit', type: 'error' })
+    }
     resetForm()
   }
 
@@ -239,26 +566,41 @@ export default function InvestmentBankAccounts({
       setToast({ visible: true, message: 'No account selected', type: 'error' })
       return
     }
-    const txn: BankTransaction = {
-      id: `bt-${Date.now()}`,
-      accountId: targetId,
-      date: formDate,
-      type: 'debit',
-      amount: amt,
-      description: formDesc || 'Withdrawal',
-      category: '',
-      status: 'cleared',
-      reference: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      createdBy: 'user',
-      updatedBy: 'user',
+    const mapping = bankMappings.find(m => m.bankAccountId === targetId)
+    if (!mapping) {
+      setToast({ visible: true, message: 'Bank account is not mapped to the ledger.', type: 'error' })
+      return
     }
-    setBankTransactions(prev => [txn, ...prev])
-    const targetAccount = bankAccounts.find(a => a.id === targetId)
-    onAuditEvent?.(recordModuleEvent('Bank Accounts', 'Create', targetAccount?.accountName || 'account', txn.id, `Withdraw ${currency}${amt.toLocaleString()} from ${targetAccount?.accountName || 'account'}`))
-    setToast({ visible: true, message: 'Withdrawal recorded', type: 'success' })
-    setDialog({ type: null })
+
+    try {
+      const draftResult = accountingEngine.processAccountingEvent(
+        'BANK_WITHDRAWAL',
+        {
+          amount: amt,
+          date: formDate,
+          description: formDesc || 'Withdrawal',
+          currency,
+          bankAccount: mapping.accountId,
+        },
+        accounts,
+        vouchers
+      )
+      if (!draftResult.success || !draftResult.voucher) throw new Error(draftResult.errors.map(e => e.message).join(', '))
+      
+      const approveResult = accountingEngine.approve(draftResult.voucher, 'system')
+      if (!approveResult.success || !approveResult.voucher) throw new Error(approveResult.errors.map(e => e.message).join(', '))
+      
+      const postResult = accountingEngine.post(approveResult.voucher, 'system', accounts, vouchers)
+      if (!postResult.success || !postResult.voucher) throw new Error(postResult.errors.map(e => e.message).join(', '))
+      
+      setVouchers(prev => [...prev, postResult.voucher!])
+      invalidateBalanceCache()
+      onAuditEvent?.(recordModuleEvent('Bank Accounts', 'Update', dialog.accountId || 'account', '', `Withdrew ${currency}${amt.toLocaleString()}`))
+      setDialog({ type: null })
+      setToast({ visible: true, message: 'Withdrawal recorded', type: 'success' })
+    } catch (e: any) {
+      setToast({ visible: true, message: e.message || 'Failed to record withdrawal', type: 'error' })
+    }
     resetForm()
   }
 
@@ -273,64 +615,51 @@ export default function InvestmentBankAccounts({
       setToast({ visible: true, message: 'Select source and destination', type: 'error' })
       return
     }
-    const now = Date.now()
-    const transferRef = `tr-${now}`
-    const nowISO = new Date().toISOString()
-    const destAccount = bankAccounts.find(a => a.id === formToAccount)
-    const srcAccount = bankAccounts.find(a => a.id === fromId)
+    const fromMapping = bankMappings.find(m => m.bankAccountId === fromId)
+    const toMapping = bankMappings.find(m => m.bankAccountId === formToAccount)
 
-    const outTxn: BankTransaction = {
-      id: `bt-${now}-out`,
-      accountId: fromId,
-      date: formDate,
-      type: 'transfer_out',
-      amount: amt,
-      description: formDesc || `Transfer to ${destAccount?.accountName || 'destination'}`,
-      category: 'Transfer',
-      status: 'cleared',
-      reference: transferRef,
-      createdAt: nowISO,
-      updatedAt: nowISO,
-      createdBy: 'user',
-      updatedBy: 'user',
+    if (!fromMapping || !toMapping) {
+      setToast({ visible: true, message: 'Both bank accounts must be mapped to the ledger.', type: 'error' })
+      return
     }
 
-    const inTxn: BankTransaction = {
-      id: `bt-${now}-in`,
-      accountId: formToAccount,
-      date: formDate,
-      type: 'transfer_in',
-      amount: amt,
-      description: formDesc || `Transfer from ${srcAccount?.accountName || 'source'}`,
-      category: 'Transfer',
-      status: 'cleared',
-      reference: transferRef,
-      createdAt: nowISO,
-      updatedAt: nowISO,
-      createdBy: 'user',
-      updatedBy: 'user',
+    try {
+      const draftResult = accountingEngine.processAccountingEvent(
+        'BANK_TRANSFER',
+        {
+          amount: amt,
+          date: formDate,
+          description: formDesc || 'Bank Transfer',
+          currency,
+          debitAccount: fromMapping.accountId, // from
+          creditAccount: toMapping.accountId,  // to
+        },
+        accounts,
+        vouchers
+      )
+      if (!draftResult.success || !draftResult.voucher) throw new Error(draftResult.errors.map(e => e.message).join(', '))
+      
+      const approveResult = accountingEngine.approve(draftResult.voucher, 'system')
+      if (!approveResult.success || !approveResult.voucher) throw new Error(approveResult.errors.map(e => e.message).join(', '))
+      
+      const postResult = accountingEngine.post(approveResult.voucher, 'system', accounts, vouchers)
+      if (!postResult.success || !postResult.voucher) throw new Error(postResult.errors.map(e => e.message).join(', '))
+      
+      setVouchers(prev => [...prev, postResult.voucher!])
+      invalidateBalanceCache()
+      onAuditEvent?.(recordModuleEvent('Bank Accounts', 'Update', 'Transfer', '', `Transferred ${currency}${amt.toLocaleString()}`))
+      setDialog({ type: null })
+      setToast({ visible: true, message: 'Transfer completed', type: 'success' })
+    } catch (e: any) {
+      setToast({ visible: true, message: e.message || 'Failed to record transfer', type: 'error' })
     }
-
-    setBankTransactions(prev => [inTxn, outTxn, ...prev])
-    onAuditEvent?.(recordModuleEvent('Bank Accounts', 'Transfer', `${srcAccount?.accountName || 'source'} → ${destAccount?.accountName || 'destination'}`, transferRef, `Transfer ${currency}${amt.toLocaleString()} from ${srcAccount?.accountName || 'unknown'} to ${destAccount?.accountName || 'unknown'}`))
-    setToast({ visible: true, message: 'Transfer completed', type: 'success' })
-    setDialog({ type: null })
     resetForm()
   }
 
   const handleDeleteTransaction = () => {
     if (!deleteTarget) return
-    const result = deleteBankTransaction(deleteTarget, bankTransactions, bankAccounts, currency)
-    if (!result.success) {
-      setToast({ visible: true, message: result.error!, type: 'error' })
-      setDeleteTarget(null)
-      return
-    }
-    setBankTransactions(result.updatedTransactions)
+    // TODO: Implement via accounting engine
     setDeleteTarget(null)
-    if (result.auditDetails) {
-      onAuditEvent?.(recordModuleEvent('Bank Accounts', result.auditDetails.action, result.auditDetails.entityName, result.auditDetails.entityId, result.auditDetails.description))
-    }
     setToast({ visible: true, message: 'Transaction deleted', type: 'success' })
   }
 
@@ -340,8 +669,8 @@ export default function InvestmentBankAccounts({
   }
 
   const getTypeBadge = (txn: typeof tableData[0]) => {
-    if (txn.type === 'credit' || txn.type === 'transfer_in') return <Badge variant="success">deposit</Badge>
-    if (txn.type === 'debit' || txn.type === 'transfer_out') return <Badge variant="danger">withdrawal</Badge>
+    if (txn.type === 'credit') return <Badge variant="success">deposit</Badge>
+    if (txn.type === 'debit') return <Badge variant="danger">withdrawal</Badge>
     return <Badge variant="primary">Transfer</Badge>
   }
 
@@ -370,10 +699,11 @@ export default function InvestmentBankAccounts({
       key: 'amount',
       header: 'Amount',
       sortable: true,
-      numeric: true,
+      width: '110px',
       render: txn => (
-        <span className={`fw-600 text-sm text-nowrap ${txn.type === 'credit' || txn.type === 'transfer_in' ? 'text-success' : 'text-muted'}`}>
-          {formatAmount(txn)}
+        <span className={txn.type === 'credit' ? 'text-success' : 'text-danger'}>
+          {txn.type === 'credit' ? '+' : '-'}
+          <CurrencyText value={txn.amount} currency={currency} className="fw-600" />
         </span>
       ),
     },
@@ -384,9 +714,7 @@ export default function InvestmentBankAccounts({
       numeric: true,
       width: '110px',
       render: txn => (
-        <span className="text-mono text-xs text-secondary text-nowrap">
-          {currency} {txn.balanceAfter.toLocaleString()}
-        </span>
+        <CurrencyText value={txn.balanceAfter} currency={currency} className="text-secondary" />
       ),
     },
     {
@@ -410,6 +738,7 @@ export default function InvestmentBankAccounts({
 
   const getDialogTitle = () => {
     if (dialog.type === 'addAccount') return 'Add Bank Account'
+    if (dialog.type === 'editAccount') return 'Edit Bank Account'
     if (dialog.type === 'deposit') return 'Record Deposit'
     if (dialog.type === 'withdraw') return 'Record Withdrawal'
     if (dialog.type === 'transfer') return 'Transfer Funds'
@@ -418,6 +747,7 @@ export default function InvestmentBankAccounts({
 
   const handleDialogSubmit = () => {
     if (dialog.type === 'addAccount') handleAddAccount()
+    else if (dialog.type === 'editAccount') handleEditAccount()
     else if (dialog.type === 'deposit') handleDeposit()
     else if (dialog.type === 'withdraw') handleWithdraw()
     else if (dialog.type === 'transfer') handleTransfer()
@@ -433,11 +763,11 @@ export default function InvestmentBankAccounts({
     { value: 'teal', label: 'Teal' },
   ]
 
-  const accountTypeOptions = [
-    { value: 'checking', label: 'Checking' },
-    { value: 'savings', label: 'Savings' },
-    { value: 'cash', label: 'Cash' },
-    { value: 'credit', label: 'Credit Card' },
+
+  const statusOptions = [
+    { value: 'active', label: 'Active' },
+    { value: 'closed', label: 'Closed' },
+    { value: 'hidden', label: 'Hidden' },
   ]
 
   return (
@@ -454,21 +784,44 @@ export default function InvestmentBankAccounts({
         onCancel={() => setDeleteTarget(null)}
       />
 
+      <ConfirmDialog
+        open={deleteAccountTarget !== null}
+        title="Delete Bank Account?"
+        message={
+          deleteAccountTarget ? (
+            <div>
+              <div style={{ marginBottom: 12 }}>
+                <strong>Bank:</strong><br />
+                {deleteAccountTarget.institution}
+              </div>
+              <p style={{ margin: 0 }}>This action cannot be undone.</p>
+            </div>
+          ) : ''
+        }
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={handleDeleteAccountConfirm}
+        onCancel={() => setDeleteAccountTarget(null)}
+      />
+
       <EntityForm
         open={dialog.type !== null}
         title={getDialogTitle()}
-        submitLabel={dialog.type === 'addAccount' ? 'Add Account' : 'Record'}
+        submitLabel={dialog.type === 'addAccount' ? 'Add Account' : dialog.type === 'editAccount' ? 'Save Changes' : 'Record'}
         onCancel={() => { setDialog({ type: null }); resetForm() }}
         onSubmit={handleDialogSubmit}
       >
-        {dialog.type === 'addAccount' && (
+        {(dialog.type === 'addAccount' || dialog.type === 'editAccount') && (
           <div className="form-row">
-            <Input label="Institution" value={formInstitution} onChange={e => setFormInstitution(e.target.value)} placeholder="e.g. Emirates Islamic Bank" autoFocus />
-            <Input label="Account Name" value={formAccountName} onChange={e => setFormAccountName(e.target.value)} placeholder="e.g. Savings Account" />
-            <Input label="Account Number" value={formAccountNumber} onChange={e => setFormAccountNumber(e.target.value)} placeholder="Optional" />
-            <Select label="Account Type" value={formAccountType} onChange={e => setFormAccountType(e.target.value as any)} options={accountTypeOptions} />
-            <Input label="Opening Balance (AED)" type="number" value={formOpeningBalance} onChange={e => setFormOpeningBalance(e.target.value)} placeholder="0" />
+            <Input label="Bank" value={formInstitution} onChange={e => setFormInstitution(e.target.value)} placeholder="e.g. Primary Bank" autoFocus />
+            <Input label="IBAN" value={formIban} onChange={e => setFormIban(e.target.value)} placeholder="e.g. AE83024000..." />
+            <Input label="SWIFT Code" value={formSwift} onChange={e => setFormSwift(e.target.value)} placeholder="e.g. EIBKAEADXXX" />
+            <Input label="Branch" value={formBranch} onChange={e => setFormBranch(e.target.value)} placeholder="e.g. Sheikh Zayed Road Branch" />
+            <Input label="Initial Amount (AED)" type="number" value={formOpeningBalance} onChange={e => setFormOpeningBalance(e.target.value)} placeholder="0" />
             <Select label="Theme Color" value={formTheme} onChange={e => setFormTheme(e.target.value)} options={themeOptions} />
+            {dialog.type === 'editAccount' && (
+              <Select label="Status" value={formStatus} onChange={e => setFormStatus(e.target.value as any)} options={statusOptions} />
+            )}
           </div>
         )}
         {dialog.type === 'deposit' && (
@@ -491,13 +844,13 @@ export default function InvestmentBankAccounts({
               label="From Account"
               value={dialog.accountId || selectedId || ''}
               disabled
-              options={bankAccounts.filter(a => a.status === 'active').map(a => ({ value: a.id, label: `${a.institution} - ${a.accountName}` }))}
+              options={bankAccounts.filter(a => a.status === 'active').map(a => ({ value: a.id, label: a.institution }))}
             />
             <Select
               label="To Account"
               value={formToAccount}
               onChange={e => setFormToAccount(e.target.value)}
-              options={bankAccounts.filter(a => a.status === 'active' && a.id !== (dialog.accountId || selectedId)).map(a => ({ value: a.id, label: `${a.institution} - ${a.accountName}` }))}
+              options={bankAccounts.filter(a => a.status === 'active' && a.id !== (dialog.accountId || selectedId)).map(a => ({ value: a.id, label: a.institution }))}
             />
             <Input label={`Amount (${currency})`} type="number" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0" autoFocus />
             <Input label="Description" value={formDesc} onChange={e => setFormDesc(e.target.value)} placeholder="Optional" />
@@ -533,10 +886,10 @@ export default function InvestmentBankAccounts({
         ) : (
           <>
             <div className="kpi-grid">
-              <KpiCard label="Total Cash" value={`${currency} ${bankProjection.totalTransactionBalance.toLocaleString()}`} accentColor="var(--success)" />
+              <KpiCard label="Total Balance" value={<CurrencyText value={bankProjection.totalTransactionBalance} currency={currency} />} accentColor="var(--success)" />
               <KpiCard label="Active Accounts" value={String(bankProjection.activeAccounts)} accentColor="var(--primary)" />
-              <KpiCard label="This Month Flow" value={`${bankProjection.thisMonthFlow >= 0 ? '+' : ''}${currency} ${Math.abs(bankProjection.thisMonthFlow).toLocaleString()}`} accentColor={bankProjection.thisMonthFlow >= 0 ? 'var(--success)' : 'var(--danger)'} />
-              <KpiCard label="Ledger Bank Balance" value={`${currency} ${bankProjection.totalLedgerBankBalance.toLocaleString()}`} accentColor="var(--accent)" />
+              <KpiCard label="This Month Flow" value={<span>{bankProjection.thisMonthFlow >= 0 ? '+' : '-'}<CurrencyText value={Math.abs(bankProjection.thisMonthFlow)} currency={currency} /></span>} accentColor={bankProjection.thisMonthFlow >= 0 ? 'var(--success)' : 'var(--danger)'} />
+              <KpiCard label="Ledger Bank Balance" value={<CurrencyText value={bankProjection.totalLedgerBankBalance} currency={currency} />} accentColor="var(--accent)" />
             </div>
 
             {/* Reconciliation Summary */}
@@ -557,9 +910,9 @@ export default function InvestmentBankAccounts({
                   <tbody>
                     {bankProjection.accounts.map(({ account: acct, transactionBalance: bal, ledgerBalance }) => {
                       const diff = ledgerBalance - bal
-                      const lastReconciled = bankTransactions
-                        .filter(t => t.accountId === acct.id && (t.status === 'reconciled' || t.status === 'cleared'))
-                        .sort((a, b) => b.date.localeCompare(a.date))[0]?.date || 'Never'
+                      const lastReconciled = bankReconciliations
+                          .filter(r => r.bankAccountId === acct.id)
+                          .sort((a, b) => b.statementEndDate.localeCompare(a.statementEndDate))[0]?.statementEndDate || 'Never'
                       const statusLabel = Math.abs(diff) < 0.01 ? 'Reconciled' : 'Unreconciled'
                       const statusVariant = Math.abs(diff) < 0.01 ? 'success' : 'danger'
                       return (
@@ -567,13 +920,13 @@ export default function InvestmentBankAccounts({
                           <td className="text-xs fw-500">
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                               <BankAccountAvatar bank={acct} size={24} />
-                              <span>{acct.institution} — {acct.accountName}</span>
+                              <span>{acct.institution}</span>
                             </div>
                           </td>
-                          <td className="text-mono text-xs" style={{ textAlign: 'right' }}>{currency} {ledgerBalance.toLocaleString()}</td>
-                          <td className="text-mono text-xs" style={{ textAlign: 'right' }}>{currency} {bal.toLocaleString()}</td>
-                          <td className={`text-mono text-xs fw-600 ${Math.abs(diff) < 0.01 ? '' : diff > 0 ? 'text-success' : 'text-danger'}`} style={{ textAlign: 'right' }}>
-                            {Math.abs(diff) < 0.01 ? '—' : `${currency} ${Math.abs(diff).toLocaleString()}`}
+                          <td className="text-mono text-xs" style={{ textAlign: 'right' }}><CurrencyText value={ledgerBalance} currency={currency} /></td>
+                          <td className="text-mono text-xs" style={{ textAlign: 'right' }}><CurrencyText value={bal} currency={currency} /></td>
+                          <td className="text-mono text-xs" style={{ textAlign: 'right' }}>
+                            {Math.abs(diff) < 0.01 ? '—' : <CurrencyText value={Math.abs(diff)} currency={currency} className={diff > 0 ? 'text-success' : 'text-danger'} />}
                           </td>
                           <td className="text-xs text-secondary">{lastReconciled === 'Never' ? 'Never' : formatDate(lastReconciled, dateFormat)}</td>
                           <td><Badge variant={statusVariant}>{statusLabel}</Badge></td>
@@ -591,20 +944,23 @@ export default function InvestmentBankAccounts({
                   key={acct.id}
                   className={`account-card compact prop-theme-${acct.theme}${selectedId === acct.id ? ' account-card-selected' : ''}${acct.status !== 'active' ? ' account-card-inactive' : ''}`}
                   onClick={() => setSelectedId(acct.id)}
-                  style={{ cursor: 'pointer' }}
+                  style={{ cursor: 'pointer', position: 'relative' }}
                 >
                   <div className="account-card-theme" />
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 0 0 14px' }}>
-                    <BankAccountAvatar bank={acct} />
-                    <div className="account-card-institution">{acct.institution} · {maskAccountNumber(acct.accountNumber)}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '0 0 0 14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <BankAccountAvatar bank={acct} />
+                      <div className="account-card-institution" style={{ flex: 1, paddingRight: 24 }}>{acct.institution}</div>
+                    </div>
+                    <BankAccountActionsMenu
+                      onView={() => setSelectedId(acct.id)}
+                      onEdit={() => openEditDialog(acct)}
+                      onDelete={() => setDeleteAccountTarget(acct)}
+                      triggerStyle={{ padding: '2px 4px', height: 'auto', background: 'transparent', minWidth: 'auto', position: 'relative', zIndex: 10 }}
+                    />
                   </div>
-                  <div className="account-card-name">{acct.accountName}</div>
-                  <div className="account-card-balance">{currency} {bal.toLocaleString()}</div>
-                  <div className="account-card-footer">
-                    <Badge variant={acct.accountType === 'savings' ? 'primary' : acct.accountType === 'credit' ? 'warning' : 'neutral'}>
-                      {acct.accountType}
-                    </Badge>
-                  </div>
+                  <div className="account-card-name">&nbsp;</div>
+                  <div className="account-card-balance"><CurrencyText value={bal} currency={currency} /></div>
                 </div>
               ))}
             </div>
@@ -613,7 +969,10 @@ export default function InvestmentBankAccounts({
               <>
                 <div className="card card-table">
                 <div className="card-header">
-                  <span className="card-title">{selectedBankAccount.accountName} — Transactions</span>
+                  <span className="card-title">
+                    {selectedBankAccount.institution}
+                    {' — Transactions'}
+                  </span>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>Import Statement</Button>
                     <Button variant="primary" size="sm" onClick={() => openDialog('deposit', selectedId!)}>Deposit</Button>
@@ -752,7 +1111,8 @@ export default function InvestmentBankAccounts({
                         <td style={{ padding: 8, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{line.description}</td>
                         <td style={{ padding: 8 }}>{line.reference ?? '-'}</td>
                         <td style={{ padding: 8, textAlign: 'right', color: line.amount >= 0 ? '#10B981' : '#EF4444', fontWeight: 500 }}>
-                          {line.amount >= 0 ? '+' : ''}{line.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          {line.amount >= 0 ? '+' : '-'}
+                          <CurrencyText value={Math.abs(line.amount)} currency={currency} />
                         </td>
                       </tr>
                     ))}
@@ -775,6 +1135,7 @@ export default function InvestmentBankAccounts({
           vouchers={vouchers}
           setVouchers={setVouchers}
           accountingEngine={accountingEngine}
+          bankMappings={bankMappings}
           currency={currency}
           dateFormat={dateFormat}
           onAuditEvent={onAuditEvent}

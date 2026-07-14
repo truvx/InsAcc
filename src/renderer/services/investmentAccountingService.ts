@@ -29,8 +29,8 @@ export function ensureInvestmentBankMappings(
     if (mappedBankIds.has(bank.id)) continue
     const parent = getAccountByCode(BANK_PARENT_CODE, updatedAccounts)
     if (!parent) continue
-    const sanitized = bank.accountName.replace(/[^a-zA-Z0-9 ]/g, '').trim()
-    const childName = `Investment - ${bank.institution} - ${sanitized}`
+    const suffix = bank.accountNumber ? bank.accountNumber.replace(/[^a-zA-Z0-9 ]/g, '').trim() : ''
+    const childName = suffix ? `Investment - ${bank.institution} - ${suffix}` : `Investment - ${bank.institution}`
     const { account, updatedAccounts: nextAccounts } = createChildAccount(
       BANK_PARENT_CODE,
       childName,

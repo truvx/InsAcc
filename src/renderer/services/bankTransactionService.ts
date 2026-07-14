@@ -20,7 +20,7 @@ export function deleteBankTransaction<T extends {
 }>(
   transactionId: string,
   transactions: T[],
-  accounts: { id: string; accountName: string }[],
+  accounts: { id: string; institution: string }[],
   currency: string = 'AED'
 ): DeleteTransactionResult<T> {
   const transaction = transactions.find(t => t.id === transactionId)
@@ -43,7 +43,7 @@ export function deleteBankTransaction<T extends {
 
   const updated = transactions.filter(t => t.id !== transactionId)
   const account = accounts.find(a => a.id === transaction.accountId)
-  const accountName = account?.accountName || 'unknown'
+  const accountName = account?.institution || 'unknown'
 
   return {
     success: true,

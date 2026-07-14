@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { AuditEvent, AuditModule, AuditAction, AuditSeverity } from '../data/auditTypes'
-import { Badge, Button, EmptyState, CloseIcon, SearchIcon } from './design/DesignSystem'
+import { Badge, Button, EmptyState, CloseIcon, SearchIcon, Select } from './design/DesignSystem'
 import { formatDate, t } from '../utils'
 
 interface Props {
@@ -185,33 +185,24 @@ export default function History({ auditEvents, language = 'English' }: Props) {
         <div className="data-table-toolbar">
           <div className="data-table-filters">
             <div className="filter-bar">
-              <select
-                className="input"
+              <Select
                 value={filterModule}
                 onChange={e => setFilterModule(e.target.value)}
-              >
-                {MODULE_OPTIONS.map(o => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-              <select
-                className="input"
+                options={MODULE_OPTIONS}
+                style={{ margin: 0, minWidth: '150px' }}
+              />
+              <Select
                 value={filterAction}
                 onChange={e => setFilterAction(e.target.value)}
-              >
-                {ACTION_OPTIONS.map(o => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-              <select
-                className="input"
+                options={ACTION_OPTIONS}
+                style={{ margin: 0, minWidth: '150px' }}
+              />
+              <Select
                 value={filterSeverity}
                 onChange={e => setFilterSeverity(e.target.value)}
-              >
-                {SEVERITY_OPTIONS.map(o => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
+                options={SEVERITY_OPTIONS}
+                style={{ margin: 0, minWidth: '150px' }}
+              />
               <input
                 type="date"
                 className="input"

@@ -2,7 +2,18 @@ import React, { useState } from 'react'
 import type { UserEntry, LogEntry } from '../data/types'
 import type { AuditEvent } from '../data/auditTypes'
 import { recordModuleEvent } from '../services/auditService'
+import type { InvestmentCategory, InvestmentAsset } from '../data/investmentMasterData'
+import { getActiveCategories, getAssetsForCategory } from '../data/investmentMasterData'
+import {
+  isBuiltInCategory,
+  renameCategory as svcRenameCategory,
+  deleteCategory as svcDeleteCategory,
+  createAsset as svcCreateAsset,
+  deleteAsset as svcDeleteAsset,
+} from '../services/assetCategoryService'
 import Toast from './Toast'
+import { Select } from './design/DesignSystem'
+import { Plus } from 'lucide-react'
 
 interface Props {
   currentTheme: string
@@ -24,6 +35,10 @@ interface Props {
   moduleLabel: string
   onResetAllData: () => void
   onAuditEvent?: (event: AuditEvent) => void
+  investmentCategories?: InvestmentCategory[]
+  setInvestmentCategories?: React.Dispatch<React.SetStateAction<InvestmentCategory[]>>
+  investmentAssets?: InvestmentAsset[]
+  setInvestmentAssets?: React.Dispatch<React.SetStateAction<InvestmentAsset[]>>
 }
 
 export default function Settings({
@@ -33,6 +48,10 @@ export default function Settings({
   currency, onSetCurrency, dateFormat, onSetDateFormat,
   language, onSetLanguage, autoLogout, onSetAutoLogout,
   moduleLabel, onResetAllData, onAuditEvent,
+  investmentCategories = [],
+  setInvestmentCategories,
+  investmentAssets = [],
+  setInvestmentAssets,
 }: Props) {
   const [activeTab, setActiveTab] = useState('general')
   const [showAddUser, setShowAddUser] = useState(false)
@@ -44,6 +63,68 @@ export default function Settings({
   const [confirmPassword, setConfirmPassword] = useState('')
 
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' })
+
+  // ── Asset Categories Tab State ──────────────────────────────────────────────
+  const activeCategories = getActiveCategories(investmentCategories)
+  const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null)
+
+  // Rename category modal
+  const [renameCatId, setRenameCatId] = useState<string | null>(null)
+  const [renameCatValue, setRenameCatValue] = useState('')
+  const [renameCatError, setRenameCatError] = useState('')
+
+  // Add asset modal
+  const [addAssetCatId, setAddAssetCatId] = useState<string | null>(null)
+  const [newAssetName, setNewAssetName] = useState('')
+  const [addAssetError, setAddAssetError] = useState('')
+
+  const handleRenameCategory = () => {
+    if (!renameCatId) return
+    const result = svcRenameCategory(renameCatId, renameCatValue, investmentCategories)
+    if (!result.ok || !result.data) {
+      setRenameCatError(result.error || 'Invalid')
+      return
+    }
+    setInvestmentCategories?.(prev => prev.map(c => c.id === renameCatId ? result.data! : c))
+    setRenameCatId(null)
+    setRenameCatValue('')
+    setRenameCatError('')
+    setToast({ visible: true, message: 'Category renamed.', type: 'success' })
+  }
+
+  const handleDeleteCategory = (categoryId: string) => {
+    const result = svcDeleteCategory(categoryId, investmentCategories, investmentAssets, [])
+    if (!result.ok) {
+      setToast({ visible: true, message: result.error || 'Cannot delete', type: 'error' })
+      return
+    }
+    setInvestmentCategories?.(prev => prev.filter(c => c.id !== categoryId))
+    setToast({ visible: true, message: 'Category deleted.', type: 'success' })
+  }
+
+  const handleAddAsset = () => {
+    if (!addAssetCatId) return
+    const result = svcCreateAsset(addAssetCatId, newAssetName, investmentAssets)
+    if (!result.ok || !result.data) {
+      setAddAssetError(result.error || 'Invalid')
+      return
+    }
+    setInvestmentAssets?.(prev => [...prev, result.data!])
+    setNewAssetName('')
+    setAddAssetError('')
+    setAddAssetCatId(null)
+    setToast({ visible: true, message: 'Asset added.', type: 'success' })
+  }
+
+  const handleDeleteAsset = (assetId: string) => {
+    const result = svcDeleteAsset(assetId, investmentAssets, [])
+    if (!result.ok) {
+      setToast({ visible: true, message: result.error || 'Cannot delete', type: 'error' })
+      return
+    }
+    setInvestmentAssets?.(prev => prev.filter(a => a.id !== assetId))
+    setToast({ visible: true, message: 'Asset deleted.', type: 'success' })
+  }
 
   const [notifications, setNotifications] = useState([
     { label: 'Bond Maturity Alerts', desc: 'Get notified when bonds are about to mature', enabled: true },
@@ -108,7 +189,13 @@ export default function Settings({
 
       <div className="page-body">
         <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-          {[{ id: 'general', label: 'General' }, { id: 'users', label: 'User Management' }, { id: 'security', label: 'Security' }, { id: 'notifications', label: 'Notifications' }].map(tab => (
+          {[
+            { id: 'general', label: 'General' },
+            { id: 'users', label: 'User Management' },
+            { id: 'security', label: 'Security' },
+            { id: 'notifications', label: 'Notifications' },
+            { id: 'asset-categories', label: 'Asset Categories' },
+          ].map(tab => (
             <button key={tab.id} className={`chart-period ${activeTab === tab.id ? 'active' : ''}`} onClick={() => setActiveTab(tab.id)}>
               {tab.label}
             </button>
@@ -142,47 +229,67 @@ export default function Settings({
                   <div style={{ fontSize: 14, fontWeight: 500 }}>Default Currency</div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Current: {currency}</div>
                 </div>
-                <select className="input" value={currency} onChange={e => { onSetCurrency(e.target.value); onAuditEvent?.(recordModuleEvent('Settings', 'Update', 'Currency', '', `Currency changed to ${e.target.value}`)) }}>
-                  <option value="AED">AED - UAE Dirham</option>
-                  <option value="USD">USD - US Dollar</option>
-                  <option value="EUR">EUR - Euro</option>
-                  <option value="GBP">GBP - British Pound</option>
-                </select>
+                <Select
+                  value={currency}
+                  onChange={e => { onSetCurrency(e.target.value); onAuditEvent?.(recordModuleEvent('Settings', 'Update', 'Currency', '', `Currency changed to ${e.target.value}`)) }}
+                  options={[
+                    { value: 'AED', label: 'AED - UAE Dirham' },
+                    { value: 'USD', label: 'USD - US Dollar' },
+                    { value: 'EUR', label: 'EUR - Euro' },
+                    { value: 'GBP', label: 'GBP - British Pound' }
+                  ]}
+                  style={{ margin: 0, minWidth: '220px' }}
+                />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 500 }}>Date Format</div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Current: {dateFormat}</div>
                 </div>
-                <select className="input" value={dateFormat} onChange={e => { onSetDateFormat(e.target.value); onAuditEvent?.(recordModuleEvent('Settings', 'Update', 'Date Format', '', `Date format changed to ${e.target.value}`)) }}>
-                  <option>DD/MM/YYYY</option>
-                  <option>MM/DD/YYYY</option>
-                  <option>YYYY-MM-DD</option>
-                </select>
+                <Select
+                  value={dateFormat}
+                  onChange={e => { onSetDateFormat(e.target.value); onAuditEvent?.(recordModuleEvent('Settings', 'Update', 'Date Format', '', `Date format changed to ${e.target.value}`)) }}
+                  options={[
+                    { value: 'DD/MM/YYYY', label: 'DD/MM/YYYY' },
+                    { value: 'MM/DD/YYYY', label: 'MM/DD/YYYY' },
+                    { value: 'YYYY-MM-DD', label: 'YYYY-MM-DD' }
+                  ]}
+                  style={{ margin: 0, minWidth: '220px' }}
+                />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 500 }}>Language</div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Current: {language}</div>
                 </div>
-                <select className="input" value={language} onChange={e => { onSetLanguage(e.target.value); onAuditEvent?.(recordModuleEvent('Settings', 'Update', 'Language', '', `Language changed to ${e.target.value}`)) }}>
-                  <option value="English">English</option>
-                  <option value="Arabic">Arabic</option>
-                  <option value="French">French</option>
-                </select>
+                <Select
+                  value={language}
+                  onChange={e => { onSetLanguage(e.target.value); onAuditEvent?.(recordModuleEvent('Settings', 'Update', 'Language', '', `Language changed to ${e.target.value}`)) }}
+                  options={[
+                    { value: 'English', label: 'English' },
+                    { value: 'Arabic', label: 'Arabic' },
+                    { value: 'French', label: 'French' }
+                  ]}
+                  style={{ margin: 0, minWidth: '220px' }}
+                />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' }}>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 500 }}>Auto Logout</div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Session timeout: {autoLogout}</div>
                 </div>
-                <select className="input" value={autoLogout} onChange={e => { onSetAutoLogout(e.target.value); onAuditEvent?.(recordModuleEvent('Settings', 'Update', 'Auto Logout', '', `Auto logout changed to ${e.target.value}`)) }}>
-                  <option>5 minutes</option>
-                  <option>15 minutes</option>
-                  <option>30 minutes</option>
-                  <option>1 hour</option>
-                  <option>Never</option>
-                </select>
+                <Select
+                  value={autoLogout}
+                  onChange={e => { onSetAutoLogout(e.target.value); onAuditEvent?.(recordModuleEvent('Settings', 'Update', 'Auto Logout', '', `Auto logout changed to ${e.target.value}`)) }}
+                  options={[
+                    { value: '5 minutes', label: '5 minutes' },
+                    { value: '15 minutes', label: '15 minutes' },
+                    { value: '30 minutes', label: '30 minutes' },
+                    { value: '1 hour', label: '1 hour' },
+                    { value: 'Never', label: 'Never' }
+                  ]}
+                  style={{ margin: 0, minWidth: '220px' }}
+                />
               </div>
             </div>
           </div>
@@ -223,13 +330,16 @@ export default function Settings({
                       <label className="form-label">Full Name</label>
                       <input className="input" placeholder="e.g. Accounts 2" value={newUserName} onChange={e => setNewUserName(e.target.value)} />
                     </div>
-                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                      <label className="form-label">Role</label>
-                      <select className="input" value={newUserRole} onChange={e => setNewUserRole(e.target.value)}>
-                        <option value="Accounts">Accounts</option>
-                        <option value="Admin">Admin</option>
-                      </select>
-                    </div>
+                    <Select
+                      label="Role"
+                      value={newUserRole}
+                      onChange={e => setNewUserRole(e.target.value)}
+                      options={[
+                        { value: 'Accounts', label: 'Accounts' },
+                        { value: 'Admin', label: 'Admin' }
+                      ]}
+                      style={{ margin: 0 }}
+                    />
                     <button className="btn btn-primary" style={{ height: 46, padding: '0 24px' }} onClick={handleAddUser}>Create</button>
                   </div>
                 </div>
@@ -325,6 +435,126 @@ export default function Settings({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+        {activeTab === 'asset-categories' && (
+          <div className="chart-card">
+            <div className="chart-header">
+              <div className="chart-title">Asset Categories</div>
+              <div className="chart-subtitle">{activeCategories.length} categories &middot; Built-in categories are locked</div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {activeCategories.map(cat => {
+                const isBuiltIn = isBuiltInCategory(cat.id)
+                const catAssets = getAssetsForCategory(investmentAssets, cat.id)
+                const expanded = expandedCategoryId === cat.id
+                return (
+                  <div key={cat.id} style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '10px 16px', cursor: 'pointer',
+                        background: expanded ? 'var(--bg-secondary)' : 'transparent',
+                      }}
+                      onClick={() => setExpandedCategoryId(expanded ? null : cat.id)}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 14, fontWeight: 500 }}>{cat.name}</span>
+                        {isBuiltIn && (
+                          <span style={{ fontSize: 10, background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 6px', color: 'var(--text-secondary)' }}>Built-in</span>
+                        )}
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{catAssets.length} assets</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
+                        {!isBuiltIn && (
+                          <>
+                            <button
+                              className="btn btn-secondary"
+                              style={{ fontSize: 11, padding: '3px 10px' }}
+                              onClick={() => { setRenameCatId(cat.id); setRenameCatValue(cat.name); setRenameCatError('') }}
+                            >Rename</button>
+                            <button
+                              className="btn btn-secondary"
+                              style={{ fontSize: 11, padding: '3px 10px', border: '1px solid var(--danger)', color: 'var(--danger)' }}
+                              onClick={() => { if (confirm(`Delete "${cat.name}"?`)) handleDeleteCategory(cat.id) }}
+                            >Delete</button>
+                          </>
+                        )}
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', padding: '3px 6px' }}>{expanded ? '▲' : '▼'}</span>
+                      </div>
+                    </div>
+                    {expanded && (
+                      <div style={{ padding: '8px 16px 12px', borderTop: '1px solid var(--border)' }}>
+                        {catAssets.length === 0 ? (
+                          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>No assets yet.</div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+                            {catAssets.map(asset => (
+                              <div key={asset.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                                <span style={{ fontSize: 13 }}>{asset.name}</span>
+                                <button
+                                  className="btn btn-secondary"
+                                  style={{ fontSize: 11, padding: '2px 8px', border: '1px solid var(--danger)', color: 'var(--danger)' }}
+                                  onClick={() => { if (confirm(`Delete asset "${asset.name}"?`)) handleDeleteAsset(asset.id) }}
+                                >Delete</button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {addAssetCatId === cat.id ? (
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 4 }}>
+                            <div style={{ flex: 1 }}>
+                              <input
+                                className="input"
+                                placeholder="Asset name"
+                                value={newAssetName}
+                                maxLength={50}
+                                onChange={e => { setNewAssetName(e.target.value); setAddAssetError('') }}
+                                onKeyDown={e => { if (e.key === 'Enter') handleAddAsset(); if (e.key === 'Escape') { setAddAssetCatId(null); setNewAssetName('') } }}
+                                autoFocus
+                                style={{ marginBottom: 0 }}
+                              />
+                              {addAssetError && <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 2 }}>{addAssetError}</div>}
+                            </div>
+                            <button className="btn btn-primary" style={{ fontSize: 12, padding: '10px 16px', flexShrink: 0 }} onClick={handleAddAsset}>Add</button>
+                            <button className="btn btn-secondary" style={{ fontSize: 12, padding: '10px 12px', flexShrink: 0 }} onClick={() => { setAddAssetCatId(null); setNewAssetName('') }}>Cancel</button>
+                          </div>
+                        ) : (
+                          <button className="btn btn-secondary" style={{ fontSize: 12, padding: '5px 14px' }} onClick={() => { setAddAssetCatId(cat.id); setNewAssetName(''); setAddAssetError('') }}>
+                            <Plus size={12} strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Add Asset
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Rename Category Modal */}
+            {renameCatId && (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ background: 'var(--card-bg)', borderRadius: 12, padding: 24, minWidth: 360, boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+                  <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Rename Category</div>
+                  <div className="form-group">
+                    <label className="form-label">Category Name</label>
+                    <input
+                      className="input"
+                      value={renameCatValue}
+                      maxLength={50}
+                      onChange={e => { setRenameCatValue(e.target.value); setRenameCatError('') }}
+                      onKeyDown={e => { if (e.key === 'Enter') handleRenameCategory() }}
+                      autoFocus
+                    />
+                    {renameCatError && <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>{renameCatError}</div>}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+                    <button className="btn btn-secondary" onClick={() => { setRenameCatId(null); setRenameCatError('') }}>Cancel</button>
+                    <button className="btn btn-primary" onClick={handleRenameCategory}>Save</button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

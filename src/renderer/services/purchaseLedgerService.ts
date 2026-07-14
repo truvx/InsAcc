@@ -129,10 +129,26 @@ export function validatePurchaseRecord(record: PurchaseRecord): ValidationError[
   return errors
 }
 
+export function getAssetWeightMultiplier(assetName: string): number {
+  const lowerName = assetName.toLowerCase()
+  const kgMatch = lowerName.match(/(\d+(?:\.\d+)?)\s*kg/)
+  if (kgMatch) {
+    const val = parseFloat(kgMatch[1])
+    if (!isNaN(val)) return val * 1000
+  }
+  const gMatch = lowerName.match(/(\d+(?:\.\d+)?)\s*g/)
+  if (gMatch) {
+    const val = parseFloat(gMatch[1])
+    if (!isNaN(val)) return val
+  }
+  return 1
+}
+
 // ─── Factory ───────────────────────────────────────────────────────────
 
 export function createPurchaseRecord(input: CreatePurchaseInput): PurchaseRecord {
   const now = new Date().toISOString()
+  const multiplier = getAssetWeightMultiplier(input.assetName)
   return {
     id: generatePurchaseId(),
     investmentId: input.investmentId ?? null,
@@ -142,8 +158,9 @@ export function createPurchaseRecord(input: CreatePurchaseInput): PurchaseRecord
     purchaseDate: input.purchaseDate,
     quantity: input.quantity,
     unitPrice: input.unitPrice,
-    totalValue: computeTotalValue(input.quantity, input.unitPrice),
-    broker: input.broker ?? '',
+    totalValue: computeTotalValue(input.quantity, input.unitPrice) * multiplier,
+    broker: input.broker ?? input.buyer ?? '',
+    buyer: input.buyer ?? '',
     notes: input.notes ?? '',
     attachments: [],
     tags: input.tags ?? [],
@@ -153,6 +170,8 @@ export function createPurchaseRecord(input: CreatePurchaseInput): PurchaseRecord
     voucherId: '',
     voucherNumber: '',
     fundingBankAccountId: input.fundingBankAccountId ?? '',
+    paymentMode: input.paymentMode,
+    paymentReference: input.paymentReference,
     createdAt: now,
     updatedAt: now,
     createdBy: input.createdBy ?? 'user',
@@ -164,11 +183,13 @@ export function updatePurchaseRecord(record: PurchaseRecord, changes: UpdatePurc
   const now = new Date().toISOString()
   const qty = changes.quantity ?? record.quantity
   const price = changes.unitPrice ?? record.unitPrice
+  const assetName = changes.assetName ?? record.assetName
+  const multiplier = getAssetWeightMultiplier(assetName)
   return {
     ...record,
     ...changes,
-    totalValue: (changes.quantity !== undefined || changes.unitPrice !== undefined)
-      ? computeTotalValue(qty, price)
+    totalValue: (changes.quantity !== undefined || changes.unitPrice !== undefined || changes.assetName !== undefined)
+      ? computeTotalValue(qty, price) * multiplier
       : record.totalValue,
     updatedAt: now,
     updatedBy: changes.updatedBy,
@@ -176,14 +197,6 @@ export function updatePurchaseRecord(record: PurchaseRecord, changes: UpdatePurc
 }
 
 // ─── Calculations ──────────────────────────────────────────────────────
-
-export function calculateWeightedAverage(records: PurchaseRecord[]): number {
-  if (records.length === 0) return 0
-  const totalQty = records.reduce((s, r) => s + r.quantity, 0)
-  if (totalQty === 0) return 0
-  const totalCost = records.reduce((s, r) => s + (r.unitPrice * r.quantity), 0)
-  return Math.round((totalCost / totalQty) * 10000) / 10000
-}
 
 export function calculateTotalQuantity(records: PurchaseRecord[]): number {
   return records.reduce((s, r) => s + r.quantity, 0)
@@ -198,7 +211,6 @@ export function calculateCostBasis(records: PurchaseRecord[]): CostBasisInfo {
   return {
     totalQuantity: calculateTotalQuantity(active),
     totalInvested: calculateTotalInvested(active),
-    weightedAveragePrice: calculateWeightedAverage(active),
     purchaseCount: active.length,
   }
 }
@@ -251,7 +263,6 @@ export function calculateAverages(records: PurchaseRecord[]): Array<{
   purchaseCount: number
   totalQuantity: number
   totalInvested: number
-  weightedAveragePrice: number
 }> {
   const grouped = groupPurchases(records, { assetType: true, assetName: true })
   return Object.entries(grouped).map(([key, group]) => {
@@ -263,7 +274,6 @@ export function calculateAverages(records: PurchaseRecord[]): Array<{
       purchaseCount: basis.purchaseCount,
       totalQuantity: basis.totalQuantity,
       totalInvested: basis.totalInvested,
-      weightedAveragePrice: basis.weightedAveragePrice,
     }
   })
 }
@@ -296,7 +306,7 @@ export function searchPurchases(records: PurchaseRecord[], query: string): Purch
   return records.filter(r =>
     r.assetName.toLowerCase().includes(q) ||
     r.assetType.toLowerCase().includes(q) ||
-    r.broker.toLowerCase().includes(q) ||
+    (r.buyer || '').toLowerCase().includes(q) ||
     r.notes.toLowerCase().includes(q) ||
     r.id.toLowerCase().includes(q) ||
     r.tags.some(t => t.toLowerCase().includes(q))
@@ -329,7 +339,8 @@ const CATEGORY_TO_ASSET_TYPE: Record<string, string> = {
   'bonds': 'Bonds',
   'mutual-funds': 'Mutual Funds',
   'shares': 'Shares',
-  'stocks': 'Shares',
+  'stocks': 'Stocks',
+  'sukuk': 'Sukuk',
 }
 
 export function resolveAssetTypeFromItemId(

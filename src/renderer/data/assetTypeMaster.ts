@@ -1,8 +1,9 @@
 export const ASSET_TYPE_MASTER: readonly string[] = [
   'Gold',
   'Silver',
-  'Real Estate',
   'Shares',
+  'Stocks',
+  'Sukuk',
   'Bonds',
   'Mutual Funds',
   'Fixed Deposit',

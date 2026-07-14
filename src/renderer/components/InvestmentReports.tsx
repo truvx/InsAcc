@@ -1,9 +1,15 @@
 import React, { useMemo, useCallback } from 'react'
 import type { Account, Voucher, BankMapping } from '../accounting/types'
+import { SystemAccountRegistry } from '../accounting/systemAccountRegistry'
 import { getReportsProjection } from '../readModels/InvestmentReportsReadModel'
 import type { PurchaseRecord } from '../data/purchaseLedger'
 import type { BankAccount, BankTransaction } from '../data/banking'
 import BankAccountAvatar from './BankAccountAvatar'
+import { formatAssetType } from '../data/investmentMasterData'
+import { exportAccountingExcel } from '../services/reportExportService'
+import ExportReportModal from './design/ExportReportModal'
+import { validateLedgerBalance } from '../accounting/ledgerService'
+
 
 interface Props {
   currency?: string
@@ -44,6 +50,48 @@ export default function InvestmentReports({
   purchaseRecords = [], bankAccounts = [], bankTransactions = [], bankMappings = [],
 }: Props) {
   const [activeTab, setActiveTab] = React.useState<ReportTab>('overview')
+  const [isExportModalOpen, setIsExportModalOpen] = React.useState(false)
+  const [filterStart, setFilterStart] = React.useState('2026-01-01')
+  const [filterEnd, setFilterEnd] = React.useState('2026-12-31')
+  const [filterVType, setFilterVType] = React.useState('All')
+  const [filterStatus, setFilterStatus] = React.useState('All')
+  const [filterBank, setFilterBank] = React.useState('All')
+  const [filterAccount, setFilterAccount] = React.useState('All')
+  const [filterAsset, setFilterAsset] = React.useState('All')
+
+  const handleExcelGeneration = async () => {
+    setIsExportModalOpen(false)
+    try {
+      await exportAccountingExcel({
+        companyName: 'INSACC',
+        reportTitle: 'GENERAL LEDGER REPORT',
+        module: 'Investment',
+        periodLabel: `${filterStart} - ${filterEnd}`,
+        generatedBy: 'User',
+        currency,
+        accounts,
+        vouchers,
+        filters: {
+          dateRange: { start: filterStart, end: filterEnd },
+          bankAccountId: filterBank,
+          accountId: filterAccount,
+          assetName: filterAsset,
+          voucherType: filterVType,
+          status: filterStatus
+        },
+        investments: holdings.map(h => ({
+          name: h.assetName,
+          type: formatAssetType(h.assetCode),
+          quantity: 1,
+          unitPrice: h.purchaseValue,
+          purchaseValue: h.purchaseValue,
+          currentValue: h.currentValue
+        }))
+      })
+    } catch (e) {
+      console.error(e)
+    }
+  }
 
   const fmt = (n: number) => `${currency} ${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   const fmtSimple = (n: number) => Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -52,6 +100,9 @@ export default function InvestmentReports({
     () => getReportsProjection(accounts, vouchers, purchaseRecords, bankAccounts, bankTransactions, bankMappings),
     [accounts, vouchers, purchaseRecords, bankAccounts, bankTransactions, bankMappings],
   )
+
+  // Accounting Integrity Validation
+  const ledgerValidation = useMemo(() => validateLedgerBalance(vouchers, accounts), [vouchers, accounts])
 
   const financialOverview = projection.financialOverview
   const tbEntries = projection.trialBalance
@@ -114,18 +165,18 @@ export default function InvestmentReports({
         break
       }
       case 'investment-position': {
-        const rows = projection.investmentPosition.map(r => [r.assetType, r.assetName, r.accountCode, fmtSimple(r.costBasis), fmtSimple(r.currentValue), fmtSimple(r.unrealizedGain), `${r.growthPercent.toFixed(1)}%`])
+        const rows = projection.investmentPosition.map(r => [formatAssetType(r.assetType), r.assetName, r.accountCode, fmtSimple(r.costBasis), fmtSimple(r.currentValue), fmtSimple(r.unrealizedGain), `${r.growthPercent.toFixed(1)}%`])
         downloadCSV('investment-position.csv', ['Type', 'Asset', 'Code', 'Cost Basis', 'Current Value', 'Unrealized Gain', 'Growth'], rows)
         break
       }
       case 'purchase-report': {
-        const rows = projection.purchaseReport.map(r => [r.date, r.assetType, r.assetName, String(r.quantity), fmtSimple(r.unitPrice), fmtSimple(r.totalValue), r.accountCode, r.voucherNumber])
+        const rows = projection.purchaseReport.map(r => [r.date, formatAssetType(r.assetType), r.assetName, String(r.quantity), fmtSimple(r.unitPrice), fmtSimple(r.totalValue), r.accountCode, r.voucherNumber])
         downloadCSV('purchase-report.csv', ['Date', 'Type', 'Asset', 'Qty', 'Unit Price', 'Total', 'Account', 'Voucher'], rows)
         break
       }
       case 'bank-position': {
-        const rows = projection.bankPosition.map(r => [r.bankName, r.accountNumber, fmtSimple(r.ledgerBalance), fmtSimple(r.bankBalance), fmtSimple(r.difference)])
-        downloadCSV('bank-position.csv', ['Bank', 'Account', 'Ledger', 'Statement', 'Diff'], rows)
+        const rows = projection.bankPosition.map(r => [r.bankName, fmtSimple(r.ledgerBalance), fmtSimple(r.bankBalance), fmtSimple(r.difference)])
+        downloadCSV('bank-position.csv', ['Bank', 'Ledger', 'Statement', 'Diff'], rows)
         break
       }
       case 'cash-flow': {
@@ -145,6 +196,37 @@ export default function InvestmentReports({
   }, [projection, tbEntries, holdings])
 
   const renderTabContent = () => {
+    // Accounting Integrity Check - show error if ledger is unbalanced
+    if (!ledgerValidation.isBalanced) {
+      return (
+        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+          <div style={{
+            maxWidth: 500,
+            margin: '0 auto',
+            padding: '24px',
+            backgroundColor: 'var(--danger-bg, #FEF2F2)',
+            border: '1px solid var(--danger, #EF4444)',
+            borderRadius: 8,
+          }}>
+            <h3 style={{ color: 'var(--danger, #EF4444)', marginBottom: 12, marginTop: 0 }}>Accounting Integrity Error</h3>
+            <p style={{ color: 'var(--text-primary)', marginBottom: 16, lineHeight: 1.5 }}>
+              The ledger is not balanced. Trial Balance validation failed:
+            </p>
+            <div style={{ backgroundColor: 'white', padding: 16, borderRadius: 6, marginBottom: 16, fontFamily: 'monospace', fontSize: 14 }}>
+              <div>Total Debit: {ledgerValidation.totalDebit}</div>
+              <div>Total Credit: {ledgerValidation.totalCredit}</div>
+              <div style={{ color: 'var(--danger, #EF4444)', fontWeight: 600, marginTop: 8 }}>
+                Difference: {ledgerValidation.difference}
+              </div>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 0 }}>
+              Financial reports cannot be displayed until the ledger is balanced. Please review journal vouchers for errors.
+            </p>
+          </div>
+        </div>
+      )
+    }
+
     switch (activeTab) {
       case 'overview':
         return (
@@ -246,6 +328,9 @@ export default function InvestmentReports({
                     <tr><td colSpan={2} className="fw-700 text-sm" style={{ color: 'var(--warning)', paddingTop: 12 }}>Liabilities</td></tr>
                     {renderRows(projection.balanceSheet.liabilities)}
                     <tr><td className="fw-700 text-sm" style={{ borderTop: '1px solid var(--border)' }}>Total Liabilities</td><td className="fw-700 text-sm text-warning" style={{ textAlign: 'right', borderTop: '1px solid var(--border)' }}>{fmt(projection.balanceSheet.totalLiabilities)}</td></tr>
+                    <tr><td colSpan={2} className="fw-700 text-sm" style={{ color: 'var(--success)', paddingTop: 12 }}>Equity</td></tr>
+                    {renderRows(projection.balanceSheet.equity || [])}
+                    <tr><td className="fw-700 text-sm" style={{ borderTop: '1px solid var(--border)' }}>Total Equity</td><td className="fw-700 text-sm text-success" style={{ textAlign: 'right', borderTop: '1px solid var(--border)' }}>{fmt(projection.balanceSheet.totalEquity)}</td></tr>
                     <tr><td className="fw-700 text-sm" style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>Balance Check</td><td className="fw-700 text-sm" style={{ textAlign: 'right', borderTop: '1px solid var(--border)', paddingTop: 12, color: Math.abs(projection.balanceSheet.totalAssets - (projection.balanceSheet.totalLiabilities + projection.balanceSheet.totalEquity)) < 0.01 ? 'var(--success)' : 'var(--danger)' }}>
                       {Math.abs(projection.balanceSheet.totalAssets - (projection.balanceSheet.totalLiabilities + projection.balanceSheet.totalEquity)) < 0.01 ? '✓ Balanced' : '✗ Out of Balance'}
                     </td></tr>
@@ -377,7 +462,7 @@ export default function InvestmentReports({
                 <thead><tr><th>Position</th><th style={{ textAlign: 'right', width: 150 }}>Amount ({currency})</th></tr></thead>
                 <tbody>
                   <tr>
-                    <td className="text-sm">Cash on Hand</td>
+                    <td className="text-sm">Cash In Hand</td>
                     <td className="text-mono text-xs fw-600 text-success" style={{ textAlign: 'right' }}>{fmt(projection.cashPosition.cashOnHand)}</td>
                   </tr>
                   <tr>
@@ -431,7 +516,7 @@ export default function InvestmentReports({
                   <tbody>
                     {projection.investmentPosition.map((r, i) => (
                       <tr key={r.accountCode + i}>
-                        <td className="text-sm fw-500">{r.assetName} <span className="text-xs text-secondary">{r.assetType}</span></td>
+                        <td className="text-sm fw-500">{r.assetName} <span className="text-xs text-secondary">{formatAssetType(r.assetType)}</span></td>
                         <td className="text-mono text-xs">{r.accountCode}</td>
                         <td className="text-mono text-xs" style={{ textAlign: 'right' }}>{fmt(r.costBasis)}</td>
                         <td className="text-mono text-xs" style={{ textAlign: 'right' }}>{fmt(r.currentValue)}</td>
@@ -480,7 +565,7 @@ export default function InvestmentReports({
                     {projection.purchaseReport.map(r => (
                       <tr key={r.id}>
                         <td className="text-xs text-secondary">{r.date}</td>
-                        <td className="text-sm">{r.assetName} <span className="text-xs text-secondary">{r.assetType}</span></td>
+                        <td className="text-sm">{r.assetName} <span className="text-xs text-secondary">{formatAssetType(r.assetType)}</span></td>
                         <td className="text-mono text-xs" style={{ textAlign: 'right' }}>{r.quantity.toLocaleString()}</td>
                         <td className="text-mono text-xs" style={{ textAlign: 'right' }}>{fmt(r.unitPrice)}</td>
                         <td className="text-mono text-xs fw-600" style={{ textAlign: 'right' }}>{fmt(r.totalValue)}</td>
@@ -515,7 +600,6 @@ export default function InvestmentReports({
                   <thead>
                     <tr>
                       <th>Bank Account</th>
-                      <th>Number</th>
                       <th style={{ textAlign: 'right' }}>Ledger Balance</th>
                       <th style={{ textAlign: 'right' }}>Statement Balance</th>
                       <th style={{ textAlign: 'right' }}>Difference</th>
@@ -532,7 +616,6 @@ export default function InvestmentReports({
                             <span>{r.bankName}</span>
                           </div>
                         </td>
-                        <td className="text-mono text-xs">{r.accountNumber}</td>
                         <td className="text-mono text-xs" style={{ textAlign: 'right' }}>{fmt(r.ledgerBalance)}</td>
                         <td className="text-mono text-xs" style={{ textAlign: 'right' }}>{fmt(r.bankBalance)}</td>
                         <td className={`text-mono text-xs fw-600 ${r.difference >= 0 ? 'text-success' : 'danger'}`} style={{ textAlign: 'right' }}>{fmt(r.difference)}</td>
@@ -693,12 +776,30 @@ export default function InvestmentReports({
 
   return (
     <>
-      <div className="page-header">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div className="page-header-left">
           <div>
             <div className="page-title">Reports</div>
             <div className="page-subtitle">Accounting-driven investment reports</div>
           </div>
+        </div>
+        <div className="page-header-right">
+          <button
+            onClick={() => setIsExportModalOpen(true)}
+            style={{
+              backgroundColor: 'var(--primary)',
+              color: 'white',
+              border: 'none',
+              borderRadius: 'var(--radius)',
+              padding: '8px 16px',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow: 'var(--shadow-sm)'
+            }}
+          >
+            Export Excel (Professional)
+          </button>
         </div>
       </div>
 
@@ -716,6 +817,33 @@ export default function InvestmentReports({
         </div>
         {renderTabContent()}
       </div>
+
+      <ExportReportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={handleExcelGeneration}
+        module="Investment"
+        accounts={accounts}
+        filters={{
+          filterStart,
+          filterEnd,
+          filterVType,
+          filterStatus,
+          filterBank,
+          filterAccount,
+          filterAsset,
+        }}
+        onFiltersChange={(partial) => {
+          if (partial.filterStart !== undefined) setFilterStart(partial.filterStart)
+          if (partial.filterEnd !== undefined) setFilterEnd(partial.filterEnd)
+          if (partial.filterVType !== undefined) setFilterVType(partial.filterVType)
+          if (partial.filterStatus !== undefined) setFilterStatus(partial.filterStatus)
+          if (partial.filterBank !== undefined) setFilterBank(partial.filterBank)
+          if (partial.filterAccount !== undefined) setFilterAccount(partial.filterAccount)
+          if (partial.filterAsset !== undefined) setFilterAsset(partial.filterAsset)
+        }}
+        holdings={holdings}
+      />
     </>
   )
 }

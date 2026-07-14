@@ -40,8 +40,8 @@ function computeAggregate(purchases: PurchaseRecord[]): {
 } {
   const quantity = purchases.reduce((s, p) => s + p.quantity, 0)
   const purchaseValue = purchases.reduce((s, p) => s + p.totalValue, 0)
-  const weightedSum = purchases.reduce((s, p) => s + p.unitPrice * p.quantity, 0)
-  const unitPrice = quantity > 0 ? weightedSum / quantity : 0
+  const totalCost = purchases.reduce((s, p) => s + p.unitPrice * p.quantity, 0)
+  const unitPrice = quantity > 0 ? totalCost / quantity : 0
   const latest = purchases.reduce((a, b) =>
     a.purchaseDate > b.purchaseDate ? a : b
   )
@@ -77,7 +77,7 @@ export function buildInvestment(purchases: PurchaseRecord[]): Investment {
     purchaseValue,
     quantity,
     unitPrice,
-    broker: latest.broker,
+    buyer: latest.buyer || latest.broker || '',
   }
 }
 
@@ -94,7 +94,7 @@ export function recomputeInvestment(investment: Investment, purchases: PurchaseR
     purchaseValue,
     quantity,
     unitPrice,
-    broker: latest.broker,
+    buyer: latest.buyer || latest.broker || '',
   }
 }
 

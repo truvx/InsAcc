@@ -1,16 +1,29 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import type { Account, Voucher, BankMapping, PostingResult } from '../accounting/types'
 import type { BankAccount } from '../data/banking'
+import type { PurchaseRecord } from '../data/purchaseLedger'
 import { Button, Input, Select, Badge, EmptyState, SearchIcon, CloseIcon } from './design/DesignSystem'
+import { useMasterData } from '../contexts/MasterDataContext'
+import { PartyLookupService } from '../services/partyLookupService'
+import { SearchablePartySelect } from './design/SearchablePartySelect'
 import { DataTable, type Column } from './design/Table'
 import EntityForm from './design/EntityForm'
 import Toast from './Toast'
-import { formatDate } from '../utils'
+import { formatDate, formatModifiedDateTime } from '../utils'
 import { getAccountIdForBank } from '../accounting/bankAccountMapping'
+import { getChildren } from '../accounting/chartOfAccountsService'
+import { getDefaultInvestmentBankAccount } from '../services/bankingService'
 import type { AccountingEngine } from '../accounting/accountingEngine'
-import { useVoucherLifecycle } from '../hooks/useVoucherLifecycle'
+import { useVoucherLifecycle, autoPostVoucher } from '../hooks/useVoucherLifecycle'
+import { invalidateBalanceCache } from '../accounting/ledgerService'
 import VoucherStatusBadge from './design/VoucherStatusBadge'
 import VoucherDetailsModal from './design/VoucherDetailsModal'
+import ActionsMenu from './design/ActionsMenu'
+import { CurrencyText } from './design/CurrencyText'
+import AuditTrailModal from './design/AuditTrailModal'
+import { printVoucher } from '../utils/printVoucherHelper'
+import { exportVoucherToPDF } from '../utils/pdfVoucherHelper'
+import type { AuditEvent } from '../data/auditTypes'
 
 const ASSET_ACCOUNTS = [
   { code: '1210', name: 'Gold' },
@@ -19,14 +32,19 @@ const ASSET_ACCOUNTS = [
   { code: '1240', name: 'Bonds' },
   { code: '1250', name: 'Mutual Funds' },
   { code: '1260', name: 'Stocks' },
-  { code: '1270', name: 'Real Estate' },
+  { code: '1265', name: 'Shares' },
 ]
 
 const EXPENSE_ACCOUNTS = [
-  { code: '5120', name: 'Maintenance' },
-  { code: '5110', name: 'Management Fees' },
-  { code: '5150', name: 'Professional Fees' },
-  { code: '5180', name: 'Miscellaneous' },
+  { code: '5130', name: 'Brokerage Fees' },
+  { code: '5140', name: 'Transfer Fees' },
+  { code: '5150', name: 'Bank Charges' },
+  { code: '5160', name: 'Fund Management Charges' },
+  { code: '5180', name: 'Other Expenses' },
+  { code: '5210', name: 'Purchase Input VAT Expense' },
+  { code: '5220', name: 'Transportation' },
+  { code: '5230', name: 'Insurance' },
+  { code: '5240', name: 'Documentation' },
 ]
 
 interface Props {
@@ -38,12 +56,18 @@ interface Props {
   bankAccounts: BankAccount[]
   bankMappings: BankMapping[]
   accountingEngine: AccountingEngine
+  purchaseRecords?: PurchaseRecord[]
+  onAuditEvent?: (event: AuditEvent) => void
+  auditEvents?: AuditEvent[]
 }
 
 export default function InvestmentPaymentVoucher({
   currency = 'AED', dateFormat = 'DD/MM/YYYY',
   accounts, vouchers, setVouchers,
   bankAccounts, bankMappings, accountingEngine,
+  purchaseRecords = [],
+  onAuditEvent,
+  auditEvents = [],
 }: Props) {
   const {
     detailVoucher, setDetailVoucher,
@@ -51,20 +75,43 @@ export default function InvestmentPaymentVoucher({
     handlePost, handleApprove, handleCancel, handleDiscard, handleReverse
   } = useVoucherLifecycle(accountingEngine, accounts, setVouchers)
 
+  const { vendors, customers } = useMasterData()
+
+  const lookupService = useMemo(() => new PartyLookupService({
+    vendors,
+    customers,
+    purchaseRecords,
+  }), [vendors, customers, purchaseRecords])
+
+  const paymentParties = useMemo(() => lookupService.getPaymentParties('investment'), [lookupService])
+
   const [searchQuery, setSearchQuery] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0])
   const [formAmount, setFormAmount] = useState('')
   const [formDescription, setFormDescription] = useState('')
-  const [formBankAccount, setFormBankAccount] = useState('')
+  const defaultBank = useMemo(() => getDefaultInvestmentBankAccount(bankAccounts), [bankAccounts])
+  const [formBankAccount, setFormBankAccount] = useState(defaultBank ? defaultBank.id : '')
   const [formPaymentType, setFormPaymentType] = useState<'asset' | 'expense'>('asset')
   const [formAssetAccount, setFormAssetAccount] = useState('')
+  const [formHoldingAccount, setFormHoldingAccount] = useState('')
   const [formExpenseAccount, setFormExpenseAccount] = useState('')
   const [formReference, setFormReference] = useState('')
   const [formPaidTo, setFormPaidTo] = useState('')
 
+  const [formPaymentMode, setFormPaymentMode] = useState<string>('Bank Transfer')
+  const [formPaymentReference, setFormPaymentReference] = useState('')
+
+  const handlePaymentModeChange = (mode: string) => {
+    setFormPaymentMode(mode)
+  }
+
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [showAuditModal, setShowAuditModal] = useState(false)
+  const [auditVoucher, setAuditVoucher] = useState<Voucher | null>(null)
+
   const paymentVouchers = useMemo(() =>
-    vouchers.filter(v => v.type === 'Payment').sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    vouchers.filter(v => v.type === 'Payment' && !v.isDeleted).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [vouchers]
   )
 
@@ -80,11 +127,11 @@ export default function InvestmentPaymentVoucher({
 
   const bankOptions = useMemo(() => [
     { value: '', label: 'Select bank account' },
-    ...bankAccounts.map(a => ({
+    ...bankAccounts.filter(a => a.status === 'active' || a.id === formBankAccount).map(a => ({
       value: a.id,
-      label: `${a.institution} - ${a.accountName}`,
+      label: a.institution,
     })),
-  ], [bankAccounts])
+  ], [bankAccounts, formBankAccount])
 
   const assetOptions = useMemo(() => {
     const found = ASSET_ACCOUNTS.map(ea => {
@@ -94,23 +141,138 @@ export default function InvestmentPaymentVoucher({
     return [{ value: '', label: 'Select asset type' }, ...found]
   }, [accounts])
 
-  const expenseOptions = useMemo(() => {
-    const found = EXPENSE_ACCOUNTS.map(ea => {
-      const acct = accounts.find(a => a.code === ea.code)
-      return acct ? { value: acct.id, label: ea.name } : null
-    }).filter((x): x is { value: string; label: string } => x !== null)
-    return [{ value: '', label: 'Select expense type' }, ...found]
+  const coaOptions = useMemo(() => {
+    return [
+      { value: '', label: 'Select account to debit' },
+      ...accounts
+        .filter(a => a.isActive)
+        .map(a => ({ value: a.id, label: `${a.code} — ${a.name} (${a.type.toUpperCase()})` }))
+    ]
   }, [accounts])
+
+  const selectedAssetParent = useMemo(() => {
+    if (!formAssetAccount) return null
+    return accounts.find(a => a.id === formAssetAccount) || null
+  }, [accounts, formAssetAccount])
+
+  const holdingOptions = useMemo(() => {
+    if (!selectedAssetParent) return []
+    const children = getChildren(selectedAssetParent.id, accounts)
+    const leaves = children.filter(
+      c => !accounts.some(a => a.parentId === c.id && a.isActive)
+    )
+    return leaves.map(a => ({ value: a.id, label: a.name }))
+  }, [selectedAssetParent, accounts])
+
+  // Auto-select holding when exactly one leaf exists
+  useEffect(() => {
+    if (holdingOptions.length === 1 && !formHoldingAccount) {
+      setFormHoldingAccount(holdingOptions[0].value)
+    }
+  }, [holdingOptions, formHoldingAccount])
 
   const resetForm = () => {
     setFormDate(new Date().toISOString().split('T')[0])
     setFormAmount('')
     setFormDescription('')
-    setFormBankAccount('')
+    setFormBankAccount(defaultBank ? defaultBank.id : '')
     setFormAssetAccount('')
+    setFormHoldingAccount('')
     setFormExpenseAccount('')
     setFormReference('')
     setFormPaidTo('')
+    setFormPaymentMode('Bank Transfer')
+    setFormPaymentReference('')
+    setEditingId(null)
+  }
+
+  const openEditForm = (v: Voucher) => {
+    const debitLine = v.lines.find(l => l.type === 'Debit')
+    const creditLine = v.lines.find(l => l.type === 'Credit')
+
+    const mapping = bankMappings.find(m => m.accountId === creditLine?.accountId)
+    const bankId = mapping ? mapping.bankAccountId : ''
+
+    setFormDate(v.date)
+    setFormAmount(String(debitLine?.amount || 0))
+    setFormDescription(v.description.replace(/\s*\(paid to.*\)$/i, ''))
+    setFormBankAccount(bankId)
+    setFormReference(v.reference)
+
+    const paidToMatch = v.description.match(/\(paid to\s+(.*)\)$/i)
+    setFormPaidTo(paidToMatch ? paidToMatch[1] : v.reference || '')
+
+    // Check whether the debit account or its parent is an asset account
+    const debitAcct = debitLine ? accounts.find(a => a.id === debitLine.accountId) : null
+    const isAsset = debitAcct && ASSET_ACCOUNTS.some(aa => {
+      if (debitAcct.code === aa.code) return true
+      const parentAcct = debitAcct.parentId ? accounts.find(a => a.id === debitAcct.parentId) : null
+      return parentAcct?.code === aa.code
+    })
+
+    if (isAsset && debitAcct) {
+      setFormPaymentType('asset')
+      setFormExpenseAccount('')
+      if (debitAcct.parentId) {
+        // Leaf account under a parent — set parent as asset type, leaf as holding
+        const parentAccount = accounts.find(a => a.id === debitAcct.parentId)
+        setFormAssetAccount(parentAccount?.id || debitAcct.parentId)
+        setFormHoldingAccount(debitAcct.id)
+      } else {
+        // Direct parent account (legacy voucher) — no holding
+        setFormAssetAccount(debitAcct.id)
+        setFormHoldingAccount('')
+      }
+    } else {
+      setFormPaymentType('expense')
+      setFormExpenseAccount(debitLine?.accountId || '')
+      setFormAssetAccount('')
+      setFormHoldingAccount('')
+    }
+
+    setFormPaymentMode(v.paymentMode || 'Bank Transfer')
+    setFormPaymentReference(v.paymentReference || '')
+
+    setEditingId(v.id)
+    setShowForm(true)
+  }
+
+  const handleDuplicate = (v: Voucher) => {
+    openEditForm(v)
+    setEditingId(null)
+    setFormDate(new Date().toISOString().split('T')[0])
+    setFormDescription(`Copy of ${v.description.replace(/\s*\(paid to.*\)$/i, '')}`)
+  }
+
+  const handleDelete = (v: Voucher) => {
+    if (v.isReconciled) {
+      showToast('Cannot delete reconciled vouchers', 'error')
+      return
+    }
+    if (v.isLocked) {
+      showToast('Cannot delete locked vouchers', 'error')
+      return
+    }
+    if (window.confirm(`Are you sure you want to delete payment voucher ${v.number}?`)) {
+      const updatedVoucher = { ...v, isDeleted: true }
+      setVouchers(prev => prev.map(item => item.id === v.id ? updatedVoucher : item))
+      invalidateBalanceCache()
+      showToast(`Voucher ${v.number} deleted successfully`, 'success')
+
+      onAuditEvent?.({
+        id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: new Date().toISOString(),
+        module: 'Accounting' as const,
+        action: 'Delete' as const,
+        entityName: 'Voucher',
+        entityId: v.id,
+        description: `Soft deleted payment voucher ${v.number}`,
+        user: 'user',
+        icon: 'trash',
+        severity: 'Warning' as const,
+        before: v as any,
+      })
+    }
   }
 
   const handleCreateVoucher = () => {
@@ -119,12 +281,12 @@ export default function InvestmentPaymentVoucher({
       showToast('Amount must be greater than zero', 'error')
       return
     }
-    if (!formBankAccount) {
-      showToast('Please select a bank account', 'error')
-      return
-    }
     if (formPaymentType === 'asset' && !formAssetAccount) {
       showToast('Please select an asset type', 'error')
+      return
+    }
+    if (formPaymentType === 'asset' && holdingOptions.length > 0 && !formHoldingAccount) {
+      showToast('Please select a specific asset holding', 'error')
       return
     }
     if (formPaymentType === 'expense' && !formExpenseAccount) {
@@ -136,44 +298,130 @@ export default function InvestmentPaymentVoucher({
       return
     }
 
-    const bankAccountId = getAccountIdForBank(formBankAccount, bankMappings)
-    if (!bankAccountId) {
-      showToast('Bank account not mapped to chart of accounts', 'error')
-      return
+    let bankAccountId = ''
+    if (formPaymentMode === 'Cash') {
+      bankAccountId = accounts.find(a => (a.id === '1110-inv' || a.code === '1110') && a.isActive)?.id || '1110-inv'
+    } else {
+      if (!formBankAccount) {
+        showToast('Please select a bank account', 'error')
+        return
+      }
+      const mappedId = getAccountIdForBank(formBankAccount, bankMappings, accounts)
+      if (!mappedId) {
+        showToast('Bank account not mapped to chart of accounts', 'error')
+        return
+      }
+      bankAccountId = mappedId
     }
 
     const ref = formPaidTo || formReference || undefined
-    const event = formPaymentType === 'asset' ? 'ASSET_PURCHASE' : 'EXPENSE_PAID'
+    const desc = formDescription + (formPaidTo ? ` (paid to ${formPaidTo})` : '')
+    const resolvedAssetAccount = formHoldingAccount || formAssetAccount
+    const targetDebitAccount = formPaymentType === 'asset' ? resolvedAssetAccount : formExpenseAccount
 
-    const result: PostingResult = accountingEngine.processAccountingEvent(
-      event,
-      {
-        amount: amt,
+    if (editingId) {
+      const oldVoucher = vouchers.find(v => v.id === editingId)
+      if (!oldVoucher) return
+
+      const updatedVoucher: Voucher = {
+        ...oldVoucher,
         date: formDate,
-        description: formDescription + (formPaidTo ? ` (paid to ${formPaidTo})` : ''),
-        currency,
-        exchangeRate: 1,
-        baseCurrency: 'AED',
-        bankAccount: bankAccountId,
-        assetAccount: formPaymentType === 'asset' ? formAssetAccount : undefined,
-        debitAccount: formPaymentType === 'expense' ? formExpenseAccount : undefined,
-        referenceType: 'Investment',
-        referenceId: ref,
-        createdBy: 'user',
-      },
-      accounts,
-      vouchers,
-    )
+        description: desc,
+        reference: formPaidTo || formReference || '',
+        modifiedAt: new Date().toISOString(),
+        modifiedBy: 'user',
+        paymentMode: formPaymentMode as any,
+        paymentChannel: formPaymentMode === 'Cash' ? 'Cash In Hand' : 'Bank Account',
+        paymentReference: formPaymentReference || undefined,
+        lines: oldVoucher.lines.map(line => {
+          if (line.type === 'Debit') {
+            return {
+              ...line,
+              accountId: targetDebitAccount,
+              amount: amt,
+              baseAmount: amt,
+              narration: formDescription,
+            }
+          } else {
+            return {
+              ...line,
+              accountId: bankAccountId,
+              amount: amt,
+              baseAmount: amt,
+              narration: formDescription,
+            }
+          }
+        })
+      }
 
-    if (!result.success || !result.voucher) {
-      showToast(result.errors.map(e => e.message).join(', '), 'error')
-      return
+      setVouchers(prev => prev.map(v => v.id === editingId ? updatedVoucher : v))
+      invalidateBalanceCache()
+
+      // Record Audit Event
+      onAuditEvent?.({
+        id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: new Date().toISOString(),
+        module: 'Accounting' as const,
+        action: 'Update' as const,
+        entityName: 'Voucher',
+        entityId: oldVoucher.id,
+        description: `Edited payment voucher ${oldVoucher.number}`,
+        user: 'user',
+        icon: 'edit',
+        severity: 'Info' as const,
+        before: oldVoucher as any,
+        after: updatedVoucher as any,
+      })
+
+      setShowForm(false)
+      showToast(`Payment voucher ${oldVoucher.number} updated`, 'success')
+      resetForm()
+    } else {
+      const event = formPaymentType === 'asset' ? 'ASSET_PURCHASE' : 'EXPENSE_PAID'
+      const result: PostingResult = accountingEngine.processAccountingEvent(
+        event,
+        {
+          amount: amt,
+          date: formDate,
+          description: desc,
+          currency,
+          exchangeRate: 1,
+          baseCurrency: 'AED',
+          bankAccount: bankAccountId,
+          assetAccount: formPaymentType === 'asset' ? resolvedAssetAccount : undefined,
+          debitAccount: formPaymentType === 'expense' ? formExpenseAccount : undefined,
+          referenceType: 'Investment',
+          referenceId: ref,
+          createdBy: 'user',
+        },
+        accounts,
+        vouchers,
+      )
+
+      if (!result.success || !result.voucher) {
+        showToast(result.errors.map(e => e.message).join(', '), 'error')
+        return
+      }
+
+      const postResult = autoPostVoucher(accountingEngine, result.voucher, accounts)
+      if (!postResult.success || !postResult.voucher) {
+        showToast(postResult.errors.map(e => e.message).join(', '), 'error')
+        return
+      }
+
+      const newVch: Voucher = {
+        ...postResult.voucher,
+        paymentMode: formPaymentMode as any,
+        paymentChannel: formPaymentMode === 'Cash' ? 'Cash In Hand' : 'Bank Account',
+        paymentReference: formPaymentReference || undefined,
+        reference: ref || ''
+      }
+
+      setVouchers(prev => [newVch, ...prev])
+      setShowForm(false)
+      showToast(`Payment voucher ${newVch.number} created and posted`, 'success')
+      resetForm()
     }
-
-    setVouchers(prev => [result.voucher!, ...prev])
-    setShowForm(false)
-    showToast(`Draft payment voucher ${result.voucher.number} created`, 'success')
-    resetForm()
   }
 
   const getBankName = (v: Voucher) => {
@@ -205,13 +453,23 @@ export default function InvestmentPaymentVoucher({
       key: 'date',
       header: 'Date',
       sortable: true,
-      render: v => <span className="text-secondary text-xs">{formatDate(v.date, dateFormat)}</span>,
+      render: v => (
+        <div>
+          <span className="text-secondary text-xs">{formatDate(v.date, dateFormat)}</span>
+          {v.modifiedAt && (
+            <div style={{ fontSize: '10px', color: '#B91C1C', marginTop: '2px', fontWeight: 500 }} title={`Last modified on ${v.modifiedAt}`}>
+              Edited<br/>
+              <span style={{ fontSize: '9px', color: '#6B7280', fontWeight: 'normal' }}>{formatModifiedDateTime(v.modifiedAt)}</span>
+            </div>
+          )}
+        </div>
+      ),
     },
     {
       key: 'paidTo',
       header: 'Paid To',
       sortable: true,
-      render: v => <span className="fw-500 text-sm">{v.reference || formPaidTo || '—'}</span>,
+      render: v => <span className="fw-500 text-sm">{v.reference || '—'}</span>,
     },
     {
       key: 'debitAccount',
@@ -224,12 +482,40 @@ export default function InvestmentPaymentVoucher({
       render: v => <span className="text-sm" style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}>{v.description}</span>,
     },
     {
+      key: 'paymentMode',
+      header: 'Payment Mode',
+      render: v => <span className="text-sm">{v.paymentMode || 'Unknown'}</span>,
+    },
+
+    {
       key: 'status',
       header: 'Status',
       sortable: true,
       render: v => <VoucherStatusBadge status={v.status} />,
     },
-  ], [dateFormat, formPaidTo])
+    {
+      key: 'actions',
+
+      header: 'Actions',
+      render: v => (
+        <div className="table-actions" style={{ display: 'flex', justifyContent: 'center' }}>
+          <ActionsMenu
+            onView={() => setDetailVoucher(v)}
+            onEdit={() => openEditForm(v)}
+            onDuplicate={() => handleDuplicate(v)}
+            onPrint={() => printVoucher(v, accounts, currency)}
+            onExportPDF={() => exportVoucherToPDF(v, accounts, currency)}
+            onDelete={() => handleDelete(v)}
+            onAuditTrail={() => {
+              setAuditVoucher(v)
+              setShowAuditModal(true)
+            }}
+            canDelete={!v.isReconciled && !v.isLocked}
+          />
+        </div>
+      ),
+    },
+  ], [dateFormat, accounts, currency, bankMappings])
 
   const totalAmount = useMemo(() =>
     filtered.filter(v => v.status === 'Posted').reduce((s, v) => s + v.lines.reduce((ls, l) => ls + (l.type === 'Credit' ? l.amount : 0), 0), 0),
@@ -242,8 +528,8 @@ export default function InvestmentPaymentVoucher({
 
       <EntityForm
         open={showForm}
-        title="New Payment Voucher"
-        submitLabel="Create Draft"
+        title={editingId ? "Edit Payment Voucher" : "New Payment Voucher"}
+        submitLabel={editingId ? "Save Changes" : "Create"}
         onCancel={() => { setShowForm(false); resetForm() }}
         onSubmit={handleCreateVoucher}
       >
@@ -252,7 +538,14 @@ export default function InvestmentPaymentVoucher({
           <Input label={`Amount (${currency})`} type="number" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0" />
         </div>
         <div className="form-row">
-          <Input label="Paid To" value={formPaidTo} onChange={e => setFormPaidTo(e.target.value)} placeholder="Supplier name" />
+          <SearchablePartySelect
+            label="Paid To"
+            value={formPaidTo}
+            onChange={setFormPaidTo}
+            parties={paymentParties}
+            placeholder="Supplier name"
+            customLabel="Use custom payee / supplier"
+          />
           <Input label="Description" value={formDescription} onChange={e => setFormDescription(e.target.value)} placeholder="e.g. Asset purchase" />
         </div>
         <div className="form-row">
@@ -260,13 +553,51 @@ export default function InvestmentPaymentVoucher({
             options={[{ value: 'asset', label: 'Asset Purchase' }, { value: 'expense', label: 'Expense Payment' }]}
           />
           {formPaymentType === 'asset' ? (
-            <Select label="Asset Type" value={formAssetAccount} onChange={e => setFormAssetAccount(e.target.value)} options={assetOptions} />
+            <>
+              <Select label="Asset Category" value={formAssetAccount} onChange={e => { setFormAssetAccount(e.target.value); setFormHoldingAccount('') }} options={assetOptions} />
+              {formAssetAccount && holdingOptions.length > 0 && (
+                <Select label="Asset Holding" value={formHoldingAccount} onChange={e => setFormHoldingAccount(e.target.value)}
+                  options={[{ value: '', label: 'Select holding' }, ...holdingOptions]} />
+              )}
+            </>
           ) : (
-            <Select label="Expense Type" value={formExpenseAccount} onChange={e => setFormExpenseAccount(e.target.value)} options={expenseOptions} />
+            <Select label="Account to Debit" value={formExpenseAccount} onChange={e => setFormExpenseAccount(e.target.value)} options={coaOptions} />
           )}
         </div>
         <div className="form-row">
-          <Select label="Bank Account" value={formBankAccount} onChange={e => setFormBankAccount(e.target.value)} options={bankOptions} />
+          <Input 
+            label="Reference (optional)" 
+            value={formReference} 
+            onChange={e => setFormReference(e.target.value)} 
+            placeholder="e.g. Ref #" 
+          />
+        </div>
+        <div className="form-row">
+          <Select
+            label="Mode of Payment"
+            value={formPaymentMode}
+            onChange={e => handlePaymentModeChange(e.target.value)}
+            options={[
+              { value: 'Cash', label: 'Cash' },
+              { value: 'Bank Transfer', label: 'Bank Transfer' },
+              { value: 'Cheque', label: 'Cheque' },
+              { value: 'Post Dated Cheque (PDC)', label: 'Post Dated Cheque (PDC)' },
+              { value: 'Online Transfer', label: 'Online Transfer' },
+              { value: 'Card', label: 'Card' },
+              { value: 'Other', label: 'Other' }
+            ]}
+          />
+        </div>
+        <div className="form-row">
+          {formPaymentMode !== 'Cash' && (
+            <Select label="Bank Account" value={formBankAccount} onChange={e => setFormBankAccount(e.target.value)} options={bankOptions} />
+          )}
+          <Input 
+            label="Reference Number (optional)" 
+            value={formPaymentReference} 
+            onChange={e => setFormPaymentReference(e.target.value)} 
+            placeholder="e.g. TXN-12345" 
+          />
         </div>
       </EntityForm>
 
@@ -285,11 +616,18 @@ export default function InvestmentPaymentVoucher({
         onReverse={handleReverse}
       />
 
+      <AuditTrailModal
+        open={showAuditModal}
+        voucher={auditVoucher}
+        auditEvents={auditEvents}
+        onClose={() => setShowAuditModal(false)}
+      />
+
       <div className="page-header">
         <div className="page-header-left">
           <div>
             <div className="page-title">Payment Vouchers</div>
-            <div className="page-subtitle">Record asset purchases and expenses paid from bank accounts</div>
+            <div className="page-subtitle">Record asset purchases, brokerage fees, and investment charges</div>
           </div>
         </div>
         <div className="page-header-right">
@@ -301,7 +639,7 @@ export default function InvestmentPaymentVoucher({
         <div className="kpi-grid" style={{ marginBottom: 16 }}>
           <div className="kpi-card" style={{ borderTop: '2px solid var(--danger)' }}>
             <div className="kpi-label">Total Payments (Posted)</div>
-            <div className="kpi-value" style={{ fontSize: 22 }}>{currency} {totalAmount.toLocaleString()}</div>
+            <div className="kpi-value"><CurrencyText value={totalAmount} currency={currency} /></div>
           </div>
           <div className="kpi-card" style={{ borderTop: '2px solid var(--primary)' }}>
             <div className="kpi-label">This Period</div>
@@ -311,7 +649,7 @@ export default function InvestmentPaymentVoucher({
 
         <div className="data-table-toolbar">
           <div className="data-table-filters" />
-          <div className="data-table-search" style={{ minWidth: 260 }}>
+          <div className="data-table-search">
             <SearchIcon />
             <input
               type="text"

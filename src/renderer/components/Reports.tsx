@@ -4,7 +4,6 @@ import type { Transaction } from './Transactions'
 import type { BankAccount, BankTransaction } from '../data/banking'
 import type { AuditEvent } from '../data/auditTypes'
 import { recordModuleEvent } from '../services/auditService'
-import { deriveBalance } from '../services/bankingService'
 import {
   calculateNetWorth, calculateTotalAssets, calculateTotalCash,
   calculateIncome, calculateExpenses, calculateNetCashFlow,
@@ -26,7 +25,7 @@ import ActivityTimeline, { type ActivityEntry } from './ActivityTimeline'
 import PeriodSelector, { type PeriodOption, getPeriodDates } from './PeriodSelector'
 import { t } from '../utils'
 
-import { ASSET_TYPE_COLORS as TYPE_COLORS } from '../styles/palette'
+import { getAssetAllocationColor } from '../styles/ChartTheme'
 
 interface Props {
   investments: Investment[]
@@ -98,9 +97,12 @@ export default function Reports({ investments, transactions, bankAccounts, bankT
   const cashDistribution = useMemo(() => {
     return bankAccounts
       .filter(a => a.status === 'active')
-      .map(a => ({ name: `${a.institution} - ${a.accountName}`, value: deriveBalance(a, bankTransactions) }))
+      .map(a => ({
+        name: a.institution,
+        value: 0 // deriveBalance removed - Reports.tsx is legacy and doesn't have ledger integration
+      }))
       .sort((a, b) => b.value - a.value)
-  }, [bankAccounts, bankTransactions])
+  }, [bankAccounts])
 
   const investmentGrowthData = useMemo(() => {
     if (investments.length === 0) return { Daily: [], Monthly: [], Yearly: [] }
@@ -124,7 +126,7 @@ export default function Reports({ investments, transactions, bankAccounts, bankT
     name: a.type,
     value: a.totalValue,
     percentage: a.percentage,
-    color: TYPE_COLORS[a.type] || '#6B5B95',
+    color: getAssetAllocationColor(a.type),
   })), [assetAllocation])
 
   const cashFlowData = useMemo(() => ({ Monthly: monthlyCashFlow }), [monthlyCashFlow])

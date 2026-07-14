@@ -68,7 +68,8 @@ export function buildAssetHoldings(
     const [assetType, assetName] = key.split('::')
     const totalQty = group.reduce((s, p) => s + p.quantity, 0)
     const totalInvested = group.reduce((s, p) => s + p.totalValue, 0)
-    const avgCost = totalQty > 0 ? totalInvested / totalQty : 0
+    const count = group.length
+    const avgPurchaseValue = count > 0 ? group.reduce((s, p) => s + p.totalValue, 0) / count : 0
 
     const account = group.find(p => p.accountId)
       ? accounts.find(a => a.id === group[0].accountId)
@@ -81,7 +82,7 @@ export function buildAssetHoldings(
       assetName,
       totalQuantity: totalQty,
       totalInvested,
-      averageCost: avgCost,
+      avgPurchaseValue,
       currentValue: totalInvested,
       marketValue: totalInvested,
       unrealizedGain: 0,

@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
-import type { PropAccount, PropTransaction } from '../data/propertyTypes'
+import type { PropAccount, PropTransaction, PdcCheque, SecurityDeposit } from '../data/propertyTypes'
+import type { PurchaseRecord } from '../data/purchaseLedger'
 import type { AuditEvent } from '../data/auditTypes'
 import { recordModuleEvent } from '../services/auditService'
 import { deriveBalance } from '../services/bankingService'
 import { deleteBankTransaction } from '../services/bankTransactionService'
 import { TransactionLifecycleService } from '../services/transactionLifecycleService'
 import {
-  Badge, Button, KpiCard, EmptyState, PlusIcon, TrashIcon,
+  Badge, Button, KpiCard, EmptyState, PlusIcon, TrashIcon, EditIcon,
   PortfolioIcon, TrendingUpIcon, ActivityIcon,
   Input, Select, Modal
 } from './design/DesignSystem'
@@ -14,9 +15,14 @@ import { DataTable, type Column } from './design/Table'
 import EntityForm from './design/EntityForm'
 import ConfirmDialog from './design/ConfirmDialog'
 import Toast from './Toast'
-import { formatDate, maskAccountNumber, t } from '../utils'
+import { formatDate, t } from '../utils'
+import { getBankDashboardProjection, getAccountStatementProjection } from '../readModels/InvestmentBankReadModel'
 import type { BankReconciliationRecord, BankStatementLine } from '../accounting/types'
 import BankImportModal from './BankImportModal'
+import BankAccountActionsMenu from './design/BankAccountActionsMenu'
+import { invalidateBalanceCache, getAccountBalance } from '../accounting/ledgerService'
+import { CurrencyText } from './design/CurrencyText'
+import { formatCurrency } from '../utils/currencyHelpers'
 
 export interface StatementEntry {
   date: string
@@ -36,18 +42,18 @@ const themeOptions = [
   { value: 'teal', label: 'Teal' },
 ]
 
-const accountTypeOptions = [
-  { value: 'checking', label: 'Checking' },
-  { value: 'savings', label: 'Savings' },
-  { value: 'cash', label: 'Cash' },
-  { value: 'credit', label: 'Credit Card' },
+
+const statusOptions = [
+  { value: 'active', label: 'Active' },
+  { value: 'closed', label: 'Closed' },
+  { value: 'hidden', label: 'Hidden' },
 ]
 
-type DialogType = 'addAccount' | 'deposit' | 'withdraw' | 'transfer' | null
+type DialogType = 'addAccount' | 'editAccount' | 'deposit' | 'withdraw' | 'transfer' | null
 type TxnFilter = 'all' | 'deposits' | 'withdrawals' | 'transfers'
 
 import type { AccountingEngine } from '../accounting/accountingEngine'
-import type { Account, Voucher } from '../accounting/types'
+import type { Account, Voucher, BankMapping } from '../accounting/types'
 import BankReconciliationDashboard from './BankReconciliationDashboard'
 
 interface Props {
@@ -56,21 +62,29 @@ interface Props {
   language?: string
   propAccounts: PropAccount[]
   setPropAccounts: React.Dispatch<React.SetStateAction<PropAccount[]>>
-  propTransactions: PropTransaction[]
-  setPropTransactions: React.Dispatch<React.SetStateAction<PropTransaction[]>>
+  propTransactions?: PropTransaction[]
+  setPropTransactions?: React.Dispatch<React.SetStateAction<PropTransaction[]>>
   onAuditEvent?: (event: AuditEvent) => void
   bankReconciliations: BankReconciliationRecord[]
   setBankReconciliations: React.Dispatch<React.SetStateAction<BankReconciliationRecord[]>>
   accounts: Account[]
+  setAccounts: React.Dispatch<React.SetStateAction<Account[]>>
   vouchers: Voucher[]
   setVouchers: React.Dispatch<React.SetStateAction<Voucher[]>>
+  bankMappings: BankMapping[]
+  setBankMappings: React.Dispatch<React.SetStateAction<BankMapping[]>>
   accountingEngine: AccountingEngine
+  purchaseRecords?: PurchaseRecord[]
+  pdcCheques?: PdcCheque[]
+  securityDeposits?: SecurityDeposit[]
 }
 
-export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'DD/MM/YYYY', language = 'English', propAccounts, setPropAccounts, propTransactions, setPropTransactions, onAuditEvent, bankReconciliations, setBankReconciliations, accounts, vouchers, setVouchers, accountingEngine }: Props) {
+export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'DD/MM/YYYY', language = 'English', propAccounts, setPropAccounts, propTransactions = [], setPropTransactions = () => {}, onAuditEvent, bankReconciliations, setBankReconciliations, accounts, setAccounts, vouchers, setVouchers, bankMappings, setBankMappings, accountingEngine, purchaseRecords = [], pdcCheques = [], securityDeposits = [] }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [dialog, setDialog] = useState<{ type: DialogType; accountId?: string }>({ type: null })
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [deleteAccountTarget, setDeleteAccountTarget] = useState<PropAccount | null>(null)
+  const [activeMenuAccountId, setActiveMenuAccountId] = useState<string | null>(null)
   const [newTxnOpen, setNewTxnOpen] = useState(false)
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' })
   const [searchQuery, setSearchQuery] = useState('')
@@ -108,15 +122,17 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
   }
 
   const [formInstitution, setFormInstitution] = useState('')
-  const [formAccountName, setFormAccountName] = useState('')
   const [formAccountNumber, setFormAccountNumber] = useState('')
-  const [formAccountType, setFormAccountType] = useState<'checking' | 'savings' | 'cash' | 'credit'>('checking')
   const [formOpeningBalance, setFormOpeningBalance] = useState('')
   const [formTheme, setFormTheme] = useState('emerald')
   const [formAmount, setFormAmount] = useState('')
   const [formDesc, setFormDesc] = useState('')
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0])
   const [formToAccount, setFormToAccount] = useState('')
+  const [formIban, setFormIban] = useState('')
+  const [formSwift, setFormSwift] = useState('')
+  const [formBranch, setFormBranch] = useState('')
+  const [formStatus, setFormStatus] = useState<'active' | 'archived' | 'closed' | 'hidden'>('active')
 
   const newTxnRef = useRef<HTMLDivElement>(null)
 
@@ -126,8 +142,17 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
         setNewTxnOpen(false)
       }
     }
+    const handleDocumentClick = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('.card-action-menu-wrap')) {
+        setActiveMenuAccountId(null)
+      }
+    }
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener('click', handleDocumentClick)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('click', handleDocumentClick)
+    }
   }, [])
 
   const selectedAccount = useMemo(() => propAccounts.find(a => a.id === selectedId) || null, [propAccounts, selectedId])
@@ -142,73 +167,65 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
     }
   }, [propAccounts])
 
+  const dashboard = useMemo(
+    () => getBankDashboardProjection(propAccounts, bankMappings, accounts, vouchers),
+    [propAccounts, bankMappings, accounts, vouchers],
+  )
+
+  const accountStatement = useMemo(() => {
+    if (!selectedId) return { statement: [], stats: { deposits: 0, withdrawals: 0, transfers: 0 } }
+    return getAccountStatementProjection(selectedId, propAccounts, bankMappings, accounts, vouchers)
+  }, [selectedId, propAccounts, bankMappings, accounts, vouchers])
+
   const accountBalances = useMemo(() => {
-    const map: Record<string, number> = {}
-    for (const acct of propAccounts) {
-      map[acct.id] = deriveBalance(acct as any, propTransactions as any)
+    const balances: Record<string, number> = {}
+    for (const proj of dashboard.accounts) {
+      balances[proj.account.id] = proj.ledgerBalance
     }
-    return map
-  }, [propAccounts, propTransactions])
-
-  const totalCash = useMemo(() => Object.values(accountBalances).reduce((sum, b) => sum + b, 0), [accountBalances])
-  const activeCount = useMemo(() => propAccounts.filter(a => a.status === 'active').length, [propAccounts])
-
-  const thisMonthFlow = useMemo(() => {
-    const monthStart = new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), 1)).toISOString().split('T')[0]
-    const credits = propTransactions
-      .filter(t => t.date >= monthStart && (t.type === 'credit' || t.type === 'transfer_in'))
-      .reduce((s, t) => s + t.amount, 0)
-    const debits = propTransactions
-      .filter(t => t.date >= monthStart && (t.type === 'debit' || t.type === 'transfer_out'))
-      .reduce((s, t) => s + t.amount, 0)
-    return credits - debits
-  }, [propTransactions])
-
-  const accountTransactions = useMemo(() => {
-    if (!selectedId) return []
-    return propTransactions.filter(t => t.accountId === selectedId)
-  }, [selectedId, propTransactions])
+    return balances
+  }, [dashboard.accounts])
 
   const lastActivityMap = useMemo(() => {
-    const map: Record<string, string> = {}
-    for (const acct of propAccounts) {
-      const txns = propTransactions.filter(t => t.accountId === acct.id)
-      if (txns.length > 0) {
-        const sorted = [...txns].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))
-        map[acct.id] = sorted[0].date
-      }
+    const activity: Record<string, string> = {}
+    for (const proj of dashboard.accounts) {
+      const lastTx = proj.recentTransactions[0]
+      activity[proj.account.id] = lastTx ? lastTx.date : 'No activity'
     }
-    return map
-  }, [propAccounts, propTransactions])
+    return activity
+  }, [dashboard.accounts])
 
-  const accountStats = useMemo(() => {
-    if (!selectedId || !selectedAccount) return null
-    const txns = propTransactions.filter(t => t.accountId === selectedId)
-    const deposits = txns.filter(t => t.type === 'credit' || t.type === 'transfer_in').reduce((s, t) => s + t.amount, 0)
-    const withdrawals = txns.filter(t => t.type === 'debit' || t.type === 'transfer_out').reduce((s, t) => s + t.amount, 0)
-    const transfers = txns.filter(t => t.type === 'transfer_in' || t.type === 'transfer_out').length
-    return { deposits, withdrawals, transfers }
-  }, [selectedId, selectedAccount, propTransactions])
+  const totalCash = dashboard.totalLedgerBankBalance
+  const activeCount = dashboard.activeAccounts
+  const thisMonthFlow = dashboard.thisMonthFlow
 
-  const runningBalances = useMemo(() => {
-    const map: Record<string, number> = {}
-    if (!selectedId || !selectedAccount) return map
-    const sorted = [...propTransactions.filter(t => t.accountId === selectedId)]
-      .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
-    let running = selectedAccount.openingBalance
-    for (const txn of sorted) {
-      if (txn.type === 'credit' || txn.type === 'transfer_in') running += txn.amount
-      else running -= txn.amount
-      map[txn.id] = running
-    }
-    return map
-  }, [selectedId, selectedAccount, propTransactions])
+  const accountTransactions = useMemo(() => {
+    return (accountStatement.statement || []).map((t, idx) => ({
+      id: `${t.voucherNumber}-${idx}`,
+      date: t.date,
+      description: t.description,
+      amount: t.debit > 0 ? t.debit : t.credit,
+      type: (t.debit > 0 ? 'credit' : 'debit') as 'debit' | 'credit' | 'transfer_in' | 'transfer_out',
+      status: 'cleared' as const,
+      balanceAfter: t.balance,
+      debit: t.debit,
+      credit: t.credit,
+      voucherNumber: t.voucherNumber,
+      category: '',
+      reference: '',
+      createdAt: '',
+      updatedAt: '',
+      createdBy: '',
+      updatedBy: '',
+      accountId: selectedId || '',
+    }))
+  }, [accountStatement, selectedId])
+
+  const accountStats = accountStatement.stats
 
   const filteredTransactions = useMemo(() => {
     let result = accountTransactions
     if (txnFilter === 'deposits') result = result.filter(t => t.type === 'credit')
     else if (txnFilter === 'withdrawals') result = result.filter(t => t.type === 'debit')
-    else if (txnFilter === 'transfers') result = result.filter(t => t.type === 'transfer_in' || t.type === 'transfer_out')
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
       result = result.filter(t =>
@@ -216,7 +233,6 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
         t.date.includes(q) ||
         t.type.toLowerCase().includes(q) ||
         t.status.toLowerCase().includes(q) ||
-        t.category.toLowerCase().includes(q) ||
         String(t.amount).includes(q)
       )
     }
@@ -224,28 +240,27 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
   }, [accountTransactions, txnFilter, searchQuery])
 
   const tableData = useMemo(() => {
-    return filteredTransactions.map(t => ({
-      ...t,
-      balanceAfter: runningBalances[t.id] ?? 0,
-    }))
-  }, [filteredTransactions, runningBalances])
+    return filteredTransactions as any[]
+  }, [filteredTransactions])
 
-  const formatAmount = (txn: PropTransaction) => {
-    const sign = txn.type === 'credit' || txn.type === 'transfer_in' ? '+' : '-'
+  const formatAmount = (txn: any) => {
+    const sign = txn.type === 'credit' ? '+' : '-'
     return `${sign}${currency} ${txn.amount.toLocaleString()}`
   }
 
   const resetForm = () => {
     setFormInstitution('')
-    setFormAccountName('')
     setFormAccountNumber('')
-    setFormAccountType('checking')
     setFormOpeningBalance('')
     setFormTheme('emerald')
     setFormAmount('')
     setFormDesc('')
     setFormDate(new Date().toISOString().split('T')[0])
     setFormToAccount('')
+    setFormIban('')
+    setFormSwift('')
+    setFormBranch('')
+    setFormStatus('active')
   }
 
   const openDialog = (type: DialogType, accountId?: string) => {
@@ -259,31 +274,317 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
   }
 
   const handleAddAccount = () => {
-    if (!formInstitution || !formAccountName) {
-      setToast({ visible: true, message: 'Institution and account name are required', type: 'error' })
+    if (!formInstitution) {
+      setToast({ visible: true, message: 'Bank is required', type: 'error' })
       return
     }
+    if (formOpeningBalance !== '' && isNaN(Number(formOpeningBalance))) {
+      setToast({ visible: true, message: 'Current balance must be a valid number', type: 'error' })
+      return
+    }
+    const ledgerAcct = {
+      id: `acct-${Date.now()}`,
+      code: `1120${Math.floor(Math.random() * 90) + 10}`,
+      name: formInstitution,
+      type: 'asset' as any,
+      normalBalance: 'debit' as any,
+      classification: 'current' as any,
+      currency,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdBy: 'user',
+      parentId: '1120',
+      description: 'Bank Account',
+      openingBalance: 0,
+      module: 'property' as const,
+    }
     const newAccount: PropAccount = {
-      id: `pa-${Date.now()}`,
+      id: `pt-${Date.now()}`,
       institution: formInstitution,
-      accountName: formAccountName,
       accountNumber: formAccountNumber || '----',
       currency,
-      openingBalance: Number(formOpeningBalance) || 0,
-      accountType: formAccountType,
+      openingBalance: 0,
       theme: formTheme,
       icon: 'bank',
       status: 'active',
+      iban: formIban,
+      swift: formSwift,
+      branch: formBranch,
+      chartAccountId: ledgerAcct.id,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       createdBy: 'user',
       updatedBy: 'user',
     }
     setPropAccounts(prev => [...prev, newAccount])
-    onAuditEvent?.(recordModuleEvent('Property Bank Accounts', 'Create', newAccount.accountName, newAccount.id, `Added account: ${newAccount.accountName} @ ${newAccount.institution} (${newAccount.accountType})`))
+    setAccounts(prev => [...prev, ledgerAcct])
+    setBankMappings(prev => [...prev, { bankAccountId: newAccount.id, accountId: ledgerAcct.id, accountCode: ledgerAcct.code, accountName: ledgerAcct.name }])
+
+    // Automatically generate opening balance journal voucher from Current Balance
+    const initialBal = Number(formOpeningBalance) || 0
+    if (initialBal > 0) {
+      const ref = `OB-${newAccount.id}`
+      const result = accountingEngine.processAccountingEvent(
+        'OPENING_BALANCE',
+        {
+          amount: initialBal,
+          date: new Date().toISOString().split('T')[0],
+          description: `Opening balance for ${newAccount.institution}`,
+          currency,
+          exchangeRate: 1,
+          baseCurrency: 'AED',
+          debitAccount: ledgerAcct.id,
+          creditAccount: '2200-prop',
+          referenceType: 'Property',
+          referenceId: newAccount.id,
+          createdBy: 'user',
+        },
+        [...accounts, ledgerAcct],
+        vouchers,
+      )
+
+      if (result.success && result.voucher) {
+        const approveResult = accountingEngine.approve(result.voucher, 'user')
+        if (approveResult.success && approveResult.voucher) {
+          const postResult = accountingEngine.post(approveResult.voucher, 'user', [...accounts, ledgerAcct], [])
+          if (postResult.success && postResult.voucher) {
+            const finalVoucher: Voucher = {
+              ...postResult.voucher,
+              reference: ref,
+            }
+            setVouchers(prev => [finalVoucher, ...prev])
+          }
+        }
+      }
+    }
+
+    const accDesc = newAccount.institution;
+    onAuditEvent?.(recordModuleEvent('Property Bank Accounts', 'Create', accDesc, newAccount.id, `Added account: ${accDesc}`))
     setDialog({ type: null })
     setToast({ visible: true, message: 'Account added', type: 'success' })
     resetForm()
+  }
+
+  const openEditDialog = (acct: PropAccount) => {
+    resetForm()
+    setFormInstitution(acct.institution)
+    setFormAccountNumber(acct.accountNumber && acct.accountNumber !== '----' ? acct.accountNumber : '')
+    // Pre-fill with current ledger balance
+    const mapping = bankMappings.find(m => m.bankAccountId === acct.id)
+    const currentLedgerBal = mapping ? getAccountBalance(mapping.accountId, vouchers, accounts) : 0
+    setFormOpeningBalance(String(currentLedgerBal))
+    setFormTheme(acct.theme)
+    setFormIban(acct.iban || '')
+    setFormSwift(acct.swift || '')
+    setFormBranch(acct.branch || '')
+    setFormStatus(acct.status || 'active')
+    setDialog({ type: 'editAccount', accountId: acct.id })
+  }
+
+  const handleEditAccount = () => {
+    if (!dialog.accountId) return
+    if (!formInstitution) {
+      setToast({ visible: true, message: 'Bank is required', type: 'error' })
+      return
+    }
+    if (formOpeningBalance !== '' && isNaN(Number(formOpeningBalance))) {
+      setToast({ visible: true, message: 'Current balance must be a valid number', type: 'error' })
+      return
+    }
+
+    const targetBalance = Number(formOpeningBalance) || 0
+
+    setPropAccounts(prev => prev.map(a => {
+      if (a.id === dialog.accountId) {
+        return {
+          ...a,
+          institution: formInstitution,
+          accountNumber: formAccountNumber || '----',
+          theme: formTheme,
+          openingBalance: 0,
+          iban: formIban,
+          swift: formSwift,
+          branch: formBranch,
+          status: formStatus,
+          updatedAt: new Date().toISOString(),
+          updatedBy: 'user'
+        }
+      }
+      return a
+    }))
+
+    const mapping = bankMappings.find(m => m.bankAccountId === dialog.accountId)
+    if (mapping) {
+      const updatedName = formInstitution
+      setAccounts(prev => prev.map(acct => {
+        if (acct.id === mapping.accountId) {
+          return {
+            ...acct,
+            name: updatedName,
+            description: 'Bank Account',
+            openingBalance: 0,
+            updatedAt: new Date().toISOString()
+          }
+        }
+        return acct
+      }))
+      setBankMappings(prev => prev.map(m => {
+        if (m.bankAccountId === dialog.accountId) {
+          return {
+            ...m,
+            accountName: updatedName
+          }
+        }
+        return m
+      }))
+
+      // Compute adjustment amount: target - current ledger balance
+      const currentLedgerBal = getAccountBalance(mapping.accountId, vouchers, accounts)
+      const adjustment = Math.round((targetBalance - currentLedgerBal) * 100) / 100
+
+      if (Math.abs(adjustment) > 0.001) {
+        const adjustmentDate = new Date().toISOString().split('T')[0]
+        const isIncrease = adjustment > 0
+        const result = accountingEngine.processAccountingEvent(
+          'OPENING_BALANCE',
+          {
+            amount: Math.abs(adjustment),
+            date: adjustmentDate,
+            description: `Balance adjustment: ${formInstitution} (${isIncrease ? '+' : ''}${adjustment})`,
+            currency,
+            exchangeRate: 1,
+            baseCurrency: 'AED',
+            debitAccount: isIncrease ? mapping.accountId : '2200-prop',
+            creditAccount: isIncrease ? '2200-prop' : mapping.accountId,
+            referenceType: 'Property',
+            referenceId: dialog.accountId,
+            createdBy: 'user',
+          },
+          accounts,
+          vouchers,
+        )
+
+        if (result.success && result.voucher) {
+          const approveResult = accountingEngine.approve(result.voucher, 'user')
+          if (approveResult.success && approveResult.voucher) {
+            const postResult = accountingEngine.post(approveResult.voucher, 'user', accounts, [])
+              if (postResult.success && postResult.voucher) {
+                const adjVoucher: Voucher = { ...postResult.voucher, reference: `ADJ-${dialog.accountId}-${Date.now()}` }
+                setVouchers(prev => [adjVoucher, ...prev])
+              }
+          }
+        }
+      }
+    }
+
+    invalidateBalanceCache()
+
+    const accDesc = formInstitution;
+    onAuditEvent?.(recordModuleEvent('Property Bank Accounts', 'Update', accDesc, dialog.accountId, `Updated account: ${accDesc}`))
+    setDialog({ type: null })
+    setToast({ visible: true, message: 'Account updated', type: 'success' })
+    resetForm()
+  }
+
+  const checkIsBankReferenced = (acctId: string): { referenced: boolean; count: number; reason?: string } => {
+    const mapping = bankMappings.find(m => m.bankAccountId === acctId)
+    const glAccountId = mapping?.accountId
+    let count = 0
+
+    if (glAccountId) {
+      count += vouchers.filter(v => v.reference !== `OB-${acctId}` && v.lines.some(l => l.accountId === glAccountId)).length
+    }
+
+    if (pdcCheques) {
+      count += pdcCheques.filter(cheque => cheque.bankAccountId === acctId).length
+    }
+
+    if (securityDeposits) {
+      count += securityDeposits.filter(sd => 
+        sd.transactions && sd.transactions.some(tx => tx.bankAccountId === acctId)
+      ).length
+    }
+
+    if (purchaseRecords) {
+      count += purchaseRecords.filter(pr => pr.fundingBankAccountId === acctId).length
+    }
+
+    if (bankReconciliations) {
+      count += bankReconciliations.filter(r => r.bankAccountId === acctId).length
+    }
+
+    if (count > 0) {
+      return {
+        referenced: true,
+        count,
+        reason: `This bank account cannot be deleted because it is referenced by ${count} accounting records. Please transfer the transactions to another account.`
+      }
+    }
+
+    return { referenced: false, count: 0 }
+  }
+
+  const handleDeleteAccountConfirm = () => {
+    if (!deleteAccountTarget) return
+
+    const refCheck = checkIsBankReferenced(deleteAccountTarget.id)
+    if (refCheck.referenced) {
+      setToast({
+        visible: true,
+        message: refCheck.reason || 'This bank account is already used in accounting records and cannot be deleted.',
+        type: 'error'
+      })
+      setDeleteAccountTarget(null)
+      return
+    }
+
+    const acctId = deleteAccountTarget.id
+    setPropAccounts(prev => prev.filter(a => a.id !== acctId))
+
+    const mapping = bankMappings.find(m => m.bankAccountId === acctId)
+    if (mapping) {
+      setBankMappings(prev => prev.filter(m => m.bankAccountId !== acctId))
+    }
+
+    // Safely remove the child account representing the bank from the Chart of Accounts.
+    // Never remove the root parent account ('1120' or '1120-prop').
+    setAccounts(prev => prev.filter(acct => {
+      if (acct.id === '1120' || acct.code === '1120') return true
+      if (mapping && acct.id === mapping.accountId) return false
+      
+      const isChild = acct.parentId === '1120' || acct.parentId === '1120-prop' || (acct.code && acct.code.startsWith('1120') && acct.code !== '1120')
+      if (isChild) {
+        const cleanAcctName = acct.name.toLowerCase()
+        const cleanInst = deleteAccountTarget.institution.toLowerCase()
+        if (cleanAcctName.includes(cleanInst) || (deleteAccountTarget.accountNumber && cleanAcctName.includes(deleteAccountTarget.accountNumber.toLowerCase()))) {
+          return false
+        }
+      }
+      return true
+    }))
+
+    setBankReconciliations(prev => prev.filter(r => r.bankAccountId !== acctId))
+    
+    // Remove the opening balance JV voucher
+    setVouchers(prev => prev.filter(v => v.reference !== `OB-${acctId}`))
+
+    invalidateBalanceCache()
+
+    if (selectedId === acctId) {
+      const remaining = propAccounts.filter(a => a.id !== acctId)
+      if (remaining.length > 0) {
+        setSelectedId((remaining.find(a => a.status === 'active') || remaining[0]).id)
+      } else {
+        setSelectedId(null)
+      }
+    }
+
+    const accDesc = deleteAccountTarget.institution;
+    onAuditEvent?.(recordModuleEvent('Property Bank Accounts', 'Delete', accDesc, deleteAccountTarget.id, `Deleted account: ${accDesc}`))
+
+    setDeleteAccountTarget(null)
+    setToast({ visible: true, message: 'Bank account deleted successfully', type: 'success' })
   }
 
   const handleDeposit = () => {
@@ -297,26 +598,41 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
       setToast({ visible: true, message: 'No account selected', type: 'error' })
       return
     }
-    const txn: PropTransaction = {
-      id: `pt-${Date.now()}`,
-      accountId: targetId,
-      date: formDate,
-      type: 'credit',
-      amount: amt,
-      description: formDesc || 'Deposit',
-      category: '',
-      status: 'cleared',
-      reference: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      createdBy: 'user',
-      updatedBy: 'user',
+    
+    const mapping = bankMappings.find(m => m.bankAccountId === targetId)
+    if (!mapping) {
+      setToast({ visible: true, message: 'Bank account is not mapped to the ledger.', type: 'error' })
+      return
     }
-    setPropTransactions(prev => [txn, ...prev])
-    const targetAccount = propAccounts.find(a => a.id === targetId)
-    onAuditEvent?.(recordModuleEvent('Property Bank Accounts', 'Create', targetAccount?.accountName || 'account', txn.id, `Deposit ${currency}${amt.toLocaleString()} to ${targetAccount?.accountName || 'account'}`))
-    setToast({ visible: true, message: 'Deposit recorded', type: 'success' })
-    setDialog({ type: null })
+
+    try {
+      const draftResult = accountingEngine.processAccountingEvent(
+        'BANK_DEPOSIT',
+        {
+          amount: amt,
+          date: formDate,
+          description: formDesc || 'Deposit',
+          currency,
+          bankAccount: mapping.accountId,
+        },
+        accounts,
+        vouchers
+      )
+      if (!draftResult.success || !draftResult.voucher) throw new Error(draftResult.errors.map(e => e.message).join(', '))
+      
+      const approveResult = accountingEngine.approve(draftResult.voucher, 'system')
+      if (!approveResult.success || !approveResult.voucher) throw new Error(approveResult.errors.map(e => e.message).join(', '))
+      
+      const postResult = accountingEngine.post(approveResult.voucher, 'system', accounts, vouchers)
+      if (!postResult.success || !postResult.voucher) throw new Error(postResult.errors.map(e => e.message).join(', '))
+      
+      setVouchers(prev => [...prev, postResult.voucher!])
+      onAuditEvent?.(recordModuleEvent('Property Bank Accounts', 'Update', dialog.accountId || 'account', '', `Deposited ${currency}${amt.toLocaleString()}`))
+      setDialog({ type: null })
+      setToast({ visible: true, message: 'Deposit recorded', type: 'success' })
+    } catch (e: any) {
+      setToast({ visible: true, message: e.message || 'Failed to record deposit', type: 'error' })
+    }
     resetForm()
   }
 
@@ -331,26 +647,40 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
       setToast({ visible: true, message: 'No account selected', type: 'error' })
       return
     }
-    const txn: PropTransaction = {
-      id: `pt-${Date.now()}`,
-      accountId: targetId,
-      date: formDate,
-      type: 'debit',
-      amount: amt,
-      description: formDesc || 'Withdrawal',
-      category: '',
-      status: 'cleared',
-      reference: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      createdBy: 'user',
-      updatedBy: 'user',
+    const mapping = bankMappings.find(m => m.bankAccountId === targetId)
+    if (!mapping) {
+      setToast({ visible: true, message: 'Bank account is not mapped to the ledger.', type: 'error' })
+      return
     }
-    setPropTransactions(prev => [txn, ...prev])
-    const targetAccount = propAccounts.find(a => a.id === targetId)
-    onAuditEvent?.(recordModuleEvent('Property Bank Accounts', 'Create', targetAccount?.accountName || 'account', txn.id, `Withdraw ${currency}${amt.toLocaleString()} from ${targetAccount?.accountName || 'account'}`))
-    setToast({ visible: true, message: 'Withdrawal recorded', type: 'success' })
-    setDialog({ type: null })
+
+    try {
+      const draftResult = accountingEngine.processAccountingEvent(
+        'BANK_WITHDRAWAL',
+        {
+          amount: amt,
+          date: formDate,
+          description: formDesc || 'Withdrawal',
+          currency,
+          bankAccount: mapping.accountId,
+        },
+        accounts,
+        vouchers
+      )
+      if (!draftResult.success || !draftResult.voucher) throw new Error(draftResult.errors.map(e => e.message).join(', '))
+      
+      const approveResult = accountingEngine.approve(draftResult.voucher, 'system')
+      if (!approveResult.success || !approveResult.voucher) throw new Error(approveResult.errors.map(e => e.message).join(', '))
+      
+      const postResult = accountingEngine.post(approveResult.voucher, 'system', accounts, vouchers)
+      if (!postResult.success || !postResult.voucher) throw new Error(postResult.errors.map(e => e.message).join(', '))
+      
+      setVouchers(prev => [...prev, postResult.voucher!])
+      onAuditEvent?.(recordModuleEvent('Property Bank Accounts', 'Update', dialog.accountId || 'account', '', `Withdrew ${currency}${amt.toLocaleString()}`))
+      setDialog({ type: null })
+      setToast({ visible: true, message: 'Withdrawal recorded', type: 'success' })
+    } catch (e: any) {
+      setToast({ visible: true, message: e.message || 'Failed to record withdrawal', type: 'error' })
+    }
     resetForm()
   }
 
@@ -380,48 +710,43 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
       return
     }
 
-    const now = Date.now()
-    const transferRef = `tr-${now}`
-    const nowISO = new Date().toISOString()
-    const destAccount = propAccounts.find(a => a.id === formToAccount)
-    const srcAccount = propAccounts.find(a => a.id === fromId)
+    const fromMapping = bankMappings.find(m => m.bankAccountId === fromId)
+    const toMapping = bankMappings.find(m => m.bankAccountId === formToAccount)
 
-    const outTxn: PropTransaction = {
-      id: `pt-${now}-out`,
-      accountId: fromId,
-      date: formDate,
-      type: 'transfer_out',
-      amount: amt,
-      description: formDesc || `Transfer to ${destAccount?.accountName || 'destination'}`,
-      category: 'Transfer',
-      status: 'cleared',
-      reference: transferRef,
-      createdAt: nowISO,
-      updatedAt: nowISO,
-      createdBy: 'user',
-      updatedBy: 'user',
+    if (!fromMapping || !toMapping) {
+      setToast({ visible: true, message: 'Both bank accounts must be mapped to the ledger.', type: 'error' })
+      return
     }
 
-    const inTxn: PropTransaction = {
-      id: `pt-${now}-in`,
-      accountId: formToAccount,
-      date: formDate,
-      type: 'transfer_in',
-      amount: amt,
-      description: formDesc || `Transfer from ${srcAccount?.accountName || 'source'}`,
-      category: 'Transfer',
-      status: 'cleared',
-      reference: transferRef,
-      createdAt: nowISO,
-      updatedAt: nowISO,
-      createdBy: 'user',
-      updatedBy: 'user',
+    try {
+      const draftResult = accountingEngine.processAccountingEvent(
+        'BANK_TRANSFER',
+        {
+          amount: amt,
+          date: formDate,
+          description: formDesc || 'Bank Transfer',
+          currency,
+          debitAccount: fromMapping.accountId, // from
+          creditAccount: toMapping.accountId,  // to
+        },
+        accounts,
+        vouchers
+      )
+      if (!draftResult.success || !draftResult.voucher) throw new Error(draftResult.errors.map(e => e.message).join(', '))
+      
+      const approveResult = accountingEngine.approve(draftResult.voucher, 'system')
+      if (!approveResult.success || !approveResult.voucher) throw new Error(approveResult.errors.map(e => e.message).join(', '))
+      
+      const postResult = accountingEngine.post(approveResult.voucher, 'system', accounts, vouchers)
+      if (!postResult.success || !postResult.voucher) throw new Error(postResult.errors.map(e => e.message).join(', '))
+      
+      setVouchers(prev => [...prev, postResult.voucher!])
+      onAuditEvent?.(recordModuleEvent('Property Bank Accounts', 'Update', 'Transfer', '', `Transferred ${currency}${amt.toLocaleString()}`))
+      setDialog({ type: null })
+      setToast({ visible: true, message: 'Transfer completed', type: 'success' })
+    } catch (e: any) {
+      setToast({ visible: true, message: e.message || 'Failed to record transfer', type: 'error' })
     }
-
-    setPropTransactions(prev => [inTxn, outTxn, ...prev])
-    onAuditEvent?.(recordModuleEvent('Property Bank Accounts', 'Transfer', `${srcAccount?.accountName || 'source'} → ${destAccount?.accountName || 'destination'}`, transferRef, `Transfer ${currency}${amt.toLocaleString()} from ${srcAccount?.accountName || 'unknown'} to ${destAccount?.accountName || 'unknown'}`))
-    setToast({ visible: true, message: 'Transfer completed', type: 'success' })
-    setDialog({ type: null })
     resetForm()
   }
 
@@ -492,11 +817,15 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
       header: 'Amount',
       sortable: true,
       numeric: true,
-      render: txn => (
-        <span className={`fw-600 text-sm text-nowrap ${txn.type === 'credit' || txn.type === 'transfer_in' ? 'text-success' : 'text-muted'}`}>
-          {formatAmount(txn)}
-        </span>
-      ),
+      render: txn => {
+        const isPositive = txn.type === 'credit' || txn.type === 'transfer_in'
+        return (
+          <span className={isPositive ? 'text-success' : 'text-danger'}>
+            {isPositive ? '+' : '-'}
+            <CurrencyText value={txn.amount} currency={currency} className="fw-600" />
+          </span>
+        )
+      },
     },
     {
       key: 'balanceAfter',
@@ -505,9 +834,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
       numeric: true,
       width: '110px',
       render: txn => (
-        <span className="text-mono text-xs text-secondary text-nowrap">
-          {currency} {txn.balanceAfter.toLocaleString()}
-        </span>
+        <CurrencyText value={txn.balanceAfter} currency={currency} className="text-secondary" />
       ),
     },
     {
@@ -558,6 +885,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
 
   const getDialogTitle = () => {
     if (dialog.type === 'addAccount') return 'Add Bank Account'
+    if (dialog.type === 'editAccount') return 'Edit Bank Account'
     if (dialog.type === 'deposit') return 'Record Deposit'
     if (dialog.type === 'withdraw') return 'Record Withdrawal'
     if (dialog.type === 'transfer') return 'Transfer Funds'
@@ -566,12 +894,18 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
 
   const handleDialogSubmit = () => {
     if (dialog.type === 'addAccount') handleAddAccount()
+    else if (dialog.type === 'editAccount') handleEditAccount()
     else if (dialog.type === 'deposit') handleDeposit()
     else if (dialog.type === 'withdraw') handleWithdraw()
     else if (dialog.type === 'transfer') handleTransfer()
   }
 
-  const flowLabel = thisMonthFlow >= 0 ? `+${currency} ${thisMonthFlow.toLocaleString()}` : `${currency} ${Math.abs(thisMonthFlow).toLocaleString()}`
+  const flowLabel = (
+    <span>
+      {thisMonthFlow >= 0 ? '+' : '-'}
+      <CurrencyText value={Math.abs(thisMonthFlow)} currency={currency} />
+    </span>
+  )
 
   const filterOptions: { value: TxnFilter; label: string }[] = [
     { value: 'all', label: 'All' },
@@ -596,21 +930,44 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
         onCancel={() => setDeleteTarget(null)}
       />
 
+      <ConfirmDialog
+        open={deleteAccountTarget !== null}
+        title="Delete Bank Account?"
+        message={
+          deleteAccountTarget ? (
+            <div>
+              <div style={{ marginBottom: 12 }}>
+                <strong>Bank:</strong><br />
+                {deleteAccountTarget.institution}
+              </div>
+              <p style={{ margin: 0 }}>This action cannot be undone.</p>
+            </div>
+          ) : ''
+        }
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={handleDeleteAccountConfirm}
+        onCancel={() => setDeleteAccountTarget(null)}
+      />
+
       <EntityForm
         open={dialog.type !== null}
         title={getDialogTitle()}
-        submitLabel={dialog.type === 'addAccount' ? 'Add Account' : 'Record'}
+        submitLabel={dialog.type === 'addAccount' ? 'Add Account' : dialog.type === 'editAccount' ? 'Save Changes' : 'Record'}
         onCancel={() => { setDialog({ type: null }); resetForm() }}
         onSubmit={handleDialogSubmit}
       >
-        {dialog.type === 'addAccount' && (
+        {(dialog.type === 'addAccount' || dialog.type === 'editAccount') && (
           <div className="form-row">
-            <Input label="Institution" value={formInstitution} onChange={e => setFormInstitution(e.target.value)} placeholder="e.g. Emirates Islamic Bank" autoFocus />
-            <Input label="Account Name" value={formAccountName} onChange={e => setFormAccountName(e.target.value)} placeholder="e.g. Primary Account" />
-            <Input label="Account Number" value={formAccountNumber} onChange={e => setFormAccountNumber(e.target.value)} placeholder="Optional" />
-            <Select label="Account Type" value={formAccountType} onChange={e => setFormAccountType(e.target.value as any)} options={accountTypeOptions} />
-            <Input label="Opening Balance (AED)" type="number" value={formOpeningBalance} onChange={e => setFormOpeningBalance(e.target.value)} placeholder="0" />
+            <Input label="Bank" value={formInstitution} onChange={e => setFormInstitution(e.target.value)} placeholder="e.g. Primary Bank" autoFocus />
+            <Input label="IBAN" value={formIban} onChange={e => setFormIban(e.target.value)} placeholder="e.g. AE83024000..." />
+            <Input label="SWIFT Code" value={formSwift} onChange={e => setFormSwift(e.target.value)} placeholder="e.g. DIBKAEADXXX" />
+            <Input label="Branch" value={formBranch} onChange={e => setFormBranch(e.target.value)} placeholder="e.g. Sheikh Zayed Road Branch" />
+            <Input label="Initial Amount (AED)" type="number" value={formOpeningBalance} onChange={e => setFormOpeningBalance(e.target.value)} placeholder="0" />
             <Select label="Theme Color" value={formTheme} onChange={e => setFormTheme(e.target.value)} options={themeOptions} />
+            {dialog.type === 'editAccount' && (
+              <Select label="Status" value={formStatus} onChange={e => setFormStatus(e.target.value as any)} options={statusOptions} />
+            )}
           </div>
         )}
         {dialog.type === 'deposit' && (
@@ -633,7 +990,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
               label="From Account"
               value={dialog.accountId || selectedId || ''}
               disabled
-              options={propAccounts.filter(a => a.status === 'active').map(a => ({ value: a.id, label: `${a.institution} - ${a.accountName}` }))}
+              options={propAccounts.filter(a => a.status === 'active').map(a => ({ value: a.id, label: a.institution }))}
             />
             <div className="text-xs text-secondary" style={{ marginTop: -12, marginBottom: 8 }}>
               Balance: {currency} {(accountBalances[dialog.accountId || selectedId || ''] ?? 0).toLocaleString()}
@@ -642,7 +999,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
               label="To Account"
               value={formToAccount}
               onChange={e => setFormToAccount(e.target.value)}
-              options={propAccounts.filter(a => a.status === 'active' && a.id !== (dialog.accountId || selectedId)).map(a => ({ value: a.id, label: `${a.institution} - ${a.accountName}` }))}
+              options={propAccounts.filter(a => a.status === 'active' && a.id !== (dialog.accountId || selectedId)).map(a => ({ value: a.id, label: a.institution }))}
             />
             <Input label={`Amount (${currency})`} type="number" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0" autoFocus />
             <Input label="Description" value={formDesc} onChange={e => setFormDesc(e.target.value)} placeholder="Optional note" />
@@ -654,7 +1011,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
       <div className="page-header">
         <div className="page-header-left">
           <div>
-            <div className="page-title">{t('property-bank-accounts', language)}</div>
+            <div className="page-title">{t('bank-accounts', language)}</div>
             <div className="page-subtitle">
               {propAccounts.length > 0
                 ? `${propAccounts.length} account${propAccounts.length !== 1 ? 's' : ''} tracked`
@@ -673,7 +1030,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
             {selectedAccount && (
               <div className={`featured-account-card prop-theme-${selectedAccount.theme}`}>
                 <div className="featured-account-card-inner">
-                  <div className="featured-account-card-top">
+                  <div className="featured-account-card-top" style={{ position: 'relative' }}>
                     <div className="featured-account-card-bank">
                       <div className="featured-account-card-icon">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -683,24 +1040,28 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
                       </div>
                       <span className="featured-account-card-bank-name">{selectedAccount.institution}</span>
                     </div>
-                    <div className="featured-account-card-badges">
-                      <Badge variant={selectedAccount.accountType === 'savings' ? 'primary' : selectedAccount.accountType === 'credit' ? 'warning' : 'neutral'}>
-                        {selectedAccount.accountType}
-                      </Badge>
-                      <Badge variant={selectedAccount.status === 'active' ? 'success' : 'neutral'}>
-                        {selectedAccount.status}
-                      </Badge>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, zIndex: 10 }}>
+                      <div className="featured-account-card-badges">
+                        <Badge variant={selectedAccount.status === 'active' ? 'success' : 'neutral'}>
+                          {selectedAccount.status}
+                        </Badge>
+                      </div>
+                      
+                      <BankAccountActionsMenu
+                        onView={() => setSelectedId(selectedAccount.id)}
+                        onEdit={() => openEditDialog(selectedAccount)}
+                        onDelete={() => setDeleteAccountTarget(selectedAccount)}
+                        triggerStyle={{ color: 'white', padding: 4, height: 'auto', background: 'rgba(255,255,255,0.15)', borderRadius: '50%', minWidth: 'auto' }}
+                      />
                     </div>
                   </div>
 
                   <div className="featured-account-card-balance">
-                    {currency} {(accountBalances[selectedAccount.id] ?? 0).toLocaleString()}
+                    <CurrencyText value={accountBalances[selectedAccount.id] ?? 0} currency={currency} />
                   </div>
 
                   <div className="featured-account-card-bottom">
-                    <span className="featured-account-card-bottom-label">{selectedAccount.accountName}</span>
-                    <span className="featured-account-card-bottom-sep">·</span>
-                    <span className="featured-account-card-bottom-value">{maskAccountNumber(selectedAccount.accountNumber)}</span>
+                    <span className="featured-account-card-bottom-value"></span>
                   </div>
                 </div>
               </div>
@@ -708,8 +1069,8 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
 
             <div className="kpi-grid">
               <KpiCard
-                label="Total Cash"
-                value={`${currency} ${totalCash.toLocaleString()}`}
+                label="Total Money in Bank"
+                value={<CurrencyText value={totalCash} currency={currency} />}
                 icon={<PortfolioIcon />}
                 accentColor="var(--success)"
               />
@@ -723,7 +1084,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
                 label="This Month Net Flow"
                 value={flowLabel}
                 change={{
-                  value: `${currency} ${Math.abs(thisMonthFlow).toLocaleString()}`,
+                  value: formatCurrency(Math.abs(thisMonthFlow), currency),
                   direction: thisMonthFlow >= 0 ? 'up' : thisMonthFlow < 0 ? 'down' : 'neutral',
                 }}
                 icon={<TrendingUpIcon />}
@@ -736,10 +1097,8 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
                 <div className="account-detail">
                 <div className="account-detail-header">
                   <div className="account-detail-info">
-                    <div className="text-lg fw-600">{selectedAccount.accountName}</div>
-                    <div className="text-secondary text-sm">
-                      {selectedAccount.institution}{selectedAccount.accountNumber !== '----' ? ` · ${maskAccountNumber(selectedAccount.accountNumber)}` : ''}
-                    </div>
+                                        <div className="text-lg fw-600">{selectedAccount.institution}</div>
+                    
                   </div>
                   <div className="account-detail-actions" ref={newTxnRef}>
                     <div className="account-detail-actions-wrap" style={{ display: 'flex', gap: 8 }}>
@@ -771,24 +1130,16 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
 
                 <div className="account-stats-grid">
                   <div className="account-stat">
-                    <span className="account-stat-label">Opening Balance</span>
-                    <span className="account-stat-value">{currency} {selectedAccount.openingBalance.toLocaleString()}</span>
-                  </div>
-                  <div className="account-stat">
                     <span className="account-stat-label">Total Deposits</span>
-                    <span className="account-stat-value text-success">{currency} {accountStats.deposits.toLocaleString()}</span>
+                    <span className="account-stat-value text-success"><CurrencyText value={accountStats.deposits} currency={currency} /></span>
                   </div>
                   <div className="account-stat">
                     <span className="account-stat-label">Total Withdrawals</span>
-                    <span className="account-stat-value text-danger">{currency} {accountStats.withdrawals.toLocaleString()}</span>
+                    <span className="account-stat-value text-danger"><CurrencyText value={accountStats.withdrawals} currency={currency} /></span>
                   </div>
                   <div className="account-stat">
                     <span className="account-stat-label">Transfers</span>
                     <span className="account-stat-value">{accountStats.transfers}</span>
-                  </div>
-                  <div className="account-stat">
-                    <span className="account-stat-label">Account Type</span>
-                    <span className="account-stat-value capitalize">{selectedAccount.accountType}</span>
                   </div>
                   <div className="account-stat">
                     <span className="account-stat-label">Status</span>
@@ -800,7 +1151,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
                   </div>
                   <div className="account-stat">
                     <span className="account-stat-label">Current Balance</span>
-                    <span className="account-stat-value fw-700 text-md">{currency} {(accountBalances[selectedAccount.id] ?? 0).toLocaleString()}</span>
+                    <span className="account-stat-value fw-700 text-md"><CurrencyText value={accountBalances[selectedAccount.id] ?? 0} currency={currency} /></span>
                   </div>
                 </div>
 
@@ -887,15 +1238,21 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
                             key={acct.id}
                             className={`account-card compact prop-theme-${acct.theme}${acct.status !== 'active' ? ' account-card-inactive' : ''}`}
                             onClick={() => setSelectedId(acct.id)}
+                            style={{ position: 'relative' }}
                           >
                             <div className="account-card-theme" />
-                            <div className="account-card-institution">{acct.institution} · {maskAccountNumber(acct.accountNumber)}</div>
-                            <div className="account-card-name">{acct.accountName}</div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div className="account-card-institution" style={{ flex: 1, paddingRight: 24 }}>{acct.institution}</div>
+                              <BankAccountActionsMenu
+                                onView={() => setSelectedId(acct.id)}
+                                onEdit={() => openEditDialog(acct)}
+                                onDelete={() => setDeleteAccountTarget(acct)}
+                                triggerStyle={{ padding: '2px 4px', height: 'auto', background: 'transparent', minWidth: 'auto' }}
+                              />
+                            </div>
+                            <div className="account-card-name">&nbsp;</div>
                             <div className="account-card-balance">{currency} {bal.toLocaleString()}</div>
                             <div className="account-card-footer">
-                              <Badge variant={acct.accountType === 'savings' ? 'primary' : acct.accountType === 'credit' ? 'warning' : 'neutral'}>
-                                {acct.accountType}
-                              </Badge>
                               <span className="text-muted text-xs">
                                 {lastDate ? formatDate(lastDate, dateFormat) : '—'}
                               </span>
@@ -978,11 +1335,20 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
                   <tbody>
                     {selectedHistoryRec.statementLines.map((line, idx) => (
                       <tr key={idx} style={{ borderBottom: '1px solid #E4EBF4' }}>
+                        <td className="p-3">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            line.amount >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'
+                          }`}>
+                            {line.amount >= 0 ? 'Deposit' : 'Withdrawal'}
+                          </span>
+                        </td>
                         <td style={{ padding: 8 }}>{line.date}</td>
                         <td style={{ padding: 8, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{line.description}</td>
                         <td style={{ padding: 8 }}>{line.reference ?? '-'}</td>
-                        <td style={{ padding: 8, textAlign: 'right', color: line.amount >= 0 ? '#10B981' : '#EF4444', fontWeight: 500 }}>
-                          {line.amount >= 0 ? '+' : ''}{line.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        <td className="p-3 text-right">
+                          <div className={`font-medium ${line.amount >= 0 ? 'text-green-500' : 'text-slate-300'}`}>
+                            {line.amount >= 0 ? '+' : '-'} <CurrencyText value={Math.abs(line.amount)} currency={currency} />
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1005,6 +1371,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
           vouchers={vouchers}
           setVouchers={setVouchers}
           accountingEngine={accountingEngine}
+          bankMappings={bankMappings}
           currency={currency}
           dateFormat={dateFormat}
           onAuditEvent={onAuditEvent}

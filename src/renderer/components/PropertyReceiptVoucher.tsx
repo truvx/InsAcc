@@ -1,17 +1,30 @@
 import React, { useState, useMemo } from 'react'
 import type { Account, Voucher, BankMapping, PostingResult } from '../accounting/types'
-import type { PropAccount, LeaseEntry, TenantEntry } from '../data/propertyTypes'
+import type { PropAccount, LeaseEntry, TenantEntry, PropertyEntry, UnitEntry } from '../data/propertyTypes'
+import type { PurchaseRecord } from '../data/purchaseLedger'
 import { Button, Input, Select, Badge, EmptyState, SearchIcon, CloseIcon } from './design/DesignSystem'
+import { useMasterData } from '../contexts/MasterDataContext'
+import { PartyLookupService } from '../services/partyLookupService'
+import { SearchablePartySelect } from './design/SearchablePartySelect'
 import { DataTable, type Column } from './design/Table'
 import EntityForm from './design/EntityForm'
 import Toast from './Toast'
-import { formatDate } from '../utils'
+import { formatDate, formatModifiedDateTime } from '../utils'
 import { getAccountIdForBank } from '../accounting/bankAccountMapping'
+import { getDefaultPropertyReceiptBankAccount } from '../services/bankingService'
 import type { AccountingEngine } from '../accounting/accountingEngine'
-import { getLinesForAccount } from '../accounting/ledgerService'
-import { useVoucherLifecycle } from '../hooks/useVoucherLifecycle'
+import { getLinesForAccount, invalidateBalanceCache } from '../accounting/ledgerService'
+import { useVoucherLifecycle, autoPostVoucher } from '../hooks/useVoucherLifecycle'
 import VoucherStatusBadge from './design/VoucherStatusBadge'
 import VoucherDetailsModal from './design/VoucherDetailsModal'
+import ActionsMenu from './design/ActionsMenu'
+import { CurrencyText } from './design/CurrencyText'
+import AuditTrailModal from './design/AuditTrailModal'
+import { printVoucher } from '../utils/printVoucherHelper'
+import { exportVoucherToPDF } from '../utils/pdfVoucherHelper'
+import type { AuditEvent } from '../data/auditTypes'
+import type { PdcCheque } from '../data/propertyTypes'
+import { findLeaseForReceipt, validateReceiptAmount, settleRent } from '../services/rentSettlementService'
 
 interface Props {
   currency?: string
@@ -24,14 +37,27 @@ interface Props {
   bankMappings: BankMapping[]
   accountingEngine: AccountingEngine
   leases?: LeaseEntry[]
+  setLeases?: React.Dispatch<React.SetStateAction<LeaseEntry[]>>
   tenants?: TenantEntry[]
+  properties?: PropertyEntry[]
+  units?: UnitEntry[]
+  purchaseRecords?: PurchaseRecord[]
+  pdcCheques?: PdcCheque[]
+  setPdcCheques?: React.Dispatch<React.SetStateAction<PdcCheque[]>>
+  onAuditEvent?: (event: AuditEvent) => void
+  auditEvents?: AuditEvent[]
 }
 
 export default function PropertyReceiptVoucher({
   currency = 'AED', dateFormat = 'DD/MM/YYYY',
   accounts, vouchers, setVouchers,
   propAccounts, bankMappings, accountingEngine,
-  leases = [], tenants = [],
+  leases = [], setLeases,
+  tenants = [],
+  properties = [], units = [], purchaseRecords = [],
+  pdcCheques = [], setPdcCheques,
+  onAuditEvent,
+  auditEvents = [],
 }: Props) {
   const {
     detailVoucher, setDetailVoucher,
@@ -39,17 +65,38 @@ export default function PropertyReceiptVoucher({
     handlePost, handleApprove, handleCancel, handleDiscard, handleReverse
   } = useVoucherLifecycle(accountingEngine, accounts, setVouchers)
 
+  const { vendors, customers } = useMasterData()
+
+  const lookupService = useMemo(() => new PartyLookupService({
+    tenants,
+    leases,
+    properties,
+    units,
+    vendors,
+    customers,
+    purchaseRecords,
+  }), [tenants, leases, properties, units, vendors, customers, purchaseRecords])
+
+  const receiptParties = useMemo(() => lookupService.getReceiptParties('property'), [lookupService])
+
   const [searchQuery, setSearchQuery] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0])
   const [formAmount, setFormAmount] = useState('')
   const [formDescription, setFormDescription] = useState('')
-  const [formBankAccount, setFormBankAccount] = useState('')
-  const [formReference, setFormReference] = useState('')
+  const defaultBank = useMemo(() => getDefaultPropertyReceiptBankAccount(propAccounts), [propAccounts])
+  const [formBankAccount, setFormBankAccount] = useState(defaultBank ? defaultBank.id : '')
   const [formReceivedFrom, setFormReceivedFrom] = useState('')
 
+  const [formPaymentMode, setFormPaymentMode] = useState<string>('Bank Transfer')
+  const [formCreditAccount, setFormCreditAccount] = useState('')
+
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [showAuditModal, setShowAuditModal] = useState(false)
+  const [auditVoucher, setAuditVoucher] = useState<Voucher | null>(null)
+
   const receiptVouchers = useMemo(() =>
-    vouchers.filter(v => v.type === 'Receipt').sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    vouchers.filter(v => v.type === 'Receipt' && !v.isDeleted).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [vouchers]
   )
 
@@ -65,27 +112,95 @@ export default function PropertyReceiptVoucher({
 
   const bankOptions = useMemo(() => [
     { value: '', label: 'Select bank account' },
-    ...propAccounts.map(a => ({
+    ...propAccounts.filter(a => a.status === 'active' || a.id === formBankAccount).map(a => ({
       value: a.id,
-      label: `${a.institution} - ${a.accountName}`,
+      label: a.institution,
     })),
-  ], [propAccounts])
+  ], [propAccounts, formBankAccount])
 
-  const leaseOptions = useMemo(() => [
-    { value: '', label: 'Select lease (optional)' },
-    ...leases.filter(l => l.status === 'Active').map(l => {
-      const tenant = tenants.find(t => t.id === l.tenantId)
-      return { value: l.leaseNumber, label: `${l.leaseNumber} — ${tenant?.name || 'Unknown'}` }
-    }),
-  ], [leases, tenants])
+  const coaOptions = useMemo(() => {
+    return accounts
+      .filter(a => a.isActive)
+      .map(a => ({ value: a.id, label: `${a.code} — ${a.name} (${a.type.toUpperCase()})` }))
+  }, [accounts])
+
+  React.useEffect(() => {
+    if (!formCreditAccount && accounts.length > 0) {
+      const defaultCredit = accounts.find(a => a.code === '4120')?.id || ''
+      setFormCreditAccount(defaultCredit)
+    }
+  }, [accounts, formCreditAccount])
 
   const resetForm = () => {
     setFormDate(new Date().toISOString().split('T')[0])
     setFormAmount('')
     setFormDescription('')
-    setFormBankAccount('')
-    setFormReference('')
+    setFormBankAccount(defaultBank ? defaultBank.id : '')
     setFormReceivedFrom('')
+    setFormPaymentMode('Bank Transfer')
+    const defaultCredit = accounts.find(a => a.code === '4120')?.id || ''
+    setFormCreditAccount(defaultCredit)
+    setEditingId(null)
+  }
+
+  const openEditForm = (v: Voucher) => {
+    const debitLine = v.lines.find(l => l.type === 'Debit')
+    const creditLine = v.lines.find(l => l.type === 'Credit')
+
+    const mapping = bankMappings.find(m => m.accountId === debitLine?.accountId)
+    const bankId = mapping ? mapping.bankAccountId : ''
+
+    setFormDate(v.date)
+    setFormAmount(String(debitLine?.amount || 0))
+    setFormDescription(v.description.replace(/\s*\(from.*\)$/i, ''))
+    setFormBankAccount(bankId)
+    setFormCreditAccount(creditLine ? creditLine.accountId : '')
+
+    const payerMatch = v.description.match(/\(from\s+(.*)\)$/i)
+    setFormReceivedFrom(payerMatch ? payerMatch[1] : v.reference || '')
+
+    setFormPaymentMode(v.paymentMode || 'Bank Transfer')
+
+    setEditingId(v.id)
+    setShowForm(true)
+  }
+
+  const handleDuplicate = (v: Voucher) => {
+    openEditForm(v)
+    setEditingId(null)
+    setFormDate(new Date().toISOString().split('T')[0])
+    setFormDescription(`Copy of ${v.description.replace(/\s*\(from.*\)$/i, '')}`)
+  }
+
+  const handleDelete = (v: Voucher) => {
+    if (v.isReconciled) {
+      showToast('Cannot delete reconciled vouchers', 'error')
+      return
+    }
+    if (v.isLocked) {
+      showToast('Cannot delete locked vouchers', 'error')
+      return
+    }
+    if (window.confirm(`Are you sure you want to delete receipt voucher ${v.number}?`)) {
+      const updatedVoucher = { ...v, isDeleted: true }
+      setVouchers(prev => prev.map(item => item.id === v.id ? updatedVoucher : item))
+      invalidateBalanceCache()
+      showToast(`Voucher ${v.number} deleted successfully`, 'success')
+
+      onAuditEvent?.({
+        id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: new Date().toISOString(),
+        module: 'Accounting' as const,
+        action: 'Delete' as const,
+        entityName: 'Voucher',
+        entityId: v.id,
+        description: `Soft deleted receipt voucher ${v.number}`,
+        user: 'user',
+        icon: 'trash',
+        severity: 'Warning' as const,
+        before: v as any,
+      })
+    }
   }
 
   const handleCreateVoucher = () => {
@@ -94,52 +209,183 @@ export default function PropertyReceiptVoucher({
       showToast('Amount must be greater than zero', 'error')
       return
     }
-    if (!formBankAccount) {
-      showToast('Please select a bank account', 'error')
-      return
-    }
     if (!formDescription) {
       showToast('Description is required', 'error')
       return
     }
 
-    const bankAccountId = getAccountIdForBank(formBankAccount, bankMappings)
-    if (!bankAccountId) {
-      showToast('Bank account not mapped to chart of accounts', 'error')
-      return
+    let bankAccountId = ''
+    if (formPaymentMode === 'Cash') {
+      bankAccountId = accounts.find(a => (a.id === '1110-prop' || a.code === '1110') && a.isActive)?.id || '1110-prop'
+    } else {
+      if (!formBankAccount) {
+        showToast('Please select a bank account', 'error')
+        return
+      }
+      const mappedId = getAccountIdForBank(formBankAccount, bankMappings, accounts)
+      if (!mappedId) {
+        showToast('Bank account not mapped to chart of accounts', 'error')
+        return
+      }
+      bankAccountId = mappedId
     }
 
-    const ref = formReceivedFrom || formReference || undefined
-    const event = formReference ? 'RENT_RECEIVED' : 'INCOME_RECEIVED'
+    const ref = formReceivedFrom || undefined
+    const desc = formDescription + (formReceivedFrom ? ` (from ${formReceivedFrom})` : '')
+    const targetCreditAccount = formCreditAccount || accounts.find(a => a.code === '4120')?.id
 
-    const result: PostingResult = accountingEngine.processAccountingEvent(
-      event,
-      {
-        amount: amt,
+    // Find linked lease for rent settlement
+    const linkedLease = findLeaseForReceipt(formReceivedFrom, tenants as TenantEntry[], leases as LeaseEntry[])
+
+    if (!editingId && linkedLease) {
+      const validationError = validateReceiptAmount(linkedLease, amt, vouchers)
+      if (validationError) {
+        showToast(validationError, 'error')
+        return
+      }
+
+      // Validate PDC: receipt must exactly cover full PDC cheques
+      if (linkedLease.modeOfPayment === 'Post-Dated Cheques (PDC)') {
+        const pendingCheques = pdcCheques
+          .filter(c => c.leaseId === linkedLease.id && c.status === 'Pending')
+          .sort((a, b) => a.slotIndex - b.slotIndex)
+        if (pendingCheques.length > 0) {
+          let sum = 0
+          let covered = false
+          for (const c of pendingCheques) {
+            sum += c.amount
+            if (sum === amt) { covered = true; break }
+            if (sum > amt) break
+          }
+          if (!covered) {
+            showToast('Receipt amount must exactly match one or more full PDC cheques. Partial PDC payments are not supported.', 'error')
+            return
+          }
+        }
+      }
+    }
+
+    if (editingId) {
+      const oldVoucher = vouchers.find(v => v.id === editingId)
+      if (!oldVoucher) return
+
+      const updatedVoucher: Voucher = {
+        ...oldVoucher,
         date: formDate,
-        description: formDescription + (formReceivedFrom ? ` (from ${formReceivedFrom})` : ''),
-        currency,
-        exchangeRate: 1,
-        baseCurrency: 'AED',
-        bankAccount: bankAccountId,
-        creditAccount: accounts.find(a => a.code === '4120')?.id,
-        referenceType: formReference ? 'Lease' : 'Property',
-        referenceId: ref,
-        createdBy: 'user',
-      },
-      accounts,
-      vouchers,
-    )
+        description: desc,
+        reference: formReceivedFrom || '',
+        modifiedAt: new Date().toISOString(),
+        modifiedBy: 'user',
+        paymentMode: formPaymentMode as any,
+        paymentChannel: formPaymentMode === 'Cash' ? 'Cash In Hand' : 'Bank Account',
+        lines: oldVoucher.lines.map(line => {
+          if (line.type === 'Debit') {
+            return {
+              ...line,
+              accountId: bankAccountId,
+              amount: amt,
+              baseAmount: amt,
+              narration: formDescription,
+            }
+          } else {
+            return {
+              ...line,
+              accountId: targetCreditAccount || line.accountId,
+              amount: amt,
+              baseAmount: amt,
+              narration: formDescription,
+            }
+          }
+        })
+      }
 
-    if (!result.success || !result.voucher) {
-      showToast(result.errors.map(e => e.message).join(', '), 'error')
-      return
+      setVouchers(prev => prev.map(v => v.id === editingId ? updatedVoucher : v))
+      invalidateBalanceCache()
+
+      // Record Audit Event
+      onAuditEvent?.({
+        id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: new Date().toISOString(),
+        module: 'Accounting' as const,
+        action: 'Update' as const,
+        entityName: 'Voucher',
+        entityId: oldVoucher.id,
+        description: `Edited receipt voucher ${oldVoucher.number}`,
+        user: 'user',
+        icon: 'edit',
+        severity: 'Info' as const,
+        before: oldVoucher as any,
+        after: updatedVoucher as any,
+      })
+
+      setShowForm(false)
+      showToast(`Receipt voucher ${oldVoucher.number} updated`, 'success')
+      resetForm()
+    } else {
+      const result: PostingResult = accountingEngine.processAccountingEvent(
+        'INCOME_RECEIVED',
+        {
+          amount: amt,
+          date: formDate,
+          description: desc,
+          currency,
+          exchangeRate: 1,
+          baseCurrency: 'AED',
+          bankAccount: bankAccountId,
+          creditAccount: targetCreditAccount,
+          referenceType: 'Property',
+          referenceId: ref,
+          createdBy: 'user',
+        },
+        accounts,
+        vouchers,
+      )
+
+      if (!result.success || !result.voucher) {
+        showToast(result.errors.map(e => e.message).join(', '), 'error')
+        return
+      }
+
+      const postResult = autoPostVoucher(accountingEngine, result.voucher, accounts)
+      if (!postResult.success || !postResult.voucher) {
+        showToast(postResult.errors.map(e => e.message).join(', '), 'error')
+        return
+      }
+
+      const leaseRef = linkedLease ? linkedLease.leaseNumber : ref
+      const newVch: Voucher = {
+        ...postResult.voucher,
+        paymentMode: formPaymentMode as any,
+        paymentChannel: formPaymentMode === 'Cash' ? 'Cash In Hand' : 'Bank Account',
+        reference: leaseRef || ''
+      }
+
+      // Settle rent against linked lease
+      if (linkedLease && setLeases && setPdcCheques) {
+        const { updatedLease, updatedCheques } = settleRent(
+          linkedLease,
+          amt,
+          vouchers,
+          pdcCheques,
+        )
+        setLeases(prev => prev.map(l => l.id === updatedLease.id ? updatedLease : l))
+        if (updatedCheques.length > 0) {
+          setPdcCheques(prev => {
+            const next = [...prev]
+            for (const uc of updatedCheques) {
+              const idx = next.findIndex(c => c.id === uc.id)
+              if (idx !== -1) next[idx] = uc
+            }
+            return next
+          })
+        }
+      }
+
+      setVouchers(prev => [newVch, ...prev])
+      setShowForm(false)
+      showToast(`Receipt voucher ${newVch.number} created and posted`, 'success')
+      resetForm()
     }
-
-    setVouchers(prev => [result.voucher!, ...prev])
-    setShowForm(false)
-    showToast(`Draft receipt voucher ${result.voucher.number} created`, 'success')
-    resetForm()
   }
 
   const getBankName = (v: Voucher) => {
@@ -174,7 +420,17 @@ export default function PropertyReceiptVoucher({
       key: 'date',
       header: 'Date',
       sortable: true,
-      render: v => <span className="text-secondary text-xs">{formatDate(v.date, dateFormat)}</span>,
+      render: v => (
+        <div>
+          <span className="text-secondary text-xs">{formatDate(v.date, dateFormat)}</span>
+          {v.modifiedAt && (
+            <div style={{ fontSize: '10px', color: '#B91C1C', marginTop: '2px', fontWeight: 500 }} title={`Last modified on ${v.modifiedAt}`}>
+              Edited<br/>
+              <span style={{ fontSize: '9px', color: '#6B7280', fontWeight: 'normal' }}>{formatModifiedDateTime(v.modifiedAt)}</span>
+            </div>
+          )}
+        </div>
+      ),
     },
     {
       key: 'receivedFrom',
@@ -211,12 +467,43 @@ export default function PropertyReceiptVoucher({
       },
     },
     {
+      key: 'paymentMode',
+      header: 'Payment Mode',
+      render: v => <span className="text-sm">{v.paymentMode || 'Unknown'}</span>,
+    },
+    {
+      key: 'paymentChannel',
+      header: 'Channel',
+      render: v => <span className="text-secondary text-xs">{v.paymentChannel || 'Unknown'}</span>,
+    },
+    {
       key: 'status',
       header: 'Status',
       sortable: true,
       render: v => <VoucherStatusBadge status={v.status} />,
     },
-  ], [dateFormat, formReceivedFrom])
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: v => (
+        <div className="table-actions" style={{ display: 'flex', justifyContent: 'center' }}>
+          <ActionsMenu
+            onView={() => setDetailVoucher(v)}
+            onEdit={() => openEditForm(v)}
+            onDuplicate={() => handleDuplicate(v)}
+            onPrint={() => printVoucher(v, accounts, currency)}
+            onExportPDF={() => exportVoucherToPDF(v, accounts, currency)}
+            onDelete={() => handleDelete(v)}
+            onAuditTrail={() => {
+              setAuditVoucher(v)
+              setShowAuditModal(true)
+            }}
+            canDelete={!v.isReconciled && !v.isLocked}
+          />
+        </div>
+      ),
+    },
+  ], [dateFormat, accounts, currency, bankMappings, formReceivedFrom, leases, tenants])
 
   const totalAmount = useMemo(() =>
     filtered.filter(v => v.status === 'Posted').reduce((s, v) => s + v.lines.reduce((ls, l) => ls + (l.type === 'Debit' ? l.amount : 0), 0), 0),
@@ -229,8 +516,8 @@ export default function PropertyReceiptVoucher({
 
       <EntityForm
         open={showForm}
-        title="New Receipt Voucher"
-        submitLabel="Create Draft"
+        title={editingId ? "Edit Receipt Voucher" : "New Receipt Voucher"}
+        submitLabel={editingId ? "Save Changes" : "Create"}
         onCancel={() => { setShowForm(false); resetForm() }}
         onSubmit={handleCreateVoucher}
       >
@@ -239,12 +526,40 @@ export default function PropertyReceiptVoucher({
           <Input label={`Amount (${currency})`} type="number" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0" />
         </div>
         <div className="form-row">
-          <Input label="Received From" value={formReceivedFrom} onChange={e => setFormReceivedFrom(e.target.value)} placeholder="Tenant or payer name" />
-          <Select label="Reference Lease" value={formReference} onChange={e => setFormReference(e.target.value)} options={leaseOptions} />
+          <SearchablePartySelect
+            label="Received From"
+            value={formReceivedFrom}
+            onChange={setFormReceivedFrom}
+            parties={receiptParties}
+            placeholder="Tenant or payer name"
+            customLabel="Use custom payer"
+          />
+          <Select
+            label="Account to Credit (Income/Liability)"
+            value={formCreditAccount}
+            onChange={e => setFormCreditAccount(e.target.value)}
+            options={coaOptions}
+          />
+          <Select
+            label="Mode of Payment"
+            value={formPaymentMode}
+            onChange={e => setFormPaymentMode(e.target.value)}
+            options={[
+              { value: 'Cash', label: 'Cash' },
+              { value: 'Bank Transfer', label: 'Bank Transfer' },
+              { value: 'Cheque', label: 'Cheque' },
+              { value: 'Post Dated Cheque (PDC)', label: 'Post Dated Cheque (PDC)' },
+              { value: 'Online Transfer', label: 'Online Transfer' },
+              { value: 'Card', label: 'Card' },
+              { value: 'Other', label: 'Other' }
+            ]}
+          />
         </div>
         <div className="form-row">
           <Input label="Description" value={formDescription} onChange={e => setFormDescription(e.target.value)} placeholder="e.g. Rent received" />
-          <Select label="Bank Account" value={formBankAccount} onChange={e => setFormBankAccount(e.target.value)} options={bankOptions} />
+          {formPaymentMode !== 'Cash' && (
+            <Select label="Bank Account" value={formBankAccount} onChange={e => setFormBankAccount(e.target.value)} options={bankOptions} />
+          )}
         </div>
       </EntityForm>
 
@@ -263,6 +578,13 @@ export default function PropertyReceiptVoucher({
         onReverse={handleReverse}
       />
 
+      <AuditTrailModal
+        open={showAuditModal}
+        voucher={auditVoucher}
+        auditEvents={auditEvents}
+        onClose={() => setShowAuditModal(false)}
+      />
+
       <div className="page-header">
         <div className="page-header-left">
           <div>
@@ -279,7 +601,7 @@ export default function PropertyReceiptVoucher({
         <div className="kpi-grid" style={{ marginBottom: 16 }}>
           <div className="kpi-card" style={{ borderTop: '2px solid var(--success)' }}>
             <div className="kpi-label">Total Receipts (Posted)</div>
-            <div className="kpi-value" style={{ fontSize: 22 }}>{currency} {totalAmount.toLocaleString()}</div>
+            <div className="kpi-value"><CurrencyText value={totalAmount} currency={currency} /></div>
           </div>
           <div className="kpi-card" style={{ borderTop: '2px solid var(--primary)' }}>
             <div className="kpi-label">This Period</div>
@@ -289,7 +611,7 @@ export default function PropertyReceiptVoucher({
 
         <div className="data-table-toolbar">
           <div className="data-table-filters" />
-          <div className="data-table-search" style={{ minWidth: 260 }}>
+          <div className="data-table-search">
             <SearchIcon />
             <input
               type="text"

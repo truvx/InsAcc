@@ -1,15 +1,15 @@
-import React from 'react'
-import type { Account, Voucher, BankMapping } from '../accounting/types'
+import React, { useMemo } from 'react'
+import type { Account, Voucher, BankMapping, FiscalYear } from '../accounting/types'
 import type { AccountingEngine } from '../accounting/accountingEngine'
 import type { BankAccount, BankTransaction } from '../data/banking'
-import type { Investment } from './Investments'
-import type { Transaction } from './Transactions'
 import type { DocItem } from './Documents'
 import type { PurchaseRecord } from '../data/purchaseLedger'
 import type { PurchaseCategory, Purchase } from '../data/purchaseData'
 import type { AuditEvent } from '../data/auditTypes'
 import type { UserEntry, LogEntry } from '../data/types'
 import type { BankReconciliationRecord } from '../accounting/types'
+import type { InvestmentCategory, InvestmentAsset } from '../data/investmentMasterData'
+import { filterInvestmentAccounts } from '../accounting/investmentAccountFilter'
 import InvestmentDashboard from './InvestmentDashboard'
 import InvestmentAccountsDashboard from './InvestmentAccountsDashboard'
 import InvestmentChartOfAccounts from './InvestmentChartOfAccounts'
@@ -22,13 +22,13 @@ import InvestmentJournalVoucher from './InvestmentJournalVoucher'
 import InvestmentReports from './InvestmentReports'
 import InvestmentBankAccounts from './InvestmentBankAccounts'
 import InvestmentHistory from './InvestmentHistory'
-import Investments from './Investments'
-import Transactions from './Transactions'
+
 import Documents from './Documents'
 import History from './History'
 import Settings from './Settings'
 import PurchaseLedger from './PurchaseLedger'
 import InvestmentHoldings from './InvestmentHoldings'
+import PeriodClosingWizard from './PeriodClosingWizard'
 
 interface Props {
   activePage: string
@@ -40,13 +40,9 @@ interface Props {
   vouchers: Voucher[]
   setVouchers: React.Dispatch<React.SetStateAction<Voucher[]>>
   bankMappings: BankMapping[]
+  setBankMappings: React.Dispatch<React.SetStateAction<BankMapping[]>>
   bankAccounts: BankAccount[]
   setBankAccounts: React.Dispatch<React.SetStateAction<BankAccount[]>>
-  bankTransactions: BankTransaction[]
-  setBankTransactions: React.Dispatch<React.SetStateAction<BankTransaction[]>>
-  investments: Investment[]
-  transactions: Transaction[]
-  setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>
   incomeCustomCategories: string[]
   expenseCustomCategories: string[]
   setIncomeCustomCategories: React.Dispatch<React.SetStateAction<string[]>>
@@ -71,14 +67,19 @@ interface Props {
   setAccounts: React.Dispatch<React.SetStateAction<Account[]>>
   bankReconciliations: BankReconciliationRecord[]
   setBankReconciliations: React.Dispatch<React.SetStateAction<BankReconciliationRecord[]>>
+  investmentCategories: InvestmentCategory[]
+  setInvestmentCategories: React.Dispatch<React.SetStateAction<InvestmentCategory[]>>
+  investmentAssets: InvestmentAsset[]
+  setInvestmentAssets: React.Dispatch<React.SetStateAction<InvestmentAsset[]>>
+  fiscalYears: FiscalYear[]
+  setFiscalYears: React.Dispatch<React.SetStateAction<FiscalYear[]>>
 }
 
 export default function InvestmentRouter(props: Props) {
   const {
     activePage, onNavigate, currency, dateFormat, language,
-    accounts, vouchers, setVouchers, bankMappings,
-    bankAccounts, setBankAccounts, bankTransactions, setBankTransactions,
-    investments, transactions, setTransactions,
+    accounts, setAccounts, vouchers, setVouchers, bankMappings, setBankMappings,
+    bankAccounts, setBankAccounts,
     incomeCustomCategories, expenseCustomCategories,
     setIncomeCustomCategories, setExpenseCustomCategories,
     documents, setDocuments,
@@ -89,17 +90,26 @@ export default function InvestmentRouter(props: Props) {
     accountingEngine,
     storedPassword, onSetStoredPassword,
     theme, onThemeChange,
-    onResetAllData, recordAuditEvent, setAccounts,
+    onResetAllData, recordAuditEvent,
     bankReconciliations, setBankReconciliations,
+    investmentCategories, setInvestmentCategories,
+    investmentAssets, setInvestmentAssets,
+    fiscalYears,
+    setFiscalYears,
   } = props
+
+  // Filter accounts to investment-only — single enforcement point for the entire module
+  const investmentAccounts = useMemo(() => filterInvestmentAccounts(accounts), [accounts])
 
   switch (activePage) {
     case 'dashboard':
       return (
         <InvestmentDashboard
           currency={currency}
-          accounts={accounts}
+          accounts={investmentAccounts}
           vouchers={vouchers}
+          bankAccounts={bankAccounts}
+          bankMappings={bankMappings}
           onNavigate={onNavigate}
         />
       )
@@ -107,24 +117,27 @@ export default function InvestmentRouter(props: Props) {
       return (
         <InvestmentAccountsDashboard
           currency={currency}
-          accounts={accounts}
+          accounts={investmentAccounts}
           vouchers={vouchers}
           bankAccounts={bankAccounts}
+          bankMappings={bankMappings}
+          purchaseRecords={purchaseRecords}
         />
       )
     case 'chart-of-accounts':
       return (
         <InvestmentChartOfAccounts
           currency={currency}
-          accounts={accounts}
+          accounts={investmentAccounts}
           vouchers={vouchers}
+          setAccounts={setAccounts}
         />
       )
     case 'trial-balance':
       return (
         <InvestmentTrialBalance
           currency={currency}
-          accounts={accounts}
+          accounts={investmentAccounts}
           vouchers={vouchers}
         />
       )
@@ -132,7 +145,7 @@ export default function InvestmentRouter(props: Props) {
       return (
         <InvestmentBalanceSheet
           currency={currency}
-          accounts={accounts}
+          accounts={investmentAccounts}
           vouchers={vouchers}
         />
       )
@@ -140,7 +153,7 @@ export default function InvestmentRouter(props: Props) {
       return (
         <InvestmentProfitLoss
           currency={currency}
-          accounts={accounts}
+          accounts={investmentAccounts}
           vouchers={vouchers}
         />
       )
@@ -148,37 +161,44 @@ export default function InvestmentRouter(props: Props) {
       return (
         <InvestmentReceiptVoucher
           currency={currency} dateFormat={dateFormat}
-          accounts={accounts} vouchers={vouchers} setVouchers={setVouchers}
+          accounts={investmentAccounts} vouchers={vouchers} setVouchers={setVouchers}
           bankAccounts={bankAccounts} bankMappings={bankMappings}
           accountingEngine={accountingEngine}
+          purchaseRecords={purchaseRecords}
+          onAuditEvent={recordAuditEvent}
+          auditEvents={auditEvents}
         />
       )
     case 'payment-voucher':
       return (
         <InvestmentPaymentVoucher
           currency={currency} dateFormat={dateFormat}
-          accounts={accounts} vouchers={vouchers} setVouchers={setVouchers}
+          accounts={investmentAccounts} vouchers={vouchers} setVouchers={setVouchers}
           bankAccounts={bankAccounts} bankMappings={bankMappings}
           accountingEngine={accountingEngine}
+          purchaseRecords={purchaseRecords}
+          onAuditEvent={recordAuditEvent}
+          auditEvents={auditEvents}
         />
       )
     case 'journal-voucher':
       return (
         <InvestmentJournalVoucher
           currency={currency} dateFormat={dateFormat}
-          accounts={accounts} vouchers={vouchers} setVouchers={setVouchers}
+          accounts={investmentAccounts} vouchers={vouchers} setVouchers={setVouchers}
           accountingEngine={accountingEngine}
+          onAuditEvent={recordAuditEvent}
+          auditEvents={auditEvents}
         />
       )
     case 'reports':
       return (
         <InvestmentReports
           currency={currency}
-          accounts={accounts}
+          accounts={investmentAccounts}
           vouchers={vouchers}
           purchaseRecords={purchaseRecords}
           bankAccounts={bankAccounts}
-          bankTransactions={bankTransactions}
           bankMappings={bankMappings}
         />
       )
@@ -186,14 +206,17 @@ export default function InvestmentRouter(props: Props) {
       return (
         <InvestmentBankAccounts
           currency={currency} dateFormat={dateFormat} language={language}
-          accounts={accounts} vouchers={vouchers} setVouchers={setVouchers}
+          accounts={investmentAccounts} 
+          setAccounts={setAccounts}
+          vouchers={vouchers} setVouchers={setVouchers}
           bankAccounts={bankAccounts} setBankAccounts={setBankAccounts}
-          bankTransactions={bankTransactions} setBankTransactions={setBankTransactions}
           bankMappings={bankMappings}
+          setBankMappings={setBankMappings}
           accountingEngine={accountingEngine}
           onAuditEvent={recordAuditEvent}
           bankReconciliations={bankReconciliations}
           setBankReconciliations={setBankReconciliations}
+          purchaseRecords={purchaseRecords}
         />
       )
     case 'history':
@@ -208,34 +231,23 @@ export default function InvestmentRouter(props: Props) {
       return (
         <InvestmentHoldings
           currency={currency}
-          accounts={accounts}
+          accounts={investmentAccounts}
           vouchers={vouchers}
           purchaseRecords={purchaseRecords}
           bankAccounts={bankAccounts}
-          bankTransactions={bankTransactions}
           bankMappings={bankMappings}
           onNavigate={onNavigate}
         />
       )
-    case 'investments':
+    case 'period-close':
       return (
-        <Investments
-          profile={{ name: 'Investor', role: 'Admin', id: 1, initials: 'IN', avatar: '', locked: false }}
-          currency={currency} dateFormat={dateFormat} language={language}
-          investments={investments}
-        />
-      )
-    case 'transactions':
-      return (
-        <Transactions
-          profile={{ name: 'Investor', role: 'Admin', id: 1, initials: 'IN', avatar: '', locked: false }}
-          currency={currency} dateFormat={dateFormat} language={language}
-          transactions={transactions} setTransactions={setTransactions}
-          incomeCustomCategories={incomeCustomCategories}
-          expenseCustomCategories={expenseCustomCategories}
-          setIncomeCustomCategories={setIncomeCustomCategories}
-          setExpenseCustomCategories={setExpenseCustomCategories}
-          onAuditEvent={recordAuditEvent}
+        <PeriodClosingWizard
+          currency={currency}
+          accounts={investmentAccounts}
+          vouchers={vouchers}
+          setVouchers={setVouchers}
+          fiscalYears={fiscalYears}
+          setFiscalYears={setFiscalYears}
         />
       )
     case 'documents':
@@ -244,7 +256,7 @@ export default function InvestmentRouter(props: Props) {
           profile={{ name: 'Investor', role: 'Admin', id: 1, initials: 'IN', avatar: '', locked: false }}
           currency={currency} dateFormat={dateFormat} language={language}
           documents={documents} setDocuments={setDocuments}
-          investments={[]} transactions={transactions}
+          investments={[]} transactions={[]}
           purchaseRecords={purchaseRecords} bankAccounts={bankAccounts}
           onAuditEvent={recordAuditEvent}
         />
@@ -256,7 +268,7 @@ export default function InvestmentRouter(props: Props) {
           purchaseRecords={purchaseRecords}
           setPurchaseRecords={setPurchaseRecords}
           onAuditEvent={recordAuditEvent}
-          accounts={accounts}
+          accounts={investmentAccounts}
           vouchers={vouchers}
           setVouchers={setVouchers}
           bankAccounts={bankAccounts}
@@ -265,6 +277,10 @@ export default function InvestmentRouter(props: Props) {
           accountingEngine={accountingEngine}
           documents={documents}
           onNavigate={onNavigate}
+          investmentCategories={investmentCategories}
+          setInvestmentCategories={setInvestmentCategories}
+          investmentAssets={investmentAssets}
+          setInvestmentAssets={setInvestmentAssets}
         />
       )
     case 'settings':
@@ -281,6 +297,10 @@ export default function InvestmentRouter(props: Props) {
           moduleLabel="Investment"
           onResetAllData={onResetAllData}
           onAuditEvent={recordAuditEvent}
+          investmentCategories={investmentCategories}
+          setInvestmentCategories={setInvestmentCategories}
+          investmentAssets={investmentAssets}
+          setInvestmentAssets={setInvestmentAssets}
         />
       )
     default:

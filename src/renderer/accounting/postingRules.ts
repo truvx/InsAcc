@@ -1,15 +1,29 @@
-import type { PostingRule, PostingRuleEntry, RuleContext, AccountingEvent } from './types'
+import type { PostingRule, PostingRuleEntry, RuleContext, AccountingEvent, Account } from './types'
+import { resolveAccount } from './chartOfAccountsService'
+import { SystemAccountRegistry } from './systemAccountRegistry'
 
 export const POSTING_RULES: PostingRule[] = [
   {
+    event: 'LEASE_CREATED',
+    description: 'Lease contract activated — recognize total rental income',
+    voucherType: 'Journal',
+    debit: [
+      { account: '1320', narration: 'Rent receivable' },
+    ],
+    credit: [
+      { account: ctx => ctx.creditAccount!, narration: 'Rental income' },
+    ],
+  },
+
+  {
     event: 'RENT_RECEIVED',
-    description: 'Rent received and deposited into bank account',
+    description: 'Rent collected — reduces accounts receivable',
     voucherType: 'Receipt',
     debit: [
       { account: ctx => ctx.bankAccount!, narration: 'Rent deposited to bank' },
     ],
     credit: [
-      { account: '4120', narration: 'Rental income' },
+      { account: '1320', narration: 'Accounts receivable reduced' },
     ],
   },
 
@@ -21,7 +35,7 @@ export const POSTING_RULES: PostingRule[] = [
       { account: '1410', narration: 'Post-dated cheque received' },
     ],
     credit: [
-      { account: '1320', narration: 'Rental receivable' },
+      { account: '1320', narration: 'PDC receivable from tenant' },
     ],
   },
 
@@ -74,11 +88,35 @@ export const POSTING_RULES: PostingRule[] = [
   },
 
   {
+    event: 'PDC_CANCELLED',
+    description: 'Cancellation of future-dated PDC — reverses initial receipt entry',
+    voucherType: 'Journal',
+    debit: [
+      { account: '1320', narration: 'PDC cancelled — receivable reinstated' },
+    ],
+    credit: [
+      { account: '1410', narration: 'PDC cancelled — removed from PDC receivable' },
+    ],
+  },
+
+  {
     event: 'SECURITY_DEPOSIT_RECEIVED',
     description: 'Security deposit received from tenant',
     voucherType: 'Receipt',
     debit: [
       { account: ctx => ctx.bankAccount!, narration: 'Security deposit received' },
+    ],
+    credit: [
+      { account: ctx => ctx.creditAccount!, narration: 'Security deposit liability' },
+    ],
+  },
+
+  {
+    event: 'SECURITY_DEPOSIT_PDC_RECEIVED',
+    description: 'Security deposit PDC cheque received from tenant',
+    voucherType: 'Journal',
+    debit: [
+      { account: '1410', narration: 'Security deposit PDC receivable' },
     ],
     credit: [
       { account: ctx => ctx.creditAccount!, narration: 'Security deposit liability' },
@@ -106,6 +144,19 @@ export const POSTING_RULES: PostingRule[] = [
     ],
     credit: [
       { account: ctx => ctx.creditAccount!, narration: 'Forfeiture income recognition' },
+    ],
+  },
+
+  {
+    event: 'SECURITY_DEPOSIT_PARTIAL_REFUND',
+    description: 'Partial refund of security deposit with retained portion recognized as income',
+    voucherType: 'Journal',
+    debit: [
+      { account: ctx => ctx.debitAccount!, narration: 'Security deposit liability settlement' },
+    ],
+    credit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Deposit refund payment', amount: ctx => ctx.refundAmount ?? 0 },
+      { account: '4160', narration: 'Damage recovery income' },
     ],
   },
 
@@ -142,18 +193,6 @@ export const POSTING_RULES: PostingRule[] = [
     ],
     credit: [
       { account: '4110', narration: 'Dividend income' },
-    ],
-  },
-
-  {
-    event: 'RENTAL_INCOME',
-    description: 'Rental income received into a bank account',
-    voucherType: 'Receipt',
-    debit: [
-      { account: ctx => ctx.bankAccount!, narration: 'Rent received' },
-    ],
-    credit: [
-      { account: '4120', narration: 'Rental income' },
     ],
   },
 
@@ -597,23 +636,85 @@ export function getRule(event: AccountingEvent): PostingRule | undefined {
 function resolveEntry(
   entry: PostingRuleEntry,
   context: RuleContext,
-): { accountId: string; narration?: string } {
+  accounts: Account[],
+): { accountId: string; narration?: string; amount?: number } {
+  let resolvedId = ''
   if (typeof entry.account === 'function') {
-    return { accountId: entry.account(context), narration: entry.narration }
+    resolvedId = entry.account(context)
+  } else {
+    resolvedId = entry.account
   }
-  return { accountId: entry.account, narration: entry.narration }
+
+  let resolvedAmount: number | undefined
+  if (typeof entry.amount === 'function') {
+    resolvedAmount = entry.amount(context)
+  } else {
+    resolvedAmount = entry.amount
+  }
+
+  let acct: Account | undefined
+
+  const key = resolvedId.toLowerCase()
+  if (key === '1200' || key === 'investment assets' || key === 'investments') {
+    acct = SystemAccountRegistry.getInvestmentAssetAccount(accounts)
+  } else if (key === '1270' || key === 'property assets' || key === 'real estate') {
+    acct = SystemAccountRegistry.getPropertyAssetAccount(accounts)
+  } else if (key === '1110' || key === '1110-inv' || key === '1110-prop' || key === 'cash' || key === 'cash in hand' || key === 'cash on hand') {
+    acct = SystemAccountRegistry.getCashAccount(accounts)
+  } else if (key === '1120' || key === 'bank' || key === 'bank accounts' || key === 'cash and bank accounts') {
+    acct = SystemAccountRegistry.getBankAccount(accounts)
+  } else if (key === '4120' || key === 'rental income' || key === 'building rental income') {
+    acct = SystemAccountRegistry.getBuildingRentalIncomeAccount(accounts)
+  } else if (key === '4200' || key === 'villa rental income') {
+    acct = SystemAccountRegistry.getVillaRentalIncomeAccount(accounts)
+  } else if (key === '4210' || key === 'apartment rental income') {
+    acct = SystemAccountRegistry.getApartmentRentalIncomeAccount(accounts)
+  } else if (key === 'investment income') {
+    acct = SystemAccountRegistry.getInvestmentIncomeAccount(accounts)
+  } else if (key === '2120' || key === 'security deposit liability' || key === 'security deposits held') {
+    acct = SystemAccountRegistry.getSecurityDepositLiability(accounts)
+  } else if (key === '1320' || key === 'accounts receivable') {
+    acct = SystemAccountRegistry.getAccountsReceivable(accounts)
+  } else if (key === '2100' || key === 'accounts payable') {
+    acct = SystemAccountRegistry.getAccountsPayable(accounts)
+  } else if (key === '5000' || key === 'expenses') {
+    acct = SystemAccountRegistry.getExpenseAccount(accounts)
+  } else if (key === '1410' || key === 'pdc receivables' || key === 'post-dated cheques receivable') {
+    acct = SystemAccountRegistry.getPdcReceivablesAccount(accounts)
+  } else if (key === '4110' || key === 'dividend income') {
+    acct = SystemAccountRegistry.getDividendIncomeAccount(accounts)
+  } else if (key === '4140' || key === 'interest income') {
+    acct = SystemAccountRegistry.getInterestIncomeAccount(accounts)
+  } else if (key === '4150' || key === 'late fee income') {
+    acct = SystemAccountRegistry.getLateFeeIncomeAccount(accounts)
+  } else if (key === '4160' || key === 'damage recovery income') {
+    acct = SystemAccountRegistry.getDamageRecoveryIncomeAccount(accounts)
+  } else if (key === '5120' || key === 'maintenance expense') {
+    acct = SystemAccountRegistry.getMaintenanceExpenseAccount(accounts)
+  } else if (key === '5170' || key === 'interest expense') {
+    acct = SystemAccountRegistry.getInterestExpenseAccount(accounts)
+  } else if (key === '5180' || key === 'tax expense') {
+    acct = SystemAccountRegistry.getTaxExpenseAccount(accounts)
+  }
+
+  if (!acct) {
+    acct = resolveAccount(resolvedId, accounts)
+  }
+
+  return { accountId: acct ? acct.id : resolvedId, narration: entry.narration, amount: resolvedAmount }
 }
 
 export function resolveRule(
   rule: PostingRule,
   context: RuleContext,
+  accounts: Account[],
 ): {
-  debit: Array<{ accountId: string; narration?: string }>
-  credit: Array<{ accountId: string; narration?: string }>
+  debit: Array<{ accountId: string; narration?: string; amount?: number }>
+  credit: Array<{ accountId: string; narration?: string; amount?: number }>
 } {
   return {
-    debit: rule.debit.map(e => resolveEntry(e, context)),
-    credit: rule.credit.map(e => resolveEntry(e, context)),
+    debit: rule.debit.map(e => resolveEntry(e, context, accounts)),
+    credit: rule.credit.map(e => resolveEntry(e, context, accounts)),
   }
 }
 

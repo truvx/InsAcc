@@ -14,8 +14,6 @@ interface NavGroup {
 const INV_NAV: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'holdings', label: 'Holdings' },
-  { id: 'investments', label: 'Investments' },
-  { id: 'transactions', label: 'Transactions' },
   { id: 'bank-accounts', label: 'Bank Accounts' },
   { id: 'reports', label: 'Reports' },
   { id: 'documents', label: 'Documents' },
@@ -28,7 +26,8 @@ const PROP_NAV: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'properties', label: 'Properties' },
   { id: 'tenants', label: 'Tenants' },
-  { id: 'leases', label: 'Leases' },
+  { id: 'leases', label: 'Lease Management' },
+  { id: 'expenses', label: 'Expenses' },
   { id: 'transactions', label: 'Transactions' },
   { id: 'bank-accounts', label: 'Bank Accounts' },
   { id: 'reports', label: 'Reports' },
@@ -50,6 +49,7 @@ const PROP_ACCOUNTS_GROUP: NavGroup = {
     { id: 'profit-loss', label: 'Profit & Loss' },
     { id: 'pdc-manager', label: 'PDC Manager' },
     { id: 'deposit-manager', label: 'Security Deposits' },
+    { id: 'period-close', label: 'Period Closing' },
   ],
 }
 
@@ -64,6 +64,7 @@ const INV_ACCOUNTS_GROUP: NavGroup = {
     { id: 'trial-balance', label: 'Trial Balance' },
     { id: 'balance-sheet', label: 'Balance Sheet' },
     { id: 'profit-loss', label: 'Profit & Loss' },
+    { id: 'period-close', label: 'Period Closing' },
   ],
 }
 
@@ -83,6 +84,7 @@ function NavIcon({ id }: { id: string }) {
     units: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><line x1="12" y1="11" x2="12" y2="15" /></svg>,
     tenants: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>,
     leases: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="18" rx="2" ry="2" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></svg>,
+    expenses: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>,
     income: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>,
     'receipt-voucher': <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>,
     'payment-voucher': <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23" /><path d="M6 5h7.5a3.5 3.5 0 0 1 0 7H6" /></svg>,
@@ -94,6 +96,7 @@ function NavIcon({ id }: { id: string }) {
     'profit-loss': <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>,
     'pdc-manager': <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>,
     'deposit-manager': <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M12 2L3 7v4c0 5.25 3.84 10.14 9 11 5.16-.86 9-5.75 9-11V7l-9-5z" /></svg>,
+    'period-close': <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /><circle cx="12" cy="16" r="1" /></svg>,
   }
   return <>{icons[id] || null}</>
 }

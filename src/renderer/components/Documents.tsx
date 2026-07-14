@@ -9,7 +9,9 @@ import type { AuditEvent } from '../data/auditTypes'
 import { recordModuleEvent } from '../services/auditService'
 import Toast from './Toast'
 import { formatDate, t } from '../utils'
+import { formatAssetType } from '../data/investmentMasterData'
 import { Button, Input, Select, Badge, Card, EmptyState, UploadIcon, DownloadIcon, EditIcon, TrashIcon, PlusIcon, SearchIcon, CloseIcon, FilterIcon } from './design/DesignSystem'
+import { Eye, Link2, FileText, ImageIcon, Paperclip } from 'lucide-react'
 import { DataTable, type Column } from './design/Table'
 import ConfirmDialog from './design/ConfirmDialog'
 import EntityForm from './design/EntityForm'
@@ -94,8 +96,11 @@ function resolveLinkedName(
       return transactions?.find(t => t.id === doc.linkedId)?.category || null
     case 'purchase':
       return purchaseRecords?.find(p => p.id === doc.linkedId)?.assetName || null
-    case 'bank':
-      return bankAccounts?.find(b => b.id === doc.linkedId)?.accountName || null
+    case 'bank': {
+      const b = bankAccounts?.find(x => x.id === doc.linkedId)
+      if (!b) return null
+      return b.institution
+    }
     default:
       return null
   }
@@ -114,9 +119,12 @@ function getLinkedEntityOptions(
     case 'transaction':
       return (transactions || []).map(t => ({ value: t.id, label: `TXN ${t.id} - ${t.category} (${t.type})` }))
     case 'purchase':
-      return (purchaseRecords || []).map(p => ({ value: p.id, label: `${p.assetName} (${p.assetType})` }))
+      return (purchaseRecords || []).map(p => ({ value: p.id, label: `${p.assetName} (${formatAssetType(p.assetType)})` }))
     case 'bank':
-      return (bankAccounts || []).map(b => ({ value: b.id, label: `${b.accountName} @ ${b.institution}` }))
+      return (bankAccounts || []).map(b => {
+        const lbl = b.institution
+        return { value: b.id, label: lbl }
+      })
     default:
       return []
   }
@@ -361,8 +369,8 @@ export default function Documents({
       sortable: true,
       render: doc => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span className={`doc-icon doc-icon-${doc.fileType.toLowerCase()}`}>
-            {doc.fileType === 'PDF' ? '📄' : doc.fileType === 'Image' ? '🖼️' : '📎'}
+          <span className={`doc-icon doc-icon-${doc.fileType.toLowerCase()}`} style={{ display: 'inline-flex', alignItems: 'center' }}>
+            {doc.fileType === 'PDF' ? <FileText size={16} strokeWidth={1.75} /> : doc.fileType === 'Image' ? <ImageIcon size={16} strokeWidth={1.75} /> : <Paperclip size={16} strokeWidth={1.75} />}
           </span>
           <div>
             <div className="doc-title">{doc.title}</div>
@@ -418,10 +426,10 @@ export default function Documents({
       render: doc => (
         <div className="doc-actions">
           <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setPreviewDoc(previewDoc?.id === doc.id ? null : doc) }} aria-label="Preview">
-            👁️
+            <Eye size={14} strokeWidth={1.75} />
           </Button>
           <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); openLink(doc) }} aria-label="Link">
-            🔗
+            <Link2 size={14} strokeWidth={1.75} />
           </Button>
           <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); handleDownload(doc) }} aria-label="Download">
             <DownloadIcon />
@@ -627,7 +635,7 @@ export default function Documents({
                     />
                   ) : (
                     <div className="doc-preview-placeholder">
-                      <span className="doc-preview-placeholder-icon">📄</span>
+                      <span className="doc-preview-placeholder-icon" style={{ display: 'inline-flex', alignItems: 'center' }}><FileText size={32} strokeWidth={1.25} /></span>
                       <span>Preview not available for this file type</span>
                     </div>
                   )}

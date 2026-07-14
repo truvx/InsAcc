@@ -41,7 +41,7 @@ The Investment Module is a purchase-based asset tracking engine. It records cost
 *   **Alternative Assets:** Cryptocurrencies, Real Estate holdings.
 
 ### 4.2 Core Workflows
-*   **Purchase Ledger Recording:** Creates a lot entry capturing purchase date, quantity, price per unit, broker fees, and the funding bank account.
+*   **Purchase Ledger Recording:** Creates a lot entry capturing purchase date, quantity, price per unit, buyer fees, and the funding bank account.
 *   **Asset Aggregations:** Computes total holdings value based on manual revaluations or market-price updates.
 *   **Reconciliation:** Traces funding flow back to specific bank ledgers, preventing asset creation without cash displacement.
 
@@ -88,7 +88,7 @@ Accounting is the underlying core of the system. All operational screens act as 
 ### 6.2 Chart of Accounts (COA) Structure
 ```
 1000-1999: Assets
-  ├── 1110: Cash on Hand
+  ├── 1110: Cash In Hand
   ├── 1120: Bank Accounts
   ├── 1320: Rental Receivables
   └── 1410: Post-Dated Cheques (PDC) Asset
@@ -376,7 +376,7 @@ src/
 
 ### 26.1 Investment Purchase Workflow
 The investment flow tracks transaction-based asset purchases. The objective is to convert bank cash reserves into registered investment holdings:
-1.  **Form Input:** The user navigates to the *Purchase Ledger* screen and submits details for a new purchase: asset name, asset class, purchase date, unit quantity, unit price, broker name, funding bank account ID, and tags.
+1.  **Form Input:** The user navigates to the *Purchase Ledger* screen and submits details for a new purchase: asset name, asset class, purchase date, unit quantity, unit price, buyer name, funding bank account ID, and tags.
 2.  **Sanitization and Validation:**
     *   Ensures that quantity and unit price are strictly positive (> 0).
     *   Retrieves the target bank account asset code mapped to the bank account ID.
@@ -554,9 +554,9 @@ Detailed journal posting entries for core events:
     *   *Credit:* Source Bank Account (1120.xx)
 *   **`BANK_DEPOSIT`** (Receipt Voucher):
     *   *Debit:* Mapped Bank Account (1120.xx)
-    *   *Credit:* Cash on Hand (1110)
+    *   *Credit:* Cash In Hand (1110)
 *   **`BANK_WITHDRAWAL`** (Payment Voucher):
-    *   *Debit:* Cash on Hand (1110)
+    *   *Debit:* Cash In Hand (1110)
     *   *Credit:* Mapped Bank Account (1120.xx)
 *   **`EXPENSE_PAID`** (Payment Voucher):
     *   *Debit:* Target Expense Account (5xxx)

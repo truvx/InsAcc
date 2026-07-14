@@ -86,7 +86,7 @@ export default function InvestmentHistory({
               ))}
             </div>
           </div>
-          <div className="data-table-search" style={{ minWidth: 260 }}>
+          <div className="data-table-search">
             <input
               type="text"
               className="data-table-search-input"

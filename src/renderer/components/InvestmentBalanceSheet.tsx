@@ -1,9 +1,12 @@
 import React, { useMemo, useState } from 'react'
 import type { Account, Voucher } from '../accounting/types'
 import { buildAccountTree } from '../accounting/chartOfAccountsService'
-import { getAccountBalance } from '../accounting/ledgerService'
+import { generateChartOfAccountsReadModel, generateTrialBalanceReadModel, generateProfitAndLossReadModel, generateBalanceSheetReadModel } from '../readModels/accountingReadModels'
 import { EmptyState, Modal } from './design/DesignSystem'
 import AccountDrillDown from './AccountDrillDown'
+
+import { Landmark, ListChecks } from 'lucide-react'
+import { CurrencyText } from './design/CurrencyText'
 
 interface Props {
   currency?: string
@@ -33,62 +36,52 @@ function flatRowsFromTree(
   return rows
 }
 
-function computeTotal(
-  nodes: TreeNode[],
-  balances: Record<string, number>,
-  allowedTypes: string[],
-): number {
-  return nodes.reduce((sum, node) => {
-    if (!allowedTypes.includes(node.account.type)) return sum
-    const own = balances[node.account.id] || 0
-    const childrenTotal = node.children.length > 0
-      ? computeTotal(node.children, balances, allowedTypes)
-      : own
-    return sum + childrenTotal
-  }, 0)
-}
-
-const TYPE_ICONS: Record<string, string> = {
-  asset: '🏦',
-  liability: '📋',
-}
-
 export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vouchers }: Props) {
   const [drillAccountId, setDrillAccountId] = useState<string | null>(null)
   const [drillAccountName, setDrillAccountName] = useState<string>('')
 
+  const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, vouchers), [accounts, vouchers])
+  const tbEntries = useMemo(() => generateTrialBalanceReadModel(coaEntries), [coaEntries])
+  const plModel = useMemo(() => generateProfitAndLossReadModel(tbEntries, accounts), [tbEntries, accounts])
+  const bsModel = useMemo(() => generateBalanceSheetReadModel(tbEntries, plModel.netProfit, accounts), [tbEntries, plModel.netProfit, accounts])
+
   const balances = useMemo(() => {
     const map: Record<string, number> = {}
-    for (const acct of accounts) {
-      if (acct.isActive) {
-        map[acct.id] = getAccountBalance(acct.id, vouchers, accounts)
-      }
+    for (const entry of coaEntries) {
+      map[entry.id] = entry.currentBalance
     }
-    const totalRevenue = accounts.filter(a => a.type === 'revenue' && a.isActive).reduce((s, a) => s + (map[a.id] || 0), 0)
-    const totalExpenses = accounts.filter(a => a.type === 'expense' && a.isActive).reduce((s, a) => s + (map[a.id] || 0), 0)
-    const netIncome = totalRevenue - totalExpenses
-    if (netIncome !== 0) {
-      const equityParent = accounts.find(a => a.code === '31')
-      if (equityParent) {
-        map[equityParent.id] = (map[equityParent.id] || 0) + netIncome
-      }
-    }
+    // Net profit/loss is already included in the ledger balances via the accounting read model
+    // Do NOT manually inject it here - this would double-count
     return map
-  }, [accounts, vouchers])
+  }, [coaEntries])
 
   const tree = useMemo(() => buildAccountTree(accounts) as unknown as TreeNode[], [accounts])
 
   const assetRows = useMemo(() => flatRowsFromTree(tree, balances, ['asset']), [tree, balances])
   const liabilityRows = useMemo(() => flatRowsFromTree(tree, balances, ['liability']), [tree, balances])
+  const rawEquityRows = useMemo(() => flatRowsFromTree(tree, balances, ['equity']).filter(r => r.account.code !== '3200'), [tree, balances])
 
-  const totalAssets = useMemo(() => computeTotal(tree, balances, ['asset']), [tree, balances])
-  const totalLiabilities = useMemo(() => computeTotal(tree, balances, ['liability']), [tree, balances])
-  const totalEquity = useMemo(() => computeTotal(tree, balances, ['equity']), [tree, balances])
-  const isBalanced = Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 0.01
+  const equityRows = useMemo(() => {
+    if (bsModel.currentYearProfit === 0) return rawEquityRows
+    return rawEquityRows.concat({
+      account: {
+        id: '__currentYearEarnings__', code: 'CYE', name: 'Current Year Earnings',
+        type: 'equity', normalBalance: 'credit', parentId: null, isActive: true,
+        description: '', currency, createdAt: '', updatedAt: '',
+      } as Account,
+      depth: 1,
+      balance: bsModel.currentYearProfit,
+    })
+  }, [rawEquityRows, bsModel.currentYearProfit, currency])
+
+  const totalAssets = bsModel.totalAssets
+  const totalLiabilities = bsModel.totalLiabilities
+  const totalEquity = bsModel.totalEquity
+  const isBalanced = bsModel.balanced
 
   const renderSection = (
     title: string,
-    icon: string,
+    icon: React.ReactNode,
     rows: Array<{ account: Account; depth: number; balance: number }>,
     total: number,
     accentColor: string,
@@ -98,7 +91,7 @@ export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vou
         padding: '16px 20px', borderBottom: '1px solid var(--divider)',
         display: 'flex', alignItems: 'center', gap: 8,
       }}>
-        <span style={{ fontSize: 18 }}>{icon}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', color: accentColor }}>{icon}</span>
         <span style={{ fontWeight: 700, fontSize: 16, color: accentColor }}>{title}</span>
         <span style={{ fontSize: 12, color: '#9CA3AF', marginLeft: 'auto' }}>
           {rows.filter(r => r.depth === 0).length} sections
@@ -108,8 +101,8 @@ export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vou
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              <th style={{ padding: '8px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--divider)', background: '#FAF8F4', position: 'sticky', top: 0 }}>Account</th>
-              <th style={{ padding: '8px 20px', textAlign: 'right', fontSize: 11, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--divider)', background: '#FAF8F4', position: 'sticky', top: 0, width: 160 }}>Balance ({currency})</th>
+              <th style={{ padding: '8px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--divider)', background: 'var(--bg-tertiary)', position: 'sticky', top: 0 }}>Account</th>
+              <th style={{ padding: '8px 20px', textAlign: 'right', fontSize: 11, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--divider)', background: 'var(--bg-tertiary)', position: 'sticky', top: 0, width: 160 }}>Balance ({currency})</th>
             </tr>
           </thead>
           <tbody>
@@ -141,19 +134,18 @@ export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vou
                         {!isGroup && (
                           <>
                             <span style={{ fontWeight: isSubGroup ? 600 : 400, fontSize: 13 }}>{row.account.name}</span>
-                            <span style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace', marginLeft: 8 }}>{row.account.code}</span>
+                            <span style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 8 }}>{row.account.code}</span>
                           </>
                         )}
                       </div>
                     </td>
                     <td style={{ padding: isGroup ? '10px 20px' : '8px 20px', textAlign: 'right', borderBottom: '1px solid #F9FAFB' }}>
-                      <span style={{
-                        fontFamily: 'monospace', fontSize: isGroup ? 14 : 13,
-                        fontWeight: isGroup ? 700 : 600,
-                        color: isGroup ? accentColor : row.balance >= 0 ? '#1F2937' : '#EF4444',
-                      }}>
-                        {currency} {Math.abs(row.balance).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </span>
+                      <CurrencyText
+                        value={row.balance}
+                        currency={currency}
+                        className={isGroup ? 'fw-700' : row.balance >= 0 ? 'text-primary' : 'text-danger'}
+                        style={{ color: isGroup ? accentColor : undefined }}
+                      />
                     </td>
                   </tr>
                 )
@@ -168,9 +160,7 @@ export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vou
         background: `${accentColor}08`,
       }}>
         <span style={{ fontWeight: 700, fontSize: 14, color: accentColor }}>Total {title}</span>
-        <span style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: accentColor }}>
-          {currency} {total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-        </span>
+        <CurrencyText value={total} currency={currency} className="text-md fw-700" style={{ color: accentColor }} />
       </div>
     </div>
   )
@@ -200,26 +190,29 @@ export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vou
 
       <div className="page-body">
         <div style={{ display: 'flex', gap: 20, marginBottom: 24 }}>
-          {renderSection('Assets', '🏦', assetRows, totalAssets, '#0A0A6F')}
-          {renderSection('Liabilities', '📋', liabilityRows, totalLiabilities, '#D97706')}
+          {renderSection('Assets', <Landmark size={15} strokeWidth={1.75} />, assetRows, totalAssets, '#0A0A6F')}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, flex: 1 }}>
+            {renderSection('Liabilities', <ListChecks size={15} strokeWidth={1.75} />, liabilityRows, totalLiabilities, '#D97706')}
+            {renderSection('Equity', <Landmark size={15} strokeWidth={1.75} />, equityRows, totalEquity, '#059669')}
+          </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
           <div className="card" style={{ padding: '16px 20px', borderTop: '3px solid #0A0A6F' }}>
             <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>Total Assets</div>
-            <div style={{ fontFamily: 'monospace', fontSize: 20, fontWeight: 700, color: '#0A0A6F' }}>
-              {currency} {totalAssets.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-            </div>
+            <CurrencyText value={totalAssets} currency={currency} className="text-md fw-700" style={{ color: '#0A0A6F' }} />
           </div>
           <div className="card" style={{ padding: '16px 20px', borderTop: '3px solid #D97706' }}>
             <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>Total Liabilities</div>
-            <div style={{ fontFamily: 'monospace', fontSize: 20, fontWeight: 700, color: '#D97706' }}>
-              {currency} {totalLiabilities.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-            </div>
+            <CurrencyText value={totalLiabilities} currency={currency} className="text-md fw-700" style={{ color: '#D97706' }} />
+          </div>
+          <div className="card" style={{ padding: '16px 20px', borderTop: '3px solid #059669' }}>
+            <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>Total Equity</div>
+            <CurrencyText value={totalEquity} currency={currency} className="text-md fw-700" style={{ color: '#059669' }} />
           </div>
           <div className="card" style={{ padding: '16px 20px', borderTop: `3px solid ${isBalanced ? '#22C55E' : '#EF4444'}` }}>
             <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>Balance Check</div>
-            <div style={{ fontFamily: 'monospace', fontSize: 20, fontWeight: 700, color: isBalanced ? '#22C55E' : '#EF4444' }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: isBalanced ? '#22C55E' : '#EF4444' }}>
               {isBalanced ? '✓ Balanced' : '✗ Out of Balance'}
             </div>
             <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>

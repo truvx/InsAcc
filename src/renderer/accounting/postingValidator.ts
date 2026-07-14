@@ -9,7 +9,7 @@ import type {
 import { getAccountById } from './chartOfAccountsService'
 import { calculateBaseTotals, hasMinimumLines, generateVoucherNumber } from './voucherService'
 
-const VOUCHER_NUMBER_PATTERN = /^(PV|RV|JV|CV)-\d{4}-\d{6}$/
+const VOUCHER_NUMBER_PATTERN = /^(PV|RV|JV|CV|PUR)-\d{4}-\d{6}$/
 
 function err(code: string, message: string, field?: string): ValidationError {
   return { code, message, field }
@@ -94,6 +94,11 @@ export function validateLines(
       errors.push(err('ACCOUNT_NOT_FOUND', `Line ${i + 1}: Account "${line.accountId}" not found`, `lines[${i}].accountId`))
     } else if (!account.isActive) {
       errors.push(err('ACCOUNT_INACTIVE', `Line ${i + 1}: Account "${account.name}" is inactive`, `lines[${i}].accountId`))
+    } else {
+      const isParent = accounts.some(child => child.parentId === account.id && child.isActive)
+      if (isParent) {
+        errors.push(err('PARENT_ACCOUNT_POSTING', `Line ${i + 1}: Account "${account.name}" is a parent account and cannot receive direct postings`, `lines[${i}].accountId`))
+      }
     }
 
     if (!line.type || !['Debit', 'Credit'].includes(line.type)) {
@@ -136,7 +141,7 @@ export function validateVoucherNumber(
   if (!VOUCHER_NUMBER_PATTERN.test(number)) {
     return err(
       'NUMBER_FORMAT_INVALID',
-      'Voucher number must be in format PV/RV/JV-YEAR-000001',
+      'Voucher number must be in format PV/RV/JV/PUR-YEAR-000001',
       'number',
     )
   }
@@ -329,7 +334,7 @@ export function validateExistingVoucher(
     ...validateReferences(voucher.lines),
   )
 
-  const numErr = validateVoucherNumber(voucher.number, existingVouchers)
+  const numErr = validateVoucherNumber(voucher.number, existingVouchers.filter(v => v.id !== voucher.id))
   if (numErr) {
     errors.push(numErr)
   }

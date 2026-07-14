@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import type { MainCategory, PropProperty, IncomeCategory, Customer } from '../data/propertyTypes'
-import { Modal } from './design/DesignSystem'
+import { Modal, PlusIcon, EditIcon, TrashIcon } from './design/DesignSystem'
+import { FolderTree, ChevronRight, ChevronDown, Plus, Pencil, Trash2, Eye, EyeOff, Search } from 'lucide-react'
 
 interface Props {
   currency?: string
@@ -14,32 +15,50 @@ interface Props {
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>
 }
 
-function Arrow({ open }: { open: boolean }) {
-  return (
-    <svg
-      width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-      style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }}
-    >
-      <polyline points="9 18 15 12 9 6" />
-    </svg>
-  )
+interface TreeNode {
+  id: string
+  parentId: string | null
+  type: 'main-category' | 'property' | 'income-category' | 'customer'
+  name: string
+  children: TreeNode[]
 }
 
-function TreeIcon({ level }: { level: 0 | 1 | 2 | 3 }) {
-  const icons: Record<number, React.ReactNode> = {
-    0: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
-    1: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>,
-    2: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
-    3: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
-  }
-  return <div style={{ width: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-light)', flexShrink: 0 }}>{icons[level]}</div>
+function pluralizeCategoryName(name: string, count: number): string {
+  if (count === 1) return name;
+  if (name.toLowerCase().endsWith('s')) return name;
+  if (name.endsWith('y')) return name.slice(0, -1) + 'ies';
+  if (name.endsWith('Y')) return name.slice(0, -1) + 'IES';
+  return name + 's';
+}
+
+function Arrow({ open }: { open: boolean }) {
+  return open ? <ChevronDown size={14} className="tree-arrow-icon" /> : <ChevronRight size={14} className="tree-arrow-icon" />
+}
+
+function HighlightedText({ text, search }: { text: string; search: string }) {
+  if (!search.trim()) return <span>{text}</span>
+  const regex = new RegExp(`(${search.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi')
+  const parts = text.split(regex)
+  return (
+    <span>
+      {parts.map((part, i) =>
+        regex.test(part) ? (
+          <mark key={i} className="tree-search-highlight">
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </span>
+  )
 }
 
 function ConfirmDialog({ open, message, onConfirm, onCancel }: { open: boolean; message: string; onConfirm: () => void; onCancel: () => void }) {
   return (
-    <Modal open={open} onClose={onCancel} title="Confirm">
-      <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>{message}</p>
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+    <Modal open={open} onClose={onCancel} title="Confirm Deletion">
+      <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0, fontSize: 14 }}>{message}</p>
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24 }}>
         <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
         <button className="btn btn-danger" onClick={onConfirm}>Delete</button>
       </div>
@@ -53,7 +72,7 @@ function AddEditModal({ open, title, value, setValue, onSave, onCancel, placehol
   return (
     <Modal open={open} onClose={onCancel} title={title}>
       <div className="form-group" style={{ marginBottom: 20 }}>
-        <label className="form-label">Name</label>
+        <label className="form-label">Name *</label>
         <input className="input" placeholder={placeholder || 'Enter name'} value={value} onChange={e => setValue(e.target.value)} autoFocus />
       </div>
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -64,27 +83,75 @@ function AddEditModal({ open, title, value, setValue, onSave, onCancel, placehol
   )
 }
 
-const btnStyle: React.CSSProperties = {
-  background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 4,
-  display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5,
-  color: 'var(--text-secondary)',
+function buildHierarchyTree(
+  mainCategories: MainCategory[],
+  propProperties: PropProperty[],
+  incomeCategories: IncomeCategory[],
+  customers: Customer[],
+): TreeNode[] {
+  return mainCategories.map(mc => {
+    const propertyNodes: TreeNode[] = propProperties
+      .filter(p => p.mainCategoryId === mc.id)
+      .map(p => {
+        const incomeNodes: TreeNode[] = incomeCategories
+          .filter(ic => ic.propertyId === p.id)
+          .map(ic => {
+            const customerNodes: TreeNode[] = customers
+              .filter(c => c.incomeCategoryId === ic.id)
+              .map(c => ({
+                id: c.id,
+                parentId: ic.id,
+                type: 'customer',
+                name: c.name,
+                children: []
+              }))
+            return {
+              id: ic.id,
+              parentId: p.id,
+              type: 'income-category',
+              name: ic.name,
+              children: customerNodes
+            }
+          })
+        return {
+          id: p.id,
+          parentId: mc.id,
+          type: 'property',
+          name: p.name,
+          children: incomeNodes
+        }
+      })
+    return {
+      id: mc.id,
+      parentId: null,
+      type: 'main-category',
+      name: mc.name,
+      children: propertyNodes
+    }
+  })
 }
-const iconBtnStyle = (hoverColor: string): React.CSSProperties => ({
-  ...btnStyle,
-  transition: 'opacity 0.15s',
-})
 
 export default function PropertyHierarchy({
-  currency = 'AED',
   mainCategories, setMainCategories,
   propProperties, setPropProperties,
   incomeCategories, setIncomeCategories,
   customers, setCustomers,
 }: Props) {
   const [search, setSearch] = useState('')
-  const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set())
-  const [expandedProps, setExpandedProps] = useState<Set<string>>(new Set())
-  const [expandedIncomes, setExpandedIncomes] = useState<Set<string>>(new Set())
+
+  // Persist expanded states across page navigation
+  const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('insacc_hierarchy_expanded_v2')
+      return stored ? new Set(JSON.parse(stored)) : new Set()
+    } catch {
+      return new Set()
+    }
+  })
+
+  useEffect(() => {
+    localStorage.setItem('insacc_hierarchy_expanded_v2', JSON.stringify(Array.from(expandedNodeIds)))
+  }, [expandedNodeIds])
 
   const [confirmMsg, setConfirmMsg] = useState('')
   const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null)
@@ -92,21 +159,22 @@ export default function PropertyHierarchy({
   const [modalTitle, setModalTitle] = useState('')
   const [modalValue, setModalValue] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
-  const [modalSave, setModalSave] = useState<() => void>(() => {})
-
-  const [hiddenCategoryIds, setHiddenCategoryIds] = useState<Set<string>>(new Set())
+  const modalSaveRef = useRef<((val: string) => void) | null>(null)
 
   const openAddEdit = (title: string, initial: string, onSave: (val: string) => void) => {
     setModalTitle(title)
     setModalValue(initial)
     setModalOpen(true)
-    setModalSave(() => () => {
-      if (modalValue.trim()) {
-        onSave(modalValue.trim())
-        setModalOpen(false)
-        setModalValue('')
-      }
-    })
+    modalSaveRef.current = onSave
+  }
+
+  const handleModalSave = () => {
+    if (modalValue.trim() && modalSaveRef.current) {
+      modalSaveRef.current(modalValue.trim())
+      setModalOpen(false)
+      setModalValue('')
+      modalSaveRef.current = null
+    }
   }
 
   const confirm = (msg: string, action: () => void) => {
@@ -123,24 +191,56 @@ export default function PropertyHierarchy({
     return next
   }
 
-  const filteredMainCategories = useMemo(() => {
-    if (!search.trim()) return mainCategories
-    const q = search.toLowerCase()
-    return mainCategories.filter(mc => {
-      if (mc.name.toLowerCase().includes(q)) return true
-      const props = propProperties.filter(p => p.mainCategoryId === mc.id)
-      return props.some(p => {
-        if (p.name.toLowerCase().includes(q)) return true
-        const ics = incomeCategories.filter(ic => ic.propertyId === p.id)
-        return ics.some(ic => {
-          if (ic.name.toLowerCase().includes(q)) return true
-          const custs = customers.filter(c => c.incomeCategoryId === ic.id)
-          return custs.some(c => c.name.toLowerCase().includes(q))
-        })
-      })
-    })
-  }, [mainCategories, propProperties, incomeCategories, customers, search])
+  // Builder Tree Node Root
+  const treeNodes = useMemo(() => {
+    return buildHierarchyTree(mainCategories, propProperties, incomeCategories, customers)
+  }, [mainCategories, propProperties, incomeCategories, customers])
 
+  // Search auto-expansion logic
+  const searchExpandedIds = useMemo(() => {
+    const ids = new Set<string>()
+    if (!search.trim()) return ids
+
+    const q = search.toLowerCase()
+    const traverse = (node: TreeNode, path: string[]) => {
+      const isMatch = node.name.toLowerCase().includes(q)
+      if (isMatch) {
+        path.forEach(id => ids.add(id))
+      }
+      node.children.forEach(child => {
+        traverse(child, [...path, node.id])
+      })
+    }
+    treeNodes.forEach(node => traverse(node, []))
+    return ids
+  }, [treeNodes, search])
+
+  // Filter tree nodes for top-level search
+  const filteredTreeNodes = useMemo(() => {
+    if (!search.trim()) return treeNodes
+    const q = search.toLowerCase()
+    
+    const filterNode = (node: TreeNode): TreeNode | null => {
+      const isMatch = node.name.toLowerCase().includes(q)
+      const filteredChildren = node.children
+        .map(child => filterNode(child))
+        .filter((child): child is TreeNode => child !== null)
+      
+      if (isMatch || filteredChildren.length > 0) {
+        return {
+          ...node,
+          children: filteredChildren
+        }
+      }
+      return null
+    }
+
+    return treeNodes
+      .map(node => filterNode(node))
+      .filter((node): node is TreeNode => node !== null)
+  }, [treeNodes, search])
+
+  // Action handlers
   const handleAddCategory = (name: string) => {
     setMainCategories(prev => [...prev, { id: nextId('mc'), name }])
   }
@@ -160,7 +260,7 @@ export default function PropertyHierarchy({
 
   const handleAddProperty = (mainCategoryId: string, name: string) => {
     setPropProperties(prev => [...prev, { id: nextId('prop'), mainCategoryId, name }])
-    setExpandedCats(prev => new Set(prev).add(mainCategoryId))
+    setExpandedNodeIds(prev => new Set(prev).add(mainCategoryId))
   }
   const handleEditProperty = (id: string, name: string) => {
     setPropProperties(prev => prev.map(p => p.id === id ? { ...p, name } : p))
@@ -175,7 +275,7 @@ export default function PropertyHierarchy({
 
   const handleAddIncomeCategory = (propertyId: string, name: string) => {
     setIncomeCategories(prev => [...prev, { id: nextId('ic'), propertyId, name }])
-    setExpandedProps(prev => new Set(prev).add(propertyId))
+    setExpandedNodeIds(prev => new Set(prev).add(propertyId))
   }
   const handleEditIncomeCategory = (id: string, name: string) => {
     setIncomeCategories(prev => prev.map(ic => ic.id === id ? { ...ic, name } : ic))
@@ -187,7 +287,7 @@ export default function PropertyHierarchy({
 
   const handleAddCustomer = (incomeCategoryId: string, name: string) => {
     setCustomers(prev => [...prev, { id: nextId('cust'), incomeCategoryId, name }])
-    setExpandedIncomes(prev => new Set(prev).add(incomeCategoryId))
+    setExpandedNodeIds(prev => new Set(prev).add(incomeCategoryId))
   }
   const handleEditCustomer = (id: string, name: string) => {
     setCustomers(prev => prev.map(c => c.id === id ? { ...c, name } : c))
@@ -196,194 +296,386 @@ export default function PropertyHierarchy({
     setCustomers(prev => prev.filter(c => c.id !== id))
   }
 
+  // Expand / Collapse all helper utilities
+  const expandAll = () => {
+    const ids = new Set<string>()
+    const traverse = (node: TreeNode) => {
+      if (node.children.length > 0) {
+        ids.add(node.id)
+        node.children.forEach(traverse)
+      }
+    }
+    treeNodes.forEach(traverse)
+    setExpandedNodeIds(ids)
+  }
+
+  const collapseAll = () => {
+    setExpandedNodeIds(new Set())
+  }
+
+  // Visual branch lines builder (explorer style)
+  const renderTreeLines = (depth: number, parentHasNextSibling: boolean[], isLastChild: boolean) => {
+    return Array.from({ length: depth }).map((_, i) => {
+      const isCurrentLevel = i === depth - 1
+      const hasNext = parentHasNextSibling[i]
+      
+      return (
+        <div key={i} className="tree-connector-wrapper">
+          {/* Vertical line segment */}
+          {isCurrentLevel ? (
+            <div className={`tree-line-vertical${isLastChild ? ' last-child' : ''}`} />
+          ) : (
+            hasNext && <div className="tree-line-vertical continue-line" />
+          )}
+          
+          {/* Horizontal line segment */}
+          {isCurrentLevel && <div className="tree-line-horizontal" />}
+        </div>
+      )
+    })
+  }
+
+  // Recursive Node renderer
+  const renderNode = (node: TreeNode, depth: number, parentHasNextSibling: boolean[], isLastChild: boolean) => {
+    const isExpanded = expandedNodeIds.has(node.id) || searchExpandedIds.has(node.id)
+    const isMatched = search.trim() !== '' && node.name.toLowerCase().includes(search.toLowerCase())
+
+    return (
+      <div key={node.id} className="tree-node-container">
+        {/* Row element */}
+        <div className={`tree-row level-${depth}${isMatched ? ' tree-row-matched' : ''}`}>
+          {/* Visual Guides */}
+          {renderTreeLines(depth, parentHasNextSibling, isLastChild)}
+
+          {/* Toggle button */}
+          {node.children.length > 0 ? (
+            <button
+              onClick={() => setExpandedNodeIds(prev => toggle(prev, node.id))}
+              className="tree-toggle-btn"
+              aria-label={isExpanded ? "Collapse" : "Expand"}
+            >
+              <Arrow open={isExpanded} />
+            </button>
+          ) : (
+            <div className="tree-toggle-placeholder" />
+          )}
+
+          {/* Emoji Icon representing Real Estate entity */}
+          <span className="tree-node-emoji">
+            {node.type === 'main-category' && '🏢'}
+            {node.type === 'property' && '🏠'}
+            {node.type === 'income-category' && '💰'}
+            {node.type === 'customer' && '👤'}
+          </span>
+
+          {/* Highlighted text representing node name */}
+          <span className={`tree-node-name text-${node.type}`}>
+            <HighlightedText text={node.name} search={search} />
+          </span>
+
+          {/* Dynamic properties / units counts */}
+          {node.type !== 'customer' && node.children.length > 0 && (
+            <span className="tree-node-count">
+              {node.children.length} {
+                node.type === 'main-category'
+                  ? pluralizeCategoryName(node.name, node.children.length)
+                  : node.type === 'property'
+                    ? (node.children.length === 1 ? 'income category' : 'income categories')
+                    : (node.children.length === 1 ? 'unit/customer' : 'units/customers')
+              }
+            </span>
+          )}
+
+          {/* Contextual actions */}
+          <div className="tree-actions">
+            {node.type === 'main-category' && (
+              <button
+                className="btn btn-icon btn-ghost"
+                onClick={() => openAddEdit(`Add Property under ${node.name}`, '', (v) => handleAddProperty(node.id, v))}
+                title="Add property"
+              >
+                <PlusIcon />
+              </button>
+            )}
+            {node.type === 'property' && (
+              <button
+                className="btn btn-icon btn-ghost"
+                onClick={() => openAddEdit(`Add Income Category under ${node.name}`, '', (v) => handleAddIncomeCategory(node.id, v))}
+                title="Add income category"
+              >
+                <PlusIcon />
+              </button>
+            )}
+            {node.type === 'income-category' && (
+              <button
+                className="btn btn-icon btn-ghost"
+                onClick={() => openAddEdit(`Add Customer under ${node.name}`, '', (v) => handleAddCustomer(node.id, v))}
+                title="Add customer"
+              >
+                <PlusIcon />
+              </button>
+            )}
+
+            {/* Edit action */}
+            <button
+              className="btn btn-icon btn-ghost"
+              onClick={() => openAddEdit(
+                node.type === 'main-category' ? 'Edit Category' : node.type === 'property' ? 'Edit Property' : node.type === 'income-category' ? 'Edit Income Category' : 'Edit Customer',
+                node.name,
+                (v) => {
+                  if (node.type === 'main-category') handleEditCategory(node.id, v)
+                  else if (node.type === 'property') handleEditProperty(node.id, v)
+                  else if (node.type === 'income-category') handleEditIncomeCategory(node.id, v)
+                  else handleEditCustomer(node.id, v)
+                }
+              )}
+              title="Edit"
+            >
+              <EditIcon />
+            </button>
+
+            {/* Delete action */}
+            <button
+              className="btn btn-icon btn-ghost delete-btn"
+              onClick={() => confirm(
+                node.type === 'main-category'
+                  ? `Delete category "${node.name}"? All properties, income categories, and customers under it will also be removed.`
+                  : node.type === 'property'
+                    ? `Delete property "${node.name}"? All income categories and customers under it will also be removed.`
+                    : node.type === 'income-category'
+                      ? `Delete income category "${node.name}"? All customers under it will also be removed.`
+                      : `Delete customer "${node.name}"?`,
+                () => {
+                  if (node.type === 'main-category') handleDeleteCategory(node.id)
+                  else if (node.type === 'property') handleDeleteProperty(node.id)
+                  else if (node.type === 'income-category') handleDeleteIncomeCategory(node.id)
+                  else handleDeleteCustomer(node.id)
+                }
+              )}
+              title="Delete"
+            >
+              <TrashIcon />
+            </button>
+          </div>
+        </div>
+
+        {/* Children node list (rendered recursively) */}
+        {isExpanded && node.children.length > 0 && (
+          <div className="tree-node-children">
+            {node.children.map((child, idx) => {
+              const isLast = idx === node.children.length - 1
+              return renderNode(
+                child,
+                depth + 1,
+                [...parentHasNextSibling, !isLastChild],
+                isLast
+              )
+            })}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <>
+      <style>{`
+        .tree-container {
+          padding: 24px;
+          background: var(--card, #ffffff);
+          border: 1px solid var(--border, #E5E7EB);
+          border-radius: var(--radius-xl, 12px);
+          box-shadow: var(--shadow-sm);
+        }
+        .tree-row {
+          display: flex;
+          align-items: center;
+          height: 44px;
+          padding-right: 16px;
+          border-bottom: 1px solid var(--border-light, #F3F4F6);
+          position: relative;
+          transition: background-color 0.15s ease;
+        }
+        .tree-row:hover {
+          background-color: var(--hover-bg, #F9FAFB) !important;
+        }
+        .tree-row-matched {
+          background-color: rgba(253, 224, 71, 0.12) !important;
+        }
+        .tree-search-highlight {
+          background: #FDE047;
+          color: #000;
+          border-radius: 2px;
+          padding: 0 2px;
+        }
+        .tree-connector-wrapper {
+          width: 28px;
+          height: 100%;
+          position: relative;
+          display: inline-flex;
+          flex-shrink: 0;
+        }
+        .tree-line-vertical {
+          position: absolute;
+          left: 14px;
+          top: 0;
+          bottom: 0;
+          width: 1px;
+          background: var(--border, #E5E7EB);
+        }
+        .tree-line-vertical.last-child {
+          bottom: 50%;
+        }
+        .tree-line-vertical.continue-line {
+          bottom: 0;
+        }
+        .tree-line-horizontal {
+          position: absolute;
+          left: 14px;
+          top: 50%;
+          width: 14px;
+          height: 1px;
+          background: var(--border, #E5E7EB);
+        }
+        .tree-toggle-btn {
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 4px;
+          margin-right: 4px;
+          color: var(--text-secondary, #6B7280);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          z-index: 2;
+          border-radius: 4px;
+        }
+        .tree-toggle-btn:hover {
+          background-color: var(--border-light, #F3F4F6);
+          color: var(--text-primary);
+        }
+        .tree-arrow-icon {
+          transition: transform 0.15s ease;
+        }
+        .tree-toggle-placeholder {
+          width: 22px;
+          flex-shrink: 0;
+        }
+        .tree-node-emoji {
+          font-size: 15px;
+          margin-right: 8px;
+          user-select: none;
+          display: inline-flex;
+          align-items: center;
+          flex-shrink: 0;
+        }
+        .tree-node-name {
+          flex: 1;
+          font-size: 13px;
+          color: var(--text-primary, #1F2937);
+        }
+        .tree-node-name.text-main-category {
+          font-weight: 600;
+          font-size: 14px;
+          color: var(--primary, #2563EB);
+        }
+        .tree-node-name.text-property {
+          font-weight: 500;
+          color: var(--text-primary, #1F2937);
+        }
+        .tree-node-name.text-income-category {
+          color: var(--text-secondary, #4B5563);
+        }
+        .tree-node-name.text-customer {
+          color: var(--text-muted, #9CA3AF);
+        }
+        .tree-node-count {
+          font-size: 11px;
+          color: var(--text-muted, #9CA3AF);
+          margin-right: 16px;
+          background: var(--border-light, #F3F4F6);
+          padding: 2px 6px;
+          border-radius: 10px;
+          font-weight: 500;
+          user-select: none;
+        }
+        .tree-actions {
+          display: flex;
+          gap: 4px;
+          opacity: 0;
+          transition: opacity 0.15s ease;
+        }
+        .tree-row:hover .tree-actions {
+          opacity: 1;
+        }
+        .tree-actions .btn-ghost {
+          padding: 4px;
+          border-radius: 4px;
+          color: var(--text-secondary);
+        }
+        .tree-actions .btn-ghost:hover {
+          background-color: var(--border-light, #F3F4F6);
+          color: var(--primary);
+        }
+        .tree-actions .delete-btn:hover {
+          color: var(--danger, #DC2626) !important;
+          background-color: rgba(220, 38, 38, 0.05) !important;
+        }
+      `}</style>
+
+      {/* Page Header */}
       <div className="page-header">
-        <div>
-          <div className="page-title">Properties</div>
-          <div className="page-subtitle">Master data hierarchy · Main Category › Property › Income Category › Customer</div>
+        <div className="page-header-left">
+          <div>
+            <div className="page-title">Property Portfolio Hierarchy</div>
+            <div className="page-subtitle">Manage structural layout: Main Category › Property › Income Category › Unit / Customer</div>
+          </div>
+        </div>
+        <div className="page-header-right" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button className="btn btn-secondary" onClick={expandAll} style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
+            <Eye size={14} /> Expand All
+          </button>
+          <button className="btn btn-secondary" onClick={collapseAll} style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
+            <EyeOff size={14} /> Collapse All
+          </button>
+          <button className="btn btn-primary" onClick={() => openAddEdit('Add Main Category', '', handleAddCategory)} style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
+            <PlusIcon /> Add Category
+          </button>
         </div>
       </div>
 
-      <div className="page-body">
-        <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
+      {/* Page Body */}
+      <div className="page-body" style={{ padding: 32 }}>
+        {/* Search Bar */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 20, alignItems: 'center' }}>
           <div style={{ flex: 1, position: 'relative' }}>
-            <svg
-              width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            <Search
+              size={16}
               style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)', pointerEvents: 'none' }}
-            ><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            />
             <input
-              className="input" placeholder="Search categories, properties, income groups, customers..."
-              value={search} onChange={e => setSearch(e.target.value)}
-              style={{ paddingLeft: 36, width: '100%' }}
+              className="input"
+              placeholder="Search category, property, rent type, or unit..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ paddingLeft: 38, width: '100%', fontSize: 13 }}
             />
           </div>
-          <button className="btn btn-primary" onClick={() => openAddEdit('Add Main Category', '', handleAddCategory)}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 6 }}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add Category
-          </button>
         </div>
 
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          {filteredMainCategories.length === 0 && (
-            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>
-              {search ? 'No results found' : 'No categories yet. Click "Add Category" to create one.'}
+        {/* Tree Card Wrapper */}
+        <div className="tree-container">
+          {filteredTreeNodes.length === 0 ? (
+            <div style={{ padding: '64px 24px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>
+              {search ? 'No results matching search filters.' : 'No portfolio records found. Click "Add Category" to begin.'}
             </div>
+          ) : (
+            filteredTreeNodes.map((node, idx) => {
+              const isLast = idx === filteredTreeNodes.length - 1
+              return renderNode(node, 0, [], isLast)
+            })
           )}
-          {filteredMainCategories.map(mc => {
-            const props = propProperties.filter(p => p.mainCategoryId === mc.id)
-            const catOpen = expandedCats.has(mc.id)
-            return (
-              <div key={mc.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                <div
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px',
-                    cursor: 'pointer', userSelect: 'none', background: catOpen ? 'var(--bg-secondary)' : 'transparent',
-                  }}
-                  onClick={() => setExpandedCats(prev => toggle(prev, mc.id))}
-                >
-                  <Arrow open={catOpen} />
-                  <TreeIcon level={0} />
-                  <span style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>{mc.name}</span>
-                  <span style={{ fontSize: 12, color: 'var(--text-light)', marginRight: 8 }}>{props.length} {props.length === 1 ? 'property' : 'properties'}</span>
-                  <button
-                    style={iconBtnStyle('#DE8DA9')}
-                    onClick={e => { e.stopPropagation(); openAddEdit('Add Property under ' + mc.name, '', (v) => handleAddProperty(mc.id, v)) }}
-                    title="Add property"
-                  ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
-                  <button
-                    style={iconBtnStyle('#F59E0B')}
-                    onClick={e => { e.stopPropagation(); openAddEdit('Edit Category', mc.name, (v) => handleEditCategory(mc.id, v)) }}
-                    title="Edit category"
-                  ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
-                  <button
-                    style={iconBtnStyle('#EF4444')}
-                    onClick={e => { e.stopPropagation(); confirm(`Delete category "${mc.name}"? All properties, income categories, and customers under it will also be removed.`, () => handleDeleteCategory(mc.id)) }}
-                    title="Delete category"
-                  ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                </div>
-
-                {catOpen && (
-                  <div style={{ paddingLeft: 20 }}>
-                    {props.length === 0 && (
-                      <div style={{ padding: '8px 16px', fontSize: 12, color: 'var(--text-light)', fontStyle: 'italic' }}>No properties yet</div>
-                    )}
-                    {props.map(prop => {
-                      const ics = incomeCategories.filter(ic => ic.propertyId === prop.id)
-                      const propOpen = expandedProps.has(prop.id)
-                      return (
-                        <div key={prop.id}>
-                          <div
-                            style={{
-                              display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
-                              cursor: 'pointer', userSelect: 'none', background: propOpen ? 'var(--bg-secondary)' : 'transparent',
-                              borderTop: '1px solid var(--border)',
-                            }}
-                            onClick={() => setExpandedProps(prev => toggle(prev, prop.id))}
-                          >
-                            <Arrow open={propOpen} />
-                            <TreeIcon level={1} />
-                            <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{prop.name}</span>
-                            <span style={{ fontSize: 12, color: 'var(--text-light)', marginRight: 8 }}>{ics.length} {ics.length === 1 ? 'income category' : 'income categories'}</span>
-                            <button
-                              style={iconBtnStyle('#DE8DA9')}
-                              onClick={e => { e.stopPropagation(); openAddEdit('Add Income Category under ' + prop.name, '', (v) => handleAddIncomeCategory(prop.id, v)) }}
-                              title="Add income category"
-                            ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
-                            <button
-                              style={iconBtnStyle('#F59E0B')}
-                              onClick={e => { e.stopPropagation(); openAddEdit('Edit Property', prop.name, (v) => handleEditProperty(prop.id, v)) }}
-                              title="Edit property"
-                            ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
-                            <button
-                              style={iconBtnStyle('#EF4444')}
-                              onClick={e => { e.stopPropagation(); confirm(`Delete "${prop.name}"? All income categories and customers under it will also be removed.`, () => handleDeleteProperty(prop.id)) }}
-                              title="Delete property"
-                            ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                          </div>
-
-                          {propOpen && (
-                            <div style={{ paddingLeft: 20 }}>
-                              {ics.length === 0 && (
-                                <div style={{ padding: '8px 16px', fontSize: 12, color: 'var(--text-light)', fontStyle: 'italic' }}>No income categories yet</div>
-                              )}
-                              {ics.map(ic => {
-                                const custs = customers.filter(c => c.incomeCategoryId === ic.id)
-                                const icOpen = expandedIncomes.has(ic.id)
-                                return (
-                                  <div key={ic.id}>
-                                    <div
-                                      style={{
-                                        display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
-                                        cursor: 'pointer', userSelect: 'none', background: icOpen ? 'var(--bg-secondary)' : 'transparent',
-                                        borderTop: '1px solid var(--border)',
-                                      }}
-                                      onClick={() => setExpandedIncomes(prev => toggle(prev, ic.id))}
-                                    >
-                                      <Arrow open={icOpen} />
-                                      <TreeIcon level={2} />
-                                      <span style={{ flex: 1, fontSize: 13 }}>{ic.name}</span>
-                                      <span style={{ fontSize: 12, color: 'var(--text-light)', marginRight: 8 }}>{custs.length} {custs.length === 1 ? 'customer' : 'customers'}</span>
-                                      <button
-                                        style={iconBtnStyle('#DE8DA9')}
-                                        onClick={e => { e.stopPropagation(); openAddEdit('Add Customer under ' + ic.name, '', (v) => handleAddCustomer(ic.id, v)) }}
-                                        title="Add customer"
-                                      ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
-                                      <button
-                                        style={iconBtnStyle('#F59E0B')}
-                                        onClick={e => { e.stopPropagation(); openAddEdit('Edit Income Category', ic.name, (v) => handleEditIncomeCategory(ic.id, v)) }}
-                                        title="Edit income category"
-                                      ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
-                                      <button
-                                        style={iconBtnStyle('#EF4444')}
-                                        onClick={e => { e.stopPropagation(); confirm(`Delete income category "${ic.name}"? All customers under it will also be removed.`, () => handleDeleteIncomeCategory(ic.id)) }}
-                                        title="Delete income category"
-                                      ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                                    </div>
-
-                                    {icOpen && (
-                                      <div style={{ paddingLeft: 20 }}>
-                                        {custs.length === 0 && (
-                                          <div style={{ padding: '8px 16px', fontSize: 12, color: 'var(--text-light)', fontStyle: 'italic' }}>No customers yet</div>
-                                        )}
-                                        {custs.map(cust => (
-                                          <div
-                                            key={cust.id}
-                                            style={{
-                                              display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px',
-                                              borderTop: '1px solid var(--border)',
-                                            }}
-                                          >
-                                            <div style={{ width: 14 }} />
-                                            <TreeIcon level={3} />
-                                            <span style={{ flex: 1, fontSize: 13 }}>{cust.name}</span>
-                                            <button
-                                              style={iconBtnStyle('#F59E0B')}
-                                              onClick={() => openAddEdit('Edit Customer', cust.name, (v) => handleEditCustomer(cust.id, v))}
-                                              title="Edit customer"
-                                            ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
-                                            <button
-                                              style={iconBtnStyle('#EF4444')}
-                                              onClick={() => confirm(`Delete customer "${cust.name}"?`, () => handleDeleteCustomer(cust.id))}
-                                              title="Delete customer"
-                                            ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )
-          })}
         </div>
       </div>
 
@@ -392,7 +684,7 @@ export default function PropertyHierarchy({
         title={modalTitle}
         value={modalValue}
         setValue={setModalValue}
-        onSave={() => modalSave()}
+        onSave={handleModalSave}
         onCancel={() => { setModalOpen(false); setModalValue('') }}
         placeholder="Enter name"
       />

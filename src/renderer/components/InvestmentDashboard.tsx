@@ -1,127 +1,295 @@
-import React, { useMemo } from 'react'
-import { motion } from 'framer-motion'
-import {
-  LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-} from 'recharts'
-import type { Account, Voucher } from '../accounting/types'
+import React, { useMemo, useState, memo } from 'react'
+import type { Account, Voucher, BankMapping } from '../accounting/types'
 import { getInvestmentDashboardProjection } from '../readModels/InvestmentDashboardReadModel'
+import { getAllAccountBalances } from '../accounting/ledgerService'
+import { getChildren } from '../accounting/chartOfAccountsService'
+import { KpiCard } from './design/DesignSystem'
+import { getAssetAllocationColor } from '../styles/ChartTheme'
+import type { BankAccount } from '../data/banking'
+import Toast from './Toast'
+import { TreeView } from './TreeView'
+import { formatPremiumCompact } from '../utils/reportFormatters'
+import { motion } from 'framer-motion'
+import LazyChart from './LazyChart'
+
+const AssetAllocationPie = React.lazy(() => import('./charts/AssetAllocationPie'))
+const InvestmentGrowthChart = React.lazy(() => import('./charts/InvestmentGrowthChart'))
+const CashFlowChart = React.lazy(() => import('./charts/CashFlowChart'))
+const IncomeExpenseChart = React.lazy(() => import('./charts/IncomeExpenseChart'))
 
 interface Props {
   currency?: string
   accounts: Account[]
   vouchers: Voucher[]
+  bankAccounts?: BankAccount[]
+  bankMappings?: BankMapping[]
   onNavigate?: (page: string) => void
 }
 
 function fmt(n: number, sym = 'AED') {
-  if (Math.abs(n) >= 1_000_000_000) return `${sym} ${(n / 1_000_000_000).toFixed(1)}B`
-  if (Math.abs(n) >= 1_000_000) return `${sym} ${(n / 1_000_000).toFixed(1)}M`
-  if (Math.abs(n) >= 1_000) return `${sym} ${(n / 1_000).toFixed(1)}K`
-  return `${sym} ${Math.round(n).toLocaleString()}`
+  const { valueStr, suffix } = formatPremiumCompact(n);
+  const sign = n < 0 ? '-' : '';
+  return <>{sign}{sym} {valueStr}{suffix}</>;
 }
 
-const primaryColor = '#3BA549'
-const colors = ['#3BA549', '#5C63A6', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#EC4899']
-
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null
-  return (
-    <div style={{
-      background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12,
-      padding: '12px 16px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 13,
-    }}>
-      <div style={{ fontWeight: 600, marginBottom: 4, color: '#1F2937' }}>{label}</div>
-      {payload.map((p: any, i: number) => (
-        <div key={i} style={{ color: p.color, display: 'flex', justifyContent: 'space-between', gap: 24 }}>
-          <span>{p.name}</span>
-          <span style={{ fontWeight: 600 }}>{typeof p.value === 'number' ? fmt(p.value) : p.value}</span>
-        </div>
-      ))}
-    </div>
-  )
+interface InvestmentKpiCardProps {
+  label: string
+  value: number
+  currency: string
+  change?: { value: string; direction: 'up' | 'down' | 'neutral' }
+  accentColor?: string
+  isNetCash?: boolean
 }
 
-function KpiCard({ label, value, icon, color, onClick }: { label: string; value: string; icon: React.ReactNode; color: string; onClick?: () => void }) {
+function InvestmentKpiCard({
+  label,
+  value,
+  currency,
+  change,
+  accentColor,
+  isNetCash = false
+}: InvestmentKpiCardProps) {
+  const { valueStr, suffix } = formatPremiumCompact(value)
+  const sign = value < 0 ? '-' : ''
+
+  let valueColor = 'var(--text-primary)'
+  if (isNetCash) {
+    valueColor = value >= 0 ? 'var(--kpi-green, #10B981)' : 'var(--kpi-red, #EF4444)'
+  }
+
   return (
-    <motion.div className="kpi-card" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -2, boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}
-      onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}
+    <motion.div
+      className="premium-kpi-card"
+      style={accentColor ? { borderTopColor: accentColor } as React.CSSProperties : undefined}
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      whileHover={{ y: -2 }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div className="kpi-label">{label}</div>
-        <div style={{ width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${color}14`, color }}>{icon}</div>
-      </div>
-      <div className="kpi-value">{value}</div>
-    </motion.div>
-  )
-}
-
-function ChartCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
-  return (
-    <motion.div className="card" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ padding: 0, overflow: 'hidden' }}>
-      <div className="card-header">
-        <div>
-          <div className="card-title">{title}</div>
-          {subtitle && <div style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>{subtitle}</div>}
+      <div>
+        <div className="premium-kpi-label">{label}</div>
+        <div className="premium-kpi-value-container">
+          <span className="premium-kpi-currency">{sign}{currency}</span>
+          <span className="premium-kpi-amount" style={{ color: valueColor }}>{valueStr}{suffix}</span>
         </div>
       </div>
-      <div className="card-body">{children}</div>
+
+      <span className="premium-kpi-precision" style={{ display: 'none' }}>
+        {value.toFixed(2)}
+      </span>
+
+      {change && (
+        <div className="premium-kpi-change-row">
+          <span className={`premium-kpi-change-tag ${change.direction}`}>
+            {change.direction === 'up' && (
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '2px' }}>
+                <line x1="7" y1="17" x2="17" y2="7"></line>
+                <polyline points="7 7 17 7 17 17"></polyline>
+              </svg>
+            )}
+            {change.direction === 'down' && (
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '2px' }}>
+                <line x1="7" y1="7" x2="17" y2="17"></line>
+                <polyline points="17 7 17 17 7 17"></polyline>
+              </svg>
+            )}
+            {change.value}
+          </span>
+        </div>
+      )}
     </motion.div>
   )
 }
 
-export default function InvestmentDashboard({
-  currency = 'AED', accounts, vouchers, onNavigate = () => {},
+interface TreeNode {
+  id: string
+  name: string
+  value: number
+  percentage: number
+  color?: string
+  children: TreeNode[]
+}
+
+
+
+function InvestmentDashboardInner({
+  currency = 'AED', accounts, vouchers, bankAccounts = [], bankMappings = [], onNavigate = () => {},
 }: Props) {
-  const data = useMemo(() => getInvestmentDashboardProjection(accounts, vouchers), [accounts, vouchers])
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' })
+  const data = useMemo(() => getInvestmentDashboardProjection(accounts, vouchers, bankAccounts, bankMappings), [accounts, vouchers, bankAccounts, bankMappings])
   const sym = currency
 
-  const growthData = useMemo(() => {
-    if (data.growthHistory.length === 0) return []
-    const step = Math.max(1, Math.floor(data.growthHistory.length / 12))
-    return data.growthHistory
-      .filter((_, i) => i % step === 0 || i === data.growthHistory.length - 1)
-      .map(h => ({ date: h.date.substring(0, 10), value: h.balance }))
-  }, [data.growthHistory])
-
-  const cashFlowData = useMemo(() => {
-    return data.cashFlowHistory.map(m => ({ month: m.month, Income: m.income, Expenses: m.expense, Net: m.net }))
-  }, [data.cashFlowHistory])
-
-  const allocationData = useMemo(() => {
-    return data.allocation.map(a => ({ name: a.name, value: a.value }))
+  const assetAllocationData = useMemo(() => {
+    return data.allocation.map((a, i) => ({
+      name: a.name,
+      value: a.value,
+      percentage: a.percentage,
+      color: getAssetAllocationColor(a.name),
+      accountId: a.accountId,
+    }))
   }, [data.allocation])
 
-  const incomeVsExpenseData = useMemo(() => {
-    return data.cashFlowHistory.slice(-6).map(m => ({ month: m.month.substring(5), Income: m.income, Expenses: m.expense }))
-  }, [data.cashFlowHistory])
+  const topHoldingsTree = useMemo(() => {
+    const allBals = getAllAccountBalances(vouchers, accounts)
+    const totalPortfolioValue = data.portfolioValue || 1
 
-  const monthlyActivityData = useMemo(() => {
-    const byMonth: Record<string, number> = {}
-    for (const v of vouchers.filter(v => v.status === 'Posted')) {
-      const month = v.date.substring(0, 7)
-      const investLines = v.lines.filter(l => {
-        const acct = accounts.find(a => a.id === l.accountId)
-        return acct && acct.type === 'asset' && l.type === 'Debit'
-      })
-      const total = investLines.reduce((s, l) => s + l.baseAmount, 0)
-      if (total > 0) byMonth[month] = (byMonth[month] || 0) + total
+    const acctMap = new Map(accounts.map(a => [a.id, a]))
+
+    function buildTree(acctId: string, includeOnly: string[] | null): TreeNode | null {
+      const acct = acctMap.get(acctId)
+      if (!acct || !acct.isActive) return null
+
+      const bal = allBals[acctId] || 0
+      const children = getChildren(acctId, accounts)
+
+      if (children.length === 0) {
+        if (bal === 0) return null
+        return {
+          id: acct.id,
+          name: acct.name,
+          value: bal,
+          percentage: 0,
+          color: getAssetAllocationColor(acct.name),
+          children: [],
+        }
+      }
+
+      let childNodes: TreeNode[] = children
+        .map(c => includeOnly && includeOnly.length > 0 && !includeOnly.includes(c.id)
+          ? null
+          : buildTree(c.id, null))
+        .filter((n): n is TreeNode => n !== null)
+
+      if (childNodes.length === 0 && bal === 0) return null
+
+      const value = childNodes.length > 0
+        ? childNodes.reduce((s, n) => s + n.value, 0)
+        : bal
+
+      return {
+        id: acct.id,
+        name: acct.name,
+        value,
+        percentage: 0,
+        color: getAssetAllocationColor(acct.name),
+        children: childNodes.sort((a, b) => b.value - a.value),
+      }
     }
-    return Object.entries(byMonth).sort(([a], [b]) => a.localeCompare(b)).slice(-6).map(([month, value]) => ({ month: month.substring(5), value }))
-  }, [vouchers, accounts])
+
+    const assetsAcct = acctMap.get('1000')
+    if (!assetsAcct) {
+      return { id: '1000', name: 'Assets', value: 0, percentage: 0, children: [] }
+    }
+
+    const invAccount = accounts.find(a => a.code === '1200')
+    const fullTree = invAccount
+      ? buildTree(assetsAcct.id, [invAccount.id])
+      : buildTree(assetsAcct.id, null)
+
+    if (!fullTree) {
+      return { id: assetsAcct.id, name: assetsAcct.name, value: 0, percentage: 0, children: [] }
+    }
+
+    fullTree.children = fullTree.children.filter(c => {
+      const ac = acctMap.get(c.id)
+      return ac?.code?.startsWith('12')
+    })
+
+    function assignPct(node: TreeNode) {
+      node.percentage = totalPortfolioValue > 0 ? (node.value / totalPortfolioValue) * 100 : 0
+      for (const child of node.children) {
+        assignPct(child)
+      }
+    }
+    assignPct(fullTree)
+
+    return fullTree
+  }, [accounts, vouchers, data.portfolioValue])
+
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() => new Set(['1000', '1200']))
+
+  const toggleCategory = (id: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const latestTransactions = useMemo(() => {
-    const posted = vouchers.filter(v => v.status === 'Posted').slice(-5).reverse()
+    const posted = vouchers
+      .filter(v => v.status === 'Posted')
+      .slice(-5)
+      .reverse()
     return posted.map(v => ({
       date: v.date.substring(0, 10), number: v.number, desc: v.description,
-      amount: v.lines.reduce((s, l) => s + l.baseAmount, 0),
+      amount: v.lines.reduce((s, l) => s + (l.type === 'Debit' ? l.baseAmount : 0), 0),
     }))
   }, [vouchers])
 
-  const totalPortfolioValue = data.portfolioValue
+  const recentPurchases = useMemo(() => {
+    const purchaseVouchers = vouchers
+      .filter(v => v.status === 'Posted' && v.type === 'Payment')
+      .filter(v => v.lines.some(l => {
+        const a = accounts.find(ac => ac.id === l.accountId)
+        return l.type === 'Debit' && a && a.code.startsWith('12')
+      }))
+      .slice(-5)
+      .reverse()
 
-  if (data.growthHistory.length === 0) {
+    return purchaseVouchers.map(v => {
+      const assetLine = v.lines.find(l => {
+        const a = accounts.find(ac => ac.id === l.accountId)
+        return l.type === 'Debit' && a && a.code.startsWith('12')
+      })
+      const assetName = assetLine ? (accounts.find(a => a.id === assetLine.accountId)?.name || 'Unknown Asset') : 'Unknown Asset'
+      const amount = assetLine ? assetLine.baseAmount : 0
+      
+      let buyer = '-'
+      const match = v.description.match(/\(paid to (.*?)\)$/)
+      if (match) buyer = match[1]
+      else if (v.reference) buyer = v.reference
+
+      return {
+        date: v.date.substring(0, 10),
+        number: v.number,
+        asset: assetName,
+        buyer,
+        amount,
+        status: v.status,
+      }
+    })
+  }, [vouchers, accounts])
+
+  const thisMonthNet = data.netCashFlow
+  const thisMonthChange = useMemo(() => {
+    const history = data.cashFlowHistory || []
+    if (history.length >= 2) {
+      const current = history[history.length - 1].net
+      const previous = history[history.length - 2].net
+      if (previous !== 0) {
+        const pct = ((current - previous) / Math.abs(previous)) * 100
+        const sign = pct > 0 ? '+' : ''
+        return {
+          value: `${sign}${pct.toFixed(1)}% vs last month`,
+          direction: pct > 0 ? 'up' as const : (pct < 0 ? 'down' as const : 'neutral' as const)
+        }
+      }
+    }
+    if (thisMonthNet !== 0) {
+      const formatted = formatPremiumCompact(thisMonthNet)
+      const pctSign = thisMonthNet > 0 ? '+' : ''
+      return {
+        value: `${pctSign}${formatted.valueStr}${formatted.suffix} net`,
+        direction: thisMonthNet > 0 ? 'up' as const : 'down' as const
+      }
+    }
+    return { value: 'No change', direction: 'neutral' as const }
+  }, [data.cashFlowHistory, thisMonthNet])
+
+  const hasData = data.portfolioValue > 0 || data.currentBankBalance > 0 || data.totalIncome > 0 || data.totalExpenses > 0 || data.growthHistory.length > 0
+  if (!hasData) {
     return (
       <>
         <div className="page-header">
@@ -133,7 +301,9 @@ export default function InvestmentDashboard({
         <div className="page-body">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
             <div className="empty-state">
-              <div className="empty-state-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+              <div className="empty-state-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+              </div>
               <div className="empty-state-title">No Data Yet</div>
               <div className="empty-state-text">Post investment purchase vouchers from the accounting engine to see your portfolio dashboard.</div>
             </div>
@@ -145,170 +315,149 @@ export default function InvestmentDashboard({
 
   return (
     <>
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        visible={toast.visible}
+        onClose={() => setToast(prev => ({ ...prev, visible: false }))}
+      />
       <div className="page-header">
-        <div>
-          <div className="page-title">Investment Dashboard</div>
-          <div className="page-subtitle">Real-time portfolio overview from the Accounting Engine</div>
+        <div className="page-header-left">
+          <div>
+            <div className="page-title">Investment Dashboard</div>
+            <div className="page-subtitle">Real-time portfolio overview from the Accounting Engine</div>
+          </div>
+        </div>
+        <div className="page-header-right">
+          <button className="btn btn-ghost btn-sm" onClick={() => setToast({ visible: true, message: 'No new notifications', type: 'success' })} aria-label="Notifications">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            Notifications
+          </button>
+          <button className="btn btn-ghost btn-sm" onClick={() => setToast({ visible: true, message: 'InsAcc v1.0 — Intelligent Asset & Investment Accounting', type: 'success' })} aria-label="About">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            About
+          </button>
         </div>
       </div>
 
       <div className="page-body">
-        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
-          <KpiCard label="Portfolio Value" value={fmt(data.portfolioValue, sym)} color={primaryColor} onClick={() => onNavigate('accounts-dashboard')} icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>} />
-          <KpiCard label="Available Cash" value={fmt(data.availableCash, sym)} color="#5C63A6" onClick={() => onNavigate('accounts-dashboard')} icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>} />
-          <KpiCard label="Total Income" value={fmt(data.totalIncome, sym)} color="#F59E0B" onClick={() => onNavigate('profit-loss')} icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>} />
-          <KpiCard label="Total Expenses" value={fmt(data.totalExpenses, sym)} color="#EF4444" onClick={() => onNavigate('profit-loss')} icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>} />
-          <KpiCard label="Net Cash Flow" value={fmt(data.netCashFlow, sym)} color={data.netCashFlow >= 0 ? primaryColor : '#EF4444'} onClick={() => onNavigate('profit-loss')} icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>} />
+        <div className="premium-kpi-grid">
+          <InvestmentKpiCard label="Portfolio Value" value={data.portfolioValue} currency={sym} accentColor="var(--gold)" />
+          <InvestmentKpiCard label="Current Bank Balance" value={data.currentBankBalance} currency={sym} accentColor="var(--green)" />
+          <InvestmentKpiCard label="Total Income" value={data.totalIncome} currency={sym} accentColor="var(--blue)" />
+          <InvestmentKpiCard label="Total Expenses" value={data.totalExpenses} currency={sym} accentColor="var(--red)" />
+          <InvestmentKpiCard label="Net Cash Flow" value={data.netCashFlow} currency={sym} change={thisMonthChange} accentColor={data.netCashFlow >= 0 ? 'var(--green)' : '#EF4444'} isNetCash={true} />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '7fr 3fr', gap: 20, marginBottom: 24 }}>
-          <ChartCard title="Portfolio Growth" subtitle="12-month portfolio value trend">
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={growthData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => fmt(v)} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-                <Line type="monotone" dataKey="value" name="Portfolio Value" stroke={primaryColor} strokeWidth={2.5} dot={{ r: 4, fill: primaryColor, stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 6 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </ChartCard>
+        <div className="chart-grid">
+          <React.Suspense fallback={<div style={{ height: 300 }} />}>
+            <LazyChart><InvestmentGrowthChart dataByPeriod={data.investmentGrowthByPeriod} /></LazyChart>
+          </React.Suspense>
+          <React.Suspense fallback={<div style={{ height: 300 }} />}>
+            <LazyChart><AssetAllocationPie data={assetAllocationData} /></LazyChart>
+          </React.Suspense>
+        </div>
 
-          <ChartCard title="Asset Allocation" subtitle="Portfolio breakdown">
-            {allocationData.length === 0 ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300, color: '#9CA3AF', fontSize: 13 }}>No allocation data</div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, height: 300, justifyContent: 'center', position: 'relative' }}>
-                <ResponsiveContainer width="100%" height={180}>
-                  <PieChart>
-                    <Pie data={allocationData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
-                      {allocationData.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div style={{ position: 'absolute', top: 70, fontSize: 16, fontWeight: 700, color: '#1F2937', textAlign: 'center', pointerEvents: 'none' }}>
-                  {fmt(totalPortfolioValue)}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%', padding: '0 8px' }}>
-                  {allocationData.slice(0, 6).map((a, i) => (
-                    <div key={a.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: colors[i % colors.length] }} />
-                        <span style={{ color: '#6B7280' }}>{a.name}</span>
-                      </div>
-                      <span style={{ fontWeight: 600, color: '#1F2937' }}>{fmt(a.value)}</span>
-                    </div>
-                  ))}
-                </div>
+        <div className="chart-grid">
+          <React.Suspense fallback={<div style={{ height: 300 }} />}>
+            <LazyChart><CashFlowChart dataByPeriod={data.cashFlowByPeriod} /></LazyChart>
+          </React.Suspense>
+          <React.Suspense fallback={<div style={{ height: 300 }} />}>
+            <LazyChart><IncomeExpenseChart dataByPeriod={data.cashFlowByPeriod} /></LazyChart>
+          </React.Suspense>
+        </div>
+
+        <div className="chart-grid mb-6">
+          <div className="card card-table mb-0">
+            <div className="card-header">
+              <span className="card-title">Recent Transactions</span>
+            </div>
+            <div className="card-body">
+              <div className="table-container">
+                {latestTransactions.length === 0 ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 120, color: 'var(--text-muted)', fontSize: 13 }}>
+                    No transactions
+                  </div>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th style={{ textAlign: 'left' }}>Date</th>
+                        <th style={{ textAlign: 'left' }}>Voucher</th>
+                        <th className="numeric" style={{ textAlign: 'right' }}>Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {latestTransactions.map((t, i) => (
+                        <tr key={i}>
+                          <td className="text-secondary">{t.date}</td>
+                          <td style={{ fontWeight: 600 }}>{t.number}</td>
+                          <td className="numeric" style={{ fontWeight: 600, textAlign: 'right' }}>{fmt(t.amount, sym)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
-            )}
-          </ChartCard>
+            </div>
+          </div>
+          <div className="card card-table mb-0">
+            <div className="card-header">
+              <span className="card-title">Recent Purchases</span>
+            </div>
+            <div className="card-body">
+              <div className="table-container">
+                {recentPurchases.length === 0 ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 120, color: 'var(--text-muted)', fontSize: 13 }}>
+                    No recent purchases
+                  </div>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th style={{ textAlign: 'left' }}>Date</th>
+                        <th style={{ textAlign: 'left' }}>Asset</th>
+                        <th className="numeric" style={{ textAlign: 'right' }}>Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentPurchases.map((p, i) => (
+                        <tr key={i}>
+                          <td className="text-secondary">{p.date}</td>
+                          <td style={{ fontWeight: 600 }}>{p.asset}</td>
+                          <td className="numeric" style={{ fontWeight: 600, textAlign: 'right' }}>{fmt(p.amount, sym)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20, marginBottom: 24 }}>
-          <ChartCard title="Cash Flow" subtitle="Income vs Expenses over time">
-            <ResponsiveContainer width="100%" height={240}>
-              <AreaChart data={cashFlowData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => fmt(v)} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-                <Area type="monotone" dataKey="Income" stroke={primaryColor} fill={`${primaryColor}20`} strokeWidth={2} name="Income" />
-                <Area type="monotone" dataKey="Expenses" stroke="#EF4444" fill="#EF444420" strokeWidth={2} name="Expenses" />
-                <Area type="monotone" dataKey="Net" stroke="#5C63A6" fill="#5C63A620" strokeWidth={2} name="Net" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          <ChartCard title="Asset Performance" subtitle="By investment category">
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={allocationData.slice(0, 7)}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6B7280' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => fmt(v)} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                  {allocationData.slice(0, 7).map((_, i) => (
-                    <Cell key={i} fill={colors[i % colors.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          <ChartCard title="Income vs Expenses" subtitle="Monthly comparison">
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={incomeVsExpenseData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => fmt(v)} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-                <Bar dataKey="Income" fill={primaryColor} radius={[4, 4, 0, 0]} name="Income" />
-                <Bar dataKey="Expenses" fill="#EF4444" radius={[4, 4, 0, 0]} name="Expenses" />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
-          <ChartCard title="Bank Balance Trend" subtitle="Account balance over time">
-            <ResponsiveContainer width="100%" height={240}>
-              <LineChart data={growthData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => fmt(v)} />
-                <Tooltip content={<CustomTooltip />} />
-                <Line type="monotone" dataKey="value" stroke="#5C63A6" strokeWidth={2} dot={false} name="Balance" />
-              </LineChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          <ChartCard title="Monthly Investment Activity" subtitle="Purchases by month">
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={monthlyActivityData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => fmt(v)} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="value" fill={primaryColor} radius={[4, 4, 0, 0]} name="Invested" />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-        </div>
-
-        <ChartCard title="Recent Transactions" subtitle="Last 5 posted vouchers">
-          <div style={{ margin: '-8px 0' }}>
-            {latestTransactions.length === 0 ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 120, color: '#9CA3AF', fontSize: 13 }}>No transactions</div>
+        <div className="card card-table mb-6">
+          <div className="card-header">
+            <span className="card-title">Top Holdings</span>
+          </div>
+          <div className="card-body">
+            {(topHoldingsTree.children[0]?.children?.length ?? 0) === 0 ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 120, color: 'var(--text-muted)', fontSize: 13 }}>
+                No holdings
+              </div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: 'left', padding: '8px 4px', color: '#9CA3AF', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #F3F4F6' }}>Date</th>
-                    <th style={{ textAlign: 'left', padding: '8px 4px', color: '#9CA3AF', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #F3F4F6' }}>Voucher</th>
-                    <th style={{ textAlign: 'left', padding: '8px 4px', color: '#9CA3AF', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #F3F4F6' }}>Description</th>
-                    <th style={{ textAlign: 'right', padding: '8px 4px', color: '#9CA3AF', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #F3F4F6' }}>Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {latestTransactions.map((t, i) => (
-                    <tr key={i}>
-                      <td style={{ padding: '10px 4px', borderBottom: '1px solid #F9FAFB', color: '#6B7280' }}>{t.date}</td>
-                      <td style={{ padding: '10px 4px', borderBottom: '1px solid #F9FAFB', fontWeight: 600, fontSize: 12 }}>{t.number}</td>
-                      <td style={{ padding: '10px 4px', borderBottom: '1px solid #F9FAFB', color: '#6B7280', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.desc}</td>
-                      <td style={{ padding: '10px 4px', borderBottom: '1px solid #F9FAFB', textAlign: 'right', fontWeight: 600 }}>{fmt(t.amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <TreeView
+                nodes={[topHoldingsTree]}
+                expanded={expandedCategories}
+                onToggle={toggleCategory}
+                currency={currency}
+              />
             )}
           </div>
-        </ChartCard>
+        </div>
       </div>
     </>
   )
 }
+
+export default memo(InvestmentDashboardInner)

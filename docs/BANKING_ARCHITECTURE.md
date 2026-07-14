@@ -74,7 +74,7 @@ interface BankAccount {
 | Field | Type | Description |
 |---|---|---|
 | `id` | `string` | Immutable unique identifier (e.g., UUID or `ba-{timestamp}`). Used as a foreign key in `BankTransaction.accountId`. Never regenerated. |
-| `institution` | `string` | Institution name (e.g., "Emirates Islamic Bank", "ADCB"). Supports banks, cash wallets, brokerage cash, petty cash, and future wallet providers. Displayed on the balance card and in account selectors. |
+| `institution` | `string` | Institution name (e.g., "Emirates Islamic Bank", "ADCB"). Supports banks, cash wallets, investment cash, petty cash, and future wallet providers. Displayed on the balance card and in account selectors. |
 | `accountName` | `string` | User-facing label (e.g., "Primary Account", "Business Savings", "Petty Cash"). Distinguishes multiple accounts at the same institution. |
 | `accountNumber` | `string` | Masked or full account number (e.g., "****1234"). Display-only; not used in calculations. Optional for cash and wallet accounts. |
 | `currency` | `string` | ISO 4217 currency code (e.g., "AED", "USD", "EUR"). All transactions for this account use this currency. Cross-currency transfers require a future enhancement (exchange rates). |

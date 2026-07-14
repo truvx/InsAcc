@@ -157,13 +157,12 @@ Track investment purchases with detailed records:
 **KPI Cards:**
 - **Total Invested**: Sum of all purchase values
 - **Total Quantity**: Sum of all quantities
-- **Weighted Average**: Average unit price weighted by quantity
 - **Active Lots**: Number of active purchase records
 
 **Adding a Purchase:**
 1. Click **Add Purchase**
 2. Enter: Asset Name, Purchase Date, Quantity, Unit Price (Total Value auto-calculates)
-3. Optionally select an asset type and broker
+3. Optionally select an asset type and buyer
 4. Click **Record**
 
 **Managing Purchases:**

@@ -115,3 +115,35 @@ export function maskAccountNumber(accountNumber: string): string {
   if (!accountNumber || accountNumber === '----') return ''
   return `****${accountNumber.slice(-4)}`
 }
+
+export function getBankDisplayName(bank?: { institution: string } | null): string {
+  if (!bank) return 'Unknown Bank'
+  return bank.institution
+}
+
+export function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(1024))
+  const size = bytes / Math.pow(1024, i)
+  return `${size.toFixed(i === 0 ? 0 : 1)} ${units[i]}`
+}
+
+export function formatModifiedDateTime(isoStr: string): string {
+  if (!isoStr) return ''
+  const d = new Date(isoStr)
+  if (isNaN(d.getTime())) return isoStr
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mmm = months[d.getMonth()]
+  const yyyy = d.getFullYear()
+  
+  let hours = d.getHours()
+  const minutes = String(d.getMinutes()).padStart(2, '0')
+  const ampm = hours >= 12 ? 'PM' : 'AM'
+  hours = hours % 12
+  hours = hours ? hours : 12
+  const hh = String(hours).padStart(2, '0')
+  
+  return `${dd} ${mmm} ${yyyy} ${hh}:${minutes} ${ampm}`
+}

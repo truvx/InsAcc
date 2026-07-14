@@ -1,6 +1,6 @@
 import type { Account, BankMapping } from './types'
 import type { BankAccount } from '../data/banking'
-import { createChildAccount, getAccountByCode } from './chartOfAccountsService'
+import { createChildAccount, getAccountByCode, resolveAccount } from './chartOfAccountsService'
 
 const BANK_PARENT_CODE = '1120'
 
@@ -23,8 +23,8 @@ export function ensureBankAccountMappings(
     const parent = getAccountByCode(BANK_PARENT_CODE, updatedAccounts)
     if (!parent) continue
 
-    const sanitized = bank.accountName.replace(/[^a-zA-Z0-9 ]/g, '').trim()
-    const childName = `${bank.institution} - ${sanitized}`
+    const suffix = bank.accountNumber ? bank.accountNumber.replace(/[^a-zA-Z0-9 ]/g, '').trim() : ''
+    const childName = suffix ? `${bank.institution} - ${suffix}` : bank.institution
     const { account, updatedAccounts: nextAccounts } = createChildAccount(
       BANK_PARENT_CODE,
       childName,
@@ -48,8 +48,16 @@ export function ensureBankAccountMappings(
 export function getAccountIdForBank(
   bankAccountId: string,
   mappings: BankMapping[],
+  accounts?: Account[],
 ): string | undefined {
-  return mappings.find(m => m.bankAccountId === bankAccountId)?.accountId
+  const mapping = mappings.find(m => m.bankAccountId === bankAccountId)
+  if (!mapping) return undefined
+  if (accounts) {
+    const resolved = resolveAccount(mapping.accountId, accounts) ||
+                     resolveAccount(mapping.accountCode, accounts)
+    if (resolved) return resolved.id
+  }
+  return mapping.accountId
 }
 
 export function getAccountCodeForBank(

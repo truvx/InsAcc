@@ -3,11 +3,11 @@ import type { AssetAllocation, AssetPerformance, InvestmentHistory, MonthlyCashF
 import type { PurchaseCategory, Purchase } from '../data/purchaseData'
 import type { Investment } from './Investments'
 import type { Transaction } from './Transactions'
-import type { StatementEntry } from './BankAccounts'
+import type { StatementEntry } from '../data/banking'
 import { computeAverages } from '../services/purchaseService'
 import ActivityTimeline, { type ActivityEntry } from './ActivityTimeline'
 
-import { ASSET_TYPE_COLORS as TYPE_COLORS } from '../styles/palette'
+import { getAssetAllocationColor } from '../styles/ChartTheme'
 import AssetAllocationPie from './charts/AssetAllocationPie'
 import InvestmentGrowthChart from './charts/InvestmentGrowthChart'
 import CashFlowChart from './charts/CashFlowChart'
@@ -103,7 +103,7 @@ export default function Dashboard({ currency, dateFormat, language = 'English', 
       name,
       value,
       percentage: total ? +((value / total) * 100).toFixed(1) : 0,
-      color: TYPE_COLORS[name] || '#6B5B95',
+      color: getAssetAllocationColor(name),
     }))
   }, [investments])
 
@@ -165,6 +165,7 @@ export default function Dashboard({ currency, dateFormat, language = 'English', 
         month,
         income: vals.income,
         expense: vals.expense,
+        net: vals.income - vals.expense,
       }))
     }
     return {
@@ -184,7 +185,7 @@ export default function Dashboard({ currency, dateFormat, language = 'English', 
         title: `Invested in ${inv.assetName}`,
         amount: `${sym} ${inv.purchaseValue.toLocaleString()}`,
         date: inv.date,
-        description: `${inv.type} — ${inv.broker}`,
+        description: `${inv.type} — ${inv.buyer}`,
       })
     })
 

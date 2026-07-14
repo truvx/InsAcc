@@ -491,7 +491,7 @@ export default function Transactions({
               )}
             </div>
           </div>
-          <div className="data-table-search" style={{ minWidth: 320 }}>
+          <div className="data-table-search">
             <SearchIcon />
             <input
               type="text"

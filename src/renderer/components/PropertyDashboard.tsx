@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, memo } from 'react'
 import { motion } from 'framer-motion'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -6,8 +6,10 @@ import {
 } from 'recharts'
 import type { PropertyEntry, UnitEntry, LeaseEntry, PropTransaction, PropAccount } from '../data/propertyTypes'
 import type { Account, Voucher } from '../accounting/types'
-import { getAllAccountBalances, getAccountTypeBalance } from '../accounting/ledgerService'
+import { getActiveVouchers } from '../accounting/voucherService'
+import { getPropertyFinancialSummary } from '../services/propertyFinancialAggregationService'
 import { EmptyState } from './design/DesignSystem'
+import { ChartColors, ChartConfig, PropertyPalette } from '../styles/ChartTheme'
 
 interface Props {
   currency?: string
@@ -16,21 +18,34 @@ interface Props {
   properties: PropertyEntry[]
   units: UnitEntry[]
   leases: LeaseEntry[]
-  transactions: PropTransaction[]
   accounts: PropAccount[]
-  chartAccounts?: Account[]
-  chartVouchers?: Voucher[]
+  chartAccounts: Account[]
+  chartVouchers: Voucher[]
+  bankMappings: any[]
   onNavigate?: (page: string) => void
 }
 
-function fmt(n: number, sym = 'AED') {
-  if (Math.abs(n) >= 1_000_000_000)
-    return `${sym} ${(n / 1_000_000_000).toFixed(1)}B`
-  if (Math.abs(n) >= 1_000_000)
-    return `${sym} ${(n / 1_000_000).toFixed(1)}M`
-  if (Math.abs(n) >= 1_000)
-    return `${sym} ${(n / 1_000).toFixed(1)}K`
-  return `${sym} ${Math.round(n).toLocaleString()}`
+import { formatPremiumCompact } from '../utils/reportFormatters'
+
+function fmt(n: number, sym = 'AED', accentColor?: string) {
+  const { valueStr, suffix } = formatPremiumCompact(n);
+  const sign = n < 0 ? '-' : '';
+  return (
+    <span className="kpi-value-inner">
+      <span className="kpi-currency">{sign}{sym}</span>
+      <span className="kpi-compact-amount" style={accentColor ? { color: accentColor } : undefined}>{valueStr}{suffix}</span>
+    </span>
+  );
+}
+
+function fmtTick(n: number) {
+  if (Math.abs(n) >= 1000000) {
+    return `${(n / 1000000).toFixed(1)}M`;
+  }
+  if (Math.abs(n) >= 1000) {
+    return `${(n / 1000).toFixed(0)}K`;
+  }
+  return String(n);
 }
 
 const primaryColor = '#DE8DA9'
@@ -54,7 +69,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   )
 }
 
-function KpiCard({ label, value, icon, color, onClick }: { label: string; value: string; icon: React.ReactNode; color: string; onClick?: () => void }) {
+function KpiCard({ label, value, icon, color, onClick }: { label: string; value: React.ReactNode; icon: React.ReactNode; color: string; onClick?: () => void }) {
   return (
     <motion.div
       className="kpi-card"
@@ -67,7 +82,7 @@ function KpiCard({ label, value, icon, color, onClick }: { label: string; value:
         <div className="kpi-label">{label}</div>
         <div style={{ width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${color}14`, color }}>{icon}</div>
       </div>
-      <div className="kpi-value">{value}</div>
+      <div className="kpi-value" style={{ display: 'flex', alignItems: 'baseline', gap: 0 }}>{value}</div>
     </motion.div>
   )
 }
@@ -91,9 +106,8 @@ function ChartCard({ title, subtitle, children }: { title: string; subtitle?: st
   )
 }
 
-export default function PropertyDashboard({
-  currency = 'AED', properties, units, leases, transactions, accounts,
-  chartAccounts = [], chartVouchers = [],
+function PropertyDashboardInner({
+  currency = 'AED', properties, units, leases, accounts = [], chartAccounts, chartVouchers, bankMappings = [],
   onNavigate = () => {},
 }: Props) {
   const sym = currency
@@ -104,24 +118,20 @@ export default function PropertyDashboard({
   const monthlyRent = useMemo(() => occupiedUnits.reduce((s, u) => s + u.rentAmount, 0), [occupiedUnits])
 
   const accountingMetrics = useMemo(() => {
-    const allBals = getAllAccountBalances(chartVouchers, chartAccounts)
-    const cashId = chartAccounts.find(a => a.code === '1110')?.id
-    const cash = cashId ? (allBals[cashId] || 0) : 0
-    const bankParent = chartAccounts.find(a => a.code === '1120')
-    const bankBalance = bankParent
-      ? chartAccounts.filter(a => a.parentId === bankParent.id && a.isActive).reduce((s, a) => s + (allBals[a.id] || 0), 0)
-      : 0
-    const pdcId = chartAccounts.find(a => a.code === '1410')?.id
-    const pdc = pdcId ? (allBals[pdcId] || 0) : 0
-    const totalExpenses = getAccountTypeBalance('expense', chartVouchers, chartAccounts)
-    const totalRevenue = getAccountTypeBalance('revenue', chartVouchers, chartAccounts)
-    const netIncome = totalRevenue - totalExpenses
-    return { cash, bankBalance, pdc, totalExpenses, totalRevenue, netIncome }
-  }, [chartAccounts, chartVouchers])
+    const summary = getPropertyFinancialSummary(chartAccounts, chartVouchers, accounts, bankMappings)
+    return {
+      cash: summary.cash,
+      bankBalance: summary.bankBalance,
+      pdc: summary.pdc,
+      totalExpenses: summary.totalExpenses,
+      totalRevenue: summary.totalRevenue,
+      netIncome: summary.netIncome,
+    }
+  }, [chartAccounts, chartVouchers, accounts, bankMappings])
 
   const incomeVsExpenseData = useMemo(() => {
     const months: Record<string, { income: number; expense: number }> = {}
-    const posted = chartVouchers.filter(v => v.status === 'Posted')
+    const posted = getActiveVouchers(chartVouchers)
     for (const v of posted) {
       const month = v.date.substring(0, 7)
       if (!months[month]) months[month] = { income: 0, expense: 0 }
@@ -191,19 +201,19 @@ export default function PropertyDashboard({
           <KpiCard label="Cash" value={fmt(accountingMetrics.cash, sym)} color="#5C63A6" onClick={() => onNavigate('accounts-dashboard')} icon={
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 2 9 22 9 22 7 12 2"/><rect x="4" y="9" width="16" height="11"/><line x1="9" y1="14" x2="9" y2="18"/><line x1="15" y1="14" x2="15" y2="18"/></svg>
           } />
-          <KpiCard label="Bank Balance" value={fmt(accountingMetrics.bankBalance, sym)} color="#F59E0B" onClick={() => onNavigate('accounts-dashboard')} icon={
+          <KpiCard label="Bank Balance" value={fmt(accountingMetrics.bankBalance, sym)} color="#F59E0B" onClick={() => onNavigate('bank-accounts')} icon={
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 2 9 22 9 22 7 12 2"/><rect x="4" y="9" width="16" height="11"/><line x1="9" y1="14" x2="9" y2="18"/><line x1="15" y1="14" x2="15" y2="18"/></svg>
           } />
           <KpiCard label="PDC" value={fmt(accountingMetrics.pdc, sym)} color="#8B5CF6" onClick={() => onNavigate('pdc-manager')} icon={
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           } />
-          <KpiCard label="Expenses" value={fmt(accountingMetrics.totalExpenses, sym)} color="#EF4444" onClick={() => onNavigate('accounts-dashboard')} icon={
+          <KpiCard label="Expenses" value={fmt(accountingMetrics.totalExpenses, sym)} color="#EF4444" onClick={() => onNavigate('expenses')} icon={
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
           } />
         </div>
 
         <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-          <KpiCard label="Net Property Income" value={fmt(accountingMetrics.netIncome, sym)} color={accountingMetrics.netIncome >= 0 ? primaryColor : '#EF4444'} onClick={() => onNavigate('profit-loss')} icon={
+          <KpiCard label="Net Property Income" value={fmt(accountingMetrics.netIncome, sym, accountingMetrics.netIncome >= 0 ? undefined : '#EF4444')} color={accountingMetrics.netIncome >= 0 ? primaryColor : '#EF4444'} onClick={() => onNavigate('profit-loss')} icon={
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
           } />
           <KpiCard label="Properties" value={String(properties.length)} color={primaryColor} onClick={() => onNavigate('properties')} icon={
@@ -251,13 +261,13 @@ export default function PropertyDashboard({
             ) : (
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={incomeVsExpenseData.slice(-6)}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => fmt(v)} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={ChartConfig.grid} vertical={false} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: ChartConfig.axis }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: ChartConfig.axis }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtTick(v)} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-                  <Bar dataKey="Income" fill={primaryColor} radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Expenses" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Income" fill={ChartColors.green} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Expenses" fill={ChartColors.red} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -276,11 +286,11 @@ export default function PropertyDashboard({
             ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={topPropertiesData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6B7280' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => fmt(v)} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={ChartConfig.grid} vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: ChartConfig.axis }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: ChartConfig.axis }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtTick(v)} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="value" fill={primaryColor} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="value" fill={PropertyPalette.properties} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -297,13 +307,13 @@ export default function PropertyDashboard({
             ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={leaseExpiryData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#6B7280' }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={40} />
-                  <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} label={{ value: 'Months', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: '#9CA3AF' } }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={ChartConfig.grid} vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: ChartConfig.axis }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={40} />
+                  <YAxis tick={{ fontSize: 11, fill: ChartConfig.axis }} axisLine={false} tickLine={false} label={{ value: 'Months', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: ChartConfig.axis } }} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="monthsLeft" name="Months Remaining" radius={[4, 4, 0, 0]}>
                     {leaseExpiryData.map((l) => (
-                      <Cell key={l.name} fill={l.monthsLeft <= 3 ? '#EF4444' : l.monthsLeft <= 6 ? '#F59E0B' : primaryColor} />
+                      <Cell key={l.name} fill={l.monthsLeft <= 3 ? ChartColors.red : l.monthsLeft <= 6 ? PropertyPalette.securityDeposits : ChartColors.green} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -326,7 +336,7 @@ export default function PropertyDashboard({
                 <AreaChart data={cashFlowData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => fmt(v)} />
+                  <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtTick(v)} />
                   <Tooltip content={<CustomTooltip />} />
                   <Area type="monotone" dataKey="Income" stroke={primaryColor} fill={`${primaryColor}20`} strokeWidth={2} />
                   <Area type="monotone" dataKey="Expenses" stroke="#EF4444" fill="#EF444420" strokeWidth={2} />
@@ -340,3 +350,5 @@ export default function PropertyDashboard({
     </>
   )
 }
+
+export default memo(PropertyDashboardInner)

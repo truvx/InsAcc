@@ -1,5 +1,6 @@
 import type { Account, Voucher, TrialBalanceEntry, BankMapping } from '../accounting/types'
 import { getAllAccountBalances, getAccountTypeBalance, getTrialBalance, getAccountBalance, getLinesForAccount, getAccountBalanceAtDate, getAllAccountBalancesAtDate, getAccountBalanceSummary, getTrialBalanceAtDate, getTrialBalanceTotals, invalidateBalanceCache } from '../accounting/ledgerService'
+import { getLeafAccounts } from '../accounting/chartOfAccountsService'
 import type { PurchaseRecord } from '../data/purchaseLedger'
 import type { BankAccount, BankTransaction } from '../data/banking'
 
@@ -47,7 +48,6 @@ export interface PurchaseReportRow {
 
 export interface BankPositionRow {
   bankName: string
-  accountNumber: string
   ledgerBalance: number
   bankBalance: number
   difference: number
@@ -113,6 +113,7 @@ export interface ReportsProjection {
   balanceSheet: {
     assets: BalanceSheetSection[]
     liabilities: BalanceSheetSection[]
+    equity: BalanceSheetSection[]
     totalAssets: number
     totalLiabilities: number
     totalEquity: number
@@ -137,51 +138,22 @@ function buildBalanceSheetSections(
   accounts: Account[],
   allBals: Record<string, number>,
   type: 'asset' | 'liability' | 'equity',
-  additionalBalance?: { accountId: string; amount: number },
 ): { sections: BalanceSheetSection[]; total: number } {
   const typeAccounts = accounts.filter(a => a.type === type && a.isActive).sort((a, b) => a.code.localeCompare(b.code))
-  const sections: BalanceSheetSection[] = typeAccounts.map(a => {
-    let balance = allBals[a.id] || 0
+  const sections: BalanceSheetSection[] = typeAccounts.map(a => ({
+    accountId: a.id,
+    accountCode: a.code,
+    accountName: a.name,
+    balance: allBals[a.id] || 0,
+    isParent: !a.parentId,
+    parentId: a.parentId,
+    depth: a.parentId ? 1 : 0,
+  }))
 
-    if (additionalBalance && additionalBalance.accountId === a.id) {
-      balance += additionalBalance.amount
-    }
-
-    return {
-      accountId: a.id,
-      accountCode: a.code,
-      accountName: a.name,
-      balance,
-      isParent: !a.parentId,
-      parentId: a.parentId,
-      depth: a.parentId ? 1 : 0,
-    }
-  })
-
-  if (type === 'equity') {
-    const hasRetainedEarnings = typeAccounts.some(a => a.code.startsWith('3120'))
-    if (additionalBalance && additionalBalance.amount !== 0) {
-      const retEarningsIdx = sections.findIndex(s => s.accountCode.startsWith('3120'))
-      if (retEarningsIdx >= 0) {
-        sections[retEarningsIdx] = {
-          ...sections[retEarningsIdx],
-          balance: (allBals[additionalBalance.accountId] || 0) + additionalBalance.amount,
-        }
-      } else if (!hasRetainedEarnings && additionalBalance.amount !== 0) {
-        sections.push({
-          accountId: 'retained-earnings',
-          accountCode: '3120',
-          accountName: 'Retained Earnings',
-          balance: additionalBalance.amount,
-          isParent: false,
-          parentId: accounts.find(a => a.code === '31')?.id ?? null,
-          depth: 1,
-        })
-      }
-    }
-  }
-
-  const total = sections.reduce((s, a) => s + a.balance, 0)
+  const leafIds = new Set(
+    accounts.filter(a => a.isActive && !accounts.some(c => c.parentId === a.id && c.isActive)).map(a => a.id)
+  )
+  const total = sections.filter(s => leafIds.has(s.accountId)).reduce((s, a) => s + a.balance, 0)
   return { sections, total }
 }
 
@@ -194,19 +166,17 @@ export function getReportsProjection(
   bankMappings: BankMapping[] = [],
 ): ReportsProjection {
   const allBals = getAllAccountBalances(vouchers, accounts)
+  const leafAccounts = getLeafAccounts(accounts)
 
-  const cashId = accounts.find(a => a.code === '1110')?.id
-  const cash = cashId ? (allBals[cashId] || 0) : 0
+  const cashAccounts = leafAccounts.filter(a => a.code.startsWith('1110'))
+  const cash = cashAccounts.reduce((s, a) => s + (allBals[a.id] || 0), 0)
 
-  const bankParent = accounts.find(a => a.code === '1120')
-  const bankBalance = bankParent
-    ? accounts.filter(a => a.parentId === bankParent.id && a.isActive).reduce((s, a) => s + (allBals[a.id] || 0), 0)
-    : 0
+  const bankAccountsList = leafAccounts.filter(a => a.code.startsWith('1120'))
+  const bankBalance = bankAccountsList.reduce((s, a) => s + (allBals[a.id] || 0), 0)
 
-  const investmentParent = accounts.find(a => a.code === '12')
-  const investments = investmentParent
-    ? accounts.filter(a => a.parentId === investmentParent.id && a.isActive).reduce((s, a) => s + (allBals[a.id] || 0), 0)
-    : 0
+  const investments = leafAccounts
+    .filter(a => a.code.startsWith('12'))
+    .reduce((s, a) => s + (allBals[a.id] || 0), 0)
 
   const totalRevenue = getAccountTypeBalance('revenue', vouchers, accounts)
   const totalExpenses = getAccountTypeBalance('expense', vouchers, accounts)
@@ -221,30 +191,19 @@ export function getReportsProjection(
   const totalLiabilitiesFromTypes = getAccountTypeBalance('liability', vouchers, accounts)
 
   const tbEntries = getTrialBalance(vouchers, accounts)
-  const netIncomeForBS = totalRevenue - totalExpenses
   const { sections: assets, total: totalAssetsVal } = buildBalanceSheetSections(accounts, allBals, 'asset')
   const { sections: liabilities, total: totalLiabilitiesVal } = buildBalanceSheetSections(accounts, allBals, 'liability')
-
-  const retainedEarningsAccount = accounts.find(a => a.code === '3120')
-  const { sections: equityItems, total: totalEquity } = buildBalanceSheetSections(
-    accounts,
-    allBals,
-    'equity',
-    retainedEarningsAccount
-      ? { accountId: retainedEarningsAccount.id, amount: netIncomeForBS }
-      : { accountId: '', amount: netIncomeForBS },
-  )
+  const { sections: equityItems, total: totalEquityFromLedger } = buildBalanceSheetSections(accounts, allBals, 'equity')
 
   const revenueEntries = tbEntries.filter(e => e.type === 'revenue')
   const expenseEntries = tbEntries.filter(e => e.type === 'expense')
 
   // Investment Position — asset-by-asset cost basis vs current value
   const investmentPosition: InvestmentPositionRow[] = []
-  const invParent = accounts.find(a => a.code === '12')
-  if (invParent) {
-    const invChildIds = new Set(
-      accounts.filter(a => a.parentId === invParent.id && a.isActive).map(a => a.id),
-    )
+  const invChildIds = new Set(
+    leafAccounts.filter(a => a.code.startsWith('12')).map(a => a.id),
+  )
+  if (invChildIds.size > 0) {
     const byAccount = new Map<string, PurchaseRecord[]>()
     for (const p of purchaseRecords.filter(p => p.status === 'active' && p.accountId && invChildIds.has(p.accountId))) {
       if (!byAccount.has(p.accountId)) byAccount.set(p.accountId, [])
@@ -295,10 +254,9 @@ export function getReportsProjection(
       if (t.type === 'credit' || t.type === 'transfer_in') return s + t.amount
       if (t.type === 'debit' || t.type === 'transfer_out') return s - t.amount
       return s
-    }, ba.openingBalance)
+    }, 0)
     return {
-      bankName: `${ba.institution} — ${ba.accountName}`,
-      accountNumber: ba.accountNumber,
+      bankName: ba.institution,
       ledgerBalance: Math.round(ledgerBalance * 100) / 100,
       bankBalance: Math.round(bankBalance * 100) / 100,
       difference: Math.round((ledgerBalance - bankBalance) * 100) / 100,
@@ -311,13 +269,9 @@ export function getReportsProjection(
   const investing: CashFlowCategory[] = []
   const financing: CashFlowCategory[] = []
 
-  const cashAndBankCodes = new Set<string>()
-  const cashAcct2 = accounts.find(a => a.code === '1110')
-  const bankParent2 = accounts.find(a => a.code === '1120')
-  if (cashAcct2) cashAndBankCodes.add(cashAcct2.id)
-  if (bankParent2) {
-    accounts.filter(a => a.parentId === bankParent2.id && a.isActive).forEach(a => cashAndBankCodes.add(a.id))
-  }
+  const cashAndBankCodes = new Set<string>(
+    leafAccounts.filter(a => a.code.startsWith('11')).map(a => a.id)
+  )
 
   const isCashOrBank = (acctId: string): boolean => cashAndBankCodes.has(acctId)
   const isInvestment = (acct: Account): boolean => acct.code.startsWith('12')
@@ -337,15 +291,15 @@ export function getReportsProjection(
         const opAmount = acct.type === 'revenue' ? l.baseAmount : -l.baseAmount
         operating.push({ category: acct.name, type: 'Operating', amount: opAmount })
       } else if (isInvestment(acct)) {
-        investing.push({ category: acct.name, type: 'Investing', amount: -sign * l.baseAmount })
+        investing.push({ category: acct.name, type: 'Investing', amount: sign * l.baseAmount })
       } else if (isLoan(acct)) {
-        financing.push({ category: acct.name, type: 'Financing', amount: -sign * l.baseAmount })
+        financing.push({ category: acct.name, type: 'Financing', amount: sign * l.baseAmount })
       } else if (isEquity(acct)) {
         financing.push({ category: acct.name, type: 'Financing', amount: sign * l.baseAmount })
       } else if (acct.code.startsWith('21') || acct.code.startsWith('23')) {
-        operating.push({ category: acct.name, type: 'Operating', amount: -sign * l.baseAmount })
+        operating.push({ category: acct.name, type: 'Operating', amount: sign * l.baseAmount })
       } else if (acct.code.startsWith('13') || acct.code.startsWith('14') || acct.code.startsWith('15')) {
-        operating.push({ category: acct.name, type: 'Operating', amount: -sign * l.baseAmount })
+        operating.push({ category: acct.name, type: 'Operating', amount: sign * l.baseAmount })
       }
     }
   }
@@ -396,12 +350,12 @@ export function getReportsProjection(
       const totalDebit = lines.reduce((s, { line }) => s + (line.type === 'Debit' ? line.baseAmount : 0), 0)
       const totalCredit = lines.reduce((s, { line }) => s + (line.type === 'Credit' ? line.baseAmount : 0), 0)
       const closingBalance = allBals[a.id] || 0
-      const opening = a.openingBalance ?? 0
-      const openingBalance = opening + (closingBalance - (a.normalBalance === 'debit' ? totalDebit - totalCredit : totalCredit - totalDebit) - opening)
+      const netActivity = a.normalBalance === 'debit' ? totalDebit - totalCredit : totalCredit - totalDebit
+      const derivedOpening = closingBalance - netActivity
       return {
         accountCode: a.code,
         accountName: a.name,
-        openingBalance: Math.round(opening * 100) / 100,
+        openingBalance: Math.round(derivedOpening * 100) / 100,
         debitTotal: Math.round(totalDebit * 100) / 100,
         creditTotal: Math.round(totalCredit * 100) / 100,
         closingBalance: Math.round(closingBalance * 100) / 100,
@@ -425,9 +379,10 @@ export function getReportsProjection(
     balanceSheet: {
       assets,
       liabilities,
+      equity: equityItems,
       totalAssets: totalAssetsVal,
       totalLiabilities: totalLiabilitiesVal,
-      totalEquity: totalEquity + netIncome,
+      totalEquity: equityItems.reduce((s, i) => s + i.balance, 0),
     },
     profitLoss: {
       revenue: revenueEntries,

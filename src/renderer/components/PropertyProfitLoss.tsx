@@ -1,9 +1,12 @@
 import React, { useMemo, useState } from 'react'
 import type { Account, Voucher } from '../accounting/types'
 import { buildAccountTree } from '../accounting/chartOfAccountsService'
-import { getAccountBalance } from '../accounting/ledgerService'
+import { generateChartOfAccountsReadModel, generateTrialBalanceReadModel, generateProfitAndLossReadModel } from '../readModels/accountingReadModels'
 import { EmptyState, Modal } from './design/DesignSystem'
 import AccountDrillDown from './AccountDrillDown'
+
+import { TrendingUp, TrendingDown } from 'lucide-react'
+import { CurrencyText } from './design/CurrencyText'
 
 interface Props {
   currency?: string
@@ -33,43 +36,32 @@ function flatRowsFromTree(
   return rows
 }
 
-function computeTotal(
-  nodes: TreeNode[],
-  balances: Record<string, number>,
-  allowedTypes: string[],
-): number {
-  return nodes.reduce((sum, node) => {
-    if (!allowedTypes.includes(node.account.type)) return sum
-    const own = balances[node.account.id] || 0
-    const childrenTotal = node.children.length > 0
-      ? computeTotal(node.children, balances, allowedTypes)
-      : own
-    return sum + childrenTotal
-  }, 0)
-}
-
 export default function PropertyProfitLoss({ currency = 'AED', accounts, vouchers }: Props) {
   const [drillAccountId, setDrillAccountId] = useState<string | null>(null)
   const [drillAccountName, setDrillAccountName] = useState<string>('')
 
+  const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, vouchers), [accounts, vouchers])
+  
   const balances = useMemo(() => {
     const map: Record<string, number> = {}
-    for (const acct of accounts) {
-      if (acct.isActive) {
-        map[acct.id] = getAccountBalance(acct.id, vouchers, accounts)
-      }
+    for (const entry of coaEntries) {
+      map[entry.id] = entry.currentBalance
     }
     return map
-  }, [accounts, vouchers])
+  }, [coaEntries])
+
+  const tbEntries = useMemo(() => generateTrialBalanceReadModel(coaEntries), [coaEntries])
+  
+  const plModel = useMemo(() => generateProfitAndLossReadModel(tbEntries, accounts), [tbEntries, accounts])
 
   const tree = useMemo(() => buildAccountTree(accounts) as unknown as TreeNode[], [accounts])
 
   const revenueRows = useMemo(() => flatRowsFromTree(tree, balances, ['revenue']), [tree, balances])
   const expenseRows = useMemo(() => flatRowsFromTree(tree, balances, ['expense']), [tree, balances])
 
-  const totalRevenue = useMemo(() => computeTotal(tree, balances, ['revenue']), [tree, balances])
-  const totalExpenses = useMemo(() => computeTotal(tree, balances, ['expense']), [tree, balances])
-  const netIncome = totalRevenue - totalExpenses
+  const totalRevenue = plModel.totalRevenue
+  const totalExpenses = plModel.totalExpenses
+  const netIncome = plModel.netProfit
 
   const hasAny = revenueRows.length > 0 || expenseRows.length > 0
 
@@ -84,8 +76,8 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr>
-            <th style={{ padding: '8px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--divider)', background: '#FAF8F4', position: 'sticky', top: 0 }}>Account</th>
-            <th style={{ padding: '8px 16px', textAlign: 'right', fontSize: 11, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--divider)', background: '#FAF8F4', position: 'sticky', top: 0, width: 160 }}>Amount ({currency})</th>
+            <th style={{ padding: '8px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--divider)', background: 'var(--bg-tertiary)', position: 'sticky', top: 0 }}>Account</th>
+            <th style={{ padding: '8px 16px', textAlign: 'right', fontSize: 11, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--divider)', background: 'var(--bg-tertiary)', position: 'sticky', top: 0, width: 160 }}>Amount ({currency})</th>
           </tr>
         </thead>
         <tbody>
@@ -114,19 +106,17 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
                       {!isGroup && (
                         <>
                           <span style={{ fontWeight: isSubGroup ? 600 : 400, fontSize: 13 }}>{row.account.name}</span>
-                          <span style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace', marginLeft: 8 }}>{row.account.code}</span>
+                          <span style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 8 }}>{row.account.code}</span>
                         </>
                       )}
                     </div>
                   </td>
                   <td style={{ padding: isGroup ? '10px 16px' : '8px 16px', textAlign: 'right', borderBottom: '1px solid #F9FAFB' }}>
-                    <span style={{
-                      fontFamily: 'monospace', fontSize: isGroup ? 14 : 13,
-                      fontWeight: isGroup ? 700 : 600,
-                      color: isGroup ? totalColor : row.balance >= 0 ? '#1F2937' : '#EF4444',
-                    }}>
-                      {row.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </span>
+                    <CurrencyText
+                      value={row.balance}
+                      currency={currency}
+                      className={isGroup ? 'fw-700' : row.balance >= 0 ? 'text-primary' : 'text-danger'}
+                    />
                   </td>
                 </tr>
               )
@@ -179,7 +169,7 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
                   padding: '16px 20px', borderBottom: '1px solid var(--divider)',
                   display: 'flex', alignItems: 'center', gap: 8,
                 }}>
-                  <span style={{ fontSize: 18 }}>📈</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', color: '#059669' }}><TrendingUp size={16} strokeWidth={1.75} /></span>
                   <span style={{ fontWeight: 700, fontSize: 16, color: '#059669' }}>Revenue</span>
                   <span style={{ fontSize: 12, color: '#9CA3AF', marginLeft: 'auto' }}>
                     {revenueRows.filter(r => r.depth === 0).length} sections
@@ -192,9 +182,7 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
                   background: '#05966908',
                 }}>
                   <span style={{ fontWeight: 700, fontSize: 14, color: '#059669' }}>Total Revenue</span>
-                  <span style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: '#059669' }}>
-                    {currency} {totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </span>
+                  <CurrencyText value={totalRevenue} currency={currency} className="text-md fw-700" style={{ color: '#059669' }} />
                 </div>
               </div>
 
@@ -203,7 +191,7 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
                   padding: '16px 20px', borderBottom: '1px solid var(--divider)',
                   display: 'flex', alignItems: 'center', gap: 8,
                 }}>
-                  <span style={{ fontSize: 18 }}>📉</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', color: '#DC2626' }}><TrendingDown size={16} strokeWidth={1.75} /></span>
                   <span style={{ fontWeight: 700, fontSize: 16, color: '#DC2626' }}>Expenses</span>
                   <span style={{ fontSize: 12, color: '#9CA3AF', marginLeft: 'auto' }}>
                     {expenseRows.filter(r => r.depth === 0).length} sections
@@ -216,9 +204,7 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
                   background: '#DC262608',
                 }}>
                   <span style={{ fontWeight: 700, fontSize: 14, color: '#DC2626' }}>Total Expenses</span>
-                  <span style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: '#DC2626' }}>
-                    {currency} {totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </span>
+                  <CurrencyText value={totalExpenses} currency={currency} className="text-md fw-700" style={{ color: '#DC2626' }} />
                 </div>
               </div>
             </div>
@@ -237,12 +223,12 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
                   <div style={{ fontSize: 12, color: '#9CA3AF' }}>Revenue — Expenses</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{
-                    fontFamily: 'monospace', fontSize: 28, fontWeight: 700,
-                    color: netIncome >= 0 ? '#22C55E' : '#EF4444',
-                  }}>
-                    {currency} {netIncome.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </div>
+                  <CurrencyText
+                    value={netIncome}
+                    currency={currency}
+                    className="text-lg fw-700"
+                    style={{ color: netIncome >= 0 ? '#22C55E' : '#EF4444' }}
+                  />
                   <div style={{
                     fontSize: 12, fontWeight: 500,
                     color: netIncome >= 0 ? '#22C55E' : '#EF4444',

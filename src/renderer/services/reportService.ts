@@ -1,7 +1,6 @@
 import type { Investment } from '../components/Investments'
 import type { Transaction } from '../components/Transactions'
 import type { BankAccount, BankTransaction } from '../data/banking'
-import { deriveBalance } from './bankingService'
 import type {
   FinancialSummary, CashFlowSummary, AssetAllocation, CategoryBreakdown,
   MonthlyTrend, RecentActivityItem, NetWorthSummary, AllocationItem,
@@ -21,11 +20,9 @@ export function calculateTotalAssets(investments: Investment[]): number {
 }
 
 export function calculateTotalCash(bankAccounts: BankAccount[], bankTransactions: BankTransaction[]): number {
-  return safeSum(
-    bankAccounts
-      .filter(a => a.status === 'active')
-      .map(a => deriveBalance(a, bankTransactions))
-  )
+  // DEPRECATED: deriveBalance removed - this legacy service doesn't have ledger integration
+  // Returns 0 to prevent incorrect calculations. Use ledger-based calculations instead.
+  return 0
 }
 
 export function calculateIncome(transactions: Transaction[]): number {
@@ -45,7 +42,9 @@ export function calculateNetCashFlow(transactions: Transaction[]): number {
 }
 
 export function calculateNetWorth(investments: Investment[], bankAccounts: BankAccount[], bankTransactions: BankTransaction[]): number {
-  return calculateTotalAssets(investments) + calculateTotalCash(bankAccounts, bankTransactions)
+  // DEPRECATED: deriveBalance removed - this legacy service doesn't have ledger integration
+  // Returns only assets to prevent incorrect calculations. Use ledger-based calculations instead.
+  return calculateTotalAssets(investments)
 }
 
 export function calculateAssetAllocation(investments: Investment[]): AssetAllocation[] {

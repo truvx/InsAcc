@@ -1,17 +1,16 @@
-import React, { useMemo, useState, useCallback, useRef } from 'react'
+import React, { useMemo, useState } from 'react'
 import type { AssetHolding } from '../data/assetTypes'
 import type { Account, Voucher, BankMapping } from '../accounting/types'
-import type { BankAccount, BankTransaction } from '../data/banking'
+import type { BankAccount } from '../data/banking'
 import type { PurchaseRecord } from '../data/purchaseLedger'
 import { getInvestmentHoldingsProjection } from '../readModels/InvestmentHoldingsReadModel'
+import { getAssetWeightMultiplier } from '../services/purchaseLedgerService'
 import { getLinesForAccount } from '../accounting/ledgerService'
 import { formatCurrency } from '../utils/reportFormatters'
 import { DataTable, type Column } from './design/Table'
 import { Badge, EmptyState, Modal } from './design/DesignSystem'
 import VoucherTimeline from './VoucherTimeline'
 import BankAccountAvatar from './BankAccountAvatar'
-import { deriveBalance } from '../services/bankingService'
-import { maskAccountNumber } from '../utils'
 
 interface Props {
   currency?: string
@@ -19,66 +18,16 @@ interface Props {
   vouchers: Voucher[]
   purchaseRecords: PurchaseRecord[]
   bankAccounts?: BankAccount[]
-  bankTransactions?: BankTransaction[]
   bankMappings?: BankMapping[]
   onNavigate?: (page: string) => void
 }
 
-const fmtBalance = (n: number, sym: string) =>
-  `${sym} ${n.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
-
-function Tooltip({
-  bank,
-  balance,
-  style,
-}: {
-  bank: BankAccount
-  balance: number
-  style: React.CSSProperties
-}) {
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        zIndex: 9999,
-        background: '#FFFFFF',
-        border: '1px solid #E5E7EB',
-        borderRadius: 8,
-        boxShadow: '0 8px 24px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06)',
-        padding: '14px 18px',
-        minWidth: 220,
-        pointerEvents: 'none',
-        ...style,
-      }}
-    >
-      <div style={{ fontSize: 14, fontWeight: 600, color: '#1E293B', marginBottom: 2 }}>
-        {bank.institution}
-      </div>
-      <div style={{ fontSize: 12, color: '#64748B', marginBottom: 6 }}>
-        {bank.accountName}
-      </div>
-      <div style={{ fontSize: 12, color: '#64748B', fontFamily: 'monospace', marginBottom: 8 }}>
-        {maskAccountNumber(bank.accountNumber)}
-      </div>
-      <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 8 }}>
-        <div style={{ fontSize: 12, color: '#64748B' }}>Current Balance</div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#16A34A' }}>
-          {fmtBalance(balance, bank.currency || 'AED')}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export default function InvestmentHoldings({
   currency = 'AED', accounts, vouchers, purchaseRecords,
-  bankAccounts = [], bankTransactions = [], bankMappings = [],
+  bankAccounts = [], bankMappings = [],
   onNavigate = () => {},
 }: Props) {
   const [detailHolding, setDetailHolding] = useState<AssetHolding | null>(null)
-  const [tooltipTarget, setTooltipTarget] = useState<{ bankAccountId: string; rect: DOMRect } | null>(null)
-  const [tooltipVisible, setTooltipVisible] = useState(false)
-  const hideTimer = useRef<ReturnType<typeof setTimeout>>()
 
   const holdings = useMemo(
     () => getInvestmentHoldingsProjection(purchaseRecords, vouchers, accounts),
@@ -89,14 +38,6 @@ export default function InvestmentHoldings({
     () => new Map(bankAccounts.map(ba => [ba.id, ba])),
     [bankAccounts],
   )
-
-  const balanceMap = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const ba of bankAccounts) {
-      map.set(ba.id, deriveBalance(ba, bankTransactions))
-    }
-    return map
-  }, [bankAccounts, bankTransactions])
 
   const totalInvested = useMemo(
     () => holdings.reduce((s, h) => s + h.totalInvested, 0),
@@ -110,31 +51,6 @@ export default function InvestmentHoldings({
 
   const totalHoldings = holdings.length
 
-  const handleBankClick = useCallback((e: React.MouseEvent, _bankAccountId: string) => {
-    e.stopPropagation()
-    onNavigate('bank-accounts')
-  }, [onNavigate])
-
-  const showTooltip = useCallback((bankAccountId: string, rect: DOMRect) => {
-    if (hideTimer.current) clearTimeout(hideTimer.current)
-    setTooltipTarget({ bankAccountId, rect })
-    setTooltipVisible(true)
-  }, [])
-
-  const hideTooltip = useCallback(() => {
-    hideTimer.current = setTimeout(() => {
-      setTooltipVisible(false)
-      setTooltipTarget(null)
-    }, 120)
-  }, [])
-
-  const tooltipData = useMemo(() => {
-    if (!tooltipTarget || !tooltipVisible) return null
-    const bank = bankByIdMap.get(tooltipTarget.bankAccountId)
-    if (!bank) return null
-    return { bank, balance: balanceMap.get(bank.id) || 0 }
-  }, [tooltipTarget, tooltipVisible, bankByIdMap, balanceMap])
-
   const columns: Column<AssetHolding>[] = [
     {
       key: 'assetName', header: 'Asset', sortable: true,
@@ -146,102 +62,13 @@ export default function InvestmentHoldings({
       ),
     },
     {
-      key: 'accountCode', header: 'Account',
+      key: 'accountCode', header: 'Paid From',
       render: h => {
         const record = purchaseRecords.find(p => h.purchaseRecordIds.includes(p.id))
-        const fundingBankAccountId = record?.fundingBankAccountId || ''
-        const bank = fundingBankAccountId ? bankByIdMap.get(fundingBankAccountId) ?? null : null
-        const isUnassigned = !fundingBankAccountId || !bank
-
+        if (!record) return <span className="text-xs text-secondary">—</span>
+        const bank = record.fundingBankAccountId ? bankByIdMap.get(record.fundingBankAccountId) ?? null : null
         return (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              cursor: 'pointer',
-              padding: '6px 8px',
-              borderRadius: 6,
-              transition: 'background 180ms ease',
-            }}
-            className="holdings-account-cell"
-            tabIndex={0}
-            role="button"
-            aria-label={bank ? `Funding Bank: ${bank.institution}` : 'Unassigned'}
-            onClick={e => fundingBankAccountId && handleBankClick(e, fundingBankAccountId)}
-            onMouseEnter={e => fundingBankAccountId && showTooltip(fundingBankAccountId, e.currentTarget.getBoundingClientRect())}
-            onMouseLeave={hideTooltip}
-            onFocus={e => fundingBankAccountId && showTooltip(fundingBankAccountId, e.currentTarget.getBoundingClientRect())}
-            onBlur={hideTooltip}
-            onKeyDown={e => { if ((e.key === 'Enter' || e.key === ' ') && fundingBankAccountId) { e.preventDefault(); onNavigate('bank-accounts') } }}
-          >
-            <div
-              className="holdings-avatar-wrapper"
-              style={{
-                transition: 'transform 180ms ease',
-                flexShrink: 0,
-                lineHeight: 0,
-              }}
-            >
-              <BankAccountAvatar bank={bank} size={28} />
-            </div>
-            <div style={{ minWidth: 0 }}>
-              {bank ? (
-                <>
-                  <div
-                    className="holdings-bank-name"
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 500,
-                      color: '#1E293B',
-                      transition: 'color 180ms ease',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {bank.institution}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 400,
-                      color: '#64748B',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {bank.accountName}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 500,
-                      color: '#1E293B',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    Unassigned
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 400,
-                      color: '#64748B',
-                    }}
-                  >
-                    No linked bank account
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+          <span className="text-sm">{bank?.institution || '—'}</span>
         )
       },
     },
@@ -250,19 +77,28 @@ export default function InvestmentHoldings({
       render: h => <span className="text-xs">{h.totalQuantity.toLocaleString()}</span>,
     },
     {
-      key: 'averageCost', header: 'Avg Cost', sortable: true, numeric: true, width: '100px',
-      render: h => <span className="text-xs">{currency} {h.averageCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>,
+      key: 'avgPurchaseValue', header: 'Average Unit Price', sortable: true, numeric: true, width: '180px',
+      render: h => {
+        const multiplier = getAssetWeightMultiplier(h.assetName)
+        if (multiplier > 1) {
+          const weightLabel = multiplier >= 1000 ? `${multiplier / 1000}kg` : `${multiplier}g`
+          const barPrice = h.avgPurchaseValue * multiplier
+          return (
+            <div style={{ textAlign: 'right' }}>
+              <span className="text-xs">{currency} {h.avgPurchaseValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}/g</span>
+              <div className="text-xxs text-secondary" style={{ fontSize: '10px' }}>({currency} {barPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}/{weightLabel})</div>
+            </div>
+          )
+        }
+        return <span className="text-xs">{currency} {h.avgPurchaseValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+      },
     },
     {
       key: 'totalInvested', header: 'Invested', sortable: true, numeric: true, width: '110px',
       render: h => <span className="fw-600 text-xs">{currency} {h.totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>,
     },
     {
-      key: 'marketValue', header: 'Market Val', sortable: true, numeric: true, width: '110px',
-      render: h => <span className="text-xs fw-600" style={{ color: 'var(--primary)' }}>{currency} {h.marketValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>,
-    },
-    {
-      key: 'unrealizedGain', header: 'Unrealized', sortable: true, numeric: true, width: '100px',
+      key: 'unrealizedGain', header: 'Unrealized', sortable: true, numeric: true, width: '110px',
       render: h => (
         <span className={`text-xs fw-600 ${h.unrealizedGain >= 0 ? 'text-success' : 'text-danger'}`}>
           {h.unrealizedGain >= 0 ? '+' : ''}{currency} {h.unrealizedGain.toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -311,33 +147,6 @@ export default function InvestmentHoldings({
 
   return (
     <>
-      <style>{`
-        .holdings-account-cell:hover .holdings-avatar-wrapper {
-          transform: scale(1.02);
-        }
-        .holdings-account-cell:hover .holdings-bank-name {
-          color: var(--primary) !important;
-        }
-        .holdings-account-cell:hover {
-          background: rgba(59,165,73,0.06);
-        }
-        .holdings-account-cell:focus-visible {
-          outline: 2px solid var(--primary);
-          outline-offset: 2px;
-        }
-      `}</style>
-
-      {tooltipData && (
-        <Tooltip
-          bank={tooltipData.bank}
-          balance={tooltipData.balance}
-          style={{
-            left: tooltipTarget!.rect.right + 12,
-            top: tooltipTarget!.rect.top - 10,
-          }}
-        />
-      )}
-
       <Modal open={detailHolding !== null} title={`Holding — ${detailHolding?.assetName || ''}`} onClose={() => setDetailHolding(null)}>
         {detailHolding && (
           <div style={{ minWidth: 560, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -351,8 +160,8 @@ export default function InvestmentHoldings({
                 <div className="kpi-value" style={{ fontSize: 18, color: 'var(--primary)' }}>{currency} {detailHolding.marketValue.toLocaleString()}</div>
               </div>
               <div className="kpi-card" style={{ borderTop: '2px solid var(--warning)', padding: 12 }}>
-                <div className="kpi-label">Avg Cost</div>
-                <div className="kpi-value" style={{ fontSize: 18 }}>{currency} {detailHolding.averageCost.toLocaleString()}</div>
+                <div className="kpi-label">Average Unit Price</div>
+                <div className="kpi-value" style={{ fontSize: 18 }}>{currency} {detailHolding.avgPurchaseValue.toLocaleString()}</div>
               </div>
               <div className="kpi-card" style={{ borderTop: '2px solid var(--primary-text)', padding: 12 }}>
                 <div className="kpi-label">Portfolio</div>
@@ -392,8 +201,18 @@ export default function InvestmentHoldings({
                             <tr key={p.id}>
                               <td className="text-xs text-secondary">{p.purchaseDate.substring(0, 10)}</td>
                               <td className="text-xs">{p.quantity.toLocaleString()}</td>
-                              <td className="text-xs text-mono">{currency} {p.unitPrice.toLocaleString()}</td>
-                              <td className="text-xs text-mono fw-600">{currency} {p.totalValue.toLocaleString()}</td>
+                              <td className="text-xs text-mono">
+                                {currency} {p.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}/g
+                                {(() => {
+                                  const mult = getAssetWeightMultiplier(p.assetName)
+                                  if (mult > 1) {
+                                    const label = mult >= 1000 ? `${mult / 1000}kg` : `${mult}g`
+                                    return <div className="text-xxs text-secondary" style={{ fontSize: '10px' }}>({currency} {(p.unitPrice * mult).toLocaleString(undefined, { minimumFractionDigits: 2 })}/{label})</div>
+                                  }
+                                  return null
+                                })()}
+                              </td>
+                              <td className="text-xs text-mono fw-600">{currency} {p.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                               <td className="text-xs text-secondary" style={{ whiteSpace: 'nowrap' }}>
                                 {fundingBank ? (
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>

@@ -9,6 +9,7 @@ test.describe('Reports Visual QA', () => {
     page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
     await page.addInitScript(() => {
       localStorage.setItem('insacc_clear_version', '9')
+      localStorage.setItem('insacc_all_datasets_cleared_v3', 'true')
     })
     await page.goto(BASE, { waitUntil: 'networkidle' })
     await page.waitForTimeout(1500)
@@ -17,11 +18,11 @@ test.describe('Reports Visual QA', () => {
     await page.evaluate(() => {
       const now = Date.now()
       const investments = [
-        { id: 'inv-1', type: 'Gold', assetName: 'Gold Bar 1kg', purchaseValue: 280000, quantity: 1, purchaseDate: '2025-01-15', date: '2025-01-15', broker: 'Dubai Gold', currentPrice: 290000, totalValue: 290000, profitLoss: 10000, returnRate: 3.6 },
-        { id: 'inv-2', type: 'Shares', assetName: 'ADNOC Stock', purchaseValue: 150000, quantity: 500, purchaseDate: '2025-03-20', date: '2025-03-20', broker: 'AD Securities', currentPrice: 320, totalValue: 160000, profitLoss: 10000, returnRate: 6.7 },
-        { id: 'inv-3', type: 'Real Estate', assetName: 'Dubai Marina Apt', purchaseValue: 1200000, quantity: 1, purchaseDate: '2025-06-01', date: '2025-06-01', broker: 'ERA Real Estate', currentPrice: 1350000, totalValue: 1350000, profitLoss: 150000, returnRate: 12.5 },
-        { id: 'inv-4', type: 'Mutual Funds', assetName: 'S&P 500 Index', purchaseValue: 75000, quantity: 100, purchaseDate: '2025-09-10', date: '2025-09-10', broker: 'Fidelity', currentPrice: 820, totalValue: 82000, profitLoss: 7000, returnRate: 9.3 },
-        { id: 'inv-5', type: 'Bonds', assetName: 'UAE Govt Bond', purchaseValue: 200000, quantity: 200, purchaseDate: '2025-11-01', date: '2025-11-01', broker: 'NBAD', currentPrice: 1010, totalValue: 202000, profitLoss: 2000, returnRate: 1.0 },
+        { id: 'inv-1', type: 'Gold', assetName: 'Gold Bar 1kg', purchaseValue: 280000, quantity: 1, purchaseDate: '2025-01-15', date: '2025-01-15', buyer: 'Dubai Gold', currentPrice: 290000, totalValue: 290000, profitLoss: 10000, returnRate: 3.6 },
+        { id: 'inv-2', type: 'Shares', assetName: 'ADNOC Stock', purchaseValue: 150000, quantity: 500, purchaseDate: '2025-03-20', date: '2025-03-20', buyer: 'AD Securities', currentPrice: 320, totalValue: 160000, profitLoss: 10000, returnRate: 6.7 },
+        { id: 'inv-3', type: 'Real Estate', assetName: 'Dubai Marina Apt', purchaseValue: 1200000, quantity: 1, purchaseDate: '2025-06-01', date: '2025-06-01', buyer: 'ERA Real Estate', currentPrice: 1350000, totalValue: 1350000, profitLoss: 150000, returnRate: 12.5 },
+        { id: 'inv-4', type: 'Mutual Funds', assetName: 'S&P 500 Index', purchaseValue: 75000, quantity: 100, purchaseDate: '2025-09-10', date: '2025-09-10', buyer: 'Fidelity', currentPrice: 820, totalValue: 82000, profitLoss: 7000, returnRate: 9.3 },
+        { id: 'inv-5', type: 'Bonds', assetName: 'UAE Govt Bond', purchaseValue: 200000, quantity: 200, purchaseDate: '2025-11-01', date: '2025-11-01', buyer: 'NBAD', currentPrice: 1010, totalValue: 202000, profitLoss: 2000, returnRate: 1.0 },
       ]
       localStorage.setItem('insacc_investments', JSON.stringify(investments))
 
@@ -42,9 +43,9 @@ test.describe('Reports Visual QA', () => {
       localStorage.setItem('insacc_transactions', JSON.stringify(transactions))
 
       const bankAccounts = [
-        { id: 'ba-1', institution: 'Emirates Islamic', accountName: 'Current Account', accountNumber: '****1234', currency: 'AED', openingBalance: 50000, accountType: 'checking', theme: 'emerald', icon: 'bank', status: 'active', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z', createdBy: 'test', updatedBy: 'test' },
-        { id: 'ba-2', institution: 'ADCB', accountName: 'Savings Account', accountNumber: '****5678', currency: 'AED', openingBalance: 200000, accountType: 'savings', theme: 'blue', icon: 'bank', status: 'active', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z', createdBy: 'test', updatedBy: 'test' },
-        { id: 'ba-3', institution: 'Petty Cash', accountName: 'Office Cash', accountNumber: '', currency: 'AED', openingBalance: 10000, accountType: 'cash', theme: 'gold', icon: 'wallet', status: 'active', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z', createdBy: 'test', updatedBy: 'test' },
+        { id: 'ba-1', institution: 'Investment Reserve Bank', accountNumber: '****1234', currency: 'AED', openingBalance: 50000, theme: 'emerald', icon: 'bank', status: 'active', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z', createdBy: 'test', updatedBy: 'test' },
+        { id: 'ba-2', institution: 'Alternative Bank', accountNumber: '****5678', currency: 'AED', openingBalance: 200000, theme: 'blue', icon: 'bank', status: 'active', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z', createdBy: 'test', updatedBy: 'test' },
+        { id: 'ba-3', institution: 'Petty Cash', accountNumber: '', currency: 'AED', openingBalance: 10000, theme: 'gold', icon: 'wallet', status: 'active', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z', createdBy: 'test', updatedBy: 'test' },
       ]
       localStorage.setItem('insacc_bank_accounts', JSON.stringify(bankAccounts))
 
@@ -57,6 +58,7 @@ test.describe('Reports Visual QA', () => {
       ]
       localStorage.setItem('insacc_bank_transactions', JSON.stringify(bankTransactions))
       localStorage.setItem('insacc_clear_version', '9')
+      localStorage.setItem('insacc_all_datasets_cleared_v3', 'true')
     })
     await page.reload()
     await page.waitForTimeout(1000)

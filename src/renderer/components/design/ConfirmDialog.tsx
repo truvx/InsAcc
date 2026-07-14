@@ -4,7 +4,7 @@ import { Modal, Button } from './DesignSystem'
 interface Props {
   open: boolean
   title: string
-  message: string
+  message: React.ReactNode
   confirmLabel?: string
   cancelLabel?: string
   variant?: 'danger' | 'primary'
@@ -22,7 +22,7 @@ export default function ConfirmDialog({ open, title, message, confirmLabel = 'Co
         </>
       }
     >
-      <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>{message}</p>
+      <div style={{ color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>{message}</div>
     </Modal>
   )
 }

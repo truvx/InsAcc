@@ -1,14 +1,15 @@
 export interface BankAccount {
   id: string
   institution: string
-  accountName: string
-  accountNumber: string
+  accountNumber?: string
   currency: string
   openingBalance: number
-  accountType: 'checking' | 'savings' | 'cash' | 'credit'
   theme: string
   icon: string
   status: 'active' | 'archived' | 'closed' | 'hidden'
+  iban?: string
+  swift?: string
+  branch?: string
   createdAt: string
   updatedAt: string
   createdBy: string
@@ -42,4 +43,11 @@ export interface Transfer {
   updatedAt: string
   createdBy: string
   updatedBy: string
+}
+
+export interface StatementEntry {
+  date: string
+  desc: string
+  amount: string
+  type: 'credit' | 'debit'
 }

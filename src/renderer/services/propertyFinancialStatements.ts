@@ -3,6 +3,7 @@ import {
   getTrialBalance,
   getAccountBalance,
   getAccountBalanceAtDate,
+  getAccountTypeBalance,
 } from '../accounting/ledgerService'
 import { buildAccountTree, getChildren } from '../accounting/chartOfAccountsService'
 
@@ -52,7 +53,7 @@ export function getStatementBalances(
   const result: Record<string, number> = {}
   for (const account of accounts) {
     if (account.isActive) {
-      result[account.id] = getAccountBalance(account.id, vouchers, accounts)
+      result[account.id] = Math.round(getAccountBalance(account.id, vouchers, accounts) * 100) / 100
     }
   }
   return result
@@ -66,32 +67,41 @@ export function getStatementBalancesAtDate(
   const result: Record<string, number> = {}
   for (const account of accounts) {
     if (account.isActive) {
-      result[account.id] = getAccountBalanceAtDate(account.id, vouchers, accounts, date)
+      result[account.id] = Math.round(getAccountBalanceAtDate(account.id, vouchers, accounts, date) * 100) / 100
     }
   }
   return result
 }
-
 export function getBalanceSheetTree(
   accounts: Account[],
   vouchers: Voucher[],
 ): FinancialStatementRow[] {
   const balances = getStatementBalances(accounts, vouchers)
-
-  const netIncome = getNetIncome(accounts, vouchers)
-
-  if (netIncome !== 0) {
-    const equityParent = accounts.find(a => a.code === '31')
-    if (equityParent) {
-      balances[equityParent.id] = (balances[equityParent.id] ?? 0) + netIncome
-    }
-  }
-
   const tree = buildAccountTree(accounts)
   const roots = tree.filter(n => n.account.isActive)
 
+  const plTree = getProfitLossTree(accounts, vouchers)
+  const revenueTree = plTree.find(r => r.accountCode === '4000')
+  const expenseTree = plTree.find(r => r.accountCode === '5000')
+  const totalRevenue = revenueTree ? revenueTree.balance : 0
+  const totalExpenses = expenseTree ? expenseTree.balance : 0
+  const netProfit = totalRevenue - totalExpenses
+
   return roots.map(root => {
-    const childRows = buildHierarchy(accounts, root.account.id, 1, balances)
+    const childRows = buildHierarchy(accounts, root.account.id, 1, balances).filter(r => r.accountCode !== '3200')
+
+    if (root.account.type === 'equity' && netProfit !== 0) {
+      childRows.push({
+        accountId: '__currentYearEarnings__',
+        accountCode: 'CYE',
+        accountName: 'Current Year Earnings',
+        depth: 1,
+        balance: Math.round(netProfit * 100) / 100,
+        isTotal: false,
+        children: [],
+      })
+    }
+
     const totalBalance = childRows.reduce((s, r) => s + r.balance, 0)
 
     return {
@@ -147,25 +157,6 @@ export function getProfitLossTree(
   }
 
   return rows
-}
-
-export function getNetIncome(
-  accounts: Account[],
-  vouchers: Voucher[],
-): number {
-  const revenue = sumTypeBalance('revenue', accounts, vouchers)
-  const expenses = sumTypeBalance('expense', accounts, vouchers)
-  return revenue - expenses
-}
-
-function sumTypeBalance(
-  type: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense',
-  accounts: Account[],
-  vouchers: Voucher[],
-): number {
-  return accounts
-    .filter(a => a.type === type && a.isActive)
-    .reduce((sum, a) => sum + getAccountBalance(a.id, vouchers, accounts), 0)
 }
 
 export function getTrialBalanceRows(

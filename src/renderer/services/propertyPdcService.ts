@@ -1,4 +1,5 @@
 import type { PdcCheque, LeaseEntry } from '../data/propertyTypes'
+import { getPaymentFrequencyCount } from '../data/propertyTypes'
 
 let _counter = 0
 
@@ -12,18 +13,27 @@ export function generateChequeNumber(leaseNumber: string, slotIndex: number): st
   return `${leaseNumber}-CHQ-${String(slotIndex + 1).padStart(3, '0')}`
 }
 
-export function generatePdcSlots(lease: LeaseEntry, startMonth: number, startYear: number): PdcCheque[] {
+export function generatePdcSlots(lease: LeaseEntry, startMonth: number, startYear: number, pdcStartDay: number = 1): PdcCheque[] {
   const slots: PdcCheque[] = []
-  const count = lease.pdcCount || lease.paymentFrequency || 12
-  const monthlyAmount = Math.round((lease.annualRent || lease.monthlyRent * 12) / count * 100) / 100
+  const count = lease.pdcCount || getPaymentFrequencyCount(lease.paymentFrequency)
+
+  const s = new Date(lease.startDate + 'T00:00:00')
+  const e = new Date(lease.endDate + 'T00:00:00')
+  const rawMonths = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth())
+  const leaseMonths = e.getDate() >= s.getDate() ? rawMonths + 1 : rawMonths
+
+  const totalRent = lease.monthlyRent * leaseMonths
+  const chequeAmount = Math.round((totalRent / count) * 100) / 100
+  console.log('[PDC AMOUNT TRACE] generatePdcSlots |', JSON.stringify({ startDate: lease.startDate, endDate: lease.endDate, monthlyRent: lease.monthlyRent, startMonth, startYear, pdcStartDay, count, rawMonths, leaseMonths, totalRent, chequeAmount }))
   const now = new Date().toISOString()
+  const day = Math.min(Math.max(1, pdcStartDay), 28)
 
   for (let i = 0; i < count; i++) {
-    const monthOffset = Math.floor(i * 12 / count)
+    const monthOffset = Math.floor(i * leaseMonths / count)
     const dueMonth = ((startMonth - 1 + monthOffset) % 12) + 1
     const dueYear = startYear + Math.floor((startMonth - 1 + monthOffset) / 12)
     const dueDateStr = `${dueYear}-${String(dueMonth).padStart(2, '0')}-01`
-    const chequeDate = new Date(dueYear, dueMonth - 1, 1).toISOString().split('T')[0]
+    const chequeDate = new Date(dueYear, dueMonth - 1, day).toISOString().split('T')[0]
 
     slots.push({
       id: generateId(),
@@ -32,7 +42,7 @@ export function generatePdcSlots(lease: LeaseEntry, startMonth: number, startYea
       chequeNumber: generateChequeNumber(lease.leaseNumber, i),
       chequeDate: chequeDate,
       dueDate: dueDateStr,
-      amount: monthlyAmount,
+      amount: chequeAmount,
       status: 'Pending',
       depositedAt: null,
       clearedAt: null,
@@ -52,7 +62,7 @@ export function validatePdcTransition(from: PdcCheque['status'], to: PdcCheque['
   if (from === to) return true
   switch (from) {
     case 'Pending':
-      return to === 'Deposited' || to === 'Cancelled' || to === 'Replaced'
+      return to === 'Deposited' || to === 'Cleared' || to === 'Cancelled' || to === 'Replaced'
     case 'Deposited':
       return to === 'Cleared' || to === 'Bounced' || to === 'Cancelled' || to === 'Replaced'
     case 'Cleared':
@@ -75,6 +85,7 @@ export function transitionPdcCheque(
     penaltyAmount?: number | null
     user?: string
     timestamp?: string
+    depositedVoucherId?: string | null
     clearedVoucherId?: string | null
     bouncedVoucherId?: string | null
     feeVoucherId?: string | null
@@ -111,6 +122,7 @@ export function transitionPdcCheque(
       bounceReason: params.bounceReason !== undefined ? params.bounceReason : chq.bounceReason,
       bounceFee: params.bounceFee !== undefined ? params.bounceFee : chq.bounceFee,
       penaltyAmount: params.penaltyAmount !== undefined ? params.penaltyAmount : chq.penaltyAmount,
+      depositedVoucherId: params.depositedVoucherId !== undefined ? params.depositedVoucherId : chq.depositedVoucherId,
       clearedVoucherId: params.clearedVoucherId !== undefined ? params.clearedVoucherId : chq.clearedVoucherId,
       bouncedVoucherId: params.bouncedVoucherId !== undefined ? params.bouncedVoucherId : chq.bouncedVoucherId,
       feeVoucherId: params.feeVoucherId !== undefined ? params.feeVoucherId : chq.feeVoucherId,

@@ -1,19 +1,34 @@
-import React, { useState, useMemo } from 'react'
-import type { PdcCheque, LeaseEntry, TenantEntry, PropAccount } from '../data/propertyTypes'
-import { DataTable, type Column } from './design/Table'
-import { Badge, Button, SearchIcon, CloseIcon, EmptyState, Modal } from './design/DesignSystem'
+import React, { useState, useMemo, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
+import type { PdcCheque, LeaseEntry, TenantEntry, PropAccount, PropertyEntry } from '../data/propertyTypes'
+import type { Column } from './design/Table'
+import { Badge, Button, SearchIcon, CloseIcon, EmptyState, Modal, Select, KpiCard, ChevronLeftIcon } from './design/DesignSystem'
 import { formatDate } from '../utils'
 import { transitionPdcCheque, replaceCheque } from '../services/propertyPdcService'
 import Toast from './Toast'
+import ConfirmDialog from './design/ConfirmDialog'
+import { CurrencyText } from './design/CurrencyText'
 import type { Account, Voucher, BankMapping } from '../accounting/types'
 import type { AccountingEngine } from '../accounting/accountingEngine'
-import { getPropertyBankAccountId } from '../services/propertyAccountingService'
+import { getPropertyBankAccountId, validateBankChartLink } from '../services/propertyAccountingService'
+import { getDefaultPropertyReceiptBankAccount } from '../services/bankingService'
+import { autoPostVoucher } from '../hooks/useVoucherLifecycle'
+import { invalidateBalanceCache } from '../accounting/ledgerService'
+
+
+import { motion } from 'framer-motion'
+import {
+  Landmark, CheckCircle2, XCircle,
+  ArrowUpFromLine, Ban, RefreshCw, Replace, History,
+  Download, FileText, Plus, Trash2, Calendar
+} from 'lucide-react'
 
 interface Props {
   pdcCheques: PdcCheque[]
   setPdcCheques: React.Dispatch<React.SetStateAction<PdcCheque[]>>
   leases: LeaseEntry[]
   tenants: TenantEntry[]
+  properties: PropertyEntry[]
   dateFormat?: string
   currency?: string
   accounts: Account[]
@@ -22,44 +37,155 @@ interface Props {
   accountingEngine: AccountingEngine
   propAccounts: PropAccount[]
   bankMappings: BankMapping[]
+  onNavigate?: (page: string) => void
 }
 
-const STATUS_COLORS: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
-  Pending: 'warning',
-  Deposited: 'neutral',
-  Cleared: 'success',
-  Bounced: 'danger',
-  Replaced: 'neutral',
-  Cancelled: 'neutral',
+/* ─────────── Row action kebab menu ─────────── */
+interface PdcActionItem {
+  label: string
+  icon: React.ReactNode
+  onClick: () => void
+  danger?: boolean
+  divider?: boolean
 }
 
-function PdcKpiCard({ label, value, color, subtitle }: { label: string; value: string; color: string; subtitle?: string }) {
+function PdcRowMenu({ items }: { items: PdcActionItem[] }) {
+  const [open, setOpen] = useState(false)
+  const [coords, setCoords] = useState({ top: 0, left: 0 })
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  const updateCoords = () => {
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      const mw = 180
+      const mh = items.length * 36 + 16
+      let top = r.bottom + 4
+      let left = r.right - mw
+      if (top + mh > window.innerHeight) top = Math.max(4, r.top - mh - 4)
+      if (left < 4) left = 4
+      setCoords({ top, left })
+    }
+  }
+
+  useEffect(() => {
+    if (!open) return
+    updateCoords()
+    const close = () => setOpen(false)
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    window.addEventListener('keydown', esc)
+    return () => {
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('resize', close)
+      window.removeEventListener('keydown', esc)
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const handleOut = (e: MouseEvent) => {
+      if (btnRef.current && !btnRef.current.contains(e.target as Node) &&
+          menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOut)
+    return () => document.removeEventListener('mousedown', handleOut)
+  }, [open])
+
   return (
-    <div className="kpi-card" style={{ borderTop: `2px solid ${color}` }}>
-      <div className="kpi-label">{label}</div>
-      <div className="kpi-value" style={{ fontSize: 22 }}>{value}</div>
-      {subtitle && <div className="text-xs text-secondary">{subtitle}</div>}
+    <div style={{ display: 'inline-flex', justifyContent: 'center', width: '100%' }}>
+      <button
+        ref={btnRef}
+        onClick={() => { updateCoords(); setOpen(!open) }}
+        className="pdc-kebab-btn"
+        aria-label="Actions"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" />
+        </svg>
+      </button>
+      {open && createPortal(
+        <div ref={menuRef} className="pdc-action-menu" style={{ top: coords.top, left: coords.left }}>
+          {items.map((item, idx) => (
+            <React.Fragment key={idx}>
+              {item.divider && <div className="pdc-action-divider" />}
+              <button
+                className={`pdc-action-item${item.danger ? ' danger' : ''}`}
+                onClick={() => { item.onClick(); setOpen(false) }}
+              >
+                {item.icon}
+                {item.label}
+              </button>
+            </React.Fragment>
+          ))}
+        </div>,
+        document.body
+      )}
     </div>
   )
 }
 
+/* ─────────── Segmented status pill bar ─────────── */
+function StatusPills({ options, counts, active, onChange }: {
+  options: string[]
+  counts: Record<string, number>
+  active: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <div className="pdc-status-pills">
+      {options.map(s => (
+        <button
+          key={s}
+          className={`pdc-pill${active === s ? ' active' : ''}`}
+          onClick={() => onChange(s)}
+        >
+          {s}
+          <span className="pdc-pill-count">{counts[s] ?? 0}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/* ─────────── Main component ─────────── */
 export default function PropertyPdcManager({
-  pdcCheques, setPdcCheques, leases, tenants,
+  pdcCheques, setPdcCheques, leases, tenants, properties,
   dateFormat = 'DD/MM/YYYY', currency = 'AED',
-  accounts, vouchers, setVouchers, accountingEngine, propAccounts, bankMappings
+  accounts, vouchers, setVouchers, accountingEngine, propAccounts, bankMappings,
+  onNavigate
 }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
-  const [dateFilter, setDateFilter] = useState<'All' | 'Today' | 'ThisWeek' | 'ThisMonth' | 'Overdue'>('All')
+  const [dateQuickFilter, setDateQuickFilter] = useState<'All' | 'Today' | 'Tomorrow' | 'Overdue' | 'ThisWeek'>('All')
+  const [propertyFilter, setPropertyFilter] = useState('All')
+  const [groupPage, setGroupPage] = useState(0)
+  const groupsPerPage = 5
+
+  interface LeaseGroup {
+    leaseId: string
+    leaseNumber: string
+    tenantName: string
+    propertyName: string
+    cheques: PdcCheque[]
+  }
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' })
   const [replaceModalOpen, setReplaceModalOpen] = useState(false)
   const [replaceTarget, setReplaceTarget] = useState<PdcCheque | null>(null)
   const [replaceChequeNumber, setReplaceChequeNumber] = useState('')
   const [replaceDate, setReplaceDate] = useState('')
+  const [editDateModalOpen, setEditDateModalOpen] = useState(false)
+  const [editDateTarget, setEditDateTarget] = useState<PdcCheque | null>(null)
+  const [editDateValue, setEditDateValue] = useState('')
+  const [editChequeNumberValue, setEditChequeNumberValue] = useState('')
+  const [deletePdcTarget, setDeletePdcTarget] = useState<PdcCheque | null>(null)
 
   // Transition & Wizard Modals state
   const [activePdc, setActivePdc] = useState<PdcCheque | null>(null)
-  const [activeAction, setActiveAction] = useState<'Deposit' | 'Clear' | 'Bounce' | 'Cancel' | 'Re-deposit' | 'Audit' | null>(null)
+  const [activeAction, setActiveAction] = useState<'ClearPDC' | 'Clear' | 'Bounce' | 'Cancel' | 'Audit' | 'View' | null>(null)
   const [selectedBankAccountId, setSelectedBankAccountId] = useState('')
   const [bounceReason, setBounceReason] = useState('')
   const [bounceDate, setBounceDate] = useState(new Date().toISOString().split('T')[0])
@@ -67,65 +193,90 @@ export default function PropertyPdcManager({
   const [penaltyAmount, setPenaltyAmount] = useState('')
   const [clearDate, setClearDate] = useState(new Date().toISOString().split('T')[0])
   const [cancelReason, setCancelReason] = useState('')
+  const [clearNotes, setClearNotes] = useState('')
 
   const chequeMeta = useMemo(() => {
-    const map: Record<string, { tenantName: string }> = {}
+    const map: Record<string, { tenantName: string; propertyName: string; bankName: string }> = {}
     for (const chq of pdcCheques) {
       const lease = leases.find(l => l.id === chq.leaseId)
       const tenant = lease ? tenants.find(t => t.id === lease.tenantId) : undefined
-      map[chq.id] = { tenantName: tenant?.name || 'Unknown' }
+      const property = lease ? properties.find(p => p.id === lease.propertyId) : undefined
+      const bank = chq.bankAccountId ? propAccounts.find(a => a.id === chq.bankAccountId) : undefined
+      map[chq.id] = {
+        tenantName: tenant?.name || 'Unknown',
+        propertyName: property?.name || '—',
+        bankName: bank ? `${bank.institution}` : '—',
+      }
     }
     return map
-  }, [pdcCheques, leases, tenants])
+  }, [pdcCheques, leases, tenants, properties, propAccounts])
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = { All: pdcCheques.length }
+    for (const chq of pdcCheques) {
+      counts[chq.status] = (counts[chq.status] || 0) + 1
+    }
+    return counts
+  }, [pdcCheques])
+
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], [])
+  const tomorrowStr = useMemo(() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 1)
+    return d.toISOString().split('T')[0]
+  }, [])
 
   const kpiData = useMemo(() => {
     const pending = pdcCheques.filter(c => c.status === 'Pending').length
-    const deposited = pdcCheques.filter(c => c.status === 'Deposited').length
     const cleared = pdcCheques.filter(c => c.status === 'Cleared').length
     const bounced = pdcCheques.filter(c => c.status === 'Bounced').length
-    const securityCheques = leases.filter(l => l.securityChequeNumber?.trim()).length
     const now = new Date()
-    const thirtyDays = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
-    const upcoming = pdcCheques.filter(c => {
+    const endOfWeek = new Date(now)
+    endOfWeek.setDate(now.getDate() + (7 - now.getDay()))
+    const dueThisWeek = pdcCheques.filter(c => {
       if (c.status !== 'Pending') return false
       const d = new Date(c.dueDate)
-      return d >= now && d <= thirtyDays
+      return d >= now && d <= endOfWeek
     }).length
-    const totalAmount = pdcCheques.reduce((s, c) => s + c.amount, 0)
-    return { pending, deposited, cleared, bounced, securityCheques, upcoming, totalAmount }
-  }, [pdcCheques, leases])
+    return { pending, dueThisWeek, cleared, bounced }
+  }, [pdcCheques])
+
+  const todayCheques = useMemo(() => pdcCheques.filter(c => c.dueDate === todayStr), [pdcCheques, todayStr])
 
   const filtered = useMemo(() => {
-    let result = [...pdcCheques].sort((a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime())
+    let result = [...pdcCheques].sort((a, b) => {
+      const aIsToday = a.dueDate === todayStr ? 1 : 0
+      const bIsToday = b.dueDate === todayStr ? 1 : 0
+      if (aIsToday !== bIsToday) return bIsToday - aIsToday
+      return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime()
+    })
     if (statusFilter !== 'All') {
       result = result.filter(c => c.status === statusFilter)
     }
+    if (propertyFilter !== 'All') {
+      result = result.filter(c => {
+        const lease = leases.find(l => l.id === c.leaseId)
+        return lease?.propertyId === propertyFilter
+      })
+    }
 
-    const todayStr = new Date().toISOString().split('T')[0]
     const today = new Date(todayStr)
-
     const startOfWeek = new Date(today)
     startOfWeek.setDate(today.getDate() - today.getDay())
     const endOfWeek = new Date(startOfWeek)
     endOfWeek.setDate(startOfWeek.getDate() + 6)
 
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-
-    if (dateFilter === 'Today') {
+    if (dateQuickFilter === 'Today') {
       result = result.filter(c => c.dueDate === todayStr)
-    } else if (dateFilter === 'ThisWeek') {
+    } else if (dateQuickFilter === 'Tomorrow') {
+      result = result.filter(c => c.dueDate === tomorrowStr)
+    } else if (dateQuickFilter === 'ThisWeek') {
       result = result.filter(c => {
         const d = new Date(c.dueDate)
         return d >= startOfWeek && d <= endOfWeek
       })
-    } else if (dateFilter === 'ThisMonth') {
-      result = result.filter(c => {
-        const d = new Date(c.dueDate)
-        return d >= startOfMonth && d <= endOfMonth
-      })
-    } else if (dateFilter === 'Overdue') {
-      result = result.filter(c => c.status === 'Pending' && new Date(c.dueDate) < new Date(todayStr))
+    } else if (dateQuickFilter === 'Overdue') {
+      result = result.filter(c => c.status === 'Pending' && new Date(c.dueDate) < today)
     }
 
     if (searchQuery) {
@@ -138,27 +289,117 @@ export default function PropertyPdcManager({
       })
     }
     return result
-  }, [pdcCheques, statusFilter, dateFilter, searchQuery, chequeMeta])
+  }, [pdcCheques, statusFilter, dateQuickFilter, propertyFilter, searchQuery, chequeMeta, leases, todayStr, tomorrowStr])
 
-  const openActionModal = (cheque: PdcCheque, action: 'Deposit' | 'Clear' | 'Bounce' | 'Cancel' | 'Re-deposit' | 'Audit') => {
+  /* ─── Group data by lease ─── */
+  const leaseGroups = useMemo(() => {
+    const groups = new Map<string, LeaseGroup>()
+    for (const chq of filtered) {
+      if (!groups.has(chq.leaseId)) {
+        const lease = leases.find(l => l.id === chq.leaseId)
+        const tenant = lease ? tenants.find(t => t.id === lease.tenantId) : undefined
+        const property = lease ? properties.find(p => p.id === lease.propertyId) : undefined
+        groups.set(chq.leaseId, {
+          leaseId: chq.leaseId,
+          leaseNumber: lease?.leaseNumber || chq.leaseId,
+          tenantName: tenant?.name || 'Unknown',
+          propertyName: property?.name || '—',
+          cheques: [],
+        })
+      }
+      groups.get(chq.leaseId)!.cheques.push(chq)
+    }
+    for (const group of groups.values()) {
+      group.cheques.sort((a, b) => {
+        const aIdx = a.slotIndex ?? 0
+        const bIdx = b.slotIndex ?? 0
+        if (aIdx !== bIdx) return aIdx - bIdx
+        return a.dueDate.localeCompare(b.dueDate)
+      })
+    }
+    return Array.from(groups.values()).sort((a, b) =>
+      a.leaseNumber.localeCompare(b.leaseNumber)
+    )
+  }, [filtered, leases, tenants, properties])
+
+  const totalGroupPages = useMemo(() =>
+    Math.max(1, Math.ceil(leaseGroups.length / groupsPerPage)),
+  [leaseGroups.length])
+
+  const pagedGroups = useMemo(() =>
+    leaseGroups.slice(groupPage * groupsPerPage, (groupPage + 1) * groupsPerPage),
+  [leaseGroups, groupPage])
+
+  useEffect(() => { setGroupPage(0) }, [statusFilter, dateQuickFilter, propertyFilter, searchQuery])
+
+  /* ─── Action handlers (unchanged business logic) ─── */
+  const openActionModal = (cheque: PdcCheque, action: 'ClearPDC' | 'Clear' | 'Bounce' | 'Cancel' | 'Audit' | 'View') => {
     setActivePdc(cheque)
     setActiveAction(action)
-    setSelectedBankAccountId(cheque.bankAccountId || (propAccounts[0]?.id || ''))
+    const defaultBank = getDefaultPropertyReceiptBankAccount(propAccounts)
+    setSelectedBankAccountId(cheque.bankAccountId || (defaultBank ? defaultBank.id : (propAccounts[0]?.id || '')))
     setBounceReason(cheque.bounceReason || '')
     setBounceFee(cheque.bounceFee ? String(cheque.bounceFee) : '')
     setPenaltyAmount(cheque.penaltyAmount ? String(cheque.penaltyAmount) : '')
     setCancelReason('')
+    if (action === 'Clear' || action === 'ClearPDC') {
+      setClearDate(new Date().toISOString().split('T')[0])
+      setClearNotes('')
+    }
   }
 
-  const handleDeposit = () => {
+  const handleClearPDC = () => {
     if (!activePdc || !selectedBankAccountId) return
+    const linkResult = validateBankChartLink(selectedBankAccountId, propAccounts, bankMappings)
+    if (!linkResult.valid) {
+      setToast({ visible: true, message: linkResult.error + ' Open Bank Accounts to fix it.', type: 'error' })
+      return
+    }
+    const mappingId = linkResult.chartAccountId
+    const hasChildren = accounts.some(a => a.parentId === mappingId && a.isActive)
+    if (hasChildren) {
+      setToast({ visible: true, message: 'Bank account CoA mapping is a group account, not a unique leaf.', type: 'error' })
+      return
+    }
+    if (activePdc.depositedVoucherId) {
+      setToast({ visible: true, message: 'This cheque has already been cleared. No duplicate entry created.', type: 'error' })
+      return
+    }
+    const desc = clearNotes
+      ? `Clear PDC: ${activePdc.chequeNumber} — ${clearNotes}`
+      : `Clear PDC: ${activePdc.chequeNumber}`
+    const draftResult = accountingEngine.processAccountingEvent(
+      'PDC_DEPOSITED',
+      {
+        amount: activePdc.amount,
+        date: clearDate,
+        description: desc,
+        currency, exchangeRate: 1, baseCurrency: currency,
+        bankAccount: mappingId,
+        referenceType: 'Lease', referenceId: activePdc.leaseId, createdBy: 'user',
+      },
+      accounts, vouchers
+    )
+    if (!draftResult.success || !draftResult.voucher) {
+      setToast({ visible: true, message: draftResult.errors.map(e => e.message).join(', '), type: 'error' })
+      return
+    }
+    const postResult = autoPostVoucher(accountingEngine, draftResult.voucher, accounts)
+    if (!postResult.success || !postResult.voucher) {
+      setToast({ visible: true, message: postResult.errors.map(e => e.message).join(', '), type: 'error' })
+      return
+    }
     try {
-      const updated = transitionPdcCheque(pdcCheques, activePdc.id, 'Deposited', {
+      const updated = transitionPdcCheque(pdcCheques, activePdc.id, 'Cleared', {
         bankAccountId: selectedBankAccountId,
+        depositedVoucherId: postResult.voucher.id,
+        timestamp: clearDate,
         user: 'user'
       })
       setPdcCheques(updated)
-      setToast({ visible: true, message: `Cheque ${activePdc.chequeNumber} deposited to bank account.`, type: 'success' })
+      setVouchers(prev => [postResult.voucher!, ...prev])
+      invalidateBalanceCache()
+      setToast({ visible: true, message: `Cheque ${activePdc.chequeNumber} cleared. Voucher ${postResult.voucher.number} posted.`, type: 'success' })
       setActiveAction(null)
       setActivePdc(null)
     } catch (e: any) {
@@ -168,69 +409,14 @@ export default function PropertyPdcManager({
 
   const handleClear = () => {
     if (!activePdc) return
-    const bankAcctId = activePdc.bankAccountId || selectedBankAccountId
-    if (!bankAcctId) {
-      setToast({ visible: true, message: 'Please select a bank account.', type: 'error' })
-      return
-    }
-
-    // mappingId is the Chart-of-Accounts Account ID (e.g. "acc-112001") that the posting
-    // rule resolver expects as ctx.bankAccount. bankAcctId is the PropAccount UUID.
-    const mappingId = getPropertyBankAccountId(bankAcctId, propAccounts, bankMappings)
-    if (!mappingId) {
-      setToast({ visible: true, message: 'Bank account mapping not found in Chart of Accounts.', type: 'error' })
-      return
-    }
-
-    const desc = `Matured Rent PDC cleared: Cheque No. ${activePdc.chequeNumber}`
-    const draftResult = accountingEngine.processAccountingEvent(
-      'PDC_DEPOSITED',
-      {
-        amount: activePdc.amount,
-        date: clearDate,
-        description: desc,
-        currency: currency,
-        exchangeRate: 1,
-        baseCurrency: currency,
-        bankAccount: mappingId,
-        referenceType: 'Lease',
-        referenceId: activePdc.leaseId,
-        createdBy: 'user',
-      },
-      accounts,
-      vouchers
-    )
-
-    if (!draftResult.success || !draftResult.voucher) {
-      setToast({ visible: true, message: draftResult.errors.map(e => e.message).join(', '), type: 'error' })
-      return
-    }
-
-    const appResult = accountingEngine.approve(draftResult.voucher, 'user')
-    if (!appResult.success || !appResult.voucher) {
-      setToast({ visible: true, message: appResult.errors.map(e => e.message).join(', '), type: 'error' })
-      return
-    }
-
-    const postResult = accountingEngine.post(appResult.voucher, 'user', accounts, vouchers)
-    if (!postResult.success || !postResult.voucher) {
-      setToast({ visible: true, message: postResult.errors.map(e => e.message).join(', '), type: 'error' })
-      return
-    }
-
-    const postedVoucher = postResult.voucher
-
-    // Transition PDC state first — if this throws, we have not yet mutated voucher state
     try {
+      const now = new Date().toISOString()
       const updated = transitionPdcCheque(pdcCheques, activePdc.id, 'Cleared', {
-        bankAccountId: bankAcctId,
-        clearedVoucherId: postedVoucher.id,
-        timestamp: clearDate,
-        user: 'user'
+        timestamp: now, user: 'user'
       })
       setPdcCheques(updated)
-      setVouchers(prev => [postedVoucher, ...prev])
-      setToast({ visible: true, message: `Cheque ${activePdc.chequeNumber} cleared. Voucher ${postedVoucher.number} posted.`, type: 'success' })
+      invalidateBalanceCache()
+      setToast({ visible: true, message: `Cheque ${activePdc.chequeNumber} cleared.`, type: 'success' })
       setActiveAction(null)
       setActivePdc(null)
     } catch (e: any) {
@@ -245,20 +431,30 @@ export default function PropertyPdcManager({
       setToast({ visible: true, message: 'Please select a bank account.', type: 'error' })
       return
     }
-
-    const mappingId = getPropertyBankAccountId(bankAcctId, propAccounts, bankMappings)
-    if (!mappingId) {
-      setToast({ visible: true, message: 'Bank account mapping not found in Chart of Accounts.', type: 'error' })
+    const linkResult = validateBankChartLink(bankAcctId, propAccounts, bankMappings)
+    if (!linkResult.valid) {
+      setToast({ visible: true, message: linkResult.error + ' Open Bank Accounts to fix it.', type: 'error' })
       return
     }
+    const mappingId = linkResult.chartAccountId
 
     let bouncedVoucherId: string | null = null
     let feeVoucherId: string | null = null
     let penaltyVoucherId: string | null = null
     let updatedVouchers = [...vouchers]
 
-    if (activePdc.status === 'Cleared' && activePdc.clearedVoucherId) {
-      // Reverse the original clearance receipt voucher
+    if (activePdc.depositedVoucherId) {
+      const origVoucher = vouchers.find(v => v.id === activePdc.depositedVoucherId)
+      if (origVoucher) {
+        const revResult = accountingEngine.reverse(origVoucher, bounceDate, 'user', accounts, vouchers)
+        if (!revResult.success || !revResult.voucher) {
+          setToast({ visible: true, message: 'Deposit reversal failed: ' + revResult.errors.map(e => e.message).join(', '), type: 'error' })
+          return
+        }
+        bouncedVoucherId = revResult.voucher.id
+        updatedVouchers = [revResult.voucher, ...updatedVouchers]
+      }
+    } else if (activePdc.status === 'Cleared' && activePdc.clearedVoucherId) {
       const origVoucher = vouchers.find(v => v.id === activePdc.clearedVoucherId)
       if (origVoucher) {
         const revResult = accountingEngine.reverse(origVoucher, bounceDate, 'user', accounts, vouchers)
@@ -270,74 +466,48 @@ export default function PropertyPdcManager({
         updatedVouchers = [revResult.voucher, ...updatedVouchers]
       }
     } else {
-      // Deposited → Bounced: post a bounce journal to restore receivable
       const desc = `Bounced Rent PDC: Cheque No. ${activePdc.chequeNumber}`
       const draftResult = accountingEngine.processAccountingEvent(
-        'PDC_BOUNCED',
+        'PDC_CANCELLED',
         {
-          amount: activePdc.amount,
-          date: bounceDate,
-          description: desc,
-          currency: currency,
-          exchangeRate: 1,
-          baseCurrency: currency,
-          bankAccount: mappingId,
-          referenceType: 'Lease',
-          referenceId: activePdc.leaseId,
-          createdBy: 'user',
+          amount: activePdc.amount, date: bounceDate, description: desc,
+          currency, exchangeRate: 1, baseCurrency: currency,
+          referenceType: 'Lease', referenceId: activePdc.leaseId, createdBy: 'user',
         },
-        accounts,
-        updatedVouchers
+        accounts, updatedVouchers
       )
-
       if (!draftResult.success || !draftResult.voucher) {
-        setToast({ visible: true, message: 'Bounce journal failed: ' + draftResult.errors.map(e => e.message).join(', '), type: 'error' })
+        setToast({ visible: true, message: 'Bounce cancellation failed: ' + draftResult.errors.map(e => e.message).join(', '), type: 'error' })
         return
       }
       const appResult = accountingEngine.approve(draftResult.voucher, 'user')
       if (!appResult.success || !appResult.voucher) {
-        setToast({ visible: true, message: 'Bounce journal approval failed: ' + appResult.errors.map(e => e.message).join(', '), type: 'error' })
+        setToast({ visible: true, message: 'Bounce cancellation approval failed: ' + appResult.errors.map(e => e.message).join(', '), type: 'error' })
         return
       }
       const postResult = accountingEngine.post(appResult.voucher, 'user', accounts, updatedVouchers)
       if (!postResult.success || !postResult.voucher) {
-        setToast({ visible: true, message: 'Bounce journal posting failed: ' + postResult.errors.map(e => e.message).join(', '), type: 'error' })
+        setToast({ visible: true, message: 'Bounce cancellation posting failed: ' + postResult.errors.map(e => e.message).join(', '), type: 'error' })
         return
       }
       bouncedVoucherId = postResult.voucher.id
       updatedVouchers = [postResult.voucher, ...updatedVouchers]
     }
 
-    // Optional: bank bounce fee (expense journal)
+    // Optional: bank bounce fee
     const feeNum = Number(bounceFee) || 0
     if (feeNum > 0) {
       const desc = `Bank bounce fee for Cheque No. ${activePdc.chequeNumber}`
       const draftResult = accountingEngine.processAccountingEvent(
         'PDC_BOUNCE_FEE',
-        {
-          amount: feeNum,
-          date: bounceDate,
-          description: desc,
-          currency: currency,
-          exchangeRate: 1,
-          baseCurrency: currency,
-          bankAccount: mappingId,
-          createdBy: 'user',
-        },
-        accounts,
-        updatedVouchers
+        { amount: feeNum, date: bounceDate, description: desc, currency, exchangeRate: 1, baseCurrency: currency, bankAccount: mappingId, createdBy: 'user' },
+        accounts, updatedVouchers
       )
-      if (!draftResult.success || !draftResult.voucher) {
-        setToast({ visible: true, message: `Bank fee journal failed: ${draftResult.errors.map(e => e.message).join(', ')}`, type: 'error' })
-      } else {
+      if (draftResult.success && draftResult.voucher) {
         const appResult = accountingEngine.approve(draftResult.voucher, 'user')
-        if (!appResult.success || !appResult.voucher) {
-          setToast({ visible: true, message: `Bank fee approval failed: ${appResult.errors.map(e => e.message).join(', ')}`, type: 'error' })
-        } else {
+        if (appResult.success && appResult.voucher) {
           const postResult = accountingEngine.post(appResult.voucher, 'user', accounts, updatedVouchers)
-          if (!postResult.success || !postResult.voucher) {
-            setToast({ visible: true, message: `Bank fee posting failed: ${postResult.errors.map(e => e.message).join(', ')}`, type: 'error' })
-          } else {
+          if (postResult.success && postResult.voucher) {
             feeVoucherId = postResult.voucher.id
             updatedVouchers = [postResult.voucher, ...updatedVouchers]
           }
@@ -345,37 +515,20 @@ export default function PropertyPdcManager({
       }
     }
 
-    // Optional: tenant penalty (income journal)
+    // Optional: tenant penalty
     const penaltyNum = Number(penaltyAmount) || 0
     if (penaltyNum > 0) {
       const desc = `Bounced cheque penalty charged to tenant: Cheque No. ${activePdc.chequeNumber}`
       const draftResult = accountingEngine.processAccountingEvent(
         'PDC_PENALTY',
-        {
-          amount: penaltyNum,
-          date: bounceDate,
-          description: desc,
-          currency: currency,
-          exchangeRate: 1,
-          baseCurrency: currency,
-          referenceType: 'Lease',
-          referenceId: activePdc.leaseId,
-          createdBy: 'user',
-        },
-        accounts,
-        updatedVouchers
+        { amount: penaltyNum, date: bounceDate, description: desc, currency, exchangeRate: 1, baseCurrency: currency, referenceType: 'Lease', referenceId: activePdc.leaseId, createdBy: 'user' },
+        accounts, updatedVouchers
       )
-      if (!draftResult.success || !draftResult.voucher) {
-        setToast({ visible: true, message: `Penalty journal failed: ${draftResult.errors.map(e => e.message).join(', ')}`, type: 'error' })
-      } else {
+      if (draftResult.success && draftResult.voucher) {
         const appResult = accountingEngine.approve(draftResult.voucher, 'user')
-        if (!appResult.success || !appResult.voucher) {
-          setToast({ visible: true, message: `Penalty approval failed: ${appResult.errors.map(e => e.message).join(', ')}`, type: 'error' })
-        } else {
+        if (appResult.success && appResult.voucher) {
           const postResult = accountingEngine.post(appResult.voucher, 'user', accounts, updatedVouchers)
-          if (!postResult.success || !postResult.voucher) {
-            setToast({ visible: true, message: `Penalty posting failed: ${postResult.errors.map(e => e.message).join(', ')}`, type: 'error' })
-          } else {
+          if (postResult.success && postResult.voucher) {
             penaltyVoucherId = postResult.voucher.id
             updatedVouchers = [postResult.voucher, ...updatedVouchers]
           }
@@ -383,40 +536,16 @@ export default function PropertyPdcManager({
       }
     }
 
-    // Atomic: transition PDC state FIRST, then commit voucher state.
-    // If the transition throws (invalid status), we avoid a split-brain where
-    // vouchers are saved but the cheque status is not updated.
     try {
       const updated = transitionPdcCheque(pdcCheques, activePdc.id, 'Bounced', {
-        bankAccountId: bankAcctId,
-        bounceReason: bounceReason,
-        bounceFee: feeNum || undefined,
-        penaltyAmount: penaltyNum || undefined,
-        bouncedVoucherId,
-        feeVoucherId,
-        penaltyVoucherId,
-        timestamp: bounceDate,
-        user: 'user'
+        bankAccountId: bankAcctId, bounceReason, bounceFee: feeNum || undefined,
+        penaltyAmount: penaltyNum || undefined, bouncedVoucherId, feeVoucherId, penaltyVoucherId,
+        timestamp: bounceDate, user: 'user'
       })
       setPdcCheques(updated)
       setVouchers(updatedVouchers)
+      invalidateBalanceCache()
       setToast({ visible: true, message: `Cheque ${activePdc.chequeNumber} marked as Bounced. Reversals posted.`, type: 'success' })
-      setActiveAction(null)
-      setActivePdc(null)
-    } catch (e: any) {
-      setToast({ visible: true, message: e.message, type: 'error' })
-    }
-  }
-
-  const handleReDeposit = () => {
-    if (!activePdc || !selectedBankAccountId) return
-    try {
-      const updated = transitionPdcCheque(pdcCheques, activePdc.id, 'Deposited', {
-        bankAccountId: selectedBankAccountId,
-        user: 'user'
-      })
-      setPdcCheques(updated)
-      setToast({ visible: true, message: `Cheque ${activePdc.chequeNumber} re-deposited.`, type: 'success' })
       setActiveAction(null)
       setActivePdc(null)
     } catch (e: any) {
@@ -427,9 +556,54 @@ export default function PropertyPdcManager({
   const handleCancel = () => {
     if (!activePdc) return
     try {
+      let updatedVouchers = [...vouchers]
+
+      // If this PDC had a FUTURE_PDC_RECEIVED journal entry (stored in voucherId),
+      // post a PDC_CANCELLED reversal to keep the GL balanced.
+      const pdcVoucherId = activePdc.voucherId
+      if (pdcVoucherId && (activePdc.status === 'Pending' || activePdc.status === 'Bounced')) {
+        const origVoucher = vouchers.find(v => v.id === pdcVoucherId)
+        if (origVoucher) {
+          // Reverse the original FUTURE_PDC_RECEIVED entry
+          const revResult = accountingEngine.reverse(
+            origVoucher,
+            new Date().toISOString().split('T')[0],
+            'user',
+            accounts,
+            updatedVouchers
+          )
+          if (revResult.success && revResult.voucher) {
+            updatedVouchers = [revResult.voucher, ...updatedVouchers]
+            setVouchers(updatedVouchers)
+            invalidateBalanceCache()
+          }
+        } else {
+          // Original voucher not in state — post a PDC_CANCELLED entry directly
+          const desc = `PDC Cancelled: Cheque No. ${activePdc.chequeNumber}`
+          const draftResult = accountingEngine.processAccountingEvent(
+            'PDC_CANCELLED',
+            {
+              amount: activePdc.amount,
+              date: new Date().toISOString().split('T')[0],
+              description: desc,
+              currency, exchangeRate: 1, baseCurrency: currency,
+              referenceType: 'Lease', referenceId: activePdc.leaseId, createdBy: 'user',
+            },
+            accounts, updatedVouchers
+          )
+          if (draftResult.success && draftResult.voucher) {
+            const postResult = autoPostVoucher(accountingEngine, draftResult.voucher, accounts)
+            if (postResult.success && postResult.voucher) {
+              updatedVouchers = [postResult.voucher, ...updatedVouchers]
+              setVouchers(updatedVouchers)
+              invalidateBalanceCache()
+            }
+          }
+        }
+      }
+
       const updated = transitionPdcCheque(pdcCheques, activePdc.id, 'Cancelled', {
-        bounceReason: cancelReason,
-        user: 'user'
+        bounceReason: cancelReason, user: 'user'
       })
       setPdcCheques(updated)
       setToast({ visible: true, message: `Cheque ${activePdc.chequeNumber} cancelled.`, type: 'success' })
@@ -458,6 +632,92 @@ export default function PropertyPdcManager({
     setReplaceModalOpen(true)
   }
 
+  const openEditDateModal = (cheque: PdcCheque) => {
+    setEditDateTarget(cheque)
+    setEditChequeNumberValue(cheque.chequeNumber || '')
+    setEditDateValue(cheque.chequeDate || new Date().toISOString().split('T')[0])
+    setEditDateModalOpen(true)
+  }
+
+  const handleEditDate = () => {
+    if (!editDateTarget || !editDateValue || !editChequeNumberValue) return
+    const now = new Date().toISOString()
+    setPdcCheques(prev => prev.map(chq =>
+      chq.id === editDateTarget.id
+        ? { ...chq, chequeNumber: editChequeNumberValue, chequeDate: editDateValue, updatedAt: now }
+        : chq
+    ))
+    setToast({ visible: true, message: 'Cheque details updated', type: 'success' })
+    setEditDateModalOpen(false)
+    setEditDateTarget(null)
+    setEditDateValue('')
+    setEditChequeNumberValue('')
+  }
+
+  const handleDeletePDC = () => {
+    if (!deletePdcTarget) return
+    setPdcCheques(prev => prev.filter(c => c.id !== deletePdcTarget.id))
+    setToast({ visible: true, message: `PDC ${deletePdcTarget.chequeNumber} deleted.`, type: 'success' })
+    setDeletePdcTarget(null)
+  }
+
+  const resetFilters = () => {
+    setStatusFilter('All')
+    setDateQuickFilter('All')
+    setPropertyFilter('All')
+    setSearchQuery('')
+  }
+
+  const hasActiveFilters = statusFilter !== 'All' || dateQuickFilter !== 'All' || propertyFilter !== 'All' || searchQuery !== ''
+
+  /* ─── Build row actions based on status ─── */
+  const getRowActions = (row: PdcCheque): PdcActionItem[] => {
+    const items: PdcActionItem[] = [
+      { label: 'View Details', icon: <FileText size={14} strokeWidth={1.75} />, onClick: () => openActionModal(row, 'View') },
+    ]
+
+    if (row.status === 'Pending') {
+      items.push(
+        { label: 'Clear PDC', icon: <CheckCircle2 size={14} strokeWidth={1.75} />, onClick: () => openActionModal(row, 'ClearPDC') },
+        { label: 'Cancel Cheque', icon: <Ban size={14} strokeWidth={1.75} />, onClick: () => openActionModal(row, 'Cancel'), divider: true },
+      )
+    }
+    if (row.status === 'Deposited') {
+      items.push(
+        { label: 'Clear Cheque', icon: <CheckCircle2 size={14} strokeWidth={1.75} />, onClick: () => openActionModal(row, 'Clear') },
+        { label: 'Bounce', icon: <XCircle size={14} strokeWidth={1.75} />, onClick: () => openActionModal(row, 'Bounce'), danger: true },
+        { label: 'Cancel Cheque', icon: <Ban size={14} strokeWidth={1.75} />, onClick: () => openActionModal(row, 'Cancel'), divider: true },
+      )
+    }
+    if (row.status === 'Bounced') {
+      items.push(
+        { label: 'Clear PDC', icon: <CheckCircle2 size={14} strokeWidth={1.75} />, onClick: () => openActionModal(row, 'ClearPDC') },
+        { label: 'Cancel Cheque', icon: <Ban size={14} strokeWidth={1.75} />, onClick: () => openActionModal(row, 'Cancel') },
+      )
+    }
+    if (row.status === 'Cleared') {
+      items.push(
+        { label: 'Bounce', icon: <XCircle size={14} strokeWidth={1.75} />, onClick: () => openActionModal(row, 'Bounce'), danger: true },
+      )
+    }
+    if (['Pending', 'Deposited', 'Bounced'].includes(row.status)) {
+      items.push(
+        { label: 'Edit Date', icon: <FileText size={14} strokeWidth={1.75} />, onClick: () => openEditDateModal(row) },
+        { label: 'Replace Cheque', icon: <Replace size={14} strokeWidth={1.75} />, onClick: () => openReplaceModal(row), divider: true },
+      )
+    }
+    if (row.auditHistory && row.auditHistory.length > 0) {
+      items.push(
+        { label: 'Ledger Entries', icon: <History size={14} strokeWidth={1.75} />, onClick: () => openActionModal(row, 'Audit'), divider: true },
+      )
+    }
+    items.push(
+      { label: 'Delete PDC', icon: <Trash2 size={14} strokeWidth={1.75} />, onClick: () => setDeletePdcTarget(row), danger: true },
+    )
+    return items
+  }
+
+  /* ─── Table columns ─── */
   const columns: Column<PdcCheque>[] = useMemo(() => [
     {
       key: 'chequeNumber',
@@ -473,25 +733,37 @@ export default function PropertyPdcManager({
       render: row => <span className="text-sm">{chequeMeta[row.id]?.tenantName || 'Unknown'}</span>,
     },
     {
+      key: 'propertyName',
+      header: 'Property',
+      sortable: true,
+      render: row => <span className="text-sm text-secondary">{chequeMeta[row.id]?.propertyName || '—'}</span>,
+    },
+    {
+      key: 'bankName',
+      header: 'Bank',
+      sortable: true,
+      render: row => <span className="text-sm text-secondary">{chequeMeta[row.id]?.bankName || '—'}</span>,
+    },
+    {
       key: 'amount',
       header: 'Amount',
       numeric: true,
       sortable: true,
       render: row => (
-        <span className="text-mono text-xs fw-600">{currency} {row.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        <CurrencyText value={row.amount} currency={currency} />
       ),
     },
     {
       key: 'chequeDate',
-      header: 'Cheque Date',
-      width: '110px',
+      header: 'Issue Date',
+      width: '100px',
       sortable: true,
       render: row => <span className="text-xs text-secondary">{formatDate(row.chequeDate, dateFormat)}</span>,
     },
     {
       key: 'dueDate',
       header: 'Due Date',
-      width: '110px',
+      width: '100px',
       sortable: true,
       render: row => <span className="text-xs text-secondary">{formatDate(row.dueDate, dateFormat)}</span>,
     },
@@ -500,379 +772,525 @@ export default function PropertyPdcManager({
       header: 'Status',
       width: '110px',
       sortable: true,
-      render: row => <Badge variant={STATUS_COLORS[row.status] || 'neutral'}>{row.status}</Badge>,
+      render: row => {
+        const colorMap: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
+          Pending: 'warning',
+          Deposited: 'neutral',
+          Cleared: 'success',
+          Bounced: 'danger',
+          Replaced: 'neutral',
+          Cancelled: 'neutral',
+        }
+        return <Badge variant={colorMap[row.status] || 'neutral'}>{row.status}</Badge>
+      },
+    },
+    {
+      key: 'depositedInto',
+      header: 'Deposited Into',
+      width: '140px',
+      sortable: true,
+      render: row => {
+        if (row.status !== 'Cleared') return <span className="text-xs text-secondary">—</span>
+        const lease = leases.find(l => l.id === row.leaseId)
+        const bankName = lease ? chequeMeta[row.id]?.bankName : undefined
+        return <span className="text-sm">{bankName || '—'}</span>
+      },
     },
     {
       key: 'actions',
-      header: 'Actions',
-      width: '240px',
-      render: row => {
-        return (
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-            {row.status === 'Pending' && (
-              <>
-                <Button variant="secondary" size="sm" onClick={() => openActionModal(row, 'Deposit')}>Deposit</Button>
-                <Button variant="secondary" size="sm" onClick={() => openActionModal(row, 'Cancel')}>Cancel</Button>
-              </>
-            )}
-            {row.status === 'Deposited' && (
-              <>
-                <Button variant="secondary" size="sm" onClick={() => openActionModal(row, 'Clear')}>Clear</Button>
-                <Button variant="secondary" size="sm" onClick={() => openActionModal(row, 'Bounce')}>Bounce</Button>
-                <Button variant="secondary" size="sm" onClick={() => openActionModal(row, 'Cancel')}>Cancel</Button>
-              </>
-            )}
-            {row.status === 'Bounced' && (
-              <>
-                <Button variant="secondary" size="sm" onClick={() => openActionModal(row, 'Re-deposit')}>Re-deposit</Button>
-                <Button variant="secondary" size="sm" onClick={() => openActionModal(row, 'Cancel')}>Cancel</Button>
-              </>
-            )}
-            {row.status === 'Cleared' && (
-              <Button variant="secondary" size="sm" onClick={() => openActionModal(row, 'Bounce')}>Bounce</Button>
-            )}
-            {(row.status === 'Pending' || row.status === 'Deposited' || row.status === 'Bounced') && (
-              <Button variant="secondary" size="sm" onClick={() => openReplaceModal(row)}>Replace</Button>
-            )}
-            {row.auditHistory && row.auditHistory.length > 0 && (
-              <Button variant="secondary" size="sm" onClick={() => openActionModal(row, 'Audit')}>History</Button>
-            )}
-          </div>
-        )
-      },
+      header: '',
+      width: '48px',
+      render: row => <PdcRowMenu items={getRowActions(row)} />,
     },
-  ], [currency, dateFormat, pdcCheques, chequeMeta, propAccounts])
+  ], [currency, dateFormat, pdcCheques, chequeMeta, propAccounts, leases])
 
   const statusOptions = ['All', 'Pending', 'Deposited', 'Cleared', 'Bounced', 'Replaced', 'Cancelled']
 
+  const propertyOptions = useMemo(() => {
+    const used = new Set<string>()
+    for (const chq of pdcCheques) {
+      const lease = leases.find(l => l.id === chq.leaseId)
+      if (lease?.propertyId) used.add(lease.propertyId)
+    }
+    return properties.filter(p => used.has(p.id))
+  }, [pdcCheques, leases, properties])
+
+  const quickDateFilterOptions = ['All', 'Today', 'Tomorrow', 'Overdue', 'ThisWeek'] as const
+
   return (
     <>
+      {/* ─── HEADER ─── */}
       <div className="page-header">
         <div className="page-header-left">
           <div>
             <div className="page-title">PDC Manager</div>
-            <div className="page-subtitle">{pdcCheques.length} cheques &middot; {currency} {kpiData.totalAmount.toLocaleString()} total value</div>
+            <div className="page-subtitle">Manage all post-dated cheques from lease agreements.</div>
           </div>
+        </div>
+        <div className="page-header-right" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setToast({ visible: true, message: 'PDC cheques check complete: all lease payment schedules are fully generated.', type: 'success' })}>Generate PDC</Button>
+          <Button variant="secondary" size="sm" icon={<Download size={14} />} onClick={() => setToast({ visible: true, message: 'Exporting PDC schedule...', type: 'success' })}>Export</Button>
+          <Button variant="secondary" size="sm" icon={<RefreshCw size={14} />} onClick={() => setToast({ visible: true, message: 'Refreshed.', type: 'success' })}>Refresh</Button>
         </div>
       </div>
 
-      <div className="page-body">
-        <div className="kpi-grid">
-          <div className="hover-lift" style={{ cursor: 'pointer' }} onClick={() => setStatusFilter('Pending')}>
-            <PdcKpiCard label="Pending" value={String(kpiData.pending)} color="var(--warning)" subtitle="Awaiting deposit" />
-          </div>
-          <div className="hover-lift" style={{ cursor: 'pointer' }} onClick={() => setStatusFilter('Deposited')}>
-            <PdcKpiCard label="Deposited" value={String(kpiData.deposited)} color="var(--primary)" subtitle="In bank collection" />
-          </div>
-          <div className="hover-lift" style={{ cursor: 'pointer' }} onClick={() => setStatusFilter('Cleared')}>
-            <PdcKpiCard label="Cleared" value={String(kpiData.cleared)} color="var(--success)" subtitle="Successfully cleared" />
-          </div>
-          <div className="hover-lift" style={{ cursor: 'pointer' }} onClick={() => setStatusFilter('Bounced')}>
-            <PdcKpiCard label="Bounced" value={String(kpiData.bounced)} color="var(--danger)" subtitle="Payment failed" />
-          </div>
-          <div className="hover-lift" style={{ cursor: 'pointer' }} onClick={() => setStatusFilter('Pending')}>
-            <PdcKpiCard label="Upcoming (30d)" value={String(kpiData.upcoming)} color="var(--accent)" subtitle="Due within 30 days" />
-          </div>
-          <PdcKpiCard label="Security Cheques" value={String(kpiData.securityCheques)} color="var(--primary-text)" subtitle="Held as security" />
+      <div className="page-body" style={{ padding: 32 }}>
+        {/* ─── KPI ROW: 4 cards ─── */}
+        <div className="pdc-kpi-row">
+          <KpiCard label="Pending" value={String(kpiData.pending)} accentColor="#F59E0B"
+            icon={<ArrowUpFromLine size={18} strokeWidth={1.75} />} />
+          <KpiCard label="Due This Week" value={String(kpiData.dueThisWeek)} accentColor="#3B82F6"
+            icon={<Landmark size={18} strokeWidth={1.75} />} />
+          <KpiCard label="Cleared" value={String(kpiData.cleared)} accentColor="#10B981"
+            icon={<CheckCircle2 size={18} strokeWidth={1.75} />} />
+          <KpiCard label="Failed / Bounced" value={String(kpiData.bounced)} accentColor="#EF4444"
+            icon={<XCircle size={18} strokeWidth={1.75} />} />
         </div>
 
-        <div className="data-table-toolbar">
-          <div className="data-table-filters">
-            <div className="filter-bar">
-              {statusOptions.map(s => (
-                <button
-                  key={s}
-                  className={`filter-btn${statusFilter === s ? ' active' : ''}`}
-                  onClick={() => setStatusFilter(s)}
-                  style={{ cursor: 'pointer', fontSize: 12 }}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-            <div className="filter-bar" style={{ marginLeft: 12 }}>
-              {['All', 'Today', 'ThisWeek', 'ThisMonth', 'Overdue'].map(d => (
-                <button
-                  key={d}
-                  className={`filter-btn${dateFilter === d ? ' active' : ''}`}
-                  onClick={() => setDateFilter(d as any)}
-                  style={{ cursor: 'pointer', fontSize: 12 }}
-                >
-                  {d === 'ThisWeek' ? 'This Week' : d === 'ThisMonth' ? 'This Month' : d}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="data-table-search" style={{ minWidth: 260 }}>
+        {/* ─── STATUS PILLS ─── */}
+        <StatusPills
+          options={statusOptions}
+          counts={statusCounts}
+          active={statusFilter}
+          onChange={setStatusFilter}
+        />
+
+        {/* ─── FILTER BAR ─── */}
+        <div className="pdc-filter-bar">
+          <div className="pdc-filter-search">
             <SearchIcon />
             <input
               type="text"
-              className="data-table-search-input"
-              placeholder="Search cheques..."
+              placeholder="Search cheque number / tenant..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
             {searchQuery && (
-              <button className="data-table-search-clear" onClick={() => setSearchQuery('')} aria-label="Clear">
+              <button className="pdc-filter-clear" onClick={() => setSearchQuery('')} aria-label="Clear">
                 <CloseIcon />
               </button>
             )}
           </div>
+
+          <div className="pdc-quick-filters">
+            {quickDateFilterOptions.map(opt => (
+              <button
+                key={opt}
+                className={`pdc-quick-filter-btn${dateQuickFilter === opt ? ' active' : ''}`}
+                onClick={() => setDateQuickFilter(opt)}
+              >
+                {opt === 'ThisWeek' ? 'This Week' : opt}
+              </button>
+            ))}
+          </div>
+
+          {propertyOptions.length > 0 && (
+            <select
+              className="pdc-filter-select"
+              value={propertyFilter}
+              onChange={e => setPropertyFilter(e.target.value)}
+            >
+              <option value="All">All Properties</option>
+              {propertyOptions.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          )}
+
+          {hasActiveFilters && (
+            <button className="pdc-reset-btn" onClick={resetFilters}>
+              Reset Filters
+            </button>
+          )}
         </div>
 
-        <div className="card card-table">
-          <div className="card-body">
-            <DataTable
-              columns={columns}
-              data={filtered}
-              keyExtractor={row => row.id}
-              pageSize={25}
-              emptyState={
-                <EmptyState
-                  icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>}
-                  title={statusFilter !== 'All' ? `No ${statusFilter.toLowerCase()} cheques` : 'No PDC cheques'}
-                  text="PDC cheques are generated from lease agreements."
-                />
-              }
-            />
+        {/* ─── TODAY'S CHEQUES PANEL ─── */}
+        <div className={`pdc-today-panel${todayCheques.length === 0 ? ' pdc-today-empty' : ''}`}>
+          <div className="pdc-today-header">
+            <Calendar size={15} strokeWidth={1.75} />
+            <span className="pdc-today-title">Today's Cheques</span>
+            <span className="pdc-today-count">{todayCheques.length} cheque{todayCheques.length !== 1 ? 's' : ''}</span>
           </div>
+          {todayCheques.length > 0 ? (
+            <div className="pdc-today-items">
+              {todayCheques.slice(0, 5).map(chq => {
+                const meta = chequeMeta[chq.id]
+                const colorMap: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
+                  Pending: 'warning', Deposited: 'neutral', Cleared: 'success',
+                  Bounced: 'danger', Replaced: 'neutral', Cancelled: 'neutral',
+                }
+                return (
+                  <div key={chq.id} className="pdc-today-item">
+                    <span className="text-mono text-xs fw-600" style={{ minWidth: 100 }}>{chq.chequeNumber}</span>
+                    <span className="text-xs" style={{ minWidth: 120 }}>{meta?.tenantName || 'Unknown'}</span>
+                    <span className="text-xs text-secondary" style={{ minWidth: 100 }}>{meta?.propertyName || '—'}</span>
+                    <span className="text-xs fw-600" style={{ minWidth: 80, textAlign: 'right' }}><CurrencyText value={chq.amount} currency={currency} /></span>
+                    <span style={{ minWidth: 80 }}><Badge variant={colorMap[chq.status] || 'neutral'}>{chq.status}</Badge></span>
+                    <span className="text-xs text-secondary">{meta?.bankName || '—'}</span>
+                  </div>
+                )
+              })}
+              {todayCheques.length > 5 && (
+                <div className="pdc-today-more">
+                  <span className="text-xs text-secondary">+ {todayCheques.length - 5} more</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="pdc-today-none">No cheques due today</div>
+          )}
+        </div>
+
+        {/* ─── TABLE ─── */}
+        <div className="pdc-table-card">
+          {leaseGroups.length === 0 ? (
+            <EmptyState
+              icon={<Landmark size={40} strokeWidth={1.25} />}
+              title={statusFilter !== 'All' ? `No ${statusFilter.toLowerCase()} cheques` : 'No post-dated cheques'}
+              text="Cheques will automatically appear here when leases are created with PDC payment mode."
+              action={onNavigate ? <Button onClick={() => onNavigate('lease-management')}>Create Lease</Button> : undefined}
+            />
+          ) : (
+            <>
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      {columns.map(col => (
+                        <th key={col.key} style={col.width ? { width: col.width } : undefined}>
+                          {col.header}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pagedGroups.map(group => (
+                      <React.Fragment key={group.leaseId}>
+                        <tr className="pdc-group-header">
+                          <td colSpan={columns.length}>
+                            <div className="pdc-group-header-content">
+                              <span className="pdc-group-lease fw-600">Lease: {group.leaseNumber}</span>
+                              <span className="pdc-divider">|</span>
+                              <span className="pdc-group-tenant">Tenant: {group.tenantName}</span>
+                              <span className="pdc-divider">|</span>
+                              <span className="pdc-group-property text-secondary">{group.propertyName}</span>
+                            </div>
+                          </td>
+                        </tr>
+                        {group.cheques.map(chq => (
+                          <motion.tr
+                            key={chq.id}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            {columns.map(col => (
+                              <td key={col.key} className={col.numeric ? 'numeric' : ''}>
+                                {col.render(chq)}
+                              </td>
+                            ))}
+                          </motion.tr>
+                        ))}
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {leaseGroups.length > groupsPerPage && (
+                <div className="data-table-pagination">
+                  <span className="data-table-pagination-info">
+                    {groupPage * groupsPerPage + 1}–{Math.min((groupPage + 1) * groupsPerPage, leaseGroups.length)} of {leaseGroups.length} lease group{leaseGroups.length !== 1 ? 's' : ''}
+                  </span>
+                  <div className="data-table-pagination-actions">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={groupPage === 0}
+                      onClick={() => setGroupPage(p => Math.max(0, p - 1))}
+                    >
+                      <ChevronLeftIcon />
+                    </Button>
+                    {Array.from({ length: totalGroupPages }).map((_, i) => (
+                      <button
+                        key={i}
+                        className={`data-table-page-btn${i === groupPage ? ' active' : ''}`}
+                        onClick={() => setGroupPage(i)}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={groupPage >= totalGroupPages - 1}
+                      onClick={() => setGroupPage(p => Math.min(totalGroupPages - 1, p + 1))}
+                    >
+                      <div style={{ transform: 'rotate(180deg)' }}><ChevronLeftIcon /></div>
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 
+      {/* ─── VIEW DETAILS MODAL ─── */}
+      <Modal open={activeAction === 'View'} title="Cheque Details" onClose={() => setActiveAction(null)}>
+        <div className="pdc-modal-body">
+          {activePdc && (() => {
+            const meta = chequeMeta[activePdc.id]
+            const lease = leases.find(l => l.id === activePdc.leaseId)
+            return (
+              <div className="pdc-detail-grid">
+                <div className="pdc-detail-row">
+                  <span className="pdc-detail-label">Cheque Number</span>
+                  <span className="pdc-detail-value fw-600">{activePdc.chequeNumber}</span>
+                </div>
+                <div className="pdc-detail-row">
+                  <span className="pdc-detail-label">Tenant</span>
+                  <span className="pdc-detail-value">{meta?.tenantName}</span>
+                </div>
+                <div className="pdc-detail-row">
+                  <span className="pdc-detail-label">Property</span>
+                  <span className="pdc-detail-value">{meta?.propertyName}</span>
+                </div>
+                <div className="pdc-detail-row">
+                  <span className="pdc-detail-label">Amount</span>
+                  <span className="pdc-detail-value fw-600"><CurrencyText value={activePdc.amount} currency={currency} /></span>
+                </div>
+                <div className="pdc-detail-row">
+                  <span className="pdc-detail-label">Issue Date</span>
+                  <span className="pdc-detail-value">{formatDate(activePdc.chequeDate, dateFormat)}</span>
+                </div>
+                <div className="pdc-detail-row">
+                  <span className="pdc-detail-label">Due Date</span>
+                  <span className="pdc-detail-value">{formatDate(activePdc.dueDate, dateFormat)}</span>
+                </div>
+                <div className="pdc-detail-row">
+                  <span className="pdc-detail-label">Status</span>
+                  <span className="pdc-detail-value">
+                    <Badge variant={
+                      activePdc.status === 'Cleared' ? 'success' :
+                      activePdc.status === 'Bounced' ? 'danger' :
+                      activePdc.status === 'Pending' ? 'warning' : 'neutral'
+                    }>{activePdc.status}</Badge>
+                  </span>
+                </div>
+                {meta?.bankName !== '—' && (
+                  <div className="pdc-detail-row">
+                    <span className="pdc-detail-label">Bank</span>
+                    <span className="pdc-detail-value">{meta?.bankName}</span>
+                  </div>
+                )}
+                {lease && (
+                  <div className="pdc-detail-row">
+                    <span className="pdc-detail-label">Lease</span>
+                    <span className="pdc-detail-value">{lease.leaseNumber}</span>
+                  </div>
+                )}
+                {activePdc.bounceReason && (
+                  <div className="pdc-detail-row">
+                    <span className="pdc-detail-label">Bounce Reason</span>
+                    <span className="pdc-detail-value" style={{ color: 'var(--danger)' }}>{activePdc.bounceReason}</span>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+          <div className="pdc-modal-footer">
+            <Button onClick={() => setActiveAction(null)}>Close</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ─── REPLACE MODAL ─── */}
       <Modal open={replaceModalOpen} title="Replace Cheque" onClose={() => setReplaceModalOpen(false)}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 380 }}>
+        <div className="pdc-modal-body">
           {replaceTarget && (
-            <div>
-              <div className="text-sm text-secondary mb-1">Original Cheque</div>
-              <div className="text-sm fw-600">{replaceTarget.chequeNumber}</div>
+            <div className="pdc-modal-info">
+              <span className="text-sm text-secondary">Original Cheque</span>
+              <span className="text-sm fw-600">{replaceTarget.chequeNumber}</span>
             </div>
           )}
-          <div>
-            <label className="text-sm text-secondary mb-1">New Cheque Number *</label>
-            <input
-              type="text"
-              placeholder="Enter new cheque number"
-              value={replaceChequeNumber}
-              onChange={e => setReplaceChequeNumber(e.target.value)}
-              style={{ width: '100%', borderRadius: 6, border: '1px solid var(--border)', padding: '8px 12px', fontSize: 13 }}
-            />
+          <div className="pdc-modal-field">
+            <label>New Cheque Number *</label>
+            <input type="text" placeholder="Enter new cheque number" value={replaceChequeNumber} onChange={e => setReplaceChequeNumber(e.target.value)} />
           </div>
-          <div>
-            <label className="text-sm text-secondary mb-1">New Cheque Date (optional)</label>
-            <input
-              type="date"
-              value={replaceDate}
-              onChange={e => setReplaceDate(e.target.value)}
-              style={{ width: '100%', borderRadius: 6, border: '1px solid var(--border)', padding: '8px 12px', fontSize: 13 }}
-            />
+          <div className="pdc-modal-field">
+            <label>New Cheque Date (optional)</label>
+            <input type="date" value={replaceDate} onChange={e => setReplaceDate(e.target.value)} />
           </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+          <div className="pdc-modal-footer">
             <Button variant="secondary" onClick={() => setReplaceModalOpen(false)}>Cancel</Button>
             <Button onClick={handleReplace}>Replace Cheque</Button>
           </div>
         </div>
       </Modal>
 
-      {/* Deposit Modal */}
-      <Modal open={activeAction === 'Deposit'} title="Deposit Cheque" onClose={() => setActiveAction(null)}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 380 }}>
-          {activePdc && (
-            <div>
-              <div className="text-sm text-secondary mb-1">Cheque Number</div>
-              <div className="text-sm fw-600">{activePdc.chequeNumber} (Amount: {currency} {activePdc.amount.toLocaleString()})</div>
-            </div>
-          )}
-          <div>
-            <label className="text-sm text-secondary mb-1">Select Bank Account *</label>
-            <select
-              value={selectedBankAccountId}
-              onChange={e => setSelectedBankAccountId(e.target.value)}
-              className="input"
-              style={{ width: '100%', borderRadius: 6, border: '1px solid var(--border)', padding: '8px 12px', fontSize: 13 }}
-            >
-              {propAccounts.map(acc => (
-                <option key={acc.id} value={acc.id}>
-                  {acc.institution} - {acc.accountName} ({acc.currency})
-                </option>
-              ))}
-            </select>
-          </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
-            <Button variant="secondary" onClick={() => setActiveAction(null)}>Cancel</Button>
-            <Button onClick={handleDeposit}>Deposit Cheque</Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Clear Modal */}
-      <Modal open={activeAction === 'Clear'} title="Clear Cheque" onClose={() => setActiveAction(null)}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 380 }}>
-          {activePdc && (
-            <div>
-              <div className="text-sm text-secondary mb-1">Cheque Number</div>
-              <div className="text-sm fw-600">{activePdc.chequeNumber} (Amount: {currency} {activePdc.amount.toLocaleString()})</div>
-            </div>
-          )}
-          <div>
-            <label className="text-sm text-secondary mb-1">Clearance Date *</label>
-            <input
-              type="date"
-              value={clearDate}
-              onChange={e => setClearDate(e.target.value)}
-              style={{ width: '100%', borderRadius: 6, border: '1px solid var(--border)', padding: '8px 12px', fontSize: 13 }}
+      {/* ─── EDIT DATE MODAL ─── */}
+      <Modal open={editDateModalOpen} title="Edit Cheque Details" onClose={() => setEditDateModalOpen(false)}>
+        <div className="pdc-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="pdc-modal-field" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 500 }}>Cheque Number *</label>
+            <input 
+              type="text" 
+              value={editChequeNumberValue} 
+              onChange={e => setEditChequeNumberValue(e.target.value)} 
+              style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 6 }}
             />
           </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
-            <Button variant="secondary" onClick={() => setActiveAction(null)}>Cancel</Button>
-            <Button onClick={handleClear}>Clear Cheque</Button>
+          <div className="pdc-modal-field" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 500 }}>PDC Date *</label>
+            <input 
+              type="date" 
+              value={editDateValue} 
+              onChange={e => setEditDateValue(e.target.value)} 
+              style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 6 }}
+            />
+          </div>
+          <div className="pdc-modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12 }}>
+            <Button variant="secondary" onClick={() => setEditDateModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleEditDate}>Save Details</Button>
           </div>
         </div>
       </Modal>
 
-      {/* Bounce Modal */}
+      {/* ─── DEPOSIT MODAL ─── */}
+      {/* ─── CLEAR MODAL ─── */}
+      <Modal open={activeAction === 'Clear' || activeAction === 'ClearPDC'} title="Clear Cheque" onClose={() => setActiveAction(null)}>
+        <div className="pdc-modal-body">
+          {activePdc && (() => {
+            const lease = leases.find(l => l.id === activePdc.leaseId)
+            const tenant = lease ? tenants.find(t => t.id === lease.tenantId) : undefined
+            return (
+              <>
+                <div className="pdc-modal-field">
+                  <label>Cheque Number</label>
+                  <div className="text-sm fw-600" style={{ padding: '6px 0' }}>{activePdc.chequeNumber}</div>
+                </div>
+                <div className="pdc-modal-field">
+                  <label>Tenant</label>
+                  <div className="text-sm fw-600" style={{ padding: '6px 0' }}>{tenant?.name || 'Unknown'}</div>
+                </div>
+                <div className="pdc-modal-field">
+                  <label>Amount</label>
+                  <div className="text-sm fw-600" style={{ padding: '6px 0' }}><CurrencyText value={activePdc.amount} currency={currency} /></div>
+                </div>
+                <Select
+                  label="Deposit Into Bank Account *"
+                  value={selectedBankAccountId}
+                  onChange={e => setSelectedBankAccountId(e.target.value)}
+                  options={propAccounts.map(acc => ({
+                    value: acc.id,
+                    label: `${acc.institution} (${acc.currency})`
+                  }))}
+                />
+                <div className="pdc-modal-field">
+                  <label>Clear Date *</label>
+                  <input type="date" value={clearDate} onChange={e => setClearDate(e.target.value)} />
+                </div>
+                <div className="pdc-modal-field">
+                  <label>Notes (optional)</label>
+                  <input type="text" placeholder="e.g. Cheque cleared after maturity" value={clearNotes} onChange={e => setClearNotes(e.target.value)} />
+                </div>
+                <div className="pdc-modal-footer">
+                  <Button variant="secondary" onClick={() => setActiveAction(null)}>Cancel</Button>
+                  <Button onClick={activeAction === 'ClearPDC' ? handleClearPDC : handleClear}>Clear Cheque</Button>
+                </div>
+              </>
+            )
+          })()}
+        </div>
+      </Modal>
+
+      {/* ─── BOUNCE MODAL ─── */}
       <Modal open={activeAction === 'Bounce'} title="Bounce Cheque" onClose={() => setActiveAction(null)}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 380 }}>
+        <div className="pdc-modal-body">
           {activePdc && (
-            <div>
-              <div className="text-sm text-secondary mb-1">Cheque Number</div>
-              <div className="text-sm fw-600">{activePdc.chequeNumber} (Amount: {currency} {activePdc.amount.toLocaleString()})</div>
+            <div className="pdc-modal-info">
+              <span className="text-sm text-secondary">Cheque</span>
+              <span className="text-sm fw-600">{activePdc.chequeNumber} · <CurrencyText value={activePdc.amount} currency={currency} /></span>
             </div>
           )}
-          <div>
-            <label className="text-sm text-secondary mb-1">Bounce Date *</label>
-            <input
-              type="date"
-              value={bounceDate}
-              onChange={e => setBounceDate(e.target.value)}
-              style={{ width: '100%', borderRadius: 6, border: '1px solid var(--border)', padding: '8px 12px', fontSize: 13 }}
-            />
+          <div className="pdc-modal-field">
+            <label>Bounce Date *</label>
+            <input type="date" value={bounceDate} onChange={e => setBounceDate(e.target.value)} />
           </div>
-          <div>
-            <label className="text-sm text-secondary mb-1">Reason for Bounce *</label>
-            <input
-              type="text"
-              placeholder="e.g. Insufficient Funds"
-              value={bounceReason}
-              onChange={e => setBounceReason(e.target.value)}
-              style={{ width: '100%', borderRadius: 6, border: '1px solid var(--border)', padding: '8px 12px', fontSize: 13 }}
-            />
+          <div className="pdc-modal-field">
+            <label>Reason for Bounce *</label>
+            <input type="text" placeholder="e.g. Insufficient Funds" value={bounceReason} onChange={e => setBounceReason(e.target.value)} />
           </div>
-          <div>
-            <label className="text-sm text-secondary mb-1">Bank Bounce Fee (Debit Expense, optional)</label>
-            <input
-              type="number"
-              placeholder="0.00"
-              value={bounceFee}
-              onChange={e => setBounceFee(e.target.value)}
-              style={{ width: '100%', borderRadius: 6, border: '1px solid var(--border)', padding: '8px 12px', fontSize: 13 }}
-            />
+          <div className="pdc-modal-field">
+            <label>Bank Bounce Fee (optional)</label>
+            <input type="number" placeholder="0.00" value={bounceFee} onChange={e => setBounceFee(e.target.value)} />
           </div>
-          <div>
-            <label className="text-sm text-secondary mb-1">Penalty Charged to Tenant (Debit Receivable, optional)</label>
-            <input
-              type="number"
-              placeholder="0.00"
-              value={penaltyAmount}
-              onChange={e => setPenaltyAmount(e.target.value)}
-              style={{ width: '100%', borderRadius: 6, border: '1px solid var(--border)', padding: '8px 12px', fontSize: 13 }}
-            />
+          <div className="pdc-modal-field">
+            <label>Penalty Charged to Tenant (optional)</label>
+            <input type="number" placeholder="0.00" value={penaltyAmount} onChange={e => setPenaltyAmount(e.target.value)} />
           </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+          <div className="pdc-modal-footer">
             <Button variant="secondary" onClick={() => setActiveAction(null)}>Cancel</Button>
             <Button onClick={handleBounce}>Bounce Cheque</Button>
           </div>
         </div>
       </Modal>
 
-      {/* Cancel Modal */}
+      {/* ─── CANCEL MODAL ─── */}
       <Modal open={activeAction === 'Cancel'} title="Cancel Cheque" onClose={() => setActiveAction(null)}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 380 }}>
+        <div className="pdc-modal-body">
           {activePdc && (
-            <div>
-              <div className="text-sm text-secondary mb-1">Cheque Number</div>
-              <div className="text-sm fw-600">{activePdc.chequeNumber} (Amount: {currency} {activePdc.amount.toLocaleString()})</div>
+            <div className="pdc-modal-info">
+              <span className="text-sm text-secondary">Cheque</span>
+              <span className="text-sm fw-600">{activePdc.chequeNumber} · <CurrencyText value={activePdc.amount} currency={currency} /></span>
             </div>
           )}
-          <div>
-            <label className="text-sm text-secondary mb-1">Reason for Cancellation *</label>
-            <input
-              type="text"
-              placeholder="e.g. Lease Terminated Early"
-              value={cancelReason}
-              onChange={e => setCancelReason(e.target.value)}
-              style={{ width: '100%', borderRadius: 6, border: '1px solid var(--border)', padding: '8px 12px', fontSize: 13 }}
-            />
+          <div className="pdc-modal-field">
+            <label>Reason for Cancellation *</label>
+            <input type="text" placeholder="e.g. Lease Terminated Early" value={cancelReason} onChange={e => setCancelReason(e.target.value)} />
           </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+          <div className="pdc-modal-footer">
             <Button variant="secondary" onClick={() => setActiveAction(null)}>Cancel</Button>
             <Button onClick={handleCancel}>Cancel Cheque</Button>
           </div>
         </div>
       </Modal>
 
-      {/* Re-deposit Modal */}
-      <Modal open={activeAction === 'Re-deposit'} title="Re-deposit Cheque" onClose={() => setActiveAction(null)}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 380 }}>
-          {activePdc && (
-            <div>
-              <div className="text-sm text-secondary mb-1">Cheque Number</div>
-              <div className="text-sm fw-600">{activePdc.chequeNumber} (Amount: {currency} {activePdc.amount.toLocaleString()})</div>
-            </div>
-          )}
-          <div>
-            <label className="text-sm text-secondary mb-1">Select Bank Account *</label>
-            <select
-              value={selectedBankAccountId}
-              onChange={e => setSelectedBankAccountId(e.target.value)}
-              className="input"
-              style={{ width: '100%', borderRadius: 6, border: '1px solid var(--border)', padding: '8px 12px', fontSize: 13 }}
-            >
-              {propAccounts.map(acc => (
-                <option key={acc.id} value={acc.id}>
-                  {acc.institution} - {acc.accountName} ({acc.currency})
-                </option>
-              ))}
-            </select>
-          </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
-            <Button variant="secondary" onClick={() => setActiveAction(null)}>Cancel</Button>
-            <Button onClick={handleReDeposit}>Re-deposit Cheque</Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Audit History Modal */}
+      {/* ─── RE-DEPOSIT MODAL ─── */}
+      {/* ─── AUDIT HISTORY MODAL ─── */}
       <Modal open={activeAction === 'Audit'} title="Cheque Transition History" onClose={() => setActiveAction(null)}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 500 }}>
+        <div className="pdc-modal-body" style={{ minWidth: 500 }}>
           {activePdc && (
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>
-                Cheque No: {activePdc.chequeNumber} (Amount: {currency} {activePdc.amount.toLocaleString()})
+            <>
+              <div className="pdc-modal-info">
+                <span className="text-sm text-secondary">Cheque</span>
+                <span className="text-sm fw-600">{activePdc.chequeNumber} · <CurrencyText value={activePdc.amount} currency={currency} /></span>
               </div>
-              <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #E4EBF4', borderRadius: 6 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <div className="pdc-audit-table-wrap">
+                <table className="pdc-audit-table">
                   <thead>
-                    <tr style={{ background: '#F1F5F9', borderBottom: '1px solid #E4EBF4', textAlign: 'left' }}>
-                      <th style={{ padding: 8 }}>Date</th>
-                      <th style={{ padding: 8 }}>Transition</th>
-                      <th style={{ padding: 8 }}>User</th>
-                      <th style={{ padding: 8 }}>Reason / Ref</th>
+                    <tr>
+                      <th>Date</th>
+                      <th>Transition</th>
+                      <th>User</th>
+                      <th>Reason / Ref</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(activePdc.auditHistory || []).map((entry, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid #E4EBF4' }}>
-                        <td style={{ padding: 8 }}>{formatDate(entry.timestamp.split('T')[0], dateFormat)}</td>
-                        <td style={{ padding: 8 }}>
-                          <span style={{ fontWeight: 500 }}>{entry.previousState}</span> →{' '}
+                      <tr key={idx}>
+                        <td>{formatDate(entry.timestamp.split('T')[0], dateFormat)}</td>
+                        <td>
+                          <span style={{ fontWeight: 500 }}>{entry.previousState}</span>
+                          {' → '}
                           <span style={{ fontWeight: 600, color: 'var(--primary)' }}>{entry.newState}</span>
                         </td>
-                        <td style={{ padding: 8 }}>{entry.user}</td>
-                        <td style={{ padding: 8 }}>
+                        <td>{entry.user}</td>
+                        <td>
                           {entry.reason || '—'}
                           {entry.voucherId && (
-                            <div style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>
-                              Voucher ID: {entry.voucherId}
+                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2 }}>
+                              Voucher: {entry.voucherId}
                             </div>
                           )}
                         </td>
@@ -881,14 +1299,23 @@ export default function PropertyPdcManager({
                   </tbody>
                 </table>
               </div>
-            </div>
+            </>
           )}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+          <div className="pdc-modal-footer">
             <Button onClick={() => setActiveAction(null)}>Close</Button>
           </div>
         </div>
       </Modal>
 
+      <ConfirmDialog
+        open={deletePdcTarget !== null}
+        title="Delete PDC?"
+        message={`This will permanently delete PDC #${deletePdcTarget?.chequeNumber || ''}. This action cannot be undone.`}
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={handleDeletePDC}
+        onCancel={() => setDeletePdcTarget(null)}
+      />
       <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={() => setToast({ ...toast, visible: false })} />
     </>
   )

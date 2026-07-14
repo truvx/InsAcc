@@ -1,9 +1,10 @@
 import { jsPDF } from 'jspdf'
 import { autoTable } from 'jspdf-autotable'
-import * as XLSX from 'xlsx'
+import * as XLSX from 'xlsx-js-style'
 import { saveWithDialog } from './exportService'
 import type { MonthlyTrend, AssetAllocation, CategoryBreakdown } from '../data/reports'
 import { formatMonth } from '../utils/reportFormatters'
+import type { Account, Voucher } from '../accounting/types'
 
 export interface KpiExportItem {
   label: string
@@ -44,7 +45,6 @@ const FONT_SIZE_SECTION = 13
 const FONT_SIZE_BODY = 9
 const PAGE_MARGIN = 20
 const PAGE_WIDTH = 210
-const CONTENT_WIDTH = PAGE_WIDTH - PAGE_MARGIN * 2
 const COLORS = {
   primary: [41, 98, 255] as [number, number, number],
   secondary: [100, 116, 139] as [number, number, number],
@@ -73,447 +73,82 @@ function checkPageBreak(doc: jsPDF, y: number, needed: number): number {
   return y
 }
 
-// --- PDF ---
-
 function generatePdf(data: ReportExportInput): ArrayBuffer {
   const doc = new jsPDF()
   const currency = data.currency
   let y = PAGE_MARGIN + 5
-  let pageNum = 1
 
-  // Title
   doc.setFontSize(FONT_SIZE_TITLE)
   doc.setTextColor(...COLORS.primary)
   doc.text('InsAcc Financial Report', PAGE_MARGIN, y)
   y += 8
 
-  // Timestamp & period
   doc.setFontSize(FONT_SIZE_SUBTITLE)
   doc.setTextColor(...COLORS.secondary)
   const now = new Date()
-  const dateStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-  doc.text(`Generated: ${dateStr}`, PAGE_MARGIN, y)
+  doc.text(`Generated: ${now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, PAGE_MARGIN, y)
   y += 5
   doc.text(`Period: ${data.periodLabel}`, PAGE_MARGIN, y)
   y += 10
 
-  // Separator line
   doc.setDrawColor(...COLORS.border)
   doc.line(PAGE_MARGIN, y, PAGE_WIDTH - PAGE_MARGIN, y)
   y += 8
 
-  // --- KPI Summary ---
   y = checkPageBreak(doc, y, 50)
   doc.setFontSize(FONT_SIZE_SECTION)
   doc.setTextColor(...COLORS.primary)
   doc.text('KPI Summary', PAGE_MARGIN, y)
   y += 6
 
-  const kpiRows = data.kpis.map(k => [
-    k.label,
-    k.value,
-    k.change ? k.change.value : '-',
-  ])
-autoTable(doc, {
+  autoTable(doc, {
     head: [['Metric', 'Value', 'Change']],
-    body: kpiRows,
+    body: data.kpis.map(k => [k.label, k.value, k.change ? k.change.value : '-']),
     startY: y,
     theme: 'striped',
     headStyles: { fillColor: COLORS.primary, fontSize: FONT_SIZE_BODY, fontStyle: 'bold' },
     bodyStyles: { fontSize: FONT_SIZE_BODY },
-    columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 70 }, 2: { cellWidth: 40 } },
     margin: { left: PAGE_MARGIN, right: PAGE_MARGIN },
     styles: { halign: 'left' },
   })
   y = (doc as any).lastAutoTable.finalY + 8
 
-  // --- Investment Growth Summary ---
-  if (data.monthlyCashFlow.length > 0) {
-    y = checkPageBreak(doc, y, 30)
-    doc.setFontSize(FONT_SIZE_SECTION)
-    doc.setTextColor(...COLORS.primary)
-    doc.text('Investment Growth Summary', PAGE_MARGIN, y)
-    y += 6
-
-    doc.setFontSize(FONT_SIZE_BODY)
-    doc.setTextColor(60, 60, 60)
-    const totalInv = formatCurrencyRaw(data.totalInvestments, currency)
-    const netWorth = formatCurrencyRaw(data.netWorth, currency)
-    doc.text(`Total Investments: ${totalInv}`, PAGE_MARGIN, y)
-    y += 5
-    doc.text(`Net Worth: ${netWorth}`, PAGE_MARGIN, y)
-    y += 5
-    doc.text(`Cash: ${formatCurrencyRaw(data.totalCash, currency)}`, PAGE_MARGIN, y)
-    y += 10
-  }
-
-  // --- Asset Allocation ---
-  if (data.assetAllocation.length > 0) {
-    y = checkPageBreak(doc, y, 20 + data.assetAllocation.length * 8)
-    doc.setFontSize(FONT_SIZE_SECTION)
-    doc.setTextColor(...COLORS.primary)
-    doc.text('Asset Allocation', PAGE_MARGIN, y)
-    y += 6
-
-    const allocRows = data.assetAllocation.map(a => [
-      a.type,
-      formatCurrencyRaw(a.totalValue, currency),
-      `${a.percentage.toFixed(1)}%`,
-    ])
-    autoTable(doc, {
-      head: [['Type', 'Value', 'Allocation %']],
-      body: allocRows,
-      startY: y,
-      theme: 'striped',
-      headStyles: { fillColor: COLORS.primary, fontSize: FONT_SIZE_BODY, fontStyle: 'bold' },
-      bodyStyles: { fontSize: FONT_SIZE_BODY },
-      margin: { left: PAGE_MARGIN, right: PAGE_MARGIN },
-    })
-    y = (doc as any).lastAutoTable.finalY + 8
-  }
-
-  // --- Page break before cash flow ---
-  y = checkPageBreak(doc, y, 20 + data.monthlyCashFlow.length * 8)
-
-  // --- Cash Flow Summary ---
-  if (data.monthlyCashFlow.length > 0) {
-    doc.setFontSize(FONT_SIZE_SECTION)
-    doc.setTextColor(...COLORS.primary)
-    doc.text('Cash Flow Summary', PAGE_MARGIN, y)
-    y += 6
-
-    const cfRows = data.monthlyCashFlow.map(m => [
-      formatMonth(m.month),
-      formatCurrencyRaw(m.income, currency),
-      formatCurrencyRaw(m.expense, currency),
-      formatCurrencyRaw(m.net, currency),
-    ])
-    autoTable(doc, {
-      head: [['Month', 'Income', 'Expenses', 'Net']],
-      body: cfRows,
-      startY: y,
-      theme: 'striped',
-      headStyles: { fillColor: COLORS.primary, fontSize: FONT_SIZE_BODY, fontStyle: 'bold' },
-      bodyStyles: { fontSize: FONT_SIZE_BODY },
-      margin: { left: PAGE_MARGIN, right: PAGE_MARGIN },
-    })
-    y = (doc as any).lastAutoTable.finalY + 8
-  }
-
-  // --- Cash Distribution ---
-  if (data.cashDistribution.length > 0) {
-    y = checkPageBreak(doc, y, 20 + data.cashDistribution.length * 8)
-    doc.setFontSize(FONT_SIZE_SECTION)
-    doc.setTextColor(...COLORS.primary)
-    doc.text('Cash Distribution', PAGE_MARGIN, y)
-    y += 6
-
-    const cdRows = data.cashDistribution.map(cd => [
-      cd.name,
-      formatCurrencyRaw(cd.value, currency),
-    ])
-    autoTable(doc, {
-      head: [['Account', 'Balance']],
-      body: cdRows,
-      startY: y,
-      theme: 'striped',
-      headStyles: { fillColor: COLORS.primary, fontSize: FONT_SIZE_BODY, fontStyle: 'bold' },
-      bodyStyles: { fontSize: FONT_SIZE_BODY },
-      margin: { left: PAGE_MARGIN, right: PAGE_MARGIN },
-    })
-    y = (doc as any).lastAutoTable.finalY + 8
-  }
-
-  // --- Top Income Categories ---
-  if (data.topIncomes.length > 0) {
-    y = checkPageBreak(doc, y, 20 + data.topIncomes.length * 8)
-    doc.setFontSize(FONT_SIZE_SECTION)
-    doc.setTextColor(...COLORS.primary)
-    doc.text('Top Income Categories', PAGE_MARGIN, y)
-    y += 6
-
-    const incRows = data.topIncomes.map(i => [
-      i.category,
-      formatCurrencyRaw(i.amount, currency),
-      `${i.percentage.toFixed(1)}%`,
-    ])
-    autoTable(doc, {
-      head: [['Category', 'Amount', '%']],
-      body: incRows,
-      startY: y,
-      theme: 'striped',
-      headStyles: { fillColor: COLORS.primary, fontSize: FONT_SIZE_BODY, fontStyle: 'bold' },
-      bodyStyles: { fontSize: FONT_SIZE_BODY },
-      margin: { left: PAGE_MARGIN, right: PAGE_MARGIN },
-    })
-    y = (doc as any).lastAutoTable.finalY + 8
-  }
-
-  // --- Top Expense Categories ---
-  if (data.topExpenses.length > 0) {
-    y = checkPageBreak(doc, y, 20 + data.topExpenses.length * 8)
-    doc.setFontSize(FONT_SIZE_SECTION)
-    doc.setTextColor(...COLORS.primary)
-    doc.text('Top Expense Categories', PAGE_MARGIN, y)
-    y += 6
-
-    const expRows = data.topExpenses.map(e => [
-      e.category,
-      formatCurrencyRaw(e.amount, currency),
-      `${e.percentage.toFixed(1)}%`,
-    ])
-    autoTable(doc, {
-      head: [['Category', 'Amount', '%']],
-      body: expRows,
-      startY: y,
-      theme: 'striped',
-      headStyles: { fillColor: COLORS.primary, fontSize: FONT_SIZE_BODY, fontStyle: 'bold' },
-      bodyStyles: { fontSize: FONT_SIZE_BODY },
-      margin: { left: PAGE_MARGIN, right: PAGE_MARGIN },
-    })
-    y = (doc as any).lastAutoTable.finalY + 8
-  }
-
-  // --- Recent Activity ---
-  if (data.activityEntries.length > 0) {
-    y = checkPageBreak(doc, y, 20 + data.activityEntries.length * 6)
-    doc.setFontSize(FONT_SIZE_SECTION)
-    doc.setTextColor(...COLORS.primary)
-    doc.text('Recent Activity', PAGE_MARGIN, y)
-    y += 6
-
-    doc.setFontSize(FONT_SIZE_BODY)
-    doc.setTextColor(60, 60, 60)
-    for (const act of data.activityEntries) {
-      y = checkPageBreak(doc, y, 6)
-      doc.text(`• ${act.date} — ${act.description} — ${act.amount}`, PAGE_MARGIN, y)
-      y += 5
-    }
-    y += 4
-  }
-
-  // Footer on last page
   const totalPages = (doc as any).internal.pages.length - 1
-  for (let i = 1; i <= totalPages; i++) {
-    doc.setPage(i)
-    drawFooter(doc, i)
-  }
-
+  for (let i = 1; i <= totalPages; i++) { doc.setPage(i); drawFooter(doc, i) }
   return doc.output('arraybuffer')
 }
-
-// --- Excel ---
-
-function generateExcel(data: ReportExportInput): Uint8Array {
-  const wb = XLSX.utils.book_new()
-  const currency = data.currency
-
-  const numFmt = '#,##0'
-
-  // Summary sheet
-  const summaryData = [
-    ['InsAcc Financial Report', ''],
-    ['Generated', new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })],
-    ['Period', data.periodLabel],
-    ['', ''],
-    ['KPI Summary', ''],
-    ['Metric', 'Value'],
-    ...data.kpis.map(k => [k.label, k.value]),
-    ['', ''],
-    ['Totals', ''],
-    ['Net Worth', data.netWorth],
-    ['Total Cash', data.totalCash],
-    ['Total Investments', data.totalInvestments],
-    ['Income', data.income],
-    ['Expenses', data.expenses],
-    ['Net Cash Flow', data.netCashFlow],
-  ]
-  const wsSummary = XLSX.utils.aoa_to_sheet(summaryData)
-  wsSummary['!cols'] = [{ wch: 25 }, { wch: 20 }]
-  // Currency format for numeric cells
-  for (let r = 12; r <= 17; r++) {
-    const ref = XLSX.utils.encode_cell({ r, c: 1 })
-    if (wsSummary[ref] && typeof wsSummary[ref].v === 'number') {
-      wsSummary[ref].z = numFmt
-    }
-  }
-  XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary')
-
-  // KPIs sheet
-  const kpiData = [
-    ['Metric', 'Value', 'Change'],
-    ...data.kpis.map(k => [k.label, k.value, k.change ? k.change.value : '']),
-  ]
-  const wsKpi = XLSX.utils.aoa_to_sheet(kpiData)
-  wsKpi['!cols'] = [{ wch: 20 }, { wch: 20 }, { wch: 15 }]
-  XLSX.utils.book_append_sheet(wb, wsKpi, 'KPIs')
-
-  // Cash Flow sheet
-  if (data.monthlyCashFlow.length > 0) {
-    const cfData = [
-      ['Month', 'Income', 'Expenses', 'Net'],
-      ...data.monthlyCashFlow.map(m => [formatMonth(m.month), m.income, m.expense, m.net]),
-    ]
-    const wsCf = XLSX.utils.aoa_to_sheet(cfData)
-    wsCf['!cols'] = [{ wch: 18 }, { wch: 15 }, { wch: 15 }, { wch: 15 }]
-    for (let r = 1; r <= data.monthlyCashFlow.length; r++) {
-      for (let c = 1; c <= 3; c++) {
-        const ref = XLSX.utils.encode_cell({ r, c })
-        if (wsCf[ref] && typeof wsCf[ref].v === 'number') {
-          wsCf[ref].z = numFmt
-        }
-      }
-    }
-    XLSX.utils.book_append_sheet(wb, wsCf, 'Cash Flow')
-  }
-
-  // Asset Allocation sheet
-  if (data.assetAllocation.length > 0) {
-    const allocData = [
-      ['Type', 'Value', 'Allocation %'],
-      ...data.assetAllocation.map(a => [a.type, a.totalValue, a.percentage]),
-    ]
-    const wsAlloc = XLSX.utils.aoa_to_sheet(allocData)
-    wsAlloc['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 12 }]
-    for (let r = 1; r <= data.assetAllocation.length; r++) {
-      const ref = XLSX.utils.encode_cell({ r, c: 1 })
-      if (wsAlloc[ref] && typeof wsAlloc[ref].v === 'number') {
-        wsAlloc[ref].z = numFmt
-      }
-    }
-    XLSX.utils.book_append_sheet(wb, wsAlloc, 'Asset Allocation')
-  }
-
-  // Income sheet
-  if (data.topIncomes.length > 0) {
-    const incData = [
-      ['Category', 'Amount', '%'],
-      ...data.topIncomes.map(i => [i.category, i.amount, i.percentage]),
-    ]
-    const wsInc = XLSX.utils.aoa_to_sheet(incData)
-    wsInc['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 10 }]
-    for (let r = 1; r <= data.topIncomes.length; r++) {
-      const ref = XLSX.utils.encode_cell({ r, c: 1 })
-      if (wsInc[ref] && typeof wsInc[ref].v === 'number') {
-        wsInc[ref].z = numFmt
-      }
-    }
-    XLSX.utils.book_append_sheet(wb, wsInc, 'Income')
-  }
-
-  // Expenses sheet
-  if (data.topExpenses.length > 0) {
-    const expData = [
-      ['Category', 'Amount', '%'],
-      ...data.topExpenses.map(e => [e.category, e.amount, e.percentage]),
-    ]
-    const wsExp = XLSX.utils.aoa_to_sheet(expData)
-    wsExp['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 10 }]
-    for (let r = 1; r <= data.topExpenses.length; r++) {
-      const ref = XLSX.utils.encode_cell({ r, c: 1 })
-      if (wsExp[ref] && typeof wsExp[ref].v === 'number') {
-        wsExp[ref].z = numFmt
-      }
-    }
-    XLSX.utils.book_append_sheet(wb, wsExp, 'Expenses')
-  }
-
-  // Activity sheet
-  if (data.activityEntries.length > 0) {
-    const actData = [
-      ['Date', 'Description', 'Amount'],
-      ...data.activityEntries.map(a => [a.date, a.description, a.amount]),
-    ]
-    const wsAct = XLSX.utils.aoa_to_sheet(actData)
-    wsAct['!cols'] = [{ wch: 14 }, { wch: 40 }, { wch: 18 }]
-    XLSX.utils.book_append_sheet(wb, wsAct, 'Activity')
-  }
-
-  return XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
-}
-
-// --- CSV ---
 
 function generateCsv(data: ReportExportInput): string {
   const lines: string[] = []
   const esc = (v: string | number) => {
     const s = String(v)
-    if (s.includes(',') || s.includes('"') || s.includes('\n')) {
-      return `"${s.replace(/"/g, '""')}"`
-    }
-    return s
+    return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g, '""')}"` : s
   }
-
   lines.push('InsAcc Financial Report')
-  lines.push(`Generated,${esc(new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }))}`)
+  lines.push(`Generated,${esc(new Date().toLocaleDateString())}`)
   lines.push(`Period,${esc(data.periodLabel)}`)
   lines.push('')
-
   lines.push('KPI Summary')
   lines.push('Metric,Value,Change')
-  for (const k of data.kpis) {
-    lines.push(`${esc(k.label)},${esc(k.value)},${esc(k.change ? k.change.value : '')}`)
-  }
-  lines.push('')
-
-  if (data.monthlyCashFlow.length > 0) {
-    lines.push('Cash Flow')
-    lines.push('Month,Income,Expenses,Net')
-    for (const m of data.monthlyCashFlow) {
-      lines.push(`${esc(formatMonth(m.month))},${m.income},${m.expense},${m.net}`)
-    }
-    lines.push('')
-  }
-
-  if (data.assetAllocation.length > 0) {
-    lines.push('Asset Allocation')
-    lines.push('Type,Value,Allocation %')
-    for (const a of data.assetAllocation) {
-      lines.push(`${esc(a.type)},${a.totalValue},${a.percentage}`)
-    }
-    lines.push('')
-  }
-
-  if (data.cashDistribution.length > 0) {
-    lines.push('Cash Distribution')
-    lines.push('Account,Balance')
-    for (const cd of data.cashDistribution) {
-      lines.push(`${esc(cd.name)},${cd.value}`)
-    }
-    lines.push('')
-  }
-
-  if (data.topIncomes.length > 0) {
-    lines.push('Top Income Categories')
-    lines.push('Category,Amount,%')
-    for (const i of data.topIncomes) {
-      lines.push(`${esc(i.category)},${i.amount},${i.percentage}`)
-    }
-    lines.push('')
-  }
-
-  if (data.topExpenses.length > 0) {
-    lines.push('Top Expense Categories')
-    lines.push('Category,Amount,%')
-    for (const e of data.topExpenses) {
-      lines.push(`${esc(e.category)},${e.amount},${e.percentage}`)
-    }
-    lines.push('')
-  }
-
-  if (data.activityEntries.length > 0) {
-    lines.push('Recent Activity')
-    lines.push('Date,Description,Amount')
-    for (const a of data.activityEntries) {
-      lines.push(`${esc(a.date)},${esc(a.description)},${esc(a.amount)}`)
-    }
-    lines.push('')
-  }
-
+  for (const k of data.kpis) lines.push(`${esc(k.label)},${esc(k.value)},${esc(k.change ? k.change.value : '')}`)
   return lines.join('\n')
 }
 
-// --- Public API ---
+function generateExcel(data: ReportExportInput): Uint8Array {
+  const wb = XLSX.utils.book_new()
+  const summaryData = [
+    ['InsAcc Financial Report', ''],
+    ['Generated', new Date().toLocaleDateString()],
+    ['Period', data.periodLabel],
+    ['', ''],
+    ['Metric', 'Value'],
+    ...data.kpis.map(k => [k.label, k.value]),
+  ]
+  const ws = XLSX.utils.aoa_to_sheet(summaryData)
+  ws['!cols'] = [{ wch: 25 }, { wch: 20 }]
+  XLSX.utils.book_append_sheet(wb, ws, 'Summary')
+  return XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
+}
 
 export async function exportReport(
   format: 'pdf' | 'csv' | 'excel',
@@ -521,33 +156,669 @@ export async function exportReport(
 ): Promise<string | null> {
   switch (format) {
     case 'pdf': {
-      let buf: ArrayBuffer
-      try {
-        buf = generatePdf(data)
-      } catch (e) {
-        throw new Error(`PDF generation failed: ${(e as Error).message}`)
-      }
+      const buf = generatePdf(data)
       return saveWithDialog('Financial_Report.pdf', [{ name: 'PDF', extensions: ['pdf'] }], buf)
     }
     case 'excel': {
-      let buf: Uint8Array
-      try {
-        buf = generateExcel(data)
-      } catch (e) {
-        throw new Error(`Excel generation failed: ${(e as Error).message}`)
-      }
+      const buf = generateExcel(data)
       return saveWithDialog('Financial_Report.xlsx', [{ name: 'Excel', extensions: ['xlsx'] }], buf)
     }
     case 'csv': {
-      let content: string
-      try {
-        content = generateCsv(data)
-      } catch (e) {
-        throw new Error(`CSV generation failed: ${(e as Error).message}`)
-      }
+      const content = generateCsv(data)
       return saveWithDialog('Financial_Report.csv', [{ name: 'CSV', extensions: ['csv'] }], content)
     }
   }
+}
+
+
+// ════════════════════════════════════════════════════════════════════
+// PREMIUM ACCOUNTING EXCEL EXPORT  –  8-Sheet Professional Workbook
+// Inspired by: Zoho Books / QuickBooks / Xero / Oracle NetSuite
+// ════════════════════════════════════════════════════════════════════
+
+export interface ExcelExportParams {
+  companyName: string
+  reportTitle: string
+  module: 'Investment' | 'Property'
+  periodLabel: string
+  generatedBy: string
+  currency: string
+  accounts: Account[]
+  vouchers: Voucher[]
+  auditLogs?: any[]
+  filters?: {
+    dateRange?: { start: string; end: string }
+    bankAccountId?: string
+    accountId?: string
+    assetName?: string
+    buildingName?: string
+    tenantName?: string
+    voucherType?: string
+    status?: string
+    buyerName?: string
+    vendorName?: string
+  }
+  properties?: any[]
+  units?: any[]
+  tenants?: any[]
+  leases?: any[]
+  investments?: any[]
+}
+
+// ── Colour palette (ARGB hex for xlsx-js-style) ───────────────────
+const C = {
+  primaryDark:  '0F4C35',
+  primary:      '22A45D',
+  primaryMid:   '1A7A47',
+  primaryLight: 'D6F0E1',
+  gold:         'D4AF37',
+  red:          'EF4444',
+  white:        'FFFFFF',
+  black:        '1A2230',
+  gray:         '64748B',
+  grayLight:    'F1F5F9',
+  grayBorder:   'CBD5E1',
+  rowAlt:       'F8FBF9',
+  rowEven:      'FFFFFF',
+  totalsRow:    'E8F5ED',
+  subHdr:       '1E3A2F',
+}
+
+const FN = 'Calibri'
+
+type XCell = { v: string | number; t: 's' | 'n'; z?: string; s?: any }
+
+function bdr(color = C.grayBorder, style = 'thin') {
+  return { style, color: { rgb: color } }
+}
+const allBdr = { top: bdr(), bottom: bdr(), left: bdr(), right: bdr() }
+
+function mkCell(value: string | number, s: any = {}, fmt?: string): XCell {
+  const t = typeof value === 'number' ? 'n' : 's'
+  const c: XCell = { v: value, t }
+  if (fmt) c.z = fmt
+  if (Object.keys(s).length) c.s = s
+  return c
+}
+
+function hCell(text: string, opts: { sz?: number; bold?: boolean; bg?: string; fg?: string; center?: boolean; italic?: boolean } = {}): XCell {
+  return mkCell(text, {
+    font: { name: FN, bold: opts.bold !== false, sz: opts.sz ?? 10, italic: opts.italic ?? false, color: { rgb: opts.fg ?? C.white } },
+    fill: { fgColor: { rgb: opts.bg ?? C.primaryDark } },
+    alignment: { horizontal: opts.center ? 'center' : 'left', vertical: 'center', wrapText: false },
+    border: allBdr,
+  })
+}
+
+function dCell(value: string | number, opts: { bold?: boolean; italic?: boolean; color?: string; bg?: string; center?: boolean; right?: boolean; fmt?: string } = {}): XCell {
+  const s: any = {
+    font: { name: FN, sz: 10, bold: opts.bold ?? false, italic: opts.italic ?? false, color: { rgb: opts.color ?? C.black } },
+    alignment: { horizontal: opts.right ? 'right' : (opts.center ? 'center' : 'left'), vertical: 'center' },
+    border: allBdr,
+  }
+  if (opts.bg) s.fill = { fgColor: { rgb: opts.bg } }
+  return mkCell(value, s, opts.fmt)
+}
+
+function cCell(value: number, bg?: string, bold?: boolean): XCell {
+  return dCell(value, { right: true, bold: bold ?? false, color: value < 0 ? C.red : C.black, bg, fmt: '"AED" #,##0.00' })
+}
+
+function eCell(bg?: string): XCell {
+  const s: any = { font: { name: FN, sz: 10 }, border: allBdr }
+  if (bg) s.fill = { fgColor: { rgb: bg } }
+  return mkCell('', s)
+}
+
+function sectionRow(text: string, cols: number, bg = C.subHdr): XCell[] {
+  return Array.from({ length: cols }, (_, i) =>
+    i === 0
+      ? mkCell(text, { font: { name: FN, bold: true, sz: 10, color: { rgb: C.white } }, fill: { fgColor: { rgb: bg } }, alignment: { horizontal: 'left', vertical: 'center' }, border: allBdr })
+      : mkCell('', { fill: { fgColor: { rgb: bg } }, border: allBdr })
+  )
+}
+
+function fmtD(d: string): string {
+  if (!d) return ''
+  try { return new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) } catch { return d }
+}
+
+function fmtDT(d: string | Date): string {
+  try {
+    const dt = typeof d === 'string' ? new Date(d) : d
+    return dt.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  } catch { return String(d) }
+}
+
+function autoW(rows: XCell[][]): { wch: number }[] {
+  const w: number[] = []
+  for (const row of rows) {
+    row.forEach((c, i) => {
+      const l = c && c.v !== undefined ? String(c.v).length : 8
+      w[i] = Math.min(60, Math.max(w[i] ?? 8, l + 3))
+    })
+  }
+  return w.map(n => ({ wch: n }))
+}
+
+function buildWS(rows: XCell[][], opts: { freeze?: { r: number; c: number }; filterRow?: number; colW?: { wch: number }[]; landscape?: boolean } = {}): any {
+  const ws: any = {}
+  let maxC = 0
+  rows.forEach((row, r) => {
+    row.forEach((c, col) => {
+      if (!c) return
+      ws[XLSX.utils.encode_cell({ r, c: col })] = c
+      if (col > maxC) maxC = col
+    })
+  })
+  ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length - 1, c: maxC } })
+  if (opts.freeze) {
+    ws['!views'] = [{ state: 'frozen', xSplit: opts.freeze.c, ySplit: opts.freeze.r, topLeftCell: XLSX.utils.encode_cell({ r: opts.freeze.r, c: opts.freeze.c }), activePane: 'bottomLeft' }]
+  }
+  if (opts.filterRow !== undefined) {
+    const fCols = rows[opts.filterRow]?.length ?? maxC + 1
+    ws['!autofilter'] = { ref: `${XLSX.utils.encode_cell({ r: opts.filterRow, c: 0 })}:${XLSX.utils.encode_cell({ r: opts.filterRow, c: fCols - 1 })}` }
+  }
+  ws['!cols'] = opts.colW ?? autoW(rows)
+  ws['!pageSetup'] = { orientation: opts.landscape === false ? 'portrait' : 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
+  ws['!margins'] = { left: 0.5, right: 0.5, top: 0.75, bottom: 0.75, header: 0.4, footer: 0.4 }
+  return ws
+}
+
+// ── SHEET 1: COVER ────────────────────────────────────────────────
+function sheetCover(p: ExcelExportParams, count: number): any {
+  const now = new Date()
+  const rows: XCell[][] = []
+  const bg = C.primaryDark
+  const blk = () => Array(4).fill(null).map(() => mkCell('', { fill: { fgColor: { rgb: bg } } }))
+  const cvr = (text: string, sz: number, bold: boolean, fg = C.white, filBg = bg) =>
+    Array(4).fill(null).map((_, i) => mkCell(i === 0 ? text : '', {
+      font: { name: FN, bold, sz, color: { rgb: fg } },
+      fill: { fgColor: { rgb: filBg } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+    }))
+  const goldLine = () => Array(4).fill(null).map(() => mkCell('', { fill: { fgColor: { rgb: C.gold } } }))
+  const metaBg = 'FAFAFA'
+  const meta = (lbl: string, val: string) => [
+    mkCell(lbl, { font: { name: FN, bold: true, sz: 10, color: { rgb: C.gray } }, fill: { fgColor: { rgb: metaBg } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { right: bdr(C.grayBorder) } }),
+    mkCell('', { fill: { fgColor: { rgb: metaBg } } }),
+    mkCell(val, { font: { name: FN, sz: 11, color: { rgb: C.black } }, fill: { fgColor: { rgb: metaBg } }, alignment: { horizontal: 'left', vertical: 'center' } }),
+    mkCell('', { fill: { fgColor: { rgb: metaBg } } }),
+  ]
+  const blkM = () => Array(4).fill(null).map(() => mkCell('', { fill: { fgColor: { rgb: metaBg } } }))
+
+  rows.push(blk()); rows.push(blk()); rows.push(blk())
+  rows.push(cvr('INSACC', 28, true))
+  rows.push(blk())
+  rows.push(cvr('Intelligent Asset & Investment Accounting', 12, false, C.primaryLight))
+  rows.push(blk())
+  rows.push(goldLine())
+  rows.push(blk())
+  rows.push(cvr(p.reportTitle, 18, true, 'FFD700'))
+  rows.push(blk())
+  rows.push(cvr(`${p.module} Module`, 12, false, C.primaryLight))
+  rows.push(blk()); rows.push(blk()); rows.push(blk())
+  rows.push(blkM())
+  rows.push(meta('Reporting Period', p.periodLabel))
+  rows.push(blkM())
+  rows.push(meta('Currency', p.currency))
+  rows.push(meta('Generated By', p.generatedBy))
+  rows.push(meta('Generated On', fmtDT(now)))
+  rows.push(blkM())
+  rows.push(meta('Total Transactions', String(count)))
+  rows.push(blkM())
+  rows.push(meta('', 'Generated by InsAcc — Intelligent Asset & Investment Accounting'))
+
+  const ws = buildWS(rows, { colW: [{ wch: 24 }, { wch: 6 }, { wch: 38 }, { wch: 10 }], landscape: false })
+  ws['!merges'] = [
+    { s: { r: 3, c: 0 }, e: { r: 3, c: 3 } },
+    { s: { r: 5, c: 0 }, e: { r: 5, c: 3 } },
+    { s: { r: 6, c: 0 }, e: { r: 6, c: 3 } },
+    { s: { r: 9, c: 0 }, e: { r: 9, c: 3 } },
+    { s: { r: 11, c: 0 }, e: { r: 11, c: 3 } },
+  ]
+  ws['!rows'] = [
+    {}, {}, {}, { hpt: 52 }, { hpt: 10 }, { hpt: 22 }, { hpt: 10 },
+    { hpt: 6 }, { hpt: 10 }, { hpt: 38 }, { hpt: 10 }, { hpt: 22 },
+  ]
+  return ws
+}
+
+// ── SHEET 2: EXECUTIVE SUMMARY ────────────────────────────────────
+function sheetSummary(p: ExcelExportParams, fv: Voucher[], totDr: number, totCr: number): any {
+  const rows: XCell[][] = []
+
+  rows.push([hCell('EXECUTIVE SUMMARY', { sz: 13, bg: C.primaryDark }), hCell('', { bg: C.primaryDark }), hCell('', { bg: C.primaryDark }), hCell('', { bg: C.primaryDark })])
+  rows.push([hCell(p.reportTitle, { sz: 10, bg: C.subHdr, bold: false }), hCell('', { bg: C.subHdr }), hCell('', { bg: C.subHdr }), hCell('', { bg: C.subHdr })])
+  rows.push([])
+
+  rows.push(sectionRow('  KEY PERFORMANCE INDICATORS', 4))
+  rows.push([hCell('Metric', { bg: C.primary }), hCell('Value', { bg: C.primary }), hCell('Notes', { bg: C.primary }), hCell('', { bg: C.primary })])
+
+  let incTot = 0, expTot = 0
+  for (const v of fv) {
+    for (const l of v.lines) {
+      const a = p.accounts.find(x => x.id === l.accountId)
+      if (!a) continue
+      if (a.type === 'revenue' && l.type === 'Credit') incTot += l.amount
+      if (a.type === 'expense' && l.type === 'Debit') expTot += l.amount
+    }
+  }
+
+  const kpis: [string, string | number, string][] = [
+    ['Total Vouchers', fv.length, `Period: ${p.periodLabel}`],
+    ['Total Debit', totDr, 'Sum of all debit entries'],
+    ['Total Credit', totCr, 'Sum of all credit entries'],
+    ['Net Movement', totDr - totCr, 'Debit minus Credit'],
+    ['Total Income', incTot, 'Revenue account credits'],
+    ['Total Expenses', expTot, 'Expense account debits'],
+    ['Net Profit / (Loss)', incTot - expTot, 'Income minus Expenses'],
+  ]
+
+  kpis.forEach(([lbl, val, note], idx) => {
+    const bg = idx % 2 === 0 ? C.rowEven : C.rowAlt
+    rows.push([
+      dCell(lbl, { bg, bold: true }),
+      typeof val === 'number' ? cCell(val, bg) : dCell(val, { bg, bold: true, color: C.primaryMid }),
+      dCell(note, { bg, italic: true, color: C.gray }),
+      eCell(bg),
+    ])
+  })
+  rows.push([])
+
+  // Monthly breakdown
+  const months: Record<string, { inc: number; exp: number; cnt: number }> = {}
+  for (const v of fv) {
+    const m = v.date.slice(0, 7)
+    if (!months[m]) months[m] = { inc: 0, exp: 0, cnt: 0 }
+    months[m].cnt++
+    for (const l of v.lines) {
+      const a = p.accounts.find(x => x.id === l.accountId)
+      if (!a) continue
+      if (a.type === 'revenue' && l.type === 'Credit') months[m].inc += l.amount
+      if (a.type === 'expense' && l.type === 'Debit') months[m].exp += l.amount
+    }
+  }
+  const mKeys = Object.keys(months).sort()
+  if (mKeys.length > 0) {
+    rows.push(sectionRow('  MONTHLY BREAKDOWN', 5))
+    rows.push([hCell('Month', { bg: C.primary }), hCell('Transactions', { bg: C.primary, center: true }), hCell('Income', { bg: C.primary }), hCell('Expenses', { bg: C.primary }), hCell('Net', { bg: C.primary })])
+    mKeys.forEach((m, i) => {
+      const bg = i % 2 === 0 ? C.rowEven : C.rowAlt
+      const { inc, exp, cnt } = months[m]
+      rows.push([dCell(formatMonth(m), { bg, bold: true }), dCell(cnt, { bg, center: true }), cCell(inc, bg), cCell(exp, bg), cCell(inc - exp, bg)])
+    })
+    const tI = mKeys.reduce((s, m) => s + months[m].inc, 0)
+    const tE = mKeys.reduce((s, m) => s + months[m].exp, 0)
+    rows.push([dCell('TOTAL', { bold: true, bg: C.totalsRow }), dCell(fv.length, { bold: true, bg: C.totalsRow, center: true }), cCell(tI, C.totalsRow, true), cCell(tE, C.totalsRow, true), cCell(tI - tE, C.totalsRow, true)])
+    rows.push([])
+  }
+
+  return buildWS(rows, { freeze: { r: 1, c: 0 }, colW: [{ wch: 30 }, { wch: 18 }, { wch: 38 }, { wch: 10 }, { wch: 18 }] })
+}
+
+// ── SHEET 3: TRANSACTIONS ─────────────────────────────────────────
+function sheetTransactions(p: ExcelExportParams, fv: Voucher[]): any {
+  const rows: XCell[][] = []
+  const hdrs = ['Date', 'Voucher No.', 'Ref. No.', 'Type', 'Party / Tenant / Vendor', 'Description', 'Narration', 'From Account', 'To Account', 'Payment Mode', 'Cheque No.', 'Account Code', 'Account Name', 'Debit', 'Credit', 'Running Balance', 'Status', 'Posted By', 'Posted Time']
+  rows.push(hdrs.map(h => hCell(h, { bg: C.primaryDark, sz: 9 })))
+
+  const sorted = [...fv].sort((a, b) => a.date.localeCompare(b.date))
+  let runBal = 0, ri = 0, totDr = 0, totCr = 0
+
+  for (const v of sorted) {
+    for (const l of v.lines) {
+      const acct = p.accounts.find(a => a.id === l.accountId)
+      const isDr = l.type === 'Debit'
+      runBal += isDr ? l.amount : -l.amount
+      if (isDr) totDr += l.amount; else totCr += l.amount
+      const bg = ri % 2 === 0 ? C.rowEven : C.rowAlt; ri++
+
+      let party = ''
+      const lease = p.leases?.find(le => le.leaseNumber === v.reference)
+      if (lease) { const t = p.tenants?.find(t => t.id === lease.tenantId); if (t) party = t.name }
+      if (!party) party = v.description.match(/from (.*?)(?:\)|$)/)?.[1] || v.description.match(/paid to (.*?)(?:\)|$)/)?.[1] || ''
+
+      let pm: string = v.type as string
+      const chq = (v.description + ' ' + (l.narration || '')).match(/Chq\s*#?\s*([a-zA-Z0-9]+)/i)
+      const chqNo = chq ? chq[1] : ''
+      if (chq) pm = 'Cheque'
+      const pt = (v.description + ' ' + (l.narration || '')).match(/Transfer|PDC|Cash|Card|Online/i)
+      if (pt) pm = pt[0]
+
+      rows.push([
+        dCell(fmtD(v.date), { bg }),
+        dCell(v.number, { bg, bold: true }),
+        dCell(v.reference || '', { bg }),
+        dCell(v.type, { bg, center: true }),
+        dCell(party, { bg }),
+        dCell(v.description, { bg }),
+        dCell(l.narration || '', { bg, italic: true, color: C.gray }),
+        dCell(isDr ? '' : (acct?.name || ''), { bg }),
+        dCell(isDr ? (acct?.name || '') : '', { bg }),
+        dCell(pm, { bg, center: true }),
+        dCell(chqNo, { bg }),
+        dCell(acct?.code || '', { bg }),
+        dCell(acct?.name || '', { bg }),
+        isDr ? cCell(l.amount, bg) : eCell(bg),
+        !isDr ? cCell(l.amount, bg) : eCell(bg),
+        cCell(runBal, bg),
+        dCell(v.status, { bg, center: true, color: v.status === 'Posted' ? C.primaryMid : v.status === 'Cancelled' ? C.red : C.gray }),
+        dCell(v.postedBy || v.createdBy || 'system', { bg }),
+        dCell(fmtDT(v.postedAt || v.createdAt || ''), { bg }),
+      ])
+    }
+  }
+
+  const tot: XCell[] = Array(19).fill(null).map(() => eCell(C.totalsRow))
+  tot[0] = dCell('TOTAL', { bold: true, bg: C.totalsRow })
+  tot[13] = cCell(totDr, C.totalsRow, true)
+  tot[14] = cCell(totCr, C.totalsRow, true)
+  rows.push(tot)
+
+  return buildWS(rows, {
+    freeze: { r: 1, c: 2 }, filterRow: 0,
+    colW: [{ wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 22 }, { wch: 34 }, { wch: 28 }, { wch: 22 }, { wch: 22 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 24 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 18 }],
+  })
+}
+
+// ── SHEET 4: VOUCHER DETAILS ──────────────────────────────────────
+function sheetVoucherDetails(p: ExcelExportParams, fv: Voucher[]): any {
+  const rows: XCell[][] = []
+  const hdrs = ['Voucher No.', 'Type', 'Date', 'Status', 'Currency', 'Exch. Rate', 'Total Debit', 'Total Credit', 'Net', 'Party', 'Description', 'Created By', 'Approved By', 'Reference']
+  rows.push(hdrs.map(h => hCell(h, { bg: C.primaryDark, sz: 9 })))
+  const lHdrs = ['', '  Line #', 'Account Code', 'Account Name', 'Dr / Cr', '', 'Debit Amount', 'Credit Amount', '', 'Line Narration', '', '', '']
+  rows.push(lHdrs.map(h => hCell(h, { bg: C.subHdr, sz: 8, bold: h !== '' })))
+
+  const sorted = [...fv].sort((a, b) => a.date.localeCompare(b.date))
+  let vi = 0
+  for (const v of sorted) {
+    const vDr = v.lines.filter(l => l.type === 'Debit').reduce((s, l) => s + l.amount, 0)
+    const vCr = v.lines.filter(l => l.type === 'Credit').reduce((s, l) => s + l.amount, 0)
+    let party = ''
+    if (p.module === 'Property') {
+      const lease = p.leases?.find(le => le.leaseNumber === v.reference)
+      const t = lease ? p.tenants?.find(t => t.id === lease.tenantId) : null
+      if (t) party = t.name
+    } else {
+      party = v.description.match(/from (.*?)(?:\)|$)/)?.[1] || v.description.match(/paid to (.*?)(?:\)|$)/)?.[1] || ''
+    }
+    const bg = vi % 2 === 0 ? C.rowEven : C.rowAlt
+    rows.push([
+      dCell(v.number, { bg, bold: true }), dCell(v.type, { bg, center: true }), dCell(fmtD(v.date), { bg }),
+      dCell(v.status, { bg, center: true, color: v.status === 'Posted' ? C.primaryMid : C.gray }),
+      dCell(v.currency || p.currency, { bg, center: true }), dCell(v.exchangeRate || 1, { bg, center: true, fmt: '#,##0.0000' }),
+      cCell(vDr, bg, true), cCell(vCr, bg, true), cCell(vDr - vCr, bg),
+      dCell(party, { bg }), dCell(v.description, { bg }),
+      dCell(v.createdBy || 'system', { bg }), dCell(v.approvedBy || '', { bg }), dCell(v.reference || '', { bg }),
+    ])
+    v.lines.forEach((l, li) => {
+      const a = p.accounts.find(x => x.id === l.accountId)
+      const lb = C.grayLight
+      rows.push([
+        eCell(lb), dCell(`  ${li + 1}`, { bg: lb, color: C.gray }),
+        dCell(a?.code || '', { bg: lb, bold: true }), dCell(a?.name || '', { bg: lb }),
+        dCell(l.type, { bg: lb, center: true, bold: true, color: l.type === 'Debit' ? C.primaryMid : C.red }),
+        eCell(lb),
+        l.type === 'Debit' ? cCell(l.amount, lb) : eCell(lb),
+        l.type === 'Credit' ? cCell(l.amount, lb) : eCell(lb),
+        eCell(lb), dCell(l.narration || '', { bg: lb, italic: true }),
+        eCell(lb), eCell(lb), eCell(lb),
+      ])
+    })
+    vi++
+  }
+
+  return buildWS(rows, {
+    freeze: { r: 2, c: 1 }, filterRow: 0,
+    colW: [{ wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 38 }, { wch: 14 }, { wch: 14 }, { wch: 16 }],
+  })
+}
+
+// ── SHEET 5: BANK ACTIVITY ────────────────────────────────────────
+function sheetBankActivity(p: ExcelExportParams, fv: Voucher[]): any {
+  const rows: XCell[][] = []
+  const bankAccts = p.accounts.filter(a => (a.code.startsWith('1110') || a.code.startsWith('1120')) && a.isActive)
+  const sorted = [...fv].sort((a, b) => a.date.localeCompare(b.date))
+  const hdrs = ['Date', 'Voucher No.', 'Type', 'Description', 'Narration', 'Payment Mode', 'Cheque No.', 'Reference', 'Money In', 'Money Out', 'Running Balance']
+
+  if (bankAccts.length === 0) {
+    rows.push([dCell('No bank accounts found.', { color: C.gray })])
+    return buildWS(rows, {})
+  }
+
+  for (const ba of bankAccts) {
+    rows.push(sectionRow(`  ${ba.name.toUpperCase()}   (${ba.code})`, hdrs.length, C.primaryDark))
+    rows.push(hdrs.map(h => hCell(h, { bg: C.primary, sz: 9 })))
+
+    let runBal = 0
+    rows.push([
+      dCell(fmtD(p.filters?.dateRange?.start || ''), { bold: true, bg: C.grayLight }),
+      dCell('—', { center: true, bg: C.grayLight }), dCell('Opening', { bold: true, center: true, bg: C.grayLight }),
+      dCell('Balance brought forward', { bold: true, bg: C.grayLight }),
+      ...Array(6).fill(null).map(() => eCell(C.grayLight)),
+      cCell(runBal, C.grayLight, true),
+    ])
+
+    let ti = 0, to = 0, xi = 0
+    for (const v of sorted) {
+      for (const l of v.lines) {
+        if (l.accountId !== ba.id) continue
+        const isDr = l.type === 'Debit'
+        if (isDr) { runBal += l.amount; ti += l.amount } else { runBal -= l.amount; to += l.amount }
+        const bg = xi % 2 === 0 ? C.rowEven : C.rowAlt; xi++
+        let pm: string = v.type as string
+        const chq = (v.description + ' ' + (l.narration || '')).match(/Chq\s*#?\s*([a-zA-Z0-9]+)/i)
+        const chqNo = chq ? chq[1] : ''
+        if (chq) pm = 'Cheque'
+        const pt = (v.description + ' ' + (l.narration || '')).match(/Transfer|PDC|Cash|Card|Online/i)
+        if (pt) pm = pt[0]
+        rows.push([
+          dCell(fmtD(v.date), { bg }), dCell(v.number, { bg, bold: true }), dCell(v.type, { bg, center: true }),
+          dCell(v.description, { bg }), dCell(l.narration || '', { bg, italic: true, color: C.gray }),
+          dCell(pm, { bg, center: true }), dCell(chqNo, { bg }), dCell(v.reference || '', { bg }),
+          isDr ? cCell(l.amount, bg) : eCell(bg), !isDr ? cCell(l.amount, bg) : eCell(bg), cCell(runBal, bg),
+        ])
+      }
+    }
+    rows.push([
+      dCell('CLOSING BALANCE', { bold: true, bg: C.totalsRow }),
+      ...Array(7).fill(null).map(() => eCell(C.totalsRow)),
+      cCell(ti, C.totalsRow, true), cCell(to, C.totalsRow, true), cCell(runBal, C.totalsRow, true),
+    ])
+    rows.push([]); rows.push([])
+  }
+
+  return buildWS(rows, {
+    freeze: { r: 2, c: 0 },
+    colW: [{ wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 34 }, { wch: 28 }, { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }],
+  })
+}
+
+// ── SHEET 6: GENERAL LEDGER ───────────────────────────────────────
+function sheetLedger(p: ExcelExportParams, fv: Voucher[]): any {
+  const rows: XCell[][] = []
+  const sorted = [...fv].sort((a, b) => a.date.localeCompare(b.date))
+  const typeOrder = ['asset', 'liability', 'equity', 'revenue', 'expense']
+  const typeLabels: Record<string, string> = { asset: 'ASSETS', liability: 'LIABILITIES', equity: 'EQUITY', revenue: 'REVENUE / INCOME', expense: 'EXPENSES' }
+  const colHdrs = ['Date', 'Voucher No.', 'Type', 'Description', 'Debit', 'Credit', 'Running Balance', 'Status']
+
+  for (const aType of typeOrder) {
+    const accs = p.accounts.filter(a => a.isActive && a.type === aType)
+    if (accs.length === 0) continue
+    rows.push(sectionRow(`  ${typeLabels[aType]}`, colHdrs.length, C.primaryDark))
+
+    for (const acct of accs) {
+      const txns: Array<{ v: Voucher; l: Voucher['lines'][0] }> = []
+      for (const v of sorted) for (const l of v.lines) if (l.accountId === acct.id) txns.push({ v, l })
+      if (txns.length === 0) continue
+
+      rows.push([
+        mkCell(`  ${acct.code}  ${acct.name}`, { font: { name: FN, bold: true, sz: 10, color: { rgb: C.white } }, fill: { fgColor: { rgb: C.subHdr } }, alignment: { horizontal: 'left', vertical: 'center' }, border: allBdr }),
+        ...Array(colHdrs.length - 1).fill(null).map(() => mkCell('', { fill: { fgColor: { rgb: C.subHdr } }, border: allBdr })),
+      ])
+      rows.push(colHdrs.map(h => hCell(h, { bg: C.primary, sz: 9 })))
+
+      let runBal = 0
+      rows.push([
+        dCell('—', { center: true, bg: C.grayLight }), dCell('OPEN', { bold: true, bg: C.grayLight }),
+        dCell('Opening', { bg: C.grayLight }), dCell('Balance brought forward', { bold: true, bg: C.grayLight }),
+        eCell(C.grayLight), eCell(C.grayLight), cCell(runBal, C.grayLight, true), dCell('', { bg: C.grayLight }),
+      ])
+
+      let tDr = 0, tCr = 0, xi = 0
+      for (const { v, l } of txns) {
+        const isDr = l.type === 'Debit'
+        const mult = acct.normalBalance === 'debit' ? (isDr ? 1 : -1) : (isDr ? -1 : 1)
+        runBal += l.amount * mult
+        if (isDr) tDr += l.amount; else tCr += l.amount
+        const bg = xi % 2 === 0 ? C.rowEven : C.rowAlt; xi++
+        rows.push([
+          dCell(fmtD(v.date), { bg }), dCell(v.number, { bg, bold: true }), dCell(v.type, { bg, center: true }),
+          dCell(v.description, { bg }),
+          isDr ? cCell(l.amount, bg) : eCell(bg), !isDr ? cCell(l.amount, bg) : eCell(bg),
+          cCell(runBal, bg), dCell(v.status, { bg, center: true, color: v.status === 'Posted' ? C.primaryMid : C.gray }),
+        ])
+      }
+      rows.push([
+        dCell('CLOSING BALANCE', { bold: true, bg: C.totalsRow }), eCell(C.totalsRow), eCell(C.totalsRow), eCell(C.totalsRow),
+        cCell(tDr, C.totalsRow, true), cCell(tCr, C.totalsRow, true), cCell(runBal, C.totalsRow, true), eCell(C.totalsRow),
+      ])
+      rows.push([])
+    }
+    rows.push([])
+  }
+
+  return buildWS(rows, {
+    colW: [{ wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 38 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 12 }],
+  })
+}
+
+// ── SHEET 7: AUDIT TRAIL ──────────────────────────────────────────
+function sheetAudit(p: ExcelExportParams): any {
+  const rows: XCell[][] = []
+  const hdrs = ['Timestamp', 'Created By', 'Module', 'Action', 'Target / Voucher ID', 'Status', 'Details']
+  rows.push(hdrs.map(h => hCell(h, { bg: C.primaryDark })))
+  const logs = p.auditLogs || []
+  if (logs.length === 0) {
+    rows.push([dCell('No audit records found for this period.', { italic: true, color: C.gray }), ...Array(hdrs.length - 1).fill(null).map(() => eCell())])
+  } else {
+    logs.forEach((log: any, i: number) => {
+      const bg = i % 2 === 0 ? C.rowEven : C.rowAlt
+      rows.push([
+        dCell(fmtDT(log.timestamp || log.createdAt || ''), { bg }),
+        dCell(log.user || log.createdBy || 'system', { bg, bold: true }),
+        dCell(log.module || '', { bg }),
+        dCell(log.action || '', { bg }),
+        dCell(log.targetId || '', { bg }),
+        dCell(log.status || 'Success', { bg, center: true, color: log.status === 'Error' ? C.red : C.primaryMid }),
+        dCell(log.details || log.description || '', { bg }),
+      ])
+    })
+  }
+  return buildWS(rows, { freeze: { r: 1, c: 0 }, filterRow: 0, colW: [{ wch: 22 }, { wch: 16 }, { wch: 14 }, { wch: 18 }, { wch: 24 }, { wch: 10 }, { wch: 48 }] })
+}
+
+// ── SHEET 8: NOTES ────────────────────────────────────────────────
+function sheetNotes(p: ExcelExportParams, count: number): any {
+  const rows: XCell[][] = []
+  const now = new Date()
+  const blk = (lbl: string, val: string) => [dCell(lbl, { bold: true, color: C.gray }), dCell(val), eCell()]
+
+  rows.push([hCell('REPORT NOTES & METADATA', { sz: 12, bg: C.primaryDark }), hCell('', { bg: C.primaryDark }), hCell('', { bg: C.primaryDark })])
+  rows.push([])
+  rows.push(sectionRow('  EXPORT CONFIGURATION', 3))
+  rows.push(blk('Company Name', p.companyName))
+  rows.push(blk('Report Title', p.reportTitle))
+  rows.push(blk('Module', p.module))
+  rows.push(blk('Currency', p.currency))
+  rows.push(blk('Generated By', p.generatedBy))
+  rows.push(blk('Generated On', fmtDT(now)))
+  rows.push([])
+  rows.push(sectionRow('  ACTIVE FILTERS', 3))
+  rows.push(blk('Date Range', p.filters?.dateRange ? `${fmtD(p.filters.dateRange.start)}  →  ${fmtD(p.filters.dateRange.end)}` : 'All dates'))
+  rows.push(blk('Voucher Type', p.filters?.voucherType || 'All'))
+  rows.push(blk('Status', p.filters?.status || 'All'))
+  rows.push(blk('Bank Account', p.filters?.bankAccountId && p.filters.bankAccountId !== 'All' ? (p.accounts.find(a => a.id === p.filters?.bankAccountId)?.name || p.filters.bankAccountId) : 'All'))
+  rows.push(blk('Ledger Account', p.filters?.accountId && p.filters.accountId !== 'All' ? (p.accounts.find(a => a.id === p.filters?.accountId)?.name || p.filters.accountId) : 'All'))
+  rows.push(blk('Asset', p.filters?.assetName || 'All'))
+  rows.push(blk('Building', p.filters?.buildingName || 'All'))
+  rows.push(blk('Tenant', p.filters?.tenantName || 'All'))
+  rows.push([])
+  rows.push(sectionRow('  STATISTICS', 3))
+  rows.push(blk('Total Vouchers (After Filter)', String(count)))
+  rows.push(blk('Total Active Accounts', String(p.accounts.filter(a => a.isActive).length)))
+  rows.push([])
+  rows.push(sectionRow('  APPLICATION INFO', 3))
+  rows.push(blk('Application', 'InsAcc — Intelligent Asset & Investment Accounting'))
+  rows.push(blk('Version', '1.0.0'))
+  rows.push(blk('Report Format', 'Professional Excel Workbook (.xlsx)'))
+  rows.push(blk('Sheets', '8 (Cover, Executive Summary, Transactions, Voucher Details, Bank Activity, General Ledger, Audit Trail, Notes)'))
+
+  return buildWS(rows, { freeze: { r: 1, c: 0 }, colW: [{ wch: 30 }, { wch: 52 }, { wch: 10 }], landscape: false })
+}
+
+// ════════════════════════════════════════════════════════════════════
+// ENTRY POINT
+// ════════════════════════════════════════════════════════════════════
+
+export async function exportAccountingExcel(p: ExcelExportParams): Promise<string | null> {
+  // 1. Filter vouchers
+  const fv = p.vouchers.filter(v => {
+    if (p.filters?.dateRange) {
+      if (v.date < p.filters.dateRange.start || v.date > p.filters.dateRange.end) return false
+    }
+    if (p.filters?.voucherType && p.filters.voucherType !== 'All') {
+      if (v.type.toLowerCase() !== p.filters.voucherType.toLowerCase()) return false
+    }
+    if (p.filters?.status && p.filters.status !== 'All') {
+      if (v.status.toLowerCase() !== p.filters.status.toLowerCase()) return false
+    }
+    if (p.filters?.bankAccountId && p.filters.bankAccountId !== 'All') {
+      if (!v.lines.some(l => l.accountId === p.filters?.bankAccountId)) return false
+    }
+    if (p.filters?.accountId && p.filters.accountId !== 'All') {
+      if (!v.lines.some(l => l.accountId === p.filters?.accountId)) return false
+    }
+    if (p.filters?.assetName && p.filters.assetName !== 'All') {
+      const q = p.filters.assetName.toLowerCase()
+      if (!v.lines.some(l => l.narration && l.narration.toLowerCase().includes(q)) && !v.description.toLowerCase().includes(q)) return false
+    }
+    if (p.filters?.buildingName && p.filters.buildingName !== 'All') {
+      const lease = p.leases?.find(l => l.leaseNumber === v.reference)
+      const prop = lease ? p.properties?.find(x => x.id === lease.propertyId) : null
+      if (!prop || prop.name.toLowerCase() !== p.filters.buildingName.toLowerCase()) return false
+    }
+    if (p.filters?.tenantName && p.filters.tenantName !== 'All') {
+      const lease = p.leases?.find(l => l.leaseNumber === v.reference)
+      const tenant = lease ? p.tenants?.find(t => t.id === lease.tenantId) : null
+      if (!tenant || tenant.name.toLowerCase() !== p.filters.tenantName.toLowerCase()) return false
+    }
+    return true
+  })
+
+  // 2. Totals
+  let totDr = 0, totCr = 0
+  for (const v of fv) for (const l of v.lines) { if (l.type === 'Debit') totDr += l.amount; else totCr += l.amount }
+
+  // 3. Build workbook
+  const wb = XLSX.utils.book_new()
+  wb.Props = { Title: p.reportTitle, Subject: 'InsAcc Professional Accounting Report', Author: p.generatedBy, Company: p.companyName, CreatedDate: new Date() }
+
+  XLSX.utils.book_append_sheet(wb, sheetCover(p, fv.length),          '1. Cover')
+  XLSX.utils.book_append_sheet(wb, sheetSummary(p, fv, totDr, totCr), '2. Executive Summary')
+  XLSX.utils.book_append_sheet(wb, sheetTransactions(p, fv),          '3. Transactions')
+  XLSX.utils.book_append_sheet(wb, sheetVoucherDetails(p, fv),        '4. Voucher Details')
+  XLSX.utils.book_append_sheet(wb, sheetBankActivity(p, fv),          '5. Bank Activity')
+  XLSX.utils.book_append_sheet(wb, sheetLedger(p, fv),                '6. General Ledger')
+  XLSX.utils.book_append_sheet(wb, sheetAudit(p),                     '7. Audit Trail')
+  XLSX.utils.book_append_sheet(wb, sheetNotes(p, fv.length),          '8. Notes')
+
+  // 4. Save
+  const today = new Date().toISOString().slice(0, 10)
+  const filename = `InsAcc_${p.module}_Report_${today}.xlsx`
+  const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
+  return saveWithDialog(filename, [{ name: 'Excel Workbook', extensions: ['xlsx'] }], buf)
 }
 
 export { generatePdf, generateExcel, generateCsv }

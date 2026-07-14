@@ -65,11 +65,11 @@ Each requirement from the PRD is listed below with:
 
 | # | Requirement | Status | Module | How to Verify |
 |---|-------------|--------|--------|---------------|
-| 5.1 | Record new investments with form | ✓ | PurchaseLedger | Click "Add Purchase", fill form with type, name, date, qty, price, broker |
+| 5.1 | Record new investments with form | ✓ | PurchaseLedger | Click "Add Purchase", fill form with type, name, date, qty, price, buyer |
 | 5.2 | Edit existing investments | ✓ | PurchaseLedger | Click yellow edit button on a row, modify fields, save |
 | 5.3 | Delete investments with confirmation | ✓ | PurchaseLedger | Click red delete button, confirm in dialog |
 | 5.4 | Auto-generated investment IDs | ✓ | Investments, PurchaseLedger | New purchase gets ID like GLD-001, SLV-002 |
-| 5.5 | Table listing all fields | ✓ | PurchaseLedger | Table shows ID, Date, Asset Name, Type, Value, Quantity, Unit Price, Broker |
+| 5.5 | Table listing all fields | ✓ | PurchaseLedger | Table shows ID, Date, Asset Name, Type, Value, Quantity, Unit Price, Buyer |
 | 5.6 | Status badges for asset types | ✓ | Investments, PurchaseLedger | Each asset type gets a coloured status badge |
 
 ---

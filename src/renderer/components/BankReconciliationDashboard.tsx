@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
-import type { Account, Voucher, VoucherLine, BankStatementLine, BankReconciliationRecord } from '../accounting/types'
+import type { Account, Voucher, VoucherLine, BankStatementLine, BankReconciliationRecord, BankMapping } from '../accounting/types'
 import { Button, Input, Select, Badge, Card, KpiCard, Modal } from './design/DesignSystem'
 import { calculateMatchScore } from '../services/bankReconciliationService'
 import { recordModuleEvent } from '../services/auditService'
@@ -16,6 +16,7 @@ interface BankReconciliationDashboardProps {
   vouchers: Voucher[]
   setVouchers: React.Dispatch<React.SetStateAction<Voucher[]>>
   accountingEngine: AccountingEngine
+  bankMappings: BankMapping[]
   currency?: string
   dateFormat?: string
   onAuditEvent?: (event: AuditEvent) => void
@@ -30,6 +31,7 @@ export default function BankReconciliationDashboard({
   vouchers,
   setVouchers,
   accountingEngine,
+  bankMappings,
   currency = 'AED',
   dateFormat = 'DD/MM/YYYY',
   onAuditEvent,
@@ -75,10 +77,17 @@ export default function BankReconciliationDashboard({
     }
   }, [statementLines, selectedLineId])
 
+  // Resolve CoA account ID from bank account UUID
+  const bankCoaId = useMemo(() => {
+    const mapping = bankMappings.find(m => m.bankAccountId === reconciliationRecord.bankAccountId)
+    return mapping?.accountId || ''
+  }, [bankMappings, reconciliationRecord.bankAccountId])
+
   // ERP Bank Voucher Lines mapping
   const bankVoucherLines = useMemo(() => {
     const list: { voucher: Voucher; line: VoucherLine }[] = []
-    const bankAccountObj = accounts.find(a => a.id === reconciliationRecord.bankAccountId)
+    if (!bankCoaId) return list
+    const bankAccountObj = accounts.find(a => a.id === bankCoaId)
     if (!bankAccountObj) return list
 
     for (const v of vouchers) {
@@ -398,7 +407,7 @@ export default function BankReconciliationDashboard({
         currency,
         exchangeRate: 1,
         baseCurrency: currency,
-        bankAccount: reconciliationRecord.bankAccountId,
+        bankAccount: bankCoaId,
         debitAccount: adjType === 'Payment' ? adjAccount : undefined,
         creditAccount: adjType === 'Receipt' ? adjAccount : undefined,
         referenceType: 'BankReconciliation',
@@ -424,7 +433,7 @@ export default function BankReconciliationDashboard({
     }
 
     const postedVoucher = postResult.voucher
-    const bankLine = postedVoucher.lines.find(l => l.accountId === reconciliationRecord.bankAccountId)
+    const bankLine = postedVoucher.lines.find(l => l.accountId === bankCoaId)
     if (!bankLine) {
       alert('Could not find corresponding bank ledger line in posted voucher.')
       return

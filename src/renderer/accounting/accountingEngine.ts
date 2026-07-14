@@ -3,6 +3,7 @@ import type {
   Account,
   Voucher,
   CreateVoucherInput,
+  FiscalYear,
   LineType,
   PostingResult,
   VoucherEvent,
@@ -17,6 +18,11 @@ import { now } from '../../shared/utils/dateUtils'
 
 const emptySuccess: PostingResult = { success: true, errors: [] }
 
+function isInClosedFiscalYear(date: string, fiscalYears: FiscalYear[]): FiscalYear | undefined {
+  return fiscalYears.find(fy => fy.startDate <= date && fy.endDate >= date && fy.isClosed)
+}
+
+
 function publishWithInvalidation(type: VoucherEventType, voucher: Voucher, publish: (type: VoucherEventType, voucher: Voucher) => void): void {
   invalidateBalanceCache()
   publish(type, voucher)
@@ -24,6 +30,11 @@ function publishWithInvalidation(type: VoucherEventType, voucher: Voucher, publi
 
 export function createAccountingEngine() {
   const listeners: VoucherEventCallback[] = []
+  let _fiscalYears: FiscalYear[] = []
+
+  function setFiscalYears(fys: FiscalYear[]) {
+    _fiscalYears = fys
+  }
 
   function publish(type: VoucherEventType, voucher: Voucher): void {
     const event: VoucherEvent = { type, voucher, timestamp: now() }
@@ -53,6 +64,7 @@ export function createAccountingEngine() {
       bankAccount?: string
       debitAccount?: string
       creditAccount?: string
+      refundAmount?: number
       referenceType?: string
       referenceId?: string
       createdBy?: string
@@ -62,6 +74,13 @@ export function createAccountingEngine() {
     accounts: Account[],
     existingVouchers: Voucher[],
   ): PostingResult {
+    const closedFY = isInClosedFiscalYear(context.date, _fiscalYears)
+    if (closedFY) {
+      return {
+        success: false,
+        errors: [{ code: 'PERIOD_CLOSED', message: `This accounting period (${closedFY.name}) is closed.` }],
+      }
+    }
     const rule = getRule(event)
     if (!rule) {
       return {
@@ -76,6 +95,7 @@ export function createAccountingEngine() {
       debitAccount: context.debitAccount,
       creditAccount: context.creditAccount,
       amount: context.amount,
+      refundAmount: context.refundAmount,
       date: context.date,
       description: context.description,
       currency: context.currency ?? 'AED',
@@ -84,23 +104,25 @@ export function createAccountingEngine() {
       referenceType: context.referenceType as any,
       referenceId: context.referenceId,
       createdBy: context.createdBy,
-    })
+    }, accounts)
+
+    const refType = context.referenceId ? context.referenceType : undefined
 
     const lines: CreateVoucherInput['lines'] = [
       ...resolved.debit.map(d => ({
         accountId: d.accountId,
         type: 'Debit' as LineType,
-        amount: context.amount,
+        amount: d.amount ?? context.amount,
         narration: d.narration,
-        referenceType: context.referenceType as any,
+        referenceType: refType as any,
         referenceId: context.referenceId,
       })),
       ...resolved.credit.map(c => ({
         accountId: c.accountId,
         type: 'Credit' as LineType,
-        amount: context.amount,
+        amount: c.amount ?? context.amount,
         narration: c.narration,
-        referenceType: context.referenceType as any,
+        referenceType: refType as any,
         referenceId: context.referenceId,
       })),
     ]
@@ -134,6 +156,13 @@ export function createAccountingEngine() {
   }
 
   function approve(voucher: Voucher, approvedBy: string): PostingResult {
+    const closedFY = isInClosedFiscalYear(voucher.date, _fiscalYears)
+    if (closedFY) {
+      return {
+        success: false,
+        errors: [{ code: 'PERIOD_CLOSED', message: `This accounting period (${closedFY.name}) is closed.` }],
+      }
+    }
     if (voucher.status !== 'Draft' && voucher.status !== 'Pending Approval') {
       return {
         success: false,
@@ -146,6 +175,13 @@ export function createAccountingEngine() {
   }
 
   function post(voucher: Voucher, postedBy: string, accounts: Account[], allVouchers: Voucher[]): PostingResult {
+    const closedFY = isInClosedFiscalYear(voucher.date, _fiscalYears)
+    if (closedFY) {
+      return {
+        success: false,
+        errors: [{ code: 'PERIOD_CLOSED', message: `This accounting period (${closedFY.name}) is closed.` }],
+      }
+    }
     if (voucher.status !== 'Approved') {
       return {
         success: false,
@@ -164,6 +200,13 @@ export function createAccountingEngine() {
   }
 
   function cancel(voucher: Voucher): PostingResult {
+    const closedFY = isInClosedFiscalYear(voucher.date, _fiscalYears)
+    if (closedFY) {
+      return {
+        success: false,
+        errors: [{ code: 'PERIOD_CLOSED', message: `This accounting period (${closedFY.name}) is closed.` }],
+      }
+    }
     if (voucher.status === 'Posted' || voucher.status === 'Reversed') {
       return {
         success: false,
@@ -176,6 +219,20 @@ export function createAccountingEngine() {
   }
 
   function reverse(voucher: Voucher, reversalDate: string, createdBy: string, accounts: Account[], allVouchers: Voucher[]): PostingResult {
+    const closedFY = isInClosedFiscalYear(voucher.date, _fiscalYears)
+    if (closedFY) {
+      return {
+        success: false,
+        errors: [{ code: 'PERIOD_CLOSED', message: `This accounting period (${closedFY.name}) is closed.` }],
+      }
+    }
+    const reversalFY = isInClosedFiscalYear(reversalDate, _fiscalYears)
+    if (reversalFY) {
+      return {
+        success: false,
+        errors: [{ code: 'PERIOD_CLOSED', message: `The reversal date falls in a closed period (${reversalFY.name}).` }],
+      }
+    }
     if (voucher.status !== 'Posted') {
       return {
         success: false,
@@ -221,6 +278,7 @@ export function createAccountingEngine() {
     reverse,
     onEvent,
     publish,
+    setFiscalYears,
   }
 }
 

@@ -11,6 +11,7 @@ export interface PurchaseRecord {
   unitPrice: number
   totalValue: number
   broker: string
+  buyer?: string
   notes: string
   attachments: string[]
   tags: string[]
@@ -20,10 +21,22 @@ export interface PurchaseRecord {
   voucherId: string
   voucherNumber: string
   fundingBankAccountId: string
+  paymentMode?: 'Cash' | 'Bank Transfer' | 'Cheque' | 'Post Dated Cheque (PDC)' | 'Online Transfer' | 'Card' | 'Other'
+  paymentReference?: string
+  additionalCosts?: AdditionalCostLine[]
   createdAt: string
   updatedAt: string
   createdBy: string
   updatedBy: string
+}
+
+export interface AdditionalCostLine {
+  id: string
+  expenseType: string
+  description?: string
+  amount: number
+  voucherId?: string
+  voucherNumber?: string
 }
 
 export interface CreatePurchaseInput {
@@ -33,10 +46,14 @@ export interface CreatePurchaseInput {
   quantity: number
   unitPrice: number
   broker?: string
+  buyer?: string
   notes?: string
   tags?: string[]
   investmentId?: string | null
   fundingBankAccountId?: string
+  paymentMode?: 'Cash' | 'Bank Transfer' | 'Cheque' | 'Post Dated Cheque (PDC)' | 'Online Transfer' | 'Card' | 'Other'
+  paymentReference?: string
+  additionalCosts?: AdditionalCostLine[]
   createdBy?: string
 }
 
@@ -46,9 +63,13 @@ export interface UpdatePurchaseInput {
   quantity?: number
   unitPrice?: number
   broker?: string
+  buyer?: string
   notes?: string
   tags?: string[]
   status?: PurchaseStatus
+  paymentMode?: 'Cash' | 'Bank Transfer' | 'Cheque' | 'Post Dated Cheque (PDC)' | 'Online Transfer' | 'Card' | 'Other'
+  paymentReference?: string
+  additionalCosts?: AdditionalCostLine[]
   updatedBy: string
 }
 
@@ -74,7 +95,6 @@ export interface LotInfo {
 export interface CostBasisInfo {
   totalQuantity: number
   totalInvested: number
-  weightedAveragePrice: number
   purchaseCount: number
 }
 

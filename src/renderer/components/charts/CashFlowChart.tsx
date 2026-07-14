@@ -7,13 +7,14 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
+  Cell,
 } from 'recharts'
-import type { MonthlyCashFlow } from '../../data/sampleData'
+import { ChartColors, ChartConfig } from '../../styles/ChartTheme'
 import SegmentedControl from '../design/SegmentedControl'
+import { formatCurrency } from '../../utils/currencyHelpers'
 
 interface Props {
-  dataByPeriod?: Record<string, MonthlyCashFlow[]>
+  dataByPeriod?: Record<string, any[]>
 }
 
 export default function CashFlowChart({ dataByPeriod }: Props) {
@@ -23,7 +24,13 @@ export default function CashFlowChart({ dataByPeriod }: Props) {
     return dataByPeriod?.[period] || []
   }, [period, dataByPeriod])
 
-  const subtitle = `${period} income vs expenses`
+  const cashFlowData = data
+  console.table(cashFlowData)
+
+  const firstItem = data[0]
+  const xKey = firstItem && 'period' in firstItem ? 'period' : (period === 'Daily' ? 'date' : 'month')
+
+  const subtitle = `Net cash flow over time`
 
   return (
     <div className="chart-card">
@@ -41,60 +48,26 @@ export default function CashFlowChart({ dataByPeriod }: Props) {
       <div className="chart-container">
         <ResponsiveContainer>
           <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={ChartConfig.grid} vertical={false} />
             <XAxis
-              dataKey="month"
+              dataKey={xKey}
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 12, fill: 'var(--text-muted)' }}
+              tick={{ fontSize: 12, fill: ChartConfig.axis }}
             />
             <YAxis
-              yAxisId="left"
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 12, fill: 'var(--green)' }}
-              tickFormatter={(val) => `${(val / 1000).toFixed(0)}K`}
-            />
-            <YAxis
-              yAxisId="right"
-              orientation="right"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 12, fill: 'var(--text-muted)' }}
+              tick={{ fontSize: 12, fill: ChartConfig.axis }}
               tickFormatter={(val) => `${(val / 1000).toFixed(0)}K`}
             />
             <Tooltip
-              contentStyle={{
-                background: 'var(--surface)',
-                backdropFilter: 'blur(12px)',
-                border: '1px solid var(--border)',
-                borderRadius: '8px',
-                boxShadow: 'var(--shadow-md)',
-                fontSize: '13px',
-              }}
-              formatter={(value: number, name: string) => [`AED ${value.toLocaleString()}`, name]}
+              contentStyle={ChartConfig.tooltip.contentStyle}
+              itemStyle={ChartConfig.tooltip.itemStyle}
+              formatter={(value: number) => [formatCurrency(value, 'AED'), 'Net Cash Flow']}
+              cursor={ChartConfig.tooltip.cursor}
             />
-            <Legend
-              wrapperStyle={{ fontSize: '12px', color: 'var(--text-secondary)' }}
-              iconType="circle"
-              iconSize={8}
-            />
-            <Bar
-              yAxisId="left"
-              dataKey="income"
-              name="Income"
-              fill="var(--green)"
-              radius={[4, 4, 0, 0]}
-              barSize={16}
-            />
-            <Bar
-              yAxisId="right"
-              dataKey="expense"
-              name="Expenses"
-              fill="var(--text-muted)"
-              radius={[4, 4, 0, 0]}
-              barSize={16}
-            />
+            <Bar dataKey="net" radius={[4, 4, 4, 4]} barSize={24} fill={ChartColors.blue} />
           </BarChart>
         </ResponsiveContainer>
       </div>

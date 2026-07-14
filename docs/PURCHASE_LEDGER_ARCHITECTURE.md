@@ -143,7 +143,7 @@ interface PurchaseRecord {
   quantity: number              // Positive number. 1 for indivisible assets (Property). Decimal for fractional (Gold, Mutual Funds).
   unitPrice: number             // Price per unit in the portfolio's currency. Positive number.
   totalValue: number            // Computed: quantity × unitPrice. Stored for query performance. Rounded to 2 decimals.
-  broker: string                // Broker/institution name. Free text. Optional.
+  buyer: string                 // Buyer/institution name. Free text. Optional.
   notes: string                 // Free-text notes. Optional.
   attachments: string[]         // Array of file paths or base64 URIs. Reserved for future use.
   tags: string[]                // User-defined tags for filtering. e.g. ["tax-free", "long-term"]
@@ -167,9 +167,9 @@ interface PurchaseRecord {
 | `quantity` | Supports fractional assets (0.5g gold, 0.123 BTC). Enforced strictly positive. |
 | `unitPrice` | Enables cost-basis per-unit calculations. Stored as-is (no rounding) to preserve precision for weighted-average calculations. |
 | `totalValue` | Derived field stored for query performance. `ROUND(qty * unitPrice, 2)`. Recomputable if ever lost. |
-| `broker` | Free-text for now. Future: could become a FK to a Broker/Custodian table. |
+| `buyer` | Free-text for now. Future: could become a FK to a Buyer/Custodian table. |
 | `notes` | Audit trail context: "Purchased during market dip", "Gift from father", etc. |
-| `attachments` | Reserved. Future: broker confirmations, invoices, statements. |
+| `attachments` | Reserved. Future: buyer confirmations, invoices, statements. |
 | `tags` | User-defined classification orthogonal to asset type. Enables custom reports and filtering. |
 | `status` | Lifecycle tracking. An 'active' purchase contributes to current holdings. A 'sold' purchase is a disposed lot for realized gain calculation. |
 | `createdAt` / `updatedAt` | System-managed timestamps for audit and sort-by-date queries. |
@@ -188,7 +188,7 @@ interface Investment {
   // purchaseValue  → derived: sum of linked PurchaseRecord.totalValue where status = 'active'
   // quantity       → derived: sum of linked PurchaseRecord.quantity where status = 'active'
   // unitPrice      → derived: weighted average of linked PurchaseRecord.unitPrice
-  // broker         → derived: concatenated or most-recent
+  // buyer          → derived: concatenated or most-recent
   currentPrice: number    // still manually entered or market-fetched
   totalValue: number      // derived: currentPrice × quantity
   profitLoss: number      // derived: totalValue - totalInvested
@@ -208,7 +208,7 @@ interface Investment {
 
 ### Editing
 
-- **Allowed fields**: `assetName`, `purchaseDate`, `quantity`, `unitPrice`, `broker`, `notes`, `tags`, `status`.
+- **Allowed fields**: `assetName`, `purchaseDate`, `quantity`, `unitPrice`, `buyer`, `notes`, `tags`, `status`.
 - **Immutable fields**: `id`, `investmentId`, `assetType`, `createdAt`, `createdBy`.
 - **Cascade**: Changing `quantity` or `unitPrice` recalculates `totalValue`. Changing `purchaseDate` reorders lot sequence for FIFO/LIFO.
 - **Audit**: On every edit, `updatedAt` and `updatedBy` are updated. Previous values could be written to a changelog (future feature).
@@ -323,7 +323,7 @@ These are not implemented now. The data model reserves fields and patterns for t
 - Future: file picker in the form, storage as base64 or Electron IPC to filesystem
 - Display as thumbnail list in the purchase detail view
 
-### Invoices & Broker Statements
+### Invoices & Buyer Statements
 
 - Future entity: `PurchaseDocument` (id, purchaseId, type: 'invoice'|'statement'|'confirmation', fileRef, uploadedAt)
 - Not part of the PurchaseRecord itself — a related table/array
@@ -410,7 +410,7 @@ On first load after upgrade:
      - quantity: old quantity
      - unitPrice: old unitPrice
      - totalValue: old totalValue
-     - broker: "" (not in old model)
+     - buyer: "" (not in old model)
      - notes: "" (not in old model)
      - attachments: [] (not in old model)
      - tags: [] (not in old model)

@@ -1,6 +1,13 @@
 export function formatCurrency(value: number, currency: string = 'AED'): string {
-  const sign = value < 0 ? '- ' : ''
-  return `${sign}${currency} ${Math.abs(value).toLocaleString()}`
+  const cleanCurrency = (currency || 'AED').toUpperCase();
+  const isNegative = value < 0;
+  const sign = isNegative ? '-' : '';
+  const absValue = Math.abs(value);
+  const formattedNumber = absValue.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+  return `${cleanCurrency} ${sign}${formattedNumber}`;
 }
 
 export function formatCompactCurrency(value: number, currency: string = 'AED'): string {
@@ -10,6 +17,29 @@ export function formatCompactCurrency(value: number, currency: string = 'AED'): 
 
 export function formatPercentage(value: number): string {
   return `${value.toFixed(1)}%`
+}
+
+export function formatPremiumCompact(n: number): { valueStr: string; suffix: string } {
+  const absoluteVal = Math.abs(n);
+  if (absoluteVal >= 1_000_000) {
+    const valInM = absoluteVal / 1_000_000;
+    const decimals = valInM < 10 ? 2 : 1;
+    return {
+      valueStr: valInM.toFixed(decimals),
+      suffix: 'M'
+    };
+  } else if (absoluteVal >= 1_000) {
+    const valInK = absoluteVal / 1_000;
+    return {
+      valueStr: valInK.toFixed(1),
+      suffix: 'K'
+    };
+  } else {
+    return {
+      valueStr: absoluteVal.toFixed(2),
+      suffix: ''
+    };
+  }
 }
 
 export function formatCompactNumber(value: number): string {

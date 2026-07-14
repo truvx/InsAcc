@@ -5,6 +5,7 @@ import VoucherLifecycleActions from './VoucherLifecycleActions'
 import VoucherTimeline from '../VoucherTimeline'
 import { formatDate } from '../../utils'
 import type { Voucher, Account } from '../../accounting/types'
+import { CurrencyText } from './CurrencyText'
 
 interface Props {
   open: boolean
@@ -75,6 +76,25 @@ export default function VoucherDetailsModal({
           </div>
         </div>
 
+        {voucher.type !== 'Journal' && (
+          <div className={voucher.type === 'Payment' ? 'grid-2' : 'grid-3'} style={{ gap: 8 }}>
+            <div className="settings-field" style={{ margin: 0 }}>
+              <div className="settings-field-label">Payment Mode</div>
+              <div className="text-xs fw-500">{voucher.paymentMode || 'Unknown'}</div>
+            </div>
+            {voucher.type !== 'Payment' && (
+              <div className="settings-field" style={{ margin: 0 }}>
+                <div className="settings-field-label">Payment Channel</div>
+                <div className="text-xs fw-500">{voucher.paymentChannel || 'Unknown'}</div>
+              </div>
+            )}
+            <div className="settings-field" style={{ margin: 0 }}>
+              <div className="settings-field-label">Payment Reference</div>
+              <div className="text-mono text-xs">{voucher.paymentReference || '—'}</div>
+            </div>
+          </div>
+        )}
+
         <div>
           <div className="text-sm fw-600 mb-1" style={{ color: 'var(--primary)' }}>Voucher Timeline</div>
           <div className="card-accent-purple" style={{ padding: '8px 12px', borderRadius: 8 }}>
@@ -99,8 +119,8 @@ export default function VoucherDetailsModal({
                 return (
                   <tr key={i}>
                     <td className="text-xs fw-500">{acct?.name || line.accountId}</td>
-                    <td className="text-xs text-mono">{line.type === 'Debit' ? `${currency} ${line.baseAmount.toLocaleString()}` : '—'}</td>
-                    <td className="text-xs text-mono">{line.type === 'Credit' ? `${currency} ${line.baseAmount.toLocaleString()}` : '—'}</td>
+                    <td className="text-xs text-mono">{line.type === 'Debit' ? <CurrencyText value={line.baseAmount} currency={currency} /> : '—'}</td>
+                    <td className="text-xs text-mono">{line.type === 'Credit' ? <CurrencyText value={line.baseAmount} currency={currency} /> : '—'}</td>
                     <td className="text-xs text-secondary">{line.narration || '—'}</td>
                   </tr>
                 )

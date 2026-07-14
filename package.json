@@ -5,7 +5,12 @@
   "main": "src/main/main.js",
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5174 && electron .\"",
-    "build": "vite build && electron-builder --win --x64",
+    "build": "vite build",
+    "electron:build": "electron-builder --win",
+    "dist": "npm run build && electron-builder --win",
+    "dist:win": "npm run build && electron-builder --win --x64",
+    "dist:portable": "npm run build && electron-builder --win portable --x64 --publish never",
+    "build:win": "vite build && electron-builder --win --x64",
     "build:mac": "vite build && electron-builder --mac --x64",
     "build:linux": "vite build && electron-builder --linux --x64",
     "build:all": "vite build && electron-builder --win --mac --linux --x64",
@@ -13,61 +18,86 @@
     "icons": "node scripts/generate-icons.js"
   },
   "build": {
-    "appId": "com.insacc.app",
+    "appId": "com.insacc.desktop",
     "productName": "InsAcc",
-    "copyright": "Copyright © 2024 InsAcc",
     "directories": {
       "output": "release"
     },
     "files": [
       "dist/**/*",
       "src/main/**/*",
-      "package.json"
+      "package.json",
+      "!node_modules/**/*"
     ],
+    "extraResources": [
+      {
+        "from": "resources",
+        "to": "resources",
+        "filter": [
+          "**/*",
+          "!icon-test.png"
+        ]
+      }
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/**/*.node"
+    ],
+    "compression": "maximum",
+    "removePackageScripts": true,
+    "removePackageKeywords": true,
+    "npmRebuild": false,
+    "nodeGypRebuild": false,
     "win": {
       "target": [
-        "portable"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
-      "icon": "resources/icon.png",
-      "artifactName": "InsAcc-Setup-${version}-${arch}.${ext}"
+      "icon": "build/icon.ico",
+      "publisherName": "InsAcc",
+      "legalTrademarks": "InsAcc",
+      "certificateFile": null,
+      "certificatePassword": null
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
+      "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
       "shortcutName": "InsAcc",
-      "installerIcon": "resources/icon.bmp",
-      "uninstallerIcon": "resources/icon.bmp"
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "artifactName": "InsAcc-Setup-${version}.exe",
+      "uninstallDisplayName": "InsAcc",
+      "runAfterFinish": true
     },
-    "mac": {
-      "target": [
-        "dmg",
-        "zip"
-      ],
-      "icon": "resources/icon.png",
-      "category": "public.app-category.finance"
+    "portable": {
+      "artifactName": "InsAcc-${version}-Portable.exe",
+      "requestExecutionLevel": "user",
+      "unpackDirName": "InsAcc"
     },
-    "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ],
-      "icon": "resources",
-      "category": "Finance"
-    },
-    "extraMetadata": {
-      "main": "src/main/main.js"
+    "publish": {
+      "provider": "github",
+      "owner": "insacc",
+      "repo": "InsAcc"
     }
   },
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "framer-motion": "^11.18.2",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
+    "lucide-react": "^1.23.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "recharts": "^2.10.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "xlsx-js-style": "^1.2.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
@@ -76,7 +106,8 @@
     "@vitejs/plugin-react": "^4.2.0",
     "concurrently": "^8.2.0",
     "electron": "^28.3.3",
-    "electron-builder": "^24.0.0",
+    "electron-builder": "^24.13.3",
+    "level": "^10.0.0",
     "sharp": "^0.35.2",
     "typescript": "^5.3.0",
     "vite": "^5.0.0",

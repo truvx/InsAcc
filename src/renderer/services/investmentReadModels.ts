@@ -20,10 +20,7 @@ export function getInvestmentDashboardData(
 ): InvestmentDashboardData {
   const allBals = getAllAccountBalances(vouchers, accounts)
 
-  const investmentParent = accounts.find(a => a.code === '12')
-  const investmentAccounts = investmentParent
-    ? accounts.filter(a => a.parentId === investmentParent.id && a.isActive)
-    : []
+  const investmentAccounts = accounts.filter(a => a.code.startsWith('12') && a.code.length >= 4 && a.isActive)
   const portfolioValue = investmentAccounts.reduce((s, a) => s + (allBals[a.id] || 0), 0)
 
   const cashId = accounts.find(a => a.code === '1110')?.id
@@ -131,10 +128,9 @@ export function getInvestmentFinancialOverview(
     ? accounts.filter(a => a.parentId === bankParent.id && a.isActive).reduce((s, a) => s + (allBals[a.id] || 0), 0)
     : 0
 
-  const investmentParent = accounts.find(a => a.code === '12')
-  const investments = investmentParent
-    ? accounts.filter(a => a.parentId === investmentParent.id && a.isActive).reduce((s, a) => s + (allBals[a.id] || 0), 0)
-    : 0
+  const investments = accounts
+    .filter(a => a.code.startsWith('12') && a.code.length >= 4 && a.isActive)
+    .reduce((s, a) => s + (allBals[a.id] || 0), 0)
 
   const receivablesParent = accounts.find(a => a.code === '13')
   const receivables = receivablesParent
@@ -177,9 +173,8 @@ export function getInvestmentHoldings(
   accounts: Account[],
   vouchers: Voucher[],
 ): InvestmentHoldingData[] {
-  const investmentParent = accounts.find(a => a.code === '12')
-  if (!investmentParent) return []
-  const invAccounts = accounts.filter(a => a.parentId === investmentParent.id && a.isActive)
+  const invAccounts = accounts.filter(a => a.code.startsWith('12') && a.code.length >= 4 && a.isActive)
+  if (invAccounts.length === 0) return []
   const allBals = getAllAccountBalances(vouchers, accounts)
 
   return invAccounts.map(a => {

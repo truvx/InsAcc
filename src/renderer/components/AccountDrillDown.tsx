@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react'
 import type { Account, Voucher, VoucherLine } from '../accounting/types'
-import { getLinesForAccount } from '../accounting/ledgerService'
+import { getLinesForAccount, getLinesForAccounts } from '../accounting/ledgerService'
 import { formatDate } from '../utils'
 
 interface Props {
   accountId: string
+  accountIds?: string[]
   accountName?: string
   accounts: Account[]
   vouchers: Voucher[]
@@ -22,13 +23,24 @@ type LineWithVoucher = {
 }
 
 export default function AccountDrillDown({
-  accountId, accountName,
+  accountId, accountIds,
+  accountName,
   accounts, vouchers,
   currency = 'AED', dateFormat = 'DD/MM/YYYY',
 }: Props) {
   const lines = useMemo<LineWithVoucher[]>(() => {
+    if (accountIds && accountIds.length > 0) {
+      return getLinesForAccounts(accountIds, vouchers)
+    }
+    const acct = accounts.find(a => a.id === accountId)
+    if (acct) {
+      const children = accounts.filter(a => a.parentId === acct.id && a.isActive)
+      if (children.length > 0) {
+        return getLinesForAccounts([accountId, ...children.map(c => c.id)], vouchers)
+      }
+    }
     return getLinesForAccount(accountId, vouchers)
-  }, [accountId, vouchers])
+  }, [accountId, accountIds, vouchers, accounts])
 
   const total = useMemo(() => {
     return lines.reduce((s, { line }) => {
@@ -38,6 +50,14 @@ export default function AccountDrillDown({
 
   const parentAcct = accounts.find(a => a.id === accountId)
   const acctName = accountName || parentAcct?.name || accountId
+
+  const accountMap = useMemo(() => new Map(accounts.map(a => [a.id, a])), [accounts])
+  const getBankName = (lineAccountId: string): string => {
+    const acct = accountMap.get(lineAccountId)
+    if (!acct) return 'Unknown Bank'
+    if (!acct.code.startsWith('1120') || acct.code.length < 6) return '—'
+    return acct.name
+  }
 
   if (lines.length === 0) {
     return (
@@ -77,7 +97,7 @@ export default function AccountDrillDown({
                     {line.narration || voucher.description}
                   </td>
                   <td className="text-xs text-mono">{line.type === 'Debit' ? fmt(line.baseAmount, currency) : '—'}</td>
-                  <td className="text-xs text-mono">{line.type === 'Credit' ? fmt(line.baseAmount, currency) : '—'}</td>
+                  <td className="text-xs text-mono">{line.type === 'Credit' ? fmt(line.baseAmount, currency) : getBankName(line.accountId)}</td>
                 </tr>
               ))}
             </tbody>

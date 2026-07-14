@@ -1,13 +1,15 @@
 import React, { useMemo, useState } from 'react'
-import type { Account, Voucher } from '../accounting/types'
-import { EmptyState, SearchIcon, CloseIcon } from './design/DesignSystem'
-import { getAccountBalance } from '../accounting/ledgerService'
-import { buildAccountTree } from '../accounting/chartOfAccountsService'
+import type { Account, Voucher, AccountType } from '../accounting/types'
+
+import { EmptyState, SearchIcon, CloseIcon, Select, Modal, Button, IconButton, PlusIcon, TrashIcon, EditIcon } from './design/DesignSystem'
+import { buildAccountTree, getNormalBalance } from '../accounting/chartOfAccountsService'
+import { Landmark, ListChecks, TrendingUp, TrendingDown, ChevronRight } from 'lucide-react'
 
 interface Props {
   currency?: string
   accounts: Account[]
   vouchers: Voucher[]
+  setAccounts: React.Dispatch<React.SetStateAction<Account[]>>
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -15,44 +17,83 @@ const TYPE_LABELS: Record<string, string> = {
   liability: 'Liabilities',
   revenue: 'Revenue',
   expense: 'Expenses',
+  equity: 'Equity',
 }
 
-const TYPE_ICONS: Record<string, string> = {
-  asset: '🏦',
-  liability: '📋',
-  revenue: '📈',
-  expense: '📉',
+const TYPE_ICONS: Record<string, React.ReactNode> = {
+  asset: <Landmark size={14} strokeWidth={1.75} />,
+  liability: <ListChecks size={14} strokeWidth={1.75} />,
+  revenue: <TrendingUp size={14} strokeWidth={1.75} />,
+  expense: <TrendingDown size={14} strokeWidth={1.75} />,
+  equity: <Landmark size={14} strokeWidth={1.75} />,
 }
 
-const TYPE_COLORS: Record<string, string> = {
-  asset: '#0A0A6F',
-  liability: '#D97706',
-  revenue: '#059669',
-  expense: '#DC2626',
+const SYSTEM_ROOT_CODES = ['1000', '2000', '3000', '4000', '5000']
+
+type SegmentedTab = 'all' | 'asset' | 'liability' | 'revenue' | 'expense' | 'equity'
+
+function detectCircularRelationship(accountId: string, newParentId: string | null, accounts: Account[]): boolean {
+  if (!newParentId) return false
+  if (accountId === newParentId) return true
+  let currentId: string | null = newParentId
+  const visited = new Set<string>()
+  while (currentId) {
+    if (currentId === accountId) return true
+    if (visited.has(currentId)) return true
+    visited.add(currentId)
+    const parentAcct = accounts.find(a => a.id === currentId)
+    currentId = parentAcct ? parentAcct.parentId : null
+  }
+  return false
 }
 
-type SegmentedTab = 'all' | 'asset' | 'liability' | 'revenue' | 'expense'
+/**
+ * Derive account type automatically:
+ * 1. If a parent is selected, inherit the parent's type.
+ * 2. Otherwise infer from the GL code prefix (1=asset, 2=liability, 3=equity, 4=revenue, 5=expense).
+ */
+function inferTypeFromParentOrCode(
+  parentId: string | null,
+  code: string,
+  accounts: Account[]
+): AccountType {
+  if (parentId) {
+    const parent = accounts.find(a => a.id === parentId)
+    if (parent) return parent.type
+  }
+  const prefix = code.trim().charAt(0)
+  switch (prefix) {
+    case '1': return 'asset'
+    case '2': return 'liability'
+    case '3': return 'equity'
+    case '4': return 'revenue'
+    case '5': return 'expense'
+    default:  return 'asset'
+  }
+}
 
-export default function PropertyChartOfAccounts({ currency = 'AED', accounts, vouchers }: Props) {
+export default function PropertyChartOfAccounts({ currency = 'AED', accounts, vouchers, setAccounts }: Props) {
+  const moduleName = 'property'
   const [activeTab, setActiveTab] = useState<SegmentedTab>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [expandedTypes, setExpandedTypes] = useState<Record<string, boolean>>({
-    asset: true, liability: true, revenue: true, expense: true,
+    asset: true, liability: true, revenue: true, expense: true, equity: true,
   })
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({})
 
-  const balances = useMemo(() => {
-    const map: Record<string, number> = {}
-    for (const acct of accounts) {
-      if (acct.isActive) {
-        map[acct.id] = getAccountBalance(acct.id, vouchers, accounts)
-      }
-    }
-    return map
-  }, [accounts, vouchers])
+  // Modal Dialog States
+  const [modalMode, setModalMode] = useState<'add' | 'edit' | null>(null)
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
+  const [formCode, setFormCode] = useState('')
+  const [formName, setFormName] = useState('')
+  const [formParentId, setFormParentId] = useState('')
+  const [formActive, setFormActive] = useState(true)
+  const [validationError, setValidationError] = useState('')
 
   const tree = useMemo(() => buildAccountTree(accounts), [accounts])
+
+  const hasPostings = (accountId: string) => vouchers.some(v => v.lines.some(l => l.accountId === accountId))
 
   const toggleType = (type: string) => {
     setExpandedTypes(prev => ({ ...prev, [type]: !prev[type] }))
@@ -63,7 +104,7 @@ export default function PropertyChartOfAccounts({ currency = 'AED', accounts, vo
   }
 
   const visibleTypes = useMemo(() => {
-    if (activeTab === 'all') return ['asset', 'liability', 'revenue', 'expense']
+    if (activeTab === 'all') return ['asset', 'liability', 'revenue', 'expense', 'equity']
     return [activeTab]
   }, [activeTab])
 
@@ -71,25 +112,165 @@ export default function PropertyChartOfAccounts({ currency = 'AED', accounts, vo
     { id: 'all', label: 'All' },
     { id: 'asset', label: 'Assets' },
     { id: 'liability', label: 'Liabilities' },
+    { id: 'equity', label: 'Equity' },
     { id: 'revenue', label: 'Revenue' },
     { id: 'expense', label: 'Expenses' },
   ]
+
+  const handleAddNew = () => {
+    setSelectedAccount(null)
+    setFormCode('')
+    setFormName('')
+    setFormParentId('')
+    setFormActive(true)
+    setValidationError('')
+    setModalMode('add')
+  }
+
+  const handleAddChild = (parent: Account) => {
+    setSelectedAccount(null)
+    setFormCode('')
+    setFormName('')
+    setFormParentId(parent.id)
+    setFormActive(true)
+    setValidationError('')
+    setModalMode('add')
+  }
+
+  const handleEdit = (account: Account) => {
+    setSelectedAccount(account)
+    setFormCode(account.code)
+    setFormName(account.name)
+    setFormParentId(account.parentId || '')
+    setFormActive(account.isActive)
+    setValidationError('')
+    setModalMode('edit')
+  }
+
+  const handleDelete = (account: Account) => {
+    if (SYSTEM_ROOT_CODES.includes(account.code)) {
+      alert('Cannot delete a system root account.')
+      return
+    }
+    const children = accounts.filter(a => a.parentId === account.id)
+    if (children.length > 0) {
+      alert(`Cannot delete account because it has active child accounts: ${children.map(c => c.name).join(', ')}`)
+      return
+    }
+    if (hasPostings(account.id)) {
+      alert('Cannot delete account because transactions are already posted to it.')
+      return
+    }
+    if (confirm(`Are you sure you want to delete the account "${account.code} — ${account.name}"?`)) {
+      setAccounts(prev => prev.filter(a => a.id !== account.id))
+    }
+  }
+
+  const closeModal = () => {
+    setModalMode(null)
+    setSelectedAccount(null)
+  }
+
+  const handleSave = () => {
+    if (!formCode.trim()) {
+      setValidationError('GL Code is required.')
+      return
+    }
+    if (!formName.trim()) {
+      setValidationError('Account Name is required.')
+      return
+    }
+
+    const code = formCode.trim()
+    const name = formName.trim()
+    const parentId = formParentId || null
+
+    // 1. Duplicate GL Code Check
+    const duplicate = accounts.find(a => a.code === code && (modalMode === 'add' || a.id !== selectedAccount?.id))
+    if (duplicate) {
+      setValidationError(`GL Code "${code}" is already in use by account "${duplicate.name}".`)
+      return
+    }
+
+    // 2. Circular Relationship Check
+    if (modalMode === 'edit' && selectedAccount) {
+      if (detectCircularRelationship(selectedAccount.id, parentId, accounts)) {
+        setValidationError('Circular parent relationship detected. An account cannot be a descendant of itself.')
+        return
+      }
+    }
+
+    // 3. Renumbered: Invalid Parent Account — can't be child of itself
+    if (parentId && selectedAccount && parentId === selectedAccount.id) {
+      setValidationError('An account cannot be its own parent.')
+      return
+    }
+
+    // 4. Deactivating check (no active child accounts)
+    if (!formActive && modalMode === 'edit' && selectedAccount) {
+      const activeChildren = accounts.filter(a => a.parentId === selectedAccount.id && a.isActive)
+      if (activeChildren.length > 0) {
+        setValidationError(`Cannot deactivate account because it has active child accounts: ${activeChildren.map(c => c.name).join(', ')}`)
+        return
+      }
+    }
+
+    // Auto-derive type: in edit mode keep existing type; in add mode infer from parent/code
+    const inferredType: AccountType = modalMode === 'edit' && selectedAccount
+      ? selectedAccount.type
+      : inferTypeFromParentOrCode(parentId, code, accounts)
+    const normalBalance = getNormalBalance(inferredType)
+
+    if (modalMode === 'add') {
+      const n = new Date().toISOString()
+      const newAccount: Account = {
+        id: code,
+        code,
+        name,
+        type: inferredType,
+        normalBalance,
+        parentId,
+        isActive: formActive,
+        description: `Custom ${inferredType} account`,
+        currency: currency || 'AED',
+        createdAt: n,
+        updatedAt: n,
+        module: moduleName,
+      }
+      setAccounts(prev => [...prev, newAccount])
+    } else if (modalMode === 'edit' && selectedAccount) {
+      setAccounts(prev => prev.map(a => {
+        if (a.id === selectedAccount.id) {
+          return {
+            ...a,
+            code,
+            name,
+            type: inferredType,
+            normalBalance,
+            parentId,
+            isActive: formActive,
+            updatedAt: new Date().toISOString(),
+          }
+        }
+        return a
+      }))
+    }
+
+    closeModal()
+  }
 
   const renderTree = (
     nodes: Array<{ account: Account; children: Array<any>; depth: number }>,
     depth = 0,
   ): React.ReactNode => {
     return nodes.map(node => {
-      const typeLabel = TYPE_LABELS[node.account.type] || node.account.type
       if (!visibleTypes.includes(node.account.type)) return null
-      if (!expandedTypes[node.account.type] && node.depth === 0) return null
       if (statusFilter === 'active' && !node.account.isActive) return null
       if (statusFilter === 'inactive' && node.account.isActive) return null
       if (searchQuery) {
         const q = searchQuery.toLowerCase()
         const match = node.account.name.toLowerCase().includes(q) ||
-          node.account.code.includes(q) ||
-          typeLabel.toLowerCase().includes(q)
+          node.account.code.includes(q)
         if (!match && node.children.length === 0) return null
         if (!match && node.children.length > 0) {
           const childMatch = node.children.some((c: any) =>
@@ -102,98 +283,99 @@ export default function PropertyChartOfAccounts({ currency = 'AED', accounts, vo
 
       const hasChildren = node.children.length > 0
       const isExpanded = expandedNodes[node.account.id] !== false
-      const balance = balances[node.account.id] || 0
       const isGroup = node.depth === 0
 
       return (
         <React.Fragment key={node.account.id}>
           {isGroup ? (
             <tr
+              className={`coa-row coa-group ${node.account.type}`}
               onClick={() => toggleType(node.account.type)}
-              style={{ cursor: 'pointer', background: `${TYPE_COLORS[node.account.type]}06` }}
+              style={{ cursor: 'pointer' }}
             >
-              <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--divider)' }}>
-                <span style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace', paddingLeft: depth * 20 }}>{node.account.code}</span>
+              <td>
+                <span className="coa-code">{node.account.code}</span>
               </td>
-              <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--divider)' }} colSpan={3}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: depth * 20 }}>
-                  <span style={{ fontSize: 16 }}>{TYPE_ICONS[node.account.type]}</span>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: TYPE_COLORS[node.account.type] }}>
-                    {node.account.name}
-                  </span>
-                  <span style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace' }}>{node.account.code}</span>
-                  <span style={{ fontSize: 11, color: '#9CA3AF' }}>
-                    ({node.children.length} accounts)
-                  </span>
+              <td>
+                <div className="coa-namecell">
+                  <button
+                    className={`coa-chevron${expandedTypes[node.account.type] ? ' open' : ''}`}
+                    aria-label={expandedTypes[node.account.type] ? 'Collapse' : 'Expand'}
+                    aria-expanded={expandedTypes[node.account.type]}
+                    onClick={e => { e.stopPropagation(); toggleType(node.account.type) }}
+                  >
+                    <ChevronRight size={16} strokeWidth={2} />
+                  </button>
+                  <span className="coa-typeicon">{TYPE_ICONS[node.account.type]}</span>
+                  <span className="coa-name">{node.account.name}</span>
+                  <span className="coa-count">{node.children.length} accounts</span>
                 </div>
               </td>
-              <td style={{ padding: '10px 16px', textAlign: 'right', borderBottom: '1px solid var(--divider)' }}>
-                <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 600 }}>
-                  {currency} {Math.abs(balance).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </span>
-              </td>
-              <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--divider)' }}>
-                <span style={{ color: expandedTypes[node.account.type] ? '#22C55E' : '#9CA3AF', fontSize: 11 }}>
-                  {expandedTypes[node.account.type] ? '▾ Expanded' : '▸ Collapsed'}
-                </span>
+              <td />
+              <td style={{ textAlign: 'right' }}>
+                <div className="coa-actions" onClick={e => e.stopPropagation()}>
+                  <IconButton
+                    icon={<PlusIcon />}
+                    label="Add Child Account"
+                    onClick={() => handleAddChild(node.account)}
+                  />
+                </div>
               </td>
             </tr>
           ) : (
             <tr
+              className={`coa-row ${hasChildren ? 'coa-parent' : 'coa-leaf'} ${node.account.type}`}
               style={{ cursor: hasChildren ? 'pointer' : 'default' }}
               onClick={() => hasChildren && toggleNode(node.account.id)}
             >
-              <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--divider)' }}>
-                <span style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace', paddingLeft: depth * 20 }}>
-                  {node.account.code}
-                </span>
+              <td>
+                <span className="coa-code">{node.account.code}</span>
               </td>
-              <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--divider)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: depth * 20 }}>
-                  {hasChildren && (
-                    <span style={{ fontSize: 10, color: '#9CA3AF', flexShrink: 0 }}>
-                      {isExpanded ? '▾' : '▸'}
-                    </span>
+              <td>
+                <div className="coa-namecell" style={{ paddingLeft: depth * 20 }}>
+                  {hasChildren ? (
+                    <button
+                      className={`coa-chevron${isExpanded ? ' open' : ''}`}
+                      aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                      aria-expanded={isExpanded}
+                      onClick={e => { e.stopPropagation(); toggleNode(node.account.id) }}
+                    >
+                      <ChevronRight size={16} strokeWidth={2} />
+                    </button>
+                  ) : (
+                    <span className="coa-chevron-placeholder" />
                   )}
-                  <span style={{ fontWeight: depth === 1 ? 600 : 400, fontSize: 13 }}>
-                    {node.account.name}
-                  </span>
-                  {depth > 0 && (
-                    <span style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace' }}>{node.account.code}</span>
-                  )}
+                  {hasChildren && <span className="coa-typeicon">{TYPE_ICONS[node.account.type]}</span>}
+                  <span className="coa-name">{node.account.name}</span>
                 </div>
               </td>
-              <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--divider)' }}>
-                <span style={{
-                  display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: 11,
-                  fontWeight: 500, color: TYPE_COLORS[node.account.type],
-                  background: `${TYPE_COLORS[node.account.type]}12`,
-                }}>
-                  {typeLabel}
-                </span>
-              </td>
-              <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--divider)' }}>
-                <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#6B7280' }}>
-                  {node.account.normalBalance === 'debit' ? 'Dr' : 'Cr'}
-                </span>
-              </td>
-              <td style={{ padding: '10px 16px', textAlign: 'right', borderBottom: '1px solid var(--divider)' }}>
-                <span style={{
-                  fontFamily: 'monospace', fontSize: 13, fontWeight: 600,
-                  color: balance >= 0 ? '#1F2937' : '#EF4444',
-                }}>
-                  {currency} {Math.abs(balance).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </span>
-              </td>
-              <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--divider)' }}>
-                <span style={{
-                  display: 'inline-block', padding: '2px 10px', borderRadius: 999, fontSize: 11,
-                  fontWeight: 500,
-                  background: node.account.isActive ? '#22C55E14' : '#F3F4F6',
-                  color: node.account.isActive ? '#22C55E' : '#9CA3AF',
-                }}>
+              <td>
+                <span className={`badge ${node.account.isActive ? 'badge-success' : 'badge-neutral'}`}>
                   {node.account.isActive ? 'Active' : 'Inactive'}
                 </span>
+              </td>
+              <td style={{ textAlign: 'right' }}>
+                <div className="coa-actions" onClick={e => e.stopPropagation()}>
+                  <IconButton
+                    icon={<PlusIcon />}
+                    label="Add Child Account"
+                    onClick={() => handleAddChild(node.account)}
+                  />
+                  <IconButton
+                    icon={<EditIcon />}
+                    label="Edit Account"
+                    onClick={() => handleEdit(node.account)}
+                    disabled={SYSTEM_ROOT_CODES.includes(node.account.code)}
+                  />
+                  <span className="coa-action-sep" />
+                  <IconButton
+                    className="coa-del"
+                    icon={<TrashIcon />}
+                    label="Delete Account"
+                    onClick={() => handleDelete(node.account)}
+                    disabled={SYSTEM_ROOT_CODES.includes(node.account.code)}
+                  />
+                </div>
               </td>
             </tr>
           )}
@@ -233,7 +415,7 @@ export default function PropertyChartOfAccounts({ currency = 'AED', accounts, vo
             </div>
           </div>
           <div className="table-actions">
-            <div className="data-table-search" style={{ minWidth: 280 }}>
+            <div className="data-table-search">
               <SearchIcon />
               <input
                 type="text"
@@ -248,29 +430,29 @@ export default function PropertyChartOfAccounts({ currency = 'AED', accounts, vo
                 </button>
               )}
             </div>
-            <select
+            <Select
               value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value as typeof statusFilter)}
+              onChange={e => setStatusFilter(e.target.value as any)}
+              options={[
+                { value: 'all', label: 'All Status' },
+                { value: 'active', label: 'Active' },
+                { value: 'inactive', label: 'Inactive' }
+              ]}
               style={{
-                height: 36, borderRadius: 8, border: '1px solid var(--border)',
-                background: '#fff', padding: '0 8px', fontSize: 12, color: '#1F2937',
-                fontFamily: 'Inter, sans-serif',
+                margin: 0,
+                minWidth: '120px'
               }}
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-            <button
+            />
+            <Button
+              variant="secondary"
               onClick={() => {
                 const csv = [
-                  ['Code', 'Account Name', 'Type', 'Normal', 'Balance', 'Status'],
+                  ['Code', 'Account Name', 'Type', 'Status'],
                   ...(tree as any[]).flatMap((n: any) => {
                     const rows: string[][] = []
                     const walk = (nodes: any[], depth: number) => {
                       for (const node of nodes) {
-                        const b = balances[node.account.id] || 0
-                        rows.push([node.account.code, node.account.name, node.account.type, node.account.normalBalance, String(b), node.account.isActive ? 'Active' : 'Inactive'])
+                        rows.push([node.account.code, node.account.name, node.account.type, node.account.isActive ? 'Active' : 'Inactive'])
                         if (node.children.length > 0) walk(node.children, depth + 1)
                       }
                     }
@@ -284,14 +466,12 @@ export default function PropertyChartOfAccounts({ currency = 'AED', accounts, vo
                 link.download = 'chart-of-accounts.csv'
                 link.click()
               }}
-              style={{
-                height: 36, borderRadius: 8, border: '1px solid var(--border)',
-                background: '#fff', padding: '0 12px', fontSize: 12, fontWeight: 500,
-                color: '#1F2937', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-              }}
             >
               Export
-            </button>
+            </Button>
+            <Button variant="primary" icon={<PlusIcon />} onClick={handleAddNew}>
+              Add Account
+            </Button>
           </div>
         </div>
 
@@ -308,12 +488,10 @@ export default function PropertyChartOfAccounts({ currency = 'AED', accounts, vo
                 <table style={{ width: '100%' }}>
                   <thead>
                     <tr>
-                      <th style={{ width: 100, padding: '12px 16px', position: 'sticky', top: 0, zIndex: 2, background: '#FAF8F4' }}>Code</th>
-                      <th style={{ padding: '12px 16px', position: 'sticky', top: 0, zIndex: 2, background: '#FAF8F4' }}>Account Name</th>
-                      <th style={{ width: 100, padding: '12px 16px', position: 'sticky', top: 0, zIndex: 2, background: '#FAF8F4' }}>Type</th>
-                      <th style={{ width: 70, padding: '12px 16px', position: 'sticky', top: 0, zIndex: 2, background: '#FAF8F4' }}>Normal</th>
-                      <th style={{ width: 150, padding: '12px 16px', textAlign: 'right', position: 'sticky', top: 0, zIndex: 2, background: '#FAF8F4' }}>Balance</th>
-                      <th style={{ width: 80, padding: '12px 16px', position: 'sticky', top: 0, zIndex: 2, background: '#FAF8F4' }}>Status</th>
+                      <th style={{ width: 110 }}>Code</th>
+                      <th>Account Name</th>
+                      <th style={{ width: 110 }}>Status</th>
+                      <th style={{ width: 140, textAlign: 'right' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -325,6 +503,93 @@ export default function PropertyChartOfAccounts({ currency = 'AED', accounts, vo
           </div>
         </div>
       </div>
+
+      <Modal
+        open={modalMode !== null}
+        title={modalMode === 'add' ? 'Add New Account' : 'Edit Account'}
+        onClose={closeModal}
+        footer={
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <Button onClick={closeModal}>Cancel</Button>
+            <Button variant="primary" onClick={handleSave} disabled={!!validationError}>
+              {modalMode === 'add' ? 'Create' : 'Save'}
+            </Button>
+          </div>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '8px 4px' }}>
+          {validationError && (
+            <div style={{ padding: '8px 12px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 6, color: '#DC2626', fontSize: 13 }}>
+              {validationError}
+            </div>
+          )}
+
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#374151', marginBottom: 4 }}>GL Code</label>
+            <input
+              type="text"
+              value={formCode}
+              onChange={e => {
+                setFormCode(e.target.value)
+                setValidationError('')
+              }}
+              disabled={modalMode === 'edit' && SYSTEM_ROOT_CODES.includes(selectedAccount?.code || '')}
+              placeholder="e.g. 112001"
+              style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 6 }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#374151', marginBottom: 4 }}>Account Name</label>
+            <input
+              type="text"
+              value={formName}
+              onChange={e => {
+                setFormName(e.target.value)
+                setValidationError('')
+              }}
+              disabled={modalMode === 'edit' && SYSTEM_ROOT_CODES.includes(selectedAccount?.code || '')}
+              placeholder="e.g. Operating Bank Account"
+              style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 6 }}
+            />
+          </div>
+
+          <div>
+            <Select
+              label="Parent Account"
+              value={formParentId}
+              onChange={e => {
+                setFormParentId(e.target.value)
+                setValidationError('')
+              }}
+              disabled={modalMode === 'edit' && SYSTEM_ROOT_CODES.includes(selectedAccount?.code || '')}
+              options={[
+                { value: '', label: 'None (Root Level)' },
+                ...accounts
+                  .filter(a => !selectedAccount || a.id !== selectedAccount.id)
+                  .map(a => ({ value: a.id, label: `${a.code} — ${a.name}` }))
+              ]}
+              style={{ margin: 0, width: '100%' }}
+            />
+          </div>
+
+          <div>
+            <Select
+              label="Status"
+              value={formActive ? 'active' : 'inactive'}
+              onChange={e => {
+                setFormActive(e.target.value === 'active')
+                setValidationError('')
+              }}
+              options={[
+                { value: 'active', label: 'Active' },
+                { value: 'inactive', label: 'Inactive' }
+              ]}
+              style={{ margin: 0, width: '100%' }}
+            />
+          </div>
+        </div>
+      </Modal>
     </>
   )
 }

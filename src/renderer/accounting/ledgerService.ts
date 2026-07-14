@@ -50,9 +50,19 @@ function setCachedBalance(accountId: string, balance: number, version: number): 
   _balanceCache.set(accountId, { balance, version })
 }
 
-function getCacheKey(accountId: string, date?: string): string {
-  return date ? `${accountId}@${date}` : accountId
+function getModuleFromAccounts(accounts: Account[]): 'property' | 'investment' {
+  for (const acc of accounts) {
+    if (acc.module === 'property' || acc.id.endsWith('-prop')) return 'property'
+    if (acc.module === 'investment' || acc.id.endsWith('-inv')) return 'investment'
+  }
+  return 'investment'
 }
+
+function getCacheKey(accountId: string, accounts: Account[], date?: string): string {
+  const mod = getModuleFromAccounts(accounts)
+  return date ? `${mod}_${accountId}@${date}` : `${mod}_${accountId}`
+}
+
 
 function getAllLines(vouchers: Voucher[]): LineWithVoucher[] {
   const result: LineWithVoucher[] = []
@@ -122,17 +132,13 @@ export function getLinesByReference(
     .sort(sortByDate)
 }
 
-export function getAccountBalance(
+function getAccountDirectBalance(
   accountId: string,
   vouchers: Voucher[],
   accounts: Account[],
 ): number {
   const account = getAccountById(accountId, accounts)
   if (!account) return 0
-
-  const cacheKey = getCacheKey(accountId)
-  const cached = getCachedBalance(cacheKey, _cacheVersion)
-  if (cached !== undefined) return cached
 
   const entries = getLinesForAccount(accountId, vouchers)
   const totalDebit = entries.reduce(
@@ -144,21 +150,49 @@ export function getAccountBalance(
     0,
   )
 
-  let balance: number
   if (account.normalBalance === 'debit') {
-    balance = Math.round((totalDebit - totalCredit) * 100) / 100
-  } else {
-    balance = Math.round((totalCredit - totalDebit) * 100) / 100
+    return Math.round((totalDebit - totalCredit) * 100) / 100
   }
+  return Math.round((totalCredit - totalDebit) * 100) / 100
+}
 
-  const opening = account.openingBalance ?? 0
-  balance = Math.round((balance + opening) * 100) / 100
+export function getAccountBalance(
+  accountId: string,
+  vouchers: Voucher[],
+  accounts: Account[],
+): number {
+  const account = getAccountById(accountId, accounts)
+  if (!account) return 0
+
+  const cacheKey = getCacheKey(accountId, accounts)
+
+  const cached = getCachedBalance(cacheKey, _cacheVersion)
+  if (cached !== undefined) return cached
+
+  // Recursive check for active direct children
+  const children = accounts.filter(a => a.parentId === account.id && a.isActive)
+  let balance: number
+
+  if (children.length === 0) {
+    balance = getAccountDirectBalance(accountId, vouchers, accounts)
+  } else {
+    let total = 0
+    for (const child of children) {
+      const childBal = getAccountBalance(child.id, vouchers, accounts)
+      if (child.normalBalance === account.normalBalance) {
+        total += childBal
+      } else {
+        total -= childBal
+      }
+    }
+    balance = Math.round(total * 100) / 100
+  }
 
   setCachedBalance(cacheKey, balance, _cacheVersion)
   return balance
 }
 
-export function getAccountBalanceAtDate(
+function getAccountDirectBalanceAtDate(
   accountId: string,
   vouchers: Voucher[],
   accounts: Account[],
@@ -183,6 +217,43 @@ export function getAccountBalanceAtDate(
   return Math.round((totalCredit - totalDebit) * 100) / 100
 }
 
+export function getAccountBalanceAtDate(
+  accountId: string,
+  vouchers: Voucher[],
+  accounts: Account[],
+  date: string,
+): number {
+  const account = getAccountById(accountId, accounts)
+  if (!account) return 0
+
+  const cacheKey = getCacheKey(accountId, accounts, date)
+
+  const cached = getCachedBalance(cacheKey, _cacheVersion)
+  if (cached !== undefined) return cached
+
+  // Recursive check for active direct children
+  const children = accounts.filter(a => a.parentId === account.id && a.isActive)
+  let balance: number
+
+  if (children.length === 0) {
+    balance = getAccountDirectBalanceAtDate(accountId, vouchers, accounts, date)
+  } else {
+    let total = 0
+    for (const child of children) {
+      const childBal = getAccountBalanceAtDate(child.id, vouchers, accounts, date)
+      if (child.normalBalance === account.normalBalance) {
+        total += childBal
+      } else {
+        total -= childBal
+      }
+    }
+    balance = Math.round(total * 100) / 100
+  }
+
+  setCachedBalance(cacheKey, balance, _cacheVersion)
+  return balance
+}
+
 export function getBalances(
   accountIds: string[],
   vouchers: Voucher[],
@@ -203,7 +274,12 @@ export function getTrialBalance(
   const entries: TrialBalanceEntry[] = []
 
   for (const account of activeAccounts) {
+    const isParent = accounts.some(child => child.parentId === account.id && child.isActive)
+    if (isParent) continue
+
     const lines = getLinesForAccount(account.id, vouchers)
+    if (lines.length === 0) continue
+
     const totalDebit = lines.reduce(
       (s, { line }) => s + (line.type === 'Debit' ? line.baseAmount : 0),
       0,
@@ -213,14 +289,11 @@ export function getTrialBalance(
       0,
     )
 
-    if (totalDebit === 0 && totalCredit === 0) continue
-
     const roundedDebit = Math.round(totalDebit * 100) / 100
     const roundedCredit = Math.round(totalCredit * 100) / 100
-    const balance =
-      account.normalBalance === 'debit'
-        ? roundedDebit - roundedCredit
-        : roundedCredit - roundedDebit
+    const balance = account.normalBalance === 'debit'
+      ? roundedDebit - roundedCredit
+      : roundedCredit - roundedDebit
 
     entries.push({
       accountId: account.id,
@@ -229,12 +302,30 @@ export function getTrialBalance(
       type: account.type,
       totalDebit: roundedDebit,
       totalCredit: roundedCredit,
-      balance: Math.round(balance * 100) / 100,
+      balance,
     })
   }
 
   entries.sort((a, b) => a.accountCode.localeCompare(b.accountCode))
   return entries
+}
+
+export function validateLedgerBalance(vouchers: Voucher[], accounts: Account[]): {
+  isBalanced: boolean
+  totalDebit: number
+  totalCredit: number
+  difference: number
+} {
+  const tbEntries = getTrialBalance(vouchers, accounts)
+  const totalDebit = tbEntries.reduce((s, e) => s + e.totalDebit, 0)
+  const totalCredit = tbEntries.reduce((s, e) => s + e.totalCredit, 0)
+  const difference = Math.abs(totalDebit - totalCredit)
+  return {
+    isBalanced: difference < 0.01,
+    totalDebit: Math.round(totalDebit * 100) / 100,
+    totalCredit: Math.round(totalCredit * 100) / 100,
+    difference: Math.round(difference * 100) / 100,
+  }
 }
 
 export function getRunningBalance(
@@ -350,8 +441,10 @@ export function getAccountTypeBalance(
   vouchers: Voucher[],
   accounts: Account[],
 ): number {
-  const typeAccounts = accounts.filter(a => a.type === type && a.isActive)
-  return typeAccounts.reduce(
+  const leafAccounts = accounts.filter(
+    a => a.type === type && a.isActive && !accounts.some(child => child.parentId === a.id && child.isActive)
+  )
+  return leafAccounts.reduce(
     (sum, a) => sum + getAccountBalance(a.id, vouchers, accounts),
     0,
   )
@@ -363,19 +456,20 @@ export function getAccountTypeBalanceAtDate(
   accounts: Account[],
   date: string,
 ): number {
-  const typeAccounts = accounts.filter(a => a.type === type && a.isActive)
-  return typeAccounts.reduce(
+  const leafAccounts = accounts.filter(
+    a => a.type === type && a.isActive && !accounts.some(child => child.parentId === a.id && child.isActive)
+  )
+  return leafAccounts.reduce(
     (sum, a) => sum + getAccountBalanceAtDate(a.id, vouchers, accounts, date),
     0,
   )
 }
 
 export function getOpeningBalance(
-  accountId: string,
-  accounts: Account[],
+  _accountId: string,
+  _accounts: Account[],
 ): number {
-  const account = getAccountById(accountId, accounts)
-  return account?.openingBalance ?? 0
+  return 0
 }
 
 export function getClosingBalance(
@@ -409,7 +503,12 @@ export function getTrialBalanceAtDate(
   const entries: TrialBalanceEntry[] = []
 
   for (const account of activeAccounts) {
+    const isParent = accounts.some(child => child.parentId === account.id && child.isActive)
+    if (isParent) continue
+
     const lines = getLinesForAccountByDateRange(account.id, vouchers, '0000-01-01', date)
+    if (lines.length === 0) continue
+
     const totalDebit = lines.reduce(
       (s, { line }) => s + (line.type === 'Debit' ? line.baseAmount : 0),
       0,
@@ -419,16 +518,11 @@ export function getTrialBalanceAtDate(
       0,
     )
 
-    if (totalDebit === 0 && totalCredit === 0) continue
-
     const roundedDebit = Math.round(totalDebit * 100) / 100
     const roundedCredit = Math.round(totalCredit * 100) / 100
-
-    const opening = account.openingBalance ?? 0
-    const balance =
-      account.normalBalance === 'debit'
-        ? roundedDebit - roundedCredit + opening
-        : roundedCredit - roundedDebit + opening
+    const balance = account.normalBalance === 'debit'
+      ? roundedDebit - roundedCredit
+      : roundedCredit - roundedDebit
 
     entries.push({
       accountId: account.id,
@@ -437,7 +531,7 @@ export function getTrialBalanceAtDate(
       type: account.type,
       totalDebit: roundedDebit,
       totalCredit: roundedCredit,
-      balance: Math.round(balance * 100) / 100,
+      balance,
     })
   }
 
@@ -474,8 +568,16 @@ export function getAccountBalanceSummary(
   const account = getAccountById(accountId, accounts)
   if (!account) return { openingBalance: 0, periodDebit: 0, periodCredit: 0, closingBalance: 0 }
 
-  const opening = account.openingBalance ?? 0
-  const periodLines = getLinesForAccountByDateRange(accountId, vouchers, from, to)
+  const allLines = getLinesForAccount(accountId, vouchers)
+
+  const prePeriodLines = allLines.filter(({ voucher }) => voucher.date < from)
+  const preDebit = prePeriodLines.reduce((s, { line }) => s + (line.type === 'Debit' ? line.baseAmount : 0), 0)
+  const preCredit = prePeriodLines.reduce((s, { line }) => s + (line.type === 'Credit' ? line.baseAmount : 0), 0)
+  const openingBalance = account.normalBalance === 'debit'
+    ? Math.round((preDebit - preCredit) * 100) / 100
+    : Math.round((preCredit - preDebit) * 100) / 100
+
+  const periodLines = allLines.filter(({ voucher }) => voucher.date >= from && voucher.date <= to)
 
   const periodDebit = periodLines.reduce(
     (s, { line }) => s + (line.type === 'Debit' ? line.baseAmount : 0),
@@ -486,17 +588,14 @@ export function getAccountBalanceSummary(
     0,
   )
 
-  let closing: number
-  if (account.normalBalance === 'debit') {
-    closing = opening + periodDebit - periodCredit
-  } else {
-    closing = opening + periodCredit - periodDebit
-  }
+  const netChange = account.normalBalance === 'debit'
+    ? periodDebit - periodCredit
+    : periodCredit - periodDebit
 
   return {
-    openingBalance: Math.round(opening * 100) / 100,
+    openingBalance,
     periodDebit: Math.round(periodDebit * 100) / 100,
     periodCredit: Math.round(periodCredit * 100) / 100,
-    closingBalance: Math.round(closing * 100) / 100,
+    closingBalance: Math.round((openingBalance + netChange) * 100) / 100,
   }
 }
