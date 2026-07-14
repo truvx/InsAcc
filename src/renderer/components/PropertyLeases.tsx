@@ -433,6 +433,14 @@ export default function PropertyLeases({
   const [depositReceived, setDepositReceived] = useState(false)
   const defaultBank = useMemo(() => getDefaultPropertyReceiptBankAccount(propAccounts), [propAccounts])
   const [depositBankId, setDepositBankId] = useState(defaultBank ? defaultBank.id : '')
+  const [depositPaymentMode, setDepositPaymentMode] = useState<'Cash' | 'Security Cheque' | 'Bank Transfer'>('Bank Transfer')
+  const [depositDateReceived, setDepositDateReceived] = useState<string>('')
+
+  useEffect(() => {
+    if (formStartDate) {
+      setDepositDateReceived(formStartDate)
+    }
+  }, [formStartDate])
 
   // Helper to calculate lease duration in calendar months
   const getLeaseMonthsCount = () => {
@@ -925,27 +933,45 @@ export default function PropertyLeases({
       if (finalDeposit > 0) {
         let secDeposit = createInitialDeposit(newLease, 'user')
         
-        // Automatically post the security deposit GL voucher — deposit is assumed received
+        // Automatically post the security deposit GL voucher
         if (accountingEngine && depositMappings) {
+          const isCheque = depositReceived && depositPaymentMode === 'Security Cheque'
           const effectiveBankId = depositReceived && depositBankId ? depositBankId : defaultBank?.id || propAccounts?.[0]?.id
           const coaBankAccountId = effectiveBankId ? getPropertyBankAccountId(effectiveBankId, propAccounts, bankMappings) : undefined
-          if (coaBankAccountId) {
-            const desc = `Security Deposit Receipt: Lease ${leaseNumber} — Tenant: ${getTenantName(formTenantId)}`
+          
+          if (isCheque || coaBankAccountId) {
+            const desc = `Security Deposit Receipt (${depositReceived ? depositPaymentMode : 'Bank Transfer'}): Lease ${leaseNumber} — Tenant: ${getTenantName(formTenantId)}`
+            const txDate = depositReceived && depositDateReceived ? depositDateReceived : formStartDate
+            
+            const eventType = isCheque ? 'SECURITY_DEPOSIT_PDC_RECEIVED' : 'SECURITY_DEPOSIT_RECEIVED'
+            const eventPayload = isCheque ? {
+              amount: finalDeposit,
+              date: txDate,
+              description: desc,
+              currency,
+              exchangeRate: 1,
+              baseCurrency: currency,
+              creditAccount: depositMappings.liabilityAccountId,
+              referenceType: 'Lease',
+              referenceId: newLease.id,
+              createdBy: 'user',
+            } : {
+              amount: finalDeposit,
+              date: txDate,
+              description: desc,
+              currency,
+              exchangeRate: 1,
+              baseCurrency: currency,
+              bankAccount: coaBankAccountId,
+              creditAccount: depositMappings.liabilityAccountId,
+              referenceType: 'Lease',
+              referenceId: newLease.id,
+              createdBy: 'user',
+            }
+
             const draftResult = accountingEngine.processAccountingEvent(
-              'SECURITY_DEPOSIT_RECEIVED',
-              {
-                amount: finalDeposit,
-                date: formStartDate,
-                description: desc,
-                currency,
-                exchangeRate: 1,
-                baseCurrency: currency,
-                bankAccount: coaBankAccountId,
-                creditAccount: depositMappings.liabilityAccountId,
-                referenceType: 'Lease',
-                referenceId: newLease.id,
-                createdBy: 'user',
-              },
+              eventType,
+              eventPayload,
               accounts || [],
               vouchers || []
             )
@@ -959,10 +985,11 @@ export default function PropertyLeases({
                   secDeposit = addDepositTransaction(secDeposit, {
                     type: 'Receipt',
                     amount: finalDeposit,
-                    date: formStartDate,
-                    bankAccountId: coaBankAccountId,
+                    date: txDate,
+                    bankAccountId: isCheque ? undefined : coaBankAccountId,
                     voucherId: postResult.voucher.id,
-                    notes: 'Deposit received inline on lease creation.',
+                    notes: `Deposit received inline on lease creation as ${depositReceived ? depositPaymentMode : 'Bank Transfer'}.`,
+                    paymentMode: depositReceived ? depositPaymentMode as any : 'Bank Transfer',
                     status: 'Posted',
                     createdBy: 'user',
                   }, 'user')
@@ -1350,16 +1377,40 @@ export default function PropertyLeases({
                         </label>
                       </div>
                       {depositReceived && (
-                        <div className="form-row">
-                          <Select
-                            label="Receiving Trust Account"
-                            value={depositBankId}
-                            onChange={e => setDepositBankId(e.target.value)}
-                            options={[{ value: '', label: 'Select Trust Bank' }, ...propAccounts.map(ba => ({
-                              value: ba.id,
-                              label: ba.institution
-                            }))]}
-                          />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
+                          <div className="form-row">
+                            <Input
+                              label="Date Taken *"
+                              type="date"
+                              value={depositDateReceived}
+                              onChange={e => setDepositDateReceived(e.target.value)}
+                              required
+                            />
+                            <Select
+                              label="Payment Mode *"
+                              value={depositPaymentMode}
+                              onChange={e => setDepositPaymentMode(e.target.value as any)}
+                              options={[
+                                { value: 'Bank Transfer', label: 'Bank Transfer' },
+                                { value: 'Cash', label: 'Cash' },
+                                { value: 'Security Cheque', label: 'Security Cheque' }
+                              ]}
+                            />
+                          </div>
+                          {depositPaymentMode !== 'Security Cheque' && (
+                            <div className="form-row">
+                              <Select
+                                label="Receiving Trust Account *"
+                                value={depositBankId}
+                                onChange={e => setDepositBankId(e.target.value)}
+                                options={[{ value: '', label: 'Select Trust Bank' }, ...propAccounts.map(ba => ({
+                                  value: ba.id,
+                                  label: ba.institution
+                                }))]}
+                                required
+                              />
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
