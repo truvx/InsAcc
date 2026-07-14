@@ -431,25 +431,50 @@ export default function PropertyLeases({
   const defaultBank = useMemo(() => getDefaultPropertyReceiptBankAccount(propAccounts), [propAccounts])
   const [depositBankId, setDepositBankId] = useState(defaultBank ? defaultBank.id : '')
 
-  // Calculate Annual Rent from Monthly Rent × lease duration in calendar months
+  // Helper to calculate lease duration in calendar months
+  const getLeaseMonthsCount = () => {
+    if (!formStartDate || !formEndDate) return 0
+    const s = new Date(formStartDate + 'T00:00:00')
+    const e = new Date(formEndDate + 'T00:00:00')
+    if (e <= s) return 0
+    const months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth())
+    return e.getDate() >= s.getDate() ? months + 1 : months
+  }
+
+  const handleMonthlyRentChange = (val: string) => {
+    setFormMonthlyRent(val)
+    const leaseMonths = getLeaseMonthsCount()
+    const m = Number(val)
+    if (m > 0 && leaseMonths > 0) {
+      setFormAnnualRent(String(m * leaseMonths))
+    } else {
+      setFormAnnualRent('')
+    }
+  }
+
+  const handleAnnualRentChange = (val: string) => {
+    setFormAnnualRent(val)
+    const leaseMonths = getLeaseMonthsCount()
+    const a = Number(val)
+    if (a > 0 && leaseMonths > 0) {
+      setFormMonthlyRent(String(Math.round((a / leaseMonths) * 100) / 100))
+    } else {
+      setFormMonthlyRent('')
+    }
+  }
+
+  // Calculate Annual Rent from Monthly Rent × lease duration when dates change
   React.useEffect(() => {
     if (!formStartDate || !formEndDate || !formMonthlyRent) {
       setFormAnnualRent('')
       return
     }
-    const s = new Date(formStartDate + 'T00:00:00')
-    const e = new Date(formEndDate + 'T00:00:00')
-    if (e <= s) {
-      setFormAnnualRent('')
-      return
-    }
-    const months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth())
-    const leaseMonths = e.getDate() >= s.getDate() ? months + 1 : months
+    const leaseMonths = getLeaseMonthsCount()
     const m = Number(formMonthlyRent)
     if (m > 0 && leaseMonths > 0) {
       setFormAnnualRent(String(m * leaseMonths))
     }
-  }, [formStartDate, formEndDate, formMonthlyRent])
+  }, [formStartDate, formEndDate])
 
   const computedPdcCount = useMemo(() => {
     if (!formStartDate || !formEndDate) return 0
@@ -1275,10 +1300,10 @@ export default function PropertyLeases({
                 <div className="form-row">
                   <Input label="Start Date *" type="date" value={formStartDate} onChange={e => setFormStartDate(e.target.value)} />
                   <Input label="End Date *" type="date" value={formEndDate} onChange={e => setFormEndDate(e.target.value)} />
-                  <Input label="Monthly Rent" type="number" value={formMonthlyRent} onChange={e => setFormMonthlyRent(e.target.value)} placeholder="0" />
+                  <Input label="Monthly Rent" type="number" value={formMonthlyRent} onChange={e => handleMonthlyRentChange(e.target.value)} placeholder="0" />
                 </div>
                 <div className="form-row">
-                  <Input label="Annual Rent" type="number" value={formAnnualRent} readOnly placeholder="0" />
+                  <Input label="Annual Rent" type="number" value={formAnnualRent} onChange={e => handleAnnualRentChange(e.target.value)} placeholder="0" />
                   <Input label="Security Deposit" type="number" value={formDeposit} onChange={e => setFormDeposit(e.target.value)} placeholder="0" />
                   <Input label="Payment Due Day" type="number" value={formDueDay} onChange={e => setFormDueDay(e.target.value)} placeholder="1" />
                 </div>
