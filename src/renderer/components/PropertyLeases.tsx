@@ -438,7 +438,7 @@ export default function PropertyLeases({
   const [depositPaymentMode, setDepositPaymentMode] = useState<'Cash' | 'Security Cheque' | 'Bank Transfer'>('Bank Transfer')
   const [depositDateReceived, setDepositDateReceived] = useState<string>('')
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (formStartDate) {
       setDepositDateReceived(formStartDate)
     }
