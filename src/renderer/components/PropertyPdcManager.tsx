@@ -781,13 +781,7 @@ export default function PropertyPdcManager({
         <CurrencyText value={row.amount} currency={currency} />
       ),
     },
-    {
-      key: 'chequeDate',
-      header: 'Issue Date',
-      width: '100px',
-      sortable: true,
-      render: row => <span className="text-xs text-secondary">{formatDate(row.chequeDate, dateFormat)}</span>,
-    },
+
     {
       key: 'dueDate',
       header: 'Due Date',
