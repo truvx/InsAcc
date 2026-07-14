@@ -1026,6 +1026,25 @@ export default function App() {
       })
       changed = true
     }
+    const has1420 = updatedPropAccounts.some(a => a.code === '1420')
+    if (!has1420) {
+      const ts = new Date().toISOString()
+      updatedPropAccounts.push({
+        id: '1420',
+        code: '1420',
+        name: 'Security Cheques Received',
+        type: 'asset',
+        normalBalance: 'debit',
+        parentId: '1000',
+        isActive: true,
+        description: 'Security Cheques Received Pool',
+        currency: currency === 'INR' ? 'INR' : currency === 'GBP' ? 'GBP' : 'AED',
+        createdAt: ts,
+        updatedAt: ts,
+        module: 'property'
+      })
+      changed = true
+    }
     const migratedPropAccounts = updatedPropAccounts.map(a => {
       if (a.id === '1110' || a.name === 'Cash on Hand') {
         changed = true
