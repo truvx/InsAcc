@@ -225,9 +225,11 @@ interface LeaseCardProps {
   dateFormat: string
   currency: string
 }
-const formatUnitNumber = (num?: string) => {
-  if (!num) return '—'
-  return num.toLowerCase().startsWith('unit') ? num : `Unit ${num}`
+const formatUnitNumber = (num?: any) => {
+  if (num === null || num === undefined) return '—'
+  const str = String(num).trim()
+  if (!str) return '—'
+  return str.toLowerCase().startsWith('unit') ? str : `Unit ${str}`
 }
 function LeaseCard({ lease, property, unit, dateFormat, currency }: LeaseCardProps) {
   const fmtVal = (n: number) => <CurrencyText value={n} currency={currency} />

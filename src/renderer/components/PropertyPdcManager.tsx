@@ -759,7 +759,7 @@ export default function PropertyPdcManager({
             <span className="text-sm text-secondary">{meta?.propertyName || '—'}</span>
             {unitNo && unitNo !== '—' && (
               <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-                {unitNo.toLowerCase().startsWith('unit') ? unitNo : `Unit ${unitNo}`}
+                {String(unitNo).toLowerCase().startsWith('unit') ? unitNo : `Unit ${unitNo}`}
               </span>
             )}
           </div>
