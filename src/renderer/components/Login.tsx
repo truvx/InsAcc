@@ -354,25 +354,12 @@ export default function Login({ onSuccess, storedPassword = '1234', onBackToModu
                         <span className="login-checkbox-mark" />
                         <span>Remember me</span>
                       </label>
-                      <button type="button" className="login-forgot" onClick={() => {}}>
-                        Forgot Password?
-                      </button>
                     </div>
 
                     <button type="submit" className="login-signin-btn">
                       Sign In
                     </button>
                   </form>
-
-                  <div className="login-divider">
-                    <span className="login-divider-line" />
-                    <span className="login-divider-text">OR</span>
-                    <span className="login-divider-line" />
-                  </div>
-
-                  <div className="login-bottom-msg">
-                    New to InsAcc ERP? <span className="login-contact">Contact your administrator.</span>
-                  </div>
                 </motion.div>
               )}
 
