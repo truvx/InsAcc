@@ -449,38 +449,11 @@ export default function PropertyLeases({
 
   const handleMonthlyRentChange = (val: string) => {
     setFormMonthlyRent(val)
-    const leaseMonths = getLeaseMonthsCount()
-    const m = Number(val)
-    if (m > 0 && leaseMonths > 0) {
-      setFormAnnualRent(String(m * leaseMonths))
-    } else {
-      setFormAnnualRent('')
-    }
   }
 
   const handleAnnualRentChange = (val: string) => {
     setFormAnnualRent(val)
-    const leaseMonths = getLeaseMonthsCount()
-    const a = Number(val)
-    if (a > 0 && leaseMonths > 0) {
-      setFormMonthlyRent(String(Math.round((a / leaseMonths) * 100) / 100))
-    } else {
-      setFormMonthlyRent('')
-    }
   }
-
-  // Calculate Annual Rent from Monthly Rent × lease duration when dates change
-  React.useEffect(() => {
-    if (!formStartDate || !formEndDate || !formMonthlyRent) {
-      setFormAnnualRent('')
-      return
-    }
-    const leaseMonths = getLeaseMonthsCount()
-    const m = Number(formMonthlyRent)
-    if (m > 0 && leaseMonths > 0) {
-      setFormAnnualRent(String(m * leaseMonths))
-    }
-  }, [formStartDate, formEndDate])
 
   const computedPdcCount = useMemo(() => {
     if (!formStartDate || !formEndDate) return 0
