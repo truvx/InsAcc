@@ -8,7 +8,7 @@ export const POSTING_RULES: PostingRule[] = [
     description: 'Lease contract activated — recognize total rental income',
     voucherType: 'Journal',
     debit: [
-      { account: '1320', narration: 'Rent receivable' },
+      { account: '1130', narration: 'Rent receivable' },
     ],
     credit: [
       { account: ctx => ctx.creditAccount!, narration: 'Rental income' },
@@ -23,7 +23,7 @@ export const POSTING_RULES: PostingRule[] = [
       { account: ctx => ctx.bankAccount!, narration: 'Rent deposited to bank' },
     ],
     credit: [
-      { account: '1320', narration: 'Accounts receivable reduced' },
+      { account: '1130', narration: 'Accounts receivable reduced' },
     ],
   },
 
@@ -35,7 +35,7 @@ export const POSTING_RULES: PostingRule[] = [
       { account: '1410', narration: 'Post-dated cheque received' },
     ],
     credit: [
-      { account: '1320', narration: 'PDC receivable from tenant' },
+      { account: '1130', narration: 'PDC receivable from tenant' },
     ],
   },
 
@@ -56,7 +56,7 @@ export const POSTING_RULES: PostingRule[] = [
     description: 'Bounced post-dated cheque reverses clearing',
     voucherType: 'Journal',
     debit: [
-      { account: '1320', narration: 'Bounced cheque tenant receivable restored' },
+      { account: '1130', narration: 'Bounced cheque tenant receivable restored' },
     ],
     credit: [
       { account: ctx => ctx.bankAccount!, narration: 'Bounced cheque bank withdrawal' },
@@ -80,7 +80,7 @@ export const POSTING_RULES: PostingRule[] = [
     description: 'Penalty charged to tenant for bounced cheque',
     voucherType: 'Journal',
     debit: [
-      { account: '1320', narration: 'Bounced cheque penalty receivable' },
+      { account: '1130', narration: 'Bounced cheque penalty receivable' },
     ],
     credit: [
       { account: '4150', narration: 'Late fee income' },
@@ -92,7 +92,7 @@ export const POSTING_RULES: PostingRule[] = [
     description: 'Cancellation of future-dated PDC — reverses initial receipt entry',
     voucherType: 'Journal',
     debit: [
-      { account: '1320', narration: 'PDC cancelled — receivable reinstated' },
+      { account: '1130', narration: 'PDC cancelled — receivable reinstated' },
     ],
     credit: [
       { account: '1410', narration: 'PDC cancelled — removed from PDC receivable' },

@@ -92,6 +92,40 @@ function runMigrations() {
       localStorage.setItem(clearedLeasesKey, 'true')
     }
 
+    const arToRrMigrationKey = 'insacc_prop_ar_1320_to_rr_1130_v2'
+    if (!localStorage.getItem(arToRrMigrationKey)) {
+      try {
+        const propRaw = localStorage.getItem('insacc_prop_chart_accounts')
+        if (propRaw) {
+          const propAccts = JSON.parse(propRaw)
+          if (Array.isArray(propAccts)) {
+            const filtered = propAccts.filter((a: any) => a.code !== '1320')
+            localStorage.setItem('insacc_prop_chart_accounts', JSON.stringify(filtered))
+          }
+        }
+        const vouchersRaw = localStorage.getItem('insacc_prop_vouchers')
+        if (vouchersRaw) {
+          const vouchers = JSON.parse(vouchersRaw)
+          if (Array.isArray(vouchers)) {
+            const remapped = vouchers.map((v: any) => {
+              if (!v?.lines) return v
+              const lines = v.lines.map((l: any) => {
+                if (l.accountId === '1320') {
+                  return { ...l, accountId: '1130' }
+                }
+                return l
+              })
+              return { ...v, lines }
+            })
+            localStorage.setItem('insacc_prop_vouchers', JSON.stringify(remapped))
+          }
+        }
+        localStorage.setItem(arToRrMigrationKey, 'true')
+      } catch (e) {
+        console.error('AR to RR migration failed:', e)
+      }
+    }
+
     const coaPatches = ['insacc_accounts', 'insacc_prop_chart_accounts']
     coaPatches.forEach(key => {
       const raw = localStorage.getItem(key)

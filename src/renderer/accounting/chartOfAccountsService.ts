@@ -285,7 +285,6 @@ export function initializeDefaultChartOfAccounts(country: string = 'UAE', module
     // to avoid duplicate accounts with the same code.
     mkAcct('1130', '1130', 'Rent Receivable', 'asset', 'debit', '1000', 'Rent Receivable', 'property'),
     mkAcct('1270', '1270', 'Real Estate', 'asset', 'debit', '1000', 'Property Assets', 'property'),
-    mkAcct('1320', '1320', 'Accounts Receivable', 'asset', 'debit', '1000', 'Client Receivables', 'property'),
     mkAcct('1410', '1410', isIndia ? 'PDC Receivables' : 'Post-dated Cheques Receivable', 'asset', 'debit', '1000', 'PDC Receivables Pool', 'property'),
     mkAcct('1420', '1420', 'Security Cheques Received', 'asset', 'debit', '1000', 'Security Cheques Received Pool', 'property'),
     mkAcct('2110', '2110', 'Deferred Revenue', 'liability', 'credit', '2000', 'Deferred Revenue', 'property'),

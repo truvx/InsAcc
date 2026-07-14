@@ -15,7 +15,6 @@ const PROPERTY_ASSET_PREFIXES = [
   '1120', // Bank Accounts
   '1130', // Rent Receivable
   '1270', // Real Estate / Properties
-  '1320', // Accounts Receivable
   '1410', // Post-dated Cheques Receivable
   '1420', // Security Cheques Received
 ]
