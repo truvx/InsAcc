@@ -31,6 +31,7 @@ interface Props {
   setTenants: React.Dispatch<React.SetStateAction<TenantEntry[]>>
   leases?: LeaseEntry[]
   units?: UnitEntry[]
+  properties?: any[]
   onNavigate?: (page: string) => void
 }
 
@@ -78,7 +79,7 @@ const DEFAULT_FORM: TenantForm = {
   unitId: null,
 }
 
-export default function PropertyTenants({ currency: _currency, dateFormat = 'DD/MM/YYYY', language: _language, tenants, setTenants, leases = [], units = [], onNavigate }: Props) {
+export default function PropertyTenants({ currency: _currency, dateFormat = 'DD/MM/YYYY', language: _language, tenants, setTenants, leases = [], units = [], properties = [], onNavigate }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
   const [showModal, setShowModal] = useState(false)
@@ -195,14 +196,27 @@ export default function PropertyTenants({ currency: _currency, dateFormat = 'DD/
     {
       key: 'name',
       header: 'Name',
-      render: t => (
-        <span
-          style={{ cursor: 'pointer', fontWeight: 500 }}
-          onClick={() => setSelectedTenantId(selectedTenantId === t.id ? null : t.id)}
-        >
-          {t.name}
-        </span>
-      ),
+      render: t => {
+        const activeLease = leases.find(l => l.tenantId === t.id && l.status === 'Active')
+        const unit = activeLease ? units.find(u => u.id === activeLease.unitId) : null
+        const prop = unit ? properties.find(p => p.id === unit.propertyId) : null
+        
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span
+              style={{ cursor: 'pointer', fontWeight: 500 }}
+              onClick={() => setSelectedTenantId(selectedTenantId === t.id ? null : t.id)}
+            >
+              {t.name}
+            </span>
+            {unit && (
+              <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                🏠 {prop ? prop.name : 'Property'} · Unit {unit.unitNumber}
+              </span>
+            )}
+          </div>
+        )
+      },
     },
     {
       key: 'phone',

@@ -29,6 +29,7 @@ interface Props {
   leases: LeaseEntry[]
   tenants: TenantEntry[]
   properties: PropertyEntry[]
+  units?: UnitEntry[]
   dateFormat?: string
   currency?: string
   accounts: Account[]
@@ -153,10 +154,21 @@ function StatusPills({ options, counts, active, onChange }: {
 
 /* ─────────── Main component ─────────── */
 export default function PropertyPdcManager({
-  pdcCheques, setPdcCheques, leases, tenants, properties,
-  dateFormat = 'DD/MM/YYYY', currency = 'AED',
-  accounts, vouchers, setVouchers, accountingEngine, propAccounts, bankMappings,
-  onNavigate
+  pdcCheques,
+  setPdcCheques,
+  leases,
+  tenants,
+  properties,
+  units = [],
+  dateFormat,
+  currency,
+  accounts,
+  vouchers,
+  setVouchers,
+  accountingEngine,
+  propAccounts,
+  bankMappings,
+  onNavigate,
 }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
@@ -196,20 +208,22 @@ export default function PropertyPdcManager({
   const [clearNotes, setClearNotes] = useState('')
 
   const chequeMeta = useMemo(() => {
-    const map: Record<string, { tenantName: string; propertyName: string; bankName: string }> = {}
+    const map: Record<string, { tenantName: string; propertyName: string; bankName: string; unitNumber: string }> = {}
     for (const chq of pdcCheques) {
       const lease = leases.find(l => l.id === chq.leaseId)
       const tenant = lease ? tenants.find(t => t.id === lease.tenantId) : undefined
       const property = lease ? properties.find(p => p.id === lease.propertyId) : undefined
+      const unit = lease ? units.find(u => u.id === lease.unitId) : undefined
       const bank = chq.bankAccountId ? propAccounts.find(a => a.id === chq.bankAccountId) : undefined
       map[chq.id] = {
         tenantName: tenant?.name || 'Unknown',
         propertyName: property?.name || '—',
         bankName: bank ? `${bank.institution}` : '—',
+        unitNumber: unit?.unitNumber || '—',
       }
     }
     return map
-  }, [pdcCheques, leases, tenants, properties, propAccounts])
+  }, [pdcCheques, leases, tenants, properties, propAccounts, units])
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { All: pdcCheques.length }
@@ -734,9 +748,23 @@ export default function PropertyPdcManager({
     },
     {
       key: 'propertyName',
-      header: 'Property',
+      header: 'Property / Unit',
       sortable: true,
-      render: row => <span className="text-sm text-secondary">{chequeMeta[row.id]?.propertyName || '—'}</span>,
+      render: row => {
+        const meta = chequeMeta[row.id]
+        const unitNo = meta?.unitNumber
+        
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span className="text-sm text-secondary">{meta?.propertyName || '—'}</span>
+            {unitNo && unitNo !== '—' && (
+              <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                {unitNo.toLowerCase().startsWith('unit') ? unitNo : `Unit ${unitNo}`}
+              </span>
+            )}
+          </div>
+        )
+      },
     },
     {
       key: 'bankName',

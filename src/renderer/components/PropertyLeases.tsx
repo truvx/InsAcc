@@ -225,6 +225,10 @@ interface LeaseCardProps {
   dateFormat: string
   currency: string
 }
+const formatUnitNumber = (num?: string) => {
+  if (!num) return '—'
+  return num.toLowerCase().startsWith('unit') ? num : `Unit ${num}`
+}
 function LeaseCard({ lease, property, unit, dateFormat, currency }: LeaseCardProps) {
   const fmtVal = (n: number) => <CurrencyText value={n} currency={currency} />
   return (
@@ -235,7 +239,7 @@ function LeaseCard({ lease, property, unit, dateFormat, currency }: LeaseCardPro
       </div>
       <div>
         <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Unit / Floor</div>
-        <div style={{ fontSize: 13, fontWeight: 500 }}>Unit {unit?.unitNumber || '—'} (Floor {unit?.floor || '—'})</div>
+        <div style={{ fontSize: 13, fontWeight: 500 }}>{formatUnitNumber(unit?.unitNumber)} (Floor {unit?.floor || '—'})</div>
       </div>
       <div>
         <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Lease Period</div>
@@ -1123,7 +1127,7 @@ export default function PropertyLeases({
                           </td>
                           <td className="text-xs">
                             <div style={{ fontWeight: 500 }}>{property?.name}</div>
-                            <div style={{ color: 'var(--text-secondary)' }}>Unit {unit?.unitNumber} (Floor {unit?.floor})</div>
+                            <div style={{ color: 'var(--text-secondary)' }}>{formatUnitNumber(unit?.unitNumber)} (Floor {unit?.floor})</div>
                           </td>
                           <td className="text-sm font-medium">
                             <div>{tenant?.name || '—'}</div>

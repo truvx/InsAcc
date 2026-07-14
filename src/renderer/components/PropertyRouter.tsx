@@ -231,6 +231,7 @@ export default function PropertyRouter(props: Props) {
         currency={currency} dateFormat={dateFormat} language={language}
         tenants={propTenants} setTenants={setPropTenants}
         leases={propLeases} units={mappedUnits}
+        properties={mappedProperties}
         onNavigate={onNavigate}
       />
     case 'leases':
