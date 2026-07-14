@@ -734,7 +734,13 @@ export default function App() {
   }, [accounts.length, propChartAccounts.length, currency])
 
   useEffect(() => {
-    // 1. Clean up any existing duplicates
+    // 1. Remove the old outside categories, properties, and units if they exist
+    setMainCategories(prev => prev.filter(c => c && c.id !== 'mc-parking-rent'))
+    setHierarchyProperties(prev => prev.filter(p => p && p.id !== 'prop-parking-rent'))
+    setIncomeCategories(prev => prev.filter(i => i && i.id !== 'ic-parking-rent-contract'))
+    setCustomers(prev => prev.filter(c => c && c.id !== 'cust-fatma-parking-402' && !c.id.startsWith('cust-parking-')))
+
+    // 2. Clean up any duplicates in remaining categories
     setMainCategories(prev => {
       const seen = new Set()
       return prev.filter(c => {
@@ -752,8 +758,15 @@ export default function App() {
       })
     })
     setIncomeCategories(prev => {
+      // Also update the name of the parking income category inside Fatma Moosa
+      const updated = prev.map(i => {
+        if (i && i.id === 'ic-parking-rent-prop-fatma') {
+          return { ...i, name: 'Parking and Rent Contract' }
+        }
+        return i
+      })
       const seen = new Set()
-      return prev.filter(i => {
+      return updated.filter(i => {
         if (!i || seen.has(i.id)) return false
         seen.add(i.id)
         return true
@@ -768,23 +781,21 @@ export default function App() {
       })
     })
 
-    // 2. Perform the migration if missing
-    if (mainCategories && !mainCategories.some(c => c && c.id === 'mc-parking-rent')) {
-      setMainCategories(prev => prev.some(c => c && c.id === 'mc-parking-rent') ? prev : [...prev, { id: 'mc-parking-rent', name: 'Parking and Rent' }])
-      setHierarchyProperties(prev => prev.some(p => p && p.id === 'prop-parking-rent') ? prev : [...prev, { id: 'prop-parking-rent', mainCategoryId: 'mc-parking-rent', name: 'Parking and Rent' }])
-      setIncomeCategories(prev => prev.some(i => i && i.id === 'ic-parking-rent-contract') ? prev : [...prev, { id: 'ic-parking-rent-contract', propertyId: 'prop-parking-rent', name: 'Parking and Rent Contract' }])
-      
+    // 3. Append the 12 Parking units under ic-parking-rent-prop-fatma if missing
+    setCustomers(prev => {
+      const hasParking1 = prev.some(c => c && c.id === 'cust-fatma-parking-1')
+      if (hasParking1) return prev
       const newParkingUnits: Customer[] = []
       for (let p = 1; p <= 12; p++) {
         newParkingUnits.push({
-          id: `cust-parking-${p}`,
-          incomeCategoryId: 'ic-parking-rent-contract',
+          id: `cust-fatma-parking-${p}`,
+          incomeCategoryId: 'ic-parking-rent-prop-fatma',
           name: `Parking ${p}`
         })
       }
-      setCustomers(prev => prev.some(c => c && c.id === 'cust-parking-1') ? prev : [...prev, ...newParkingUnits])
-    }
-  }, [mainCategories, setMainCategories, setHierarchyProperties, setIncomeCategories, setCustomers])
+      return [...prev, ...newParkingUnits]
+    })
+  }, [setMainCategories, setHierarchyProperties, setIncomeCategories, setCustomers])
 
   useEffect(() => {
     if (accounts.length === 0) return

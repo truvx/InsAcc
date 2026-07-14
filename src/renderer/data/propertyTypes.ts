@@ -202,7 +202,6 @@ export const DEFAULT_MAIN_CATEGORIES: MainCategory[] = [
   { id: 'mc-building',  name: 'Building'   },
   { id: 'mc-villa',     name: 'Villa'      },
   { id: 'mc-apartment', name: 'Apartment'  },
-  { id: 'mc-parking-rent', name: 'Parking and Rent' },
 ]
 
 export function getDefaultMainCategories(): MainCategory[] {
@@ -222,7 +221,6 @@ export function getDefaultHierarchyProperties(): PropProperty[] {
     { id: 'prop-b3', mainCategoryId: 'mc-building', name: 'Building 3' },
     { id: 'prop-b4', mainCategoryId: 'mc-building', name: 'Building 4' },
     { id: 'prop-b5', mainCategoryId: 'mc-building', name: 'Building 5' },
-    { id: 'prop-parking-rent', mainCategoryId: 'mc-parking-rent', name: 'Parking and Rent' },
   ]
 }
 
@@ -237,7 +235,7 @@ export function getDefaultIncomeCategories(): IncomeCategory[] {
     // Fatma Ibrahim Moosa - Ajman
     { id: 'ic-unit-rent-prop-fatma', propertyId: 'prop-fatma', name: 'Unit Rent' },
     { id: 'ic-shop-rent-prop-fatma', propertyId: 'prop-fatma', name: 'Shop Rent' },
-    { id: 'ic-parking-rent-prop-fatma', propertyId: 'prop-fatma', name: 'Parking Unit Rent' },
+    { id: 'ic-parking-rent-prop-fatma', propertyId: 'prop-fatma', name: 'Parking and Rent Contract' },
     { id: 'ic-oasis-rent-prop-fatma', propertyId: 'prop-fatma', name: 'Oasis Ajman Store' },
     // Building 2
     { id: 'ic-unit-rent-prop-b2', propertyId: 'prop-b2', name: 'Unit Rent' },
@@ -255,8 +253,6 @@ export function getDefaultIncomeCategories(): IncomeCategory[] {
     { id: 'ic-unit-rent-prop-b5', propertyId: 'prop-b5', name: 'Unit Rent' },
     { id: 'ic-shop-rent-prop-b5', propertyId: 'prop-b5', name: 'Shop Rent' },
     { id: 'ic-parking-rent-prop-b5', propertyId: 'prop-b5', name: 'Parking Unit Rent' },
-    // Parking and Rent Property
-    { id: 'ic-parking-rent-contract', propertyId: 'prop-parking-rent', name: 'Parking and Rent Contract' },
   ]
 }
 
@@ -282,12 +278,14 @@ export function getDefaultCustomers(): Customer[] {
     }
   }
 
-  // Under Fatma Ibrahim Moosa - Ajman -> Parking Unit Rent
-  list.push({
-    id: 'cust-fatma-parking-402',
-    incomeCategoryId: 'ic-parking-rent-prop-fatma',
-    name: 'Parking Unit 402 Ajman'
-  })
+  // Under Fatma Ibrahim Moosa - Ajman -> Parking and Rent Contract
+  for (let p = 1; p <= 12; p++) {
+    list.push({
+      id: `cust-fatma-parking-${p}`,
+      incomeCategoryId: 'ic-parking-rent-prop-fatma',
+      name: `Parking ${p}`
+    })
+  }
 
   // Under Fatma Ibrahim Moosa - Ajman -> Shop Rent
   for (let shop = 1; shop <= 5; shop++) {
@@ -295,15 +293,6 @@ export function getDefaultCustomers(): Customer[] {
       id: `cust-fatma-shop-${shop}`,
       incomeCategoryId: 'ic-shop-rent-prop-fatma',
       name: `Shop ${shop} Ajman`
-    })
-  }
-
-  // Under Parking and Rent -> Parking and Rent Contract -> Parking 1 to 12
-  for (let p = 1; p <= 12; p++) {
-    list.push({
-      id: `cust-parking-${p}`,
-      incomeCategoryId: 'ic-parking-rent-contract',
-      name: `Parking ${p}`
     })
   }
 
