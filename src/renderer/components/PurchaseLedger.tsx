@@ -266,7 +266,7 @@ export default function PurchaseLedger({
     const assets = getAssetsForCategory(investmentAssets, cat.id)
     return [
       { value: '', label: 'Select Asset Name' },
-      ...assets.map(a => ({ value: a.name, label: a.name })),
+      ...assets.map(a => ({ value: a.name, label: a.name, deletable: true })),
       { value: '__add_custom__', label: '+ Add Custom Asset' },
     ]
   }, [formData.assetType, investmentCategories, investmentAssets])
@@ -314,6 +314,23 @@ export default function PurchaseLedger({
     setAddAssetError('')
     setShowAddAsset(false)
     setToast({ visible: true, message: 'Asset added successfully.', type: 'success' })
+  }
+
+  const handleDeleteAssetOption = (assetName: string) => {
+    // Check if the asset is used in any purchases
+    const isUsed = purchaseRecords.some(r => r.assetName === assetName)
+    if (isUsed) {
+      alert(`The asset "${assetName}" is currently used in one or more purchase transactions and cannot be deleted.`)
+      return
+    }
+    
+    if (confirm(`Are you sure you want to delete "${assetName}"?`)) {
+      setInvestmentAssets?.(prev => prev.filter(a => a.name !== assetName))
+      setToast({ visible: true, message: `Asset "${assetName}" deleted successfully.`, type: 'success' })
+      if (formData.assetName === assetName) {
+        setFormData(prev => ({ ...prev, assetName: '' }))
+      }
+    }
   }
 
   const bankOptions = useMemo(() => [
@@ -1356,6 +1373,7 @@ export default function PurchaseLedger({
                         }
                       }}
                       options={assetNameOptions}
+                      onDeleteOption={handleDeleteAssetOption}
                       error={fieldError('assetName')}
                       disabled={!!editingId}
                     />

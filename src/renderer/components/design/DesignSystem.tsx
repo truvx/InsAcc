@@ -73,7 +73,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
 interface SelectProps {
   label?: string
   error?: string
-  options: { value: string; label: string }[]
+  options: { value: string; label: string; deletable?: boolean }[]
   value?: string
   onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void
   disabled?: boolean
@@ -82,6 +82,7 @@ interface SelectProps {
   placeholder?: string
   style?: React.CSSProperties
   required?: boolean
+  onDeleteOption?: (val: string) => void
   [key: string]: any
 }
 
@@ -96,6 +97,7 @@ export function Select({
   name,
   placeholder,
   style,
+  onDeleteOption,
   ...props
 }: SelectProps) {
   const [isOpen, setIsOpen] = useState(false)
@@ -284,11 +286,44 @@ export function Select({
                 }}
               >
                 <span>{option.label}</span>
-                {isSelected && (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {option.deletable && onDeleteOption && (
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        onDeleteOption(option.value)
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--danger)',
+                        cursor: 'pointer',
+                        padding: '2px 4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '4px',
+                      }}
+                      title="Delete custom option"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                    </button>
+                  )}
+                  {isSelected && (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </div>
               </div>
             )
           })}
