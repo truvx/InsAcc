@@ -1319,24 +1319,29 @@ export default function PropertyLeases({
                 <div className="form-row">
                   <Input label="Start Date *" type="date" value={formStartDate} onChange={e => setFormStartDate(e.target.value)} />
                   <Input label="End Date *" type="date" value={formEndDate} onChange={e => setFormEndDate(e.target.value)} />
-                  <Input label="Monthly Rent" type="number" value={formMonthlyRent} onChange={e => handleMonthlyRentChange(e.target.value)} placeholder="0" />
                 </div>
                 <div className="form-row">
+                  <Input label="Monthly Rent" type="number" value={formMonthlyRent} onChange={e => handleMonthlyRentChange(e.target.value)} placeholder="0" />
                   <Input label="Annual Rent" type="number" value={formAnnualRent} onChange={e => handleAnnualRentChange(e.target.value)} placeholder="0" />
+                </div>
+                <div className="form-row">
                   <Input label="Security Deposit" type="number" value={formDeposit} onChange={e => setFormDeposit(e.target.value)} placeholder="0" />
+                  <Select
+                    label="Security Deposit Mode *"
+                    value={depositPaymentMode === 'Security Cheque' ? 'Cheque' : depositPaymentMode}
+                    onChange={e => {
+                      const val = e.target.value
+                      setDepositPaymentMode(val === 'Cheque' ? 'Security Cheque' : val as any)
+                    }}
+                    options={[
+                      { value: 'Cheque', label: 'Cheque' },
+                      { value: 'Bank Transfer', label: 'Bank Transfer' },
+                      { value: 'Cash', label: 'Cash' }
+                    ]}
+                  />
                 </div>
                 {Number(formDeposit) > 0 && (
                   <div className="form-row" style={{ background: 'var(--bg-secondary)', padding: 12, borderRadius: 8, border: '1px solid var(--border)', display: 'grid', gap: 12, gridTemplateColumns: '1fr 1fr', marginBottom: 12 }}>
-                    <Select
-                      label="Deposit Payment Mode *"
-                      value={depositPaymentMode}
-                      onChange={e => setDepositPaymentMode(e.target.value as any)}
-                      options={[
-                        { value: 'Bank Transfer', label: 'Bank Transfer' },
-                        { value: 'Cash', label: 'Cash' },
-                        { value: 'Security Cheque', label: 'Security Cheque' }
-                      ]}
-                    />
                     <Input
                       label="Deposit Date Taken *"
                       type="date"
@@ -1362,26 +1367,24 @@ export default function PropertyLeases({
                 )}
                 <div className="form-row">
                   <Input label="Payment Due Day" type="number" value={formDueDay} onChange={e => setFormDueDay(e.target.value)} placeholder="1" />
-                </div>
-                <div className="form-row">
                   <Select
                     label="Mode of Payment *"
                     value={formModeOfPayment}
                     onChange={e => setFormModeOfPayment(e.target.value)}
                     options={MODE_OF_PAYMENT_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
                   />
-                  {formModeOfPayment === PDC_MODE && (
-                    <>
-                      <Input
-                        label="PDC Cheques Count *"
-                        type="number"
-                        value={formPdcCount}
-                        onChange={e => setFormPdcCount(e.target.value)}
-                      />
-                      <Input label="PDC Start Date" type="date" value={formPdcStartDate} onChange={e => setFormPdcStartDate(e.target.value)} />
-                    </>
-                  )}
                 </div>
+                {formModeOfPayment === PDC_MODE && (
+                  <div className="form-row">
+                    <Input
+                      label="PDC Cheques Count *"
+                      type="number"
+                      value={formPdcCount}
+                      onChange={e => setFormPdcCount(e.target.value)}
+                    />
+                    <Input label="PDC Start Date" type="date" value={formPdcStartDate} onChange={e => setFormPdcStartDate(e.target.value)} />
+                  </div>
+                )}
                 <Input label="Lease Notes" value={formNotes} onChange={e => setFormNotes(e.target.value)} placeholder="Additional notes or references" />
               </div>
 
