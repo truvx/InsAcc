@@ -111,6 +111,12 @@ function runMigrations() {
               updated.push({ id: '5210', code: '5210', name: 'Purchase Input VAT Expense', type: 'expense', normalBalance: 'debit', parentId: '5000', isActive: true, description: 'Purchase Input VAT Expense', currency: 'AED', createdAt: ts, updatedAt: ts, module: key === 'insacc_accounts' ? 'investment' : 'property' })
               modified = true
             }
+            const has1420 = list.some((a: any) => a.code === '1420')
+            if (!has1420) {
+              const ts = new Date().toISOString()
+              updated.push({ id: '1420', code: '1420', name: 'Security Cheques Received', type: 'asset', normalBalance: 'debit', parentId: '1000', isActive: true, description: 'Security Cheques Received Pool', currency: 'AED', createdAt: ts, updatedAt: ts, module: key === 'insacc_accounts' ? 'investment' : 'property' })
+              modified = true
+            }
             if (modified) localStorage.setItem(key, JSON.stringify(updated))
           }
         } catch (_) {}
