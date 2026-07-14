@@ -9,14 +9,18 @@ export function getSupabaseClient(url: string, anonKey: string): SupabaseClient 
     supabaseInstance = null
     return null
   }
-  if (supabaseInstance && url === currentUrl && anonKey === currentKey) {
+  
+  // Auto-clean URL by removing trailing REST paths if pasted directly
+  const cleanUrl = url.trim().replace(/\/rest\/v1\/?$/, '')
+
+  if (supabaseInstance && cleanUrl === currentUrl && anonKey === currentKey) {
     return supabaseInstance
   }
   try {
-    supabaseInstance = createClient(url, anonKey, {
+    supabaseInstance = createClient(cleanUrl, anonKey, {
       auth: { persistSession: false }
     })
-    currentUrl = url
+    currentUrl = cleanUrl
     currentKey = anonKey
     return supabaseInstance
   } catch (e) {
