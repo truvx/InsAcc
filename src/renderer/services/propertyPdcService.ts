@@ -28,19 +28,36 @@ export function generatePdcSlots(lease: LeaseEntry, startMonth: number, startYea
   const now = new Date().toISOString()
   const day = Math.min(Math.max(1, pdcStartDay), 28)
 
-  for (let i = 0; i < count; i++) {
-    const monthOffset = Math.floor(i * leaseMonths / count)
+  const formatDateLocal = (date: Date) => {
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
+
+  const getChequeDateForIndex = (idx: number) => {
+    const monthOffset = Math.floor(idx * leaseMonths / count)
     const dueMonth = ((startMonth - 1 + monthOffset) % 12) + 1
     const dueYear = startYear + Math.floor((startMonth - 1 + monthOffset) / 12)
-    const dueDateStr = `${dueYear}-${String(dueMonth).padStart(2, '0')}-01`
-    const chequeDate = new Date(dueYear, dueMonth - 1, day).toISOString().split('T')[0]
+    return new Date(dueYear, dueMonth - 1, day)
+  }
+
+  for (let i = 0; i < count; i++) {
+    const currentChequeDate = getChequeDateForIndex(i)
+    const nextChequeDate = getChequeDateForIndex(i + 1)
+    
+    // One day before next cheque date
+    const dueDateObj = new Date(nextChequeDate.getFullYear(), nextChequeDate.getMonth(), nextChequeDate.getDate() - 1)
+    
+    const chequeDateStr = formatDateLocal(currentChequeDate)
+    const dueDateStr = formatDateLocal(dueDateObj)
 
     slots.push({
       id: generateId(),
       leaseId: lease.id,
       slotIndex: i,
       chequeNumber: generateChequeNumber(lease.leaseNumber, i),
-      chequeDate: chequeDate,
+      chequeDate: chequeDateStr,
       dueDate: dueDateStr,
       amount: chequeAmount,
       status: 'Pending',
