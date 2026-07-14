@@ -736,7 +736,10 @@ export default function App() {
       const nextDueMonth = ((startMonth - 1 + nextMonthOffset) % 12) + 1
       const nextDueYear = startYear + Math.floor((startMonth - 1 + nextMonthOffset) / 12)
       
-      const nextChequeDateObj = new Date(nextDueYear, nextDueMonth - 1, pdcStartDay)
+      const maxDays = new Date(nextDueYear, nextDueMonth, 0).getDate()
+      const targetDay = Math.min(pdcStartDay, maxDays)
+      
+      const nextChequeDateObj = new Date(nextDueYear, nextDueMonth - 1, targetDay)
       const expectedDueDateObj = new Date(nextChequeDateObj.getFullYear(), nextChequeDateObj.getMonth(), nextChequeDateObj.getDate() - 1)
       
       const y = expectedDueDateObj.getFullYear()

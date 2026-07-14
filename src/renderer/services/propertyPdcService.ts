@@ -26,7 +26,7 @@ export function generatePdcSlots(lease: LeaseEntry, startMonth: number, startYea
   const chequeAmount = Math.round((totalRent / count) * 100) / 100
   console.log('[PDC AMOUNT TRACE] generatePdcSlots |', JSON.stringify({ startDate: lease.startDate, endDate: lease.endDate, monthlyRent: lease.monthlyRent, startMonth, startYear, pdcStartDay, count, rawMonths, leaseMonths, totalRent, chequeAmount }))
   const now = new Date().toISOString()
-  const day = Math.min(Math.max(1, pdcStartDay), 28)
+  const day = pdcStartDay
 
   const formatDateLocal = (date: Date) => {
     const y = date.getFullYear()
@@ -39,7 +39,9 @@ export function generatePdcSlots(lease: LeaseEntry, startMonth: number, startYea
     const monthOffset = Math.floor(idx * leaseMonths / count)
     const dueMonth = ((startMonth - 1 + monthOffset) % 12) + 1
     const dueYear = startYear + Math.floor((startMonth - 1 + monthOffset) / 12)
-    return new Date(dueYear, dueMonth - 1, day)
+    const maxDays = new Date(dueYear, dueMonth, 0).getDate()
+    const targetDay = Math.min(day, maxDays)
+    return new Date(dueYear, dueMonth - 1, targetDay)
   }
 
   for (let i = 0; i < count; i++) {
