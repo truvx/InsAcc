@@ -59,15 +59,8 @@ function LeaseKPIs({ leases, units, securityDeposits, currency, accounts, vouche
   const activeCount = leases.filter(l => l.status === 'Active').length
   const vacantCount = units.filter(u => u.status === 'Vacant').length
   
-  // Contract Rental Value: sum of monthly rent × actual lease duration for all active leases
-  const contractValue = leases.filter(l => l.status === 'Active').reduce((sum, l) => {
-    const s = new Date(l.startDate + 'T00:00:00')
-    const e = new Date(l.endDate + 'T00:00:00')
-    if (e <= s) return sum
-    const rawMonths = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth())
-    const leaseMonths = e.getDate() >= s.getDate() ? rawMonths + 1 : rawMonths
-    return sum + (l.monthlyRent || 0) * leaseMonths
-  }, 0)
+  // Contract Rental Value: sum of annual rent for all active leases
+  const contractValue = leases.filter(l => l.status === 'Active').reduce((sum, l) => sum + (l.annualRent || 0), 0)
 
   // Deposits held: derived from accounting ledger (account 2120) — not from lease records
   const depositsHeld = accounts && vouchers
