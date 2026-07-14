@@ -232,6 +232,7 @@ export default function InvestmentRouter(props: Props) {
           vouchers={vouchers}
           auditEvents={auditEvents}
           language={language}
+          onClearHistory={props.onClearTransactions}
         />
       )
     case 'holdings':

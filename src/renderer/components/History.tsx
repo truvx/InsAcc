@@ -7,6 +7,7 @@ import { formatDate, t } from '../utils'
 interface Props {
   auditEvents: AuditEvent[]
   language?: string
+  onClearHistory?: () => void
 }
 
 const MODULE_COLORS: Record<string, string> = {
@@ -101,7 +102,7 @@ const itemVariants = {
   animate: { opacity: 1, x: 0 },
 }
 
-export default function History({ auditEvents, language = 'English' }: Props) {
+export default function History({ auditEvents, language = 'English', onClearHistory }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterModule, setFilterModule] = useState('')
   const [filterAction, setFilterAction] = useState('')
@@ -179,6 +180,21 @@ export default function History({ auditEvents, language = 'English' }: Props) {
             <div className="page-subtitle">{auditEvents.length} total event{auditEvents.length !== 1 ? 's' : ''}</div>
           </div>
         </div>
+        {onClearHistory && (
+          <div className="page-header-right">
+            <Button
+              variant="secondary"
+              style={{ borderColor: 'var(--warning)', color: 'var(--warning)' }}
+              onClick={() => {
+                if (confirm('Are you sure you want to clear all transaction history? This will reset the Trial Balance.')) {
+                  onClearHistory()
+                }
+              }}
+            >
+              Clear History
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="page-body">

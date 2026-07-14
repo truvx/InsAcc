@@ -7,10 +7,11 @@ interface Props {
   vouchers: Voucher[]
   auditEvents: AuditEvent[]
   language?: string
+  onClearHistory?: () => void
 }
 
 export default function InvestmentHistory({
-  vouchers, auditEvents, language = 'English',
+  vouchers, auditEvents, language = 'English', onClearHistory,
 }: Props) {
   const [filter, setFilter] = useState<HistoryFilter>('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -64,6 +65,21 @@ export default function InvestmentHistory({
             <div className="page-subtitle">All accounting actions, vouchers, and audit events</div>
           </div>
         </div>
+        {onClearHistory && (
+          <div className="page-header-right">
+            <button
+              className="btn btn-secondary"
+              style={{ padding: '8px 16px', borderRadius: 6, cursor: 'pointer', borderColor: 'var(--warning)', color: 'var(--warning)', background: 'transparent' }}
+              onClick={() => {
+                if (confirm('Are you sure you want to clear all transaction history? This will reset the Trial Balance.')) {
+                  onClearHistory()
+                }
+              }}
+            >
+              Clear History
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="page-body">

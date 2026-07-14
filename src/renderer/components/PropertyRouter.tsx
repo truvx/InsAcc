@@ -411,7 +411,7 @@ export default function PropertyRouter(props: Props) {
         setFiscalYears={setFiscalYears}
       />
     case 'history':
-      return <History auditEvents={propAuditEvents} language={language} />
+      return <History auditEvents={propAuditEvents} language={language} onClearHistory={props.onClearTransactions} />
     case 'settings':
       return <PropertySettings
         currentTheme="light" onThemeChange={() => {}}
