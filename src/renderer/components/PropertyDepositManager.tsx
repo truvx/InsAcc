@@ -152,7 +152,7 @@ function DepositActionsMenu({
   const showRefundForfeit = row.currentBalance > 0
   const showClose = row.status !== 'Expected' && row.status !== 'Closed' && row.currentBalance === 0
   const showPrint = row.receivedAmount > 0
-  const showDepositPDC = row.transactions?.some((t: any) => t.paymentMode === 'Post Dated Cheque (PDC)')
+  const showDepositPDC = row.transactions?.some((t: any) => t.paymentMode === 'Post Dated Cheque (PDC)' || t.paymentMode === 'Security Cheque')
 
   return (
     <div style={{ display: 'inline-block' }}>
@@ -555,7 +555,7 @@ export default function PropertyDepositManager({
 
     const desc = `Security Deposit Receipt: Lease ${activeDeposit.id.split('-')[2] || ''} — Tenant: ${tenantMap.get(activeDeposit.tenantId)}`
     
-    const isPdcMode = formPaymentMode === 'Post Dated Cheque (PDC)'
+    const isPdcMode = formPaymentMode === 'Security Cheque'
 
     // Create Draft Voucher in AccountingEngine
     const draftResult = accountingEngine.processAccountingEvent(
@@ -1349,13 +1349,9 @@ export default function PropertyDepositManager({
               value={formPaymentMode}
               onChange={e => setFormPaymentMode(e.target.value)}
               options={[
-                { value: 'Cash', label: 'Cash' },
                 { value: 'Bank Transfer', label: 'Bank Transfer' },
-                { value: 'Cheque', label: 'Cheque' },
-                { value: 'Post Dated Cheque (PDC)', label: 'Post Dated Cheque (PDC)' },
-                { value: 'Online Transfer', label: 'Online Transfer' },
-                { value: 'Card', label: 'Card' },
-                { value: 'Other', label: 'Other' }
+                { value: 'Cash', label: 'Cash' },
+                { value: 'Security Cheque', label: 'Security Cheque' }
               ]}
             />
           </div>
@@ -1426,13 +1422,9 @@ export default function PropertyDepositManager({
               value={formPaymentMode}
               onChange={e => setFormPaymentMode(e.target.value)}
               options={[
-                { value: 'Cash', label: 'Cash' },
                 { value: 'Bank Transfer', label: 'Bank Transfer' },
-                { value: 'Cheque', label: 'Cheque' },
-                { value: 'Post Dated Cheque (PDC)', label: 'Post Dated Cheque (PDC)' },
-                { value: 'Online Transfer', label: 'Online Transfer' },
-                { value: 'Card', label: 'Card' },
-                { value: 'Other', label: 'Other' }
+                { value: 'Cash', label: 'Cash' },
+                { value: 'Security Cheque', label: 'Security Cheque' }
               ]}
             />
           </div>
@@ -1504,13 +1496,9 @@ export default function PropertyDepositManager({
               onChange={e => setFormPaymentMode(e.target.value)}
               options={[
                 { value: '', label: 'None' },
-                { value: 'Cash', label: 'Cash' },
                 { value: 'Bank Transfer', label: 'Bank Transfer' },
-                { value: 'Cheque', label: 'Cheque' },
-                { value: 'Post Dated Cheque (PDC)', label: 'Post Dated Cheque (PDC)' },
-                { value: 'Online Transfer', label: 'Online Transfer' },
-                { value: 'Card', label: 'Card' },
-                { value: 'Other', label: 'Other' }
+                { value: 'Cash', label: 'Cash' },
+                { value: 'Security Cheque', label: 'Security Cheque' }
               ]}
             />
           </div>
