@@ -20,6 +20,9 @@ interface Props {
   onSetSupabaseKey?: (key: string) => void
   supabaseEnabled?: boolean
   onSetSupabaseEnabled?: (enabled: boolean) => void
+
+  onClearTransactions?: () => void
+  onResetAllData?: () => void
 }
 
 const CURRENCY_OPTIONS = [
@@ -47,6 +50,7 @@ export default function PropertySettings({
   supabaseUrl = '', onSetSupabaseUrl,
   supabaseKey = '', onSetSupabaseKey,
   supabaseEnabled = false, onSetSupabaseEnabled,
+  onClearTransactions, onResetAllData,
 }: Props) {
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' })
 
@@ -174,6 +178,51 @@ export default function PropertySettings({
                 </Button>
               </div>
             )}
+          </div>
+        </div>
+
+        <div className="card" style={{ maxWidth: 600, marginTop: 24, border: '1px solid var(--danger)' }}>
+          <div className="card-header" style={{ borderBottom: '1px solid var(--danger)' }}>
+            <span className="card-title" style={{ color: 'var(--danger)' }}>Danger Zone</span>
+          </div>
+          <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                Clear all transaction history (vouchers, payments, receipts, and audit logs). This will reset the Trial Balance to zero but keep your properties, tenants, leases, and chart of accounts.
+              </p>
+              <Button
+                variant="secondary"
+                style={{ width: '100%', borderColor: 'var(--warning)', color: 'var(--warning)' }}
+                onClick={() => {
+                  if (confirm('Are you sure you want to clear all transactions and history? This will reset the Trial Balance.')) {
+                    onClearTransactions?.()
+                    setToast({ visible: true, message: 'Transaction history and Trial Balance have been cleared', type: 'success' })
+                  }
+                }}
+              >
+                Clear History & Trial Balance
+              </Button>
+            </div>
+
+            <div style={{ paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                Reset all Property module data to defaults. This will permanently delete all properties, leases, tenants, accounts, and transactions.
+              </p>
+              <Button
+                variant="secondary"
+                style={{ width: '100%', borderColor: 'var(--danger)', color: 'var(--danger)' }}
+                onClick={() => {
+                  if (confirm('Are you sure? This will delete all data.')) {
+                    if (confirm('This cannot be undone. Continue?')) {
+                      onResetAllData?.()
+                      setToast({ visible: true, message: 'All data has been reset', type: 'success' })
+                    }
+                  }
+                }}
+              >
+                Reset All Data
+              </Button>
+            </div>
           </div>
         </div>
       </div>

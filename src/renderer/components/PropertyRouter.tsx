@@ -87,6 +87,9 @@ interface Props {
   setSupabaseKey?: React.Dispatch<React.SetStateAction<string>>
   supabaseEnabled?: boolean
   setSupabaseEnabled?: React.Dispatch<React.SetStateAction<boolean>>
+
+  onClearTransactions?: () => void
+  onResetAllData?: () => void
 }
 
 export default function PropertyRouter(props: Props) {
@@ -418,6 +421,8 @@ export default function PropertyRouter(props: Props) {
         supabaseUrl={props.supabaseUrl} onSetSupabaseUrl={props.setSupabaseUrl}
         supabaseKey={props.supabaseKey} onSetSupabaseKey={props.setSupabaseKey}
         supabaseEnabled={props.supabaseEnabled} onSetSupabaseEnabled={props.setSupabaseEnabled}
+        onClearTransactions={props.onClearTransactions}
+        onResetAllData={props.onResetAllData}
       />
     default:
       return <PropertyDashboard

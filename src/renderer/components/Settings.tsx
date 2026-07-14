@@ -46,6 +46,8 @@ interface Props {
   onSetSupabaseKey?: (key: string) => void
   supabaseEnabled?: boolean
   onSetSupabaseEnabled?: (enabled: boolean) => void
+
+  onClearTransactions?: () => void
 }
 
 export default function Settings({
@@ -65,6 +67,7 @@ export default function Settings({
   onSetSupabaseKey,
   supabaseEnabled = false,
   onSetSupabaseEnabled,
+  onClearTransactions,
 }: Props) {
   const [activeTab, setActiveTab] = useState('general')
   const [showAddUser, setShowAddUser] = useState(false)
@@ -399,23 +402,44 @@ export default function Settings({
             </div>
             <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
               <div className="chart-title" style={{ marginBottom: 8, color: 'var(--danger)' }}>Danger Zone</div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
-                Reset all {moduleLabel} data to defaults. This cannot be undone.
-              </div>
-              <button
-                className="btn btn-secondary"
-                style={{ width: '100%', border: '1px solid var(--danger)', color: 'var(--danger)' }}
-                onClick={() => {
-                  if (confirm('Are you sure? This will delete all data.')) {
-                    if (confirm('This cannot be undone. Continue?')) {
-                      onResetAllData()
-                      setToast({ visible: true, message: 'All data has been reset', type: 'success' })
+              
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
+                  Clear all transaction history (Vouchers and Audit Logs). This will reset the Trial Balance to zero but keep your properties, tenants, leases, and chart of accounts.
+                </div>
+                <button
+                  className="btn btn-secondary"
+                  style={{ width: '100%', border: '1px solid var(--warning)', color: 'var(--warning)' }}
+                  onClick={() => {
+                    if (confirm('Are you sure you want to clear all transactions and history? This will reset the Trial Balance.')) {
+                      onClearTransactions?.()
+                      setToast({ visible: true, message: 'Transaction history and Trial Balance have been cleared', type: 'success' })
                     }
-                  }
-                }}
-              >
-                Reset All Data
-              </button>
+                  }}
+                >
+                  Clear History & Trial Balance
+                </button>
+              </div>
+
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
+                  Reset all {moduleLabel} data to defaults. This cannot be undone.
+                </div>
+                <button
+                  className="btn btn-secondary"
+                  style={{ width: '100%', border: '1px solid var(--danger)', color: 'var(--danger)' }}
+                  onClick={() => {
+                    if (confirm('Are you sure? This will delete all data.')) {
+                      if (confirm('This cannot be undone. Continue?')) {
+                        onResetAllData()
+                        setToast({ visible: true, message: 'All data has been reset', type: 'success' })
+                      }
+                    }
+                  }}
+                >
+                  Reset All Data
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -1916,6 +1916,17 @@ export default function App() {
     setScreen('login')
   }, [])
 
+  const handleClearTransactions = useCallback(() => {
+    if (activeModule === 'property') {
+      setPropVouchers([])
+      setPropAuditEvents([])
+    } else {
+      setVouchers([])
+      setAuditEvents([])
+    }
+    invalidateBalanceCache()
+  }, [activeModule, setPropVouchers, setPropAuditEvents, setVouchers, setAuditEvents])
+
   const handleResetAllData = useCallback(() => {
     resetInvestments()
     resetTransactions()
@@ -1974,6 +1985,8 @@ export default function App() {
           setSupabaseKey={setSupabaseKey}
           supabaseEnabled={supabaseEnabled}
           setSupabaseEnabled={setSupabaseEnabled}
+          onClearTransactions={handleClearTransactions}
+          onResetAllData={handleResetAllData}
           accounts={propChartAccounts}
           setAccounts={setPropChartAccounts}
           vouchers={propVouchers}
@@ -2035,6 +2048,7 @@ export default function App() {
         setSupabaseKey={setSupabaseKey}
         supabaseEnabled={supabaseEnabled}
         setSupabaseEnabled={setSupabaseEnabled}
+        onClearTransactions={handleClearTransactions}
         accounts={accounts}
         setAccounts={setAccounts}
         vouchers={vouchers}
