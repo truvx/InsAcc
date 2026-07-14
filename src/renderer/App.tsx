@@ -1079,6 +1079,11 @@ export default function App() {
       })
       changed = true
     }
+    const has1320 = updatedPropAccounts.some(a => a.code === '1320')
+    if (has1320) {
+      updatedPropAccounts = updatedPropAccounts.filter(a => a.code !== '1320')
+      changed = true
+    }
     const migratedPropAccounts = updatedPropAccounts.map(a => {
       if (a.id === '1110' || a.name === 'Cash on Hand') {
         changed = true
@@ -1090,6 +1095,28 @@ export default function App() {
       setPropChartAccounts(migratedPropAccounts)
     }
   }, [propChartAccounts, setPropChartAccounts, currency])
+
+  React.useEffect(() => {
+    let changed = false
+    const updatedPropVouchers = propVouchers.map(v => {
+      let vChanged = false
+      const updatedLines = v.lines.map(l => {
+        if (l.accountId === '1320') {
+          vChanged = true
+          return { ...l, accountId: '1130' }
+        }
+        return l
+      })
+      if (vChanged) {
+        changed = true
+        return { ...v, lines: updatedLines }
+      }
+      return v
+    })
+    if (changed) {
+      setPropVouchers(updatedPropVouchers)
+    }
+  }, [propVouchers, setPropVouchers])
 
   useEffect(() => {
     let changed = false
