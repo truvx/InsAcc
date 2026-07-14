@@ -80,6 +80,13 @@ interface Props {
   setPropExpenses?: React.Dispatch<React.SetStateAction<PropertyExpense[]>>
   fiscalYears: FiscalYear[]
   setFiscalYears: React.Dispatch<React.SetStateAction<FiscalYear[]>>
+  
+  supabaseUrl?: string
+  setSupabaseUrl?: React.Dispatch<React.SetStateAction<string>>
+  supabaseKey?: string
+  setSupabaseKey?: React.Dispatch<React.SetStateAction<string>>
+  supabaseEnabled?: boolean
+  setSupabaseEnabled?: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 export default function PropertyRouter(props: Props) {
@@ -408,6 +415,9 @@ export default function PropertyRouter(props: Props) {
         currency={currency} onSetCurrency={() => {}}
         dateFormat={dateFormat} onSetDateFormat={() => {}}
         language={language} onSetLanguage={() => {}}
+        supabaseUrl={props.supabaseUrl} onSetSupabaseUrl={props.setSupabaseUrl}
+        supabaseKey={props.supabaseKey} onSetSupabaseKey={props.setSupabaseKey}
+        supabaseEnabled={props.supabaseEnabled} onSetSupabaseEnabled={props.setSupabaseEnabled}
       />
     default:
       return <PropertyDashboard

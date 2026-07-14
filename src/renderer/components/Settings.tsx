@@ -39,6 +39,13 @@ interface Props {
   setInvestmentCategories?: React.Dispatch<React.SetStateAction<InvestmentCategory[]>>
   investmentAssets?: InvestmentAsset[]
   setInvestmentAssets?: React.Dispatch<React.SetStateAction<InvestmentAsset[]>>
+
+  supabaseUrl?: string
+  onSetSupabaseUrl?: (url: string) => void
+  supabaseKey?: string
+  onSetSupabaseKey?: (key: string) => void
+  supabaseEnabled?: boolean
+  onSetSupabaseEnabled?: (enabled: boolean) => void
 }
 
 export default function Settings({
@@ -52,6 +59,12 @@ export default function Settings({
   setInvestmentCategories,
   investmentAssets = [],
   setInvestmentAssets,
+  supabaseUrl = '',
+  onSetSupabaseUrl,
+  supabaseKey = '',
+  onSetSupabaseKey,
+  supabaseEnabled = false,
+  onSetSupabaseEnabled,
 }: Props) {
   const [activeTab, setActiveTab] = useState('general')
   const [showAddUser, setShowAddUser] = useState(false)
@@ -195,6 +208,7 @@ export default function Settings({
             { id: 'security', label: 'Security' },
             { id: 'notifications', label: 'Notifications' },
             { id: 'asset-categories', label: 'Asset Categories' },
+            { id: 'cloud-sync', label: 'Cloud Sync' },
           ].map(tab => (
             <button key={tab.id} className={`chart-period ${activeTab === tab.id ? 'active' : ''}`} onClick={() => setActiveTab(tab.id)}>
               {tab.label}
@@ -555,6 +569,87 @@ export default function Settings({
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'cloud-sync' && (
+          <div className="chart-card">
+            <div className="chart-header">
+              <div className="chart-title">Cloud Database Sync (Supabase)</div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                Connect your database to Supabase to enable real-time sync across your devices (laptop, mobile phone, tablet).
+              </p>
+              <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label className="form-label">Supabase URL</label>
+                <input
+                  className="input"
+                  value={supabaseUrl}
+                  onChange={e => onSetSupabaseUrl?.(e.target.value)}
+                  placeholder="https://your-project.supabase.co"
+                />
+              </div>
+              <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label className="form-label">Supabase Anon Key</label>
+                <input
+                  className="input"
+                  type="password"
+                  value={supabaseKey}
+                  onChange={e => onSetSupabaseKey?.(e.target.value)}
+                  placeholder="eyJhbGciOi..."
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 8, padding: '12px 0', borderTop: '1px solid var(--border)' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>Enable Cloud Sync</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    Sync status: <strong style={{ color: supabaseEnabled ? '#10b981' : '#ef4444' }}>
+                      {localStorage.getItem('insacc_supabase_status') || 'disconnected'}
+                    </strong>
+                  </div>
+                </div>
+                <div>
+                  <button
+                    className={`btn ${supabaseEnabled ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => {
+                      const newEnabled = !supabaseEnabled
+                      onSetSupabaseEnabled?.(newEnabled)
+                      setToast({
+                        visible: true,
+                        message: newEnabled ? 'Cloud Sync Enabled. Syncing...' : 'Cloud Sync Disabled.',
+                        type: 'success'
+                      })
+                    }}
+                  >
+                    {supabaseEnabled ? 'Disable' : 'Enable'}
+                  </button>
+                </div>
+              </div>
+
+              {supabaseEnabled && (
+                <div style={{ marginTop: 8, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+                  <button
+                    className="btn btn-secondary"
+                    style={{ width: '100%', padding: '12px' }}
+                    onClick={async () => {
+                      if (supabaseUrl && supabaseKey) {
+                        setToast({ visible: true, message: 'Uploading local database to Supabase...', type: 'success' })
+                        const { pushAllLocalData } = await import('../services/supabaseSyncService')
+                        const success = await pushAllLocalData(supabaseUrl, supabaseKey)
+                        if (success) {
+                          setToast({ visible: true, message: 'All local data pushed successfully!', type: 'success' })
+                        } else {
+                          setToast({ visible: true, message: 'Failed to push local data.', type: 'error' })
+                        }
+                      }
+                    }}
+                  >
+                    Push Local Data to Database
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

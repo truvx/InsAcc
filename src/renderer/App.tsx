@@ -33,6 +33,7 @@ import { invalidateBalanceCache } from './accounting/ledgerService'
 
 import { useLazyPersistedState, clearPersistedCache } from './utils/lazyPersistedState'
 import { MasterDataProvider } from './contexts/MasterDataContext'
+import SupabaseSyncManager from './components/SupabaseSyncManager'
 
 // One-time localStorage migrations (fast on warm boot — only checks migration keys)
 function runMigrations() {
@@ -699,6 +700,10 @@ export default function App() {
   const [propBankReconciliations, setPropBankReconciliations] = useLazyPersistedState<BankReconciliationRecord[]>('insacc_prop_bank_reconciliations', [])
   const [propFiscalYears, setPropFiscalYears] = useLazyPersistedState<FiscalYear[]>('insacc_prop_fiscal_years', [])
   const [invFiscalYears, setInvFiscalYears] = useLazyPersistedState<FiscalYear[]>('insacc_fiscal_years', [])
+
+  const [supabaseUrl, setSupabaseUrl] = useLazyPersistedState<string>('insacc_supabase_url', '')
+  const [supabaseKey, setSupabaseKey] = useLazyPersistedState<string>('insacc_supabase_key', '')
+  const [supabaseEnabled, setSupabaseEnabled] = useLazyPersistedState<boolean>('insacc_supabase_enabled', false)
 
   const propEngine = useMemo(() => createAccountingEngine(), [])
   const invEngine = useMemo(() => createAccountingEngine(), [])
@@ -1963,6 +1968,12 @@ export default function App() {
           currency={currency}
           dateFormat={dateFormat}
           language={language}
+          supabaseUrl={supabaseUrl}
+          setSupabaseUrl={setSupabaseUrl}
+          supabaseKey={supabaseKey}
+          setSupabaseKey={setSupabaseKey}
+          supabaseEnabled={supabaseEnabled}
+          setSupabaseEnabled={setSupabaseEnabled}
           accounts={propChartAccounts}
           setAccounts={setPropChartAccounts}
           vouchers={propVouchers}
@@ -2018,6 +2029,12 @@ export default function App() {
         currency={currency}
         dateFormat={dateFormat}
         language={language}
+        supabaseUrl={supabaseUrl}
+        setSupabaseUrl={setSupabaseUrl}
+        supabaseKey={supabaseKey}
+        setSupabaseKey={setSupabaseKey}
+        supabaseEnabled={supabaseEnabled}
+        setSupabaseEnabled={setSupabaseEnabled}
         accounts={accounts}
         setAccounts={setAccounts}
         vouchers={vouchers}
@@ -2079,6 +2096,7 @@ export default function App() {
     setBankReconciliations, investmentCategories, setInvestmentCategories,
     investmentAssets, setInvestmentAssets, propFiscalYears, setPropFiscalYears,
     invFiscalYears, setInvFiscalYears,
+    supabaseUrl, setSupabaseUrl, supabaseKey, setSupabaseKey, supabaseEnabled, setSupabaseEnabled,
   ])
 
   if (screen === 'login') {
@@ -2109,6 +2127,7 @@ export default function App() {
     const renderPage = () => {
       return (
         <MasterDataProvider value={masterDataValue}>
+          <SupabaseSyncManager />
           {renderPageContent()}
         </MasterDataProvider>
       )

@@ -51,8 +51,37 @@ export function useLazyPersistedState<T>(key: string, defaultValue: T): [T, Reac
 
       localStorage.setItem(key, stateStr)
       cache.set(key, stateStr)
+
+      // Sync to Supabase if enabled and initialized
+      if (key !== 'insacc_supabase_url' && key !== 'insacc_supabase_key' && key !== 'insacc_supabase_enabled') {
+        const enabled = localStorage.getItem('insacc_supabase_enabled') === 'true'
+        const url = localStorage.getItem('insacc_supabase_url') || ''
+        const anonKey = localStorage.getItem('insacc_supabase_key') || ''
+        if (enabled && url && anonKey && (window as any).supabaseSyncInitialized) {
+          import('../services/supabaseSyncService').then(({ getSupabaseClient, pushState }) => {
+            const client = getSupabaseClient(url, anonKey)
+            if (client) {
+              pushState(client, key, state)
+            }
+          })
+        }
+      }
     } catch {}
-  }, [state])
+  }, [state, key])
+
+  // Listen to storage events (triggered by Supabase realtime listener or other tabs)
+  useEffect(() => {
+    const handleStorageChange = (e: any) => {
+      if (e.key === key && e.newValue !== null) {
+        try {
+          const parsed = JSON.parse(e.newValue) as T
+          setState(parsed)
+        } catch {}
+      }
+    }
+    window.addEventListener('storage' as any, handleStorageChange)
+    return () => window.removeEventListener('storage' as any, handleStorageChange)
+  }, [key])
 
   const reset = useCallback(() => {
     try {
