@@ -716,7 +716,7 @@ export default function PropertyPdcManager({
     }
     if (['Pending', 'Deposited', 'Bounced'].includes(row.status)) {
       items.push(
-        { label: 'Edit Date', icon: <FileText size={14} strokeWidth={1.75} />, onClick: () => openEditDateModal(row) },
+        { label: 'Edit Details', icon: <FileText size={14} strokeWidth={1.75} />, onClick: () => openEditDateModal(row) },
         { label: 'Replace Cheque', icon: <Replace size={14} strokeWidth={1.75} />, onClick: () => openReplaceModal(row), divider: true },
       )
     }
