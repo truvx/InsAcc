@@ -17,6 +17,7 @@ const PROPERTY_ASSET_PREFIXES = [
   '1270', // Real Estate / Properties
   '1320', // Accounts Receivable
   '1410', // Post-dated Cheques Receivable
+  '1420', // Security Cheques Received
 ]
 
 /** Property-specific liability code prefixes */

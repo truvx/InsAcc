@@ -656,7 +656,7 @@ export default function PropertyDepositManager({
     const desc = `Security Deposit PDC Deposit: Lease ${activeDeposit.id.split('-')[2] || ''} — Tenant: ${tenantMap.get(activeDeposit.tenantId)}`
 
     const draftResult = accountingEngine.processAccountingEvent(
-      'PDC_DEPOSITED',
+      'SECURITY_DEPOSIT_PDC_DEPOSITED',
       {
         amount: amountNum,
         date: txDate,

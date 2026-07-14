@@ -116,10 +116,22 @@ export const POSTING_RULES: PostingRule[] = [
     description: 'Security deposit PDC cheque received from tenant',
     voucherType: 'Journal',
     debit: [
-      { account: '1410', narration: 'Security deposit PDC receivable' },
+      { account: '1420', narration: 'Security deposit PDC receivable' },
     ],
     credit: [
       { account: ctx => ctx.creditAccount!, narration: 'Security deposit liability' },
+    ],
+  },
+
+  {
+    event: 'SECURITY_DEPOSIT_PDC_DEPOSITED',
+    description: 'Security deposit PDC cheque deposited to bank and cleared',
+    voucherType: 'Receipt',
+    debit: [
+      { account: ctx => ctx.bankAccount!, narration: 'Security deposit cheque deposit' },
+    ],
+    credit: [
+      { account: '1420', narration: 'Security deposit cheque cleared' },
     ],
   },
 

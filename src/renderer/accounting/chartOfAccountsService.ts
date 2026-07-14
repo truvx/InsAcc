@@ -287,6 +287,7 @@ export function initializeDefaultChartOfAccounts(country: string = 'UAE', module
     mkAcct('1270', '1270', 'Real Estate', 'asset', 'debit', '1000', 'Property Assets', 'property'),
     mkAcct('1320', '1320', 'Accounts Receivable', 'asset', 'debit', '1000', 'Client Receivables', 'property'),
     mkAcct('1410', '1410', isIndia ? 'PDC Receivables' : 'Post-dated Cheques Receivable', 'asset', 'debit', '1000', 'PDC Receivables Pool', 'property'),
+    mkAcct('1420', '1420', 'Security Cheques Received', 'asset', 'debit', '1000', 'Security Cheques Received Pool', 'property'),
     mkAcct('2110', '2110', 'Deferred Revenue', 'liability', 'credit', '2000', 'Deferred Revenue', 'property'),
     mkAcct('2120', '2120', 'Security Deposits Held', 'liability', 'credit', '2000', 'Tenant Security Deposits Trust', 'property'),
     mkAcct('2200-prop', '2200', 'Owner Account', 'equity', 'credit', '3000', 'Property Owner Account', 'property'),
@@ -441,6 +442,7 @@ export function verifyAndCreateSystemAccounts(accounts: Account[], baseCurrency:
     ensureAccount('1320', '1320', 'Accounts Receivable', 'asset', 'debit', '1000', 'Accounts Receivable', 'property')
     ensureAccount('1130', '1130', 'Rent Receivable', 'asset', 'debit', '1000', 'Rent Receivable', 'property')
     ensureAccount('1410', '1410', 'Post-dated Cheques Receivable', 'asset', 'debit', '1000', 'PDC Receivables Pool', 'property')
+    ensureAccount('1420', '1420', 'Security Cheques Received', 'asset', 'debit', '1000', 'Security Cheques Received Pool', 'property')
     ensureAccount('2110', '2110', 'Deferred Revenue', 'liability', 'credit', '2000', 'Deferred Revenue', 'property')
     ensureAccount('2120', '2120', 'Security Deposits Held', 'liability', 'credit', '2000', 'Security Deposit Liability', 'property')
     ensureAccount('2200-prop', '2200', 'Owner Account', 'equity', 'credit', '3000', 'Property Owner Account', 'property')
