@@ -22,9 +22,10 @@ export function generatePdcSlots(lease: LeaseEntry, startMonth: number, startYea
   const rawMonths = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth())
   const leaseMonths = e.getDate() >= s.getDate() ? rawMonths + 1 : rawMonths
 
-  const totalRent = lease.monthlyRent * leaseMonths
-  const chequeAmount = Math.round((totalRent / count) * 100) / 100
-  console.log('[PDC AMOUNT TRACE] generatePdcSlots |', JSON.stringify({ startDate: lease.startDate, endDate: lease.endDate, monthlyRent: lease.monthlyRent, startMonth, startYear, pdcStartDay, count, rawMonths, leaseMonths, totalRent, chequeAmount }))
+  const totalRent = lease.annualRent || (lease.monthlyRent * leaseMonths)
+  const standardAmount = Math.round((totalRent / count) * 100) / 100
+  const lastChequeAmount = Math.round((totalRent - (standardAmount * (count - 1))) * 100) / 100
+  console.log('[PDC AMOUNT TRACE] generatePdcSlots |', JSON.stringify({ startDate: lease.startDate, endDate: lease.endDate, monthlyRent: lease.monthlyRent, annualRent: lease.annualRent, startMonth, startYear, pdcStartDay, count, rawMonths, leaseMonths, totalRent, standardAmount, lastChequeAmount }))
   const now = new Date().toISOString()
   const day = pdcStartDay
 
@@ -54,6 +55,8 @@ export function generatePdcSlots(lease: LeaseEntry, startMonth: number, startYea
     const chequeDateStr = formatDateLocal(currentChequeDate)
     const dueDateStr = formatDateLocal(dueDateObj)
 
+    const amount = i === count - 1 ? lastChequeAmount : standardAmount
+
     slots.push({
       id: generateId(),
       leaseId: lease.id,
@@ -61,7 +64,7 @@ export function generatePdcSlots(lease: LeaseEntry, startMonth: number, startYea
       chequeNumber: generateChequeNumber(lease.leaseNumber, i),
       chequeDate: chequeDateStr,
       dueDate: dueDateStr,
-      amount: chequeAmount,
+      amount: amount,
       status: 'Pending',
       depositedAt: null,
       clearedAt: null,

@@ -167,6 +167,51 @@ function runMigrations() {
       }
     }
 
+    const roundingFixKey = 'insacc_prop_pdc_rounding_fix_v2'
+    if (!localStorage.getItem(roundingFixKey)) {
+      try {
+        const vouchersRaw = localStorage.getItem('insacc_prop_vouchers')
+        if (vouchersRaw) {
+          const vouchers = JSON.parse(vouchersRaw)
+          if (Array.isArray(vouchers)) {
+            const leaseVouchers = vouchers.filter(v => v.description?.startsWith('Lease LS-') && v.lines?.some((l: any) => l.accountId === '1130' && l.type === 'Debit'))
+            let modified = false
+            for (const lv of leaseVouchers) {
+              const leaseMatch = lv.description.match(/Lease (LS-\d+-\d+)/)
+              if (!leaseMatch) continue
+              const leaseNo = leaseMatch[1]
+              const totalRent = lv.lines.find((l: any) => l.accountId === '1130' && l.type === 'Debit')?.amount || 0
+              if (totalRent <= 0) continue
+
+              const pdcVouchers = vouchers.filter(v => v.description?.includes(leaseNo) && v.lines?.some((l: any) => l.accountId === '1410' && l.type === 'Debit'))
+              if (pdcVouchers.length === 0) continue
+
+              const sumPdcs = pdcVouchers.reduce((acc, v) => acc + (v.lines.find((l: any) => l.accountId === '1410' && l.type === 'Debit')?.amount || 0), 0)
+              const diff = Math.round((totalRent - sumPdcs) * 100) / 100
+
+              if (Math.abs(diff) > 0 && Math.abs(diff) < 1.00) {
+                const targetV = pdcVouchers[pdcVouchers.length - 1]
+                targetV.lines = targetV.lines.map((l: any) => {
+                  if (l.accountId === '1410' || l.accountId === '1130') {
+                    return { ...l, amount: Math.round((l.amount + diff) * 100) / 100 }
+                  }
+                  return l
+                })
+                targetV.amount = Math.round((targetV.amount + diff) * 100) / 100
+                modified = true
+              }
+            }
+            if (modified) {
+              localStorage.setItem('insacc_prop_vouchers', JSON.stringify(vouchers))
+            }
+          }
+        }
+        localStorage.setItem(roundingFixKey, 'true')
+      } catch (e) {
+        console.error('Rounding fix migration failed:', e)
+      }
+    }
+
     const coaPatches = ['insacc_accounts', 'insacc_prop_chart_accounts']
     coaPatches.forEach(key => {
       const raw = localStorage.getItem(key)
