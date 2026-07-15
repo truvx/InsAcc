@@ -306,7 +306,7 @@ export default function PropertyAccountsDashboard({ currency = 'AED', accounts, 
               isEmpty={!hasChartData}
               emptyMessage="No cash flow data available."
             >
-              <div className="chart-container">
+              <div className="chart-container" style={{ height: 350 }}>
                 <ResponsiveContainer width="100%" height={340}>
                   <AreaChart data={monthlyData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
                     <defs>
@@ -385,7 +385,7 @@ export default function PropertyAccountsDashboard({ currency = 'AED', accounts, 
               isEmpty={!hasChartData}
               emptyMessage="No income/expense data available."
             >
-              <div className="chart-container">
+              <div className="chart-container" style={{ height: 350 }}>
                 <ResponsiveContainer width="100%" height={340}>
                   <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }} barCategoryGap="25%">
                     <CartesianGrid strokeDasharray="3 3" stroke={ChartConfig.grid} vertical={false} />
