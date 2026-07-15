@@ -652,6 +652,109 @@ export default function PropertyLeases({
   }
 
   const handleSave = () => {
+    const nowStr = new Date().toISOString()
+    const linkedTenantId = formTenantId
+    const finalMonthlyRent = Number(formMonthlyRent) || 0
+    const finalAnnualRent = Number(formAnnualRent) || 0
+    const finalDeposit = Number(formDeposit) || 0
+
+    const processSecurityDepositForLease = (lease: LeaseEntry) => {
+      if (finalDeposit <= 0) return
+
+      const existing = securityDeposits.find(d => d.leaseId === lease.id)
+      let secDeposit = existing || createInitialDeposit(lease, 'user')
+
+      if (existing && existing.status !== 'Expected') {
+        return
+      }
+
+      if (accountingEngine && depositMappings) {
+        const isCheque = depositReceived && depositPaymentMode === 'Security Cheque'
+        const isCash = depositReceived && depositPaymentMode === 'Cash'
+
+        let coaBankAccountId: string | undefined
+        if (isCash) {
+          coaBankAccountId = accounts?.find(a => a.code === '1110')?.id
+        } else if (depositReceived && depositPaymentMode === 'Bank Transfer') {
+          const effectiveBankId = depositBankId || defaultBank?.id || propAccounts?.[0]?.id
+          coaBankAccountId = effectiveBankId ? getPropertyBankAccountId(effectiveBankId, propAccounts, bankMappings) : undefined
+        }
+
+        if (isCheque || coaBankAccountId) {
+          const desc = `Security Deposit Receipt (${depositReceived ? depositPaymentMode : 'Bank Transfer'}): Lease ${lease.leaseNumber} — Tenant: ${getTenantName(formTenantId)}`
+          const txDate = depositReceived && depositDateReceived ? depositDateReceived : formStartDate
+
+          const eventType = isCheque ? 'SECURITY_DEPOSIT_PDC_RECEIVED' : 'SECURITY_DEPOSIT_RECEIVED'
+          const eventPayload = isCheque ? {
+            amount: finalDeposit,
+            date: txDate,
+            description: desc,
+            currency,
+            exchangeRate: 1,
+            baseCurrency: currency,
+            creditAccount: depositMappings.liabilityAccountId,
+            referenceType: 'Lease',
+            referenceId: lease.id,
+            createdBy: 'user',
+          } : {
+            amount: finalDeposit,
+            date: txDate,
+            description: desc,
+            currency,
+            exchangeRate: 1,
+            baseCurrency: currency,
+            bankAccount: coaBankAccountId,
+            creditAccount: depositMappings.liabilityAccountId,
+            referenceType: 'Lease',
+            referenceId: lease.id,
+            createdBy: 'user',
+          }
+
+          const draftResult = accountingEngine.processAccountingEvent(
+            eventType,
+            eventPayload,
+            accounts || [],
+            vouchers || []
+          )
+
+          if (draftResult.success && draftResult.voucher) {
+            const appResult = accountingEngine.approve(draftResult.voucher, 'user')
+            if (appResult.success && appResult.voucher) {
+              const postResult = accountingEngine.post(appResult.voucher, 'user', accounts || [], vouchers || [])
+              if (postResult.success && postResult.voucher) {
+                secDeposit = addDepositTransaction(secDeposit, {
+                  type: 'Receipt',
+                  amount: finalDeposit,
+                  date: txDate,
+                  bankAccountId: isCheque ? undefined : coaBankAccountId,
+                  voucherId: postResult.voucher.id,
+                  notes: `Deposit received inline on lease creation as ${depositReceived ? depositPaymentMode : 'Bank Transfer'}.`,
+                  paymentMode: depositReceived ? depositPaymentMode as any : 'Bank Transfer',
+                  status: 'Posted',
+                  createdBy: 'user',
+                }, 'user')
+                setVouchers?.(prev => [postResult.voucher!, ...prev])
+              } else {
+                console.error('Post failed:', postResult.errors)
+                setToast({ visible: true, message: 'Deposit posting failed: ' + postResult.errors[0]?.message, type: 'error' })
+              }
+            } else {
+              console.error('Approval failed:', appResult.errors)
+              setToast({ visible: true, message: 'Deposit approval failed: ' + appResult.errors[0]?.message, type: 'error' })
+            }
+          } else {
+            console.error('Draft failed:', draftResult.errors)
+            setToast({ visible: true, message: 'Deposit processing failed: ' + draftResult.errors[0]?.message, type: 'error' })
+          }
+        }
+      }
+
+      setSecurityDeposits?.(prev => {
+        const filtered = prev.filter(d => d.leaseId !== lease.id)
+        return [...filtered, secDeposit]
+      })
+    }
+
     // Validate unit and lease contract
     if (!formPropertyId || !formUnitId || !formStartDate || !formEndDate) {
       setToast({ visible: true, message: 'Property, unit, start and end dates are required', type: 'error' })
@@ -693,12 +796,7 @@ export default function PropertyLeases({
       }
     }
 
-    const nowStr = new Date().toISOString()
-    const linkedTenantId = formTenantId
 
-    const finalMonthlyRent = Number(formMonthlyRent) || 0
-    const finalAnnualRent = Number(formAnnualRent) || 0
-    const finalDeposit = Number(formDeposit) || 0
 
     if (editingId) {
       const currentLease = leases.find(l => l.id === editingId)
@@ -787,6 +885,7 @@ export default function PropertyLeases({
           console.log(`[PDC Update] Number after save: ${updated.length}`)
           return updated
         })
+        processSecurityDepositForLease(updatedLease)
       }
 
       setLeases(prev => prev.map(l =>
@@ -921,93 +1020,7 @@ export default function PropertyLeases({
         }
       }
 
-      // 4. Create Security Deposit expected charge
-      if (finalDeposit > 0) {
-        let secDeposit = createInitialDeposit(newLease, 'user')
-        
-        // Automatically post the security deposit GL voucher
-        if (accountingEngine && depositMappings) {
-          const isCheque = depositReceived && depositPaymentMode === 'Security Cheque'
-          const isCash = depositReceived && depositPaymentMode === 'Cash'
-          
-          let coaBankAccountId: string | undefined
-          if (isCash) {
-            coaBankAccountId = accounts?.find(a => a.code === '1110')?.id
-          } else if (depositReceived && depositPaymentMode === 'Bank Transfer') {
-            const effectiveBankId = depositBankId || defaultBank?.id || propAccounts?.[0]?.id
-            coaBankAccountId = effectiveBankId ? getPropertyBankAccountId(effectiveBankId, propAccounts, bankMappings) : undefined
-          }
-          
-          if (isCheque || coaBankAccountId) {
-            const desc = `Security Deposit Receipt (${depositReceived ? depositPaymentMode : 'Bank Transfer'}): Lease ${leaseNumber} — Tenant: ${getTenantName(formTenantId)}`
-            const txDate = depositReceived && depositDateReceived ? depositDateReceived : formStartDate
-            
-            const eventType = isCheque ? 'SECURITY_DEPOSIT_PDC_RECEIVED' : 'SECURITY_DEPOSIT_RECEIVED'
-            const eventPayload = isCheque ? {
-              amount: finalDeposit,
-              date: txDate,
-              description: desc,
-              currency,
-              exchangeRate: 1,
-              baseCurrency: currency,
-              creditAccount: depositMappings.liabilityAccountId,
-              referenceType: 'Lease',
-              referenceId: newLease.id,
-              createdBy: 'user',
-            } : {
-              amount: finalDeposit,
-              date: txDate,
-              description: desc,
-              currency,
-              exchangeRate: 1,
-              baseCurrency: currency,
-              bankAccount: coaBankAccountId,
-              creditAccount: depositMappings.liabilityAccountId,
-              referenceType: 'Lease',
-              referenceId: newLease.id,
-              createdBy: 'user',
-            }
-
-            const draftResult = accountingEngine.processAccountingEvent(
-              eventType,
-              eventPayload,
-              accounts || [],
-              vouchers || []
-            )
-
-            if (draftResult.success && draftResult.voucher) {
-              const appResult = accountingEngine.approve(draftResult.voucher, 'user')
-              if (appResult.success && appResult.voucher) {
-                const postResult = accountingEngine.post(appResult.voucher, 'user', accounts || [], vouchers || [])
-                if (postResult.success && postResult.voucher) {
-                  secDeposit = addDepositTransaction(secDeposit, {
-                    type: 'Receipt',
-                    amount: finalDeposit,
-                    date: txDate,
-                    bankAccountId: isCheque ? undefined : coaBankAccountId,
-                    voucherId: postResult.voucher.id,
-                    notes: `Deposit received inline on lease creation as ${depositReceived ? depositPaymentMode : 'Bank Transfer'}.`,
-                    paymentMode: depositReceived ? depositPaymentMode as any : 'Bank Transfer',
-                    status: 'Posted',
-                    createdBy: 'user',
-                  }, 'user')
-                  setVouchers?.(prev => [postResult.voucher!, ...prev])
-                } else {
-                  console.error('Post failed:', postResult.errors)
-                  setToast({ visible: true, message: 'Deposit posting failed: ' + postResult.errors[0]?.message, type: 'error' })
-                }
-              } else {
-                console.error('Approval failed:', appResult.errors)
-                setToast({ visible: true, message: 'Deposit approval failed: ' + appResult.errors[0]?.message, type: 'error' })
-              }
-            } else {
-              console.error('Draft failed:', draftResult.errors)
-              setToast({ visible: true, message: 'Deposit processing failed: ' + draftResult.errors[0]?.message, type: 'error' })
-            }
-          }
-        }
-        setSecurityDeposits?.(prev => [...prev, secDeposit])
-      }
+      processSecurityDepositForLease(newLease)
 
       // 4. Update unit status to Occupied
       if (setUnits) {

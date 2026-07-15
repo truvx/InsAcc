@@ -152,7 +152,7 @@ function DepositActionsMenu({
   const showRefundForfeit = row.currentBalance > 0
   const showClose = row.status !== 'Expected' && row.status !== 'Closed' && row.currentBalance === 0
   const showPrint = row.receivedAmount > 0
-  const showDepositPDC = row.transactions?.some((t: any) => t.paymentMode === 'Post Dated Cheque (PDC)')
+  const showDepositPDC = row.transactions?.some((t: any) => t.paymentMode === 'Post Dated Cheque (PDC)' || t.paymentMode === 'Security Cheque')
 
   return (
     <div style={{ display: 'inline-block' }}>
