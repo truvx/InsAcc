@@ -15,6 +15,21 @@ export function getInvestmentHoldingsProjection(
 ): HoldingDetail[] {
   const activePurchases = purchases.filter(p => p.status === 'active')
 
+  // Calculate simple average price per purity/metal group (assetType)
+  const purityAverages = new Map<string, number>()
+  const groupedByType = new Map<string, number[]>()
+  for (const p of activePurchases) {
+    if (!groupedByType.has(p.assetType)) {
+      groupedByType.set(p.assetType, [])
+    }
+    groupedByType.get(p.assetType)!.push(p.unitPrice)
+  }
+  for (const [type, prices] of groupedByType) {
+    const sum = prices.reduce((s, pr) => s + pr, 0)
+    const avg = prices.length > 0 ? sum / prices.length : 0
+    purityAverages.set(type, avg)
+  }
+
   const grouped = new Map<string, PurchaseRecord[]>()
   for (const p of activePurchases) {
     const key = `${p.assetType}::${p.assetName}`
@@ -57,6 +72,7 @@ export function getInvestmentHoldingsProjection(
       totalQuantity: totalQty,
       totalInvested,
       avgPurchaseValue,
+      simpleAvgPrice: purityAverages.get(assetType) || 0,
       currentValue: currentBalance,
       marketValue,
       unrealizedGain,
