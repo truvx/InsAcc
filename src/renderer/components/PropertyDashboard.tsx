@@ -325,7 +325,7 @@ function PropertyDashboardInner({
               </ChartCard>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
               <ChartCard title="Top Properties by Value" subtitle="Highest valued">
                 {properties.length === 0 ? (
                   <div style={{ padding: '24px 0' }}>
@@ -342,31 +342,6 @@ function PropertyDashboardInner({
                       <YAxis tick={{ fontSize: 11, fill: ChartConfig.axis }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtTick(v)} />
                       <Tooltip content={<CustomTooltip />} />
                       <Bar dataKey="value" fill={PropertyPalette.properties} radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </ChartCard>
-
-              <ChartCard title="Lease Expiry Timeline" subtitle="Months remaining">
-                {leaseExpiryData.length === 0 ? (
-                  <div style={{ padding: '24px 0' }}>
-                    <EmptyState
-                      title="No Active Leases"
-                      text="Add active tenant leases on the Leases page to track contract expiries."
-                    />
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={leaseExpiryData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={ChartConfig.grid} vertical={false} />
-                      <XAxis dataKey="name" tick={{ fontSize: 10, fill: ChartConfig.axis }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={40} />
-                      <YAxis tick={{ fontSize: 11, fill: ChartConfig.axis }} axisLine={false} tickLine={false} label={{ value: 'Months', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: ChartConfig.axis } }} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Bar dataKey="monthsLeft" name="Months Remaining" radius={[4, 4, 0, 0]}>
-                        {leaseExpiryData.map((l) => (
-                          <Cell key={l.name} fill={l.monthsLeft <= 3 ? ChartColors.red : l.monthsLeft <= 6 ? PropertyPalette.securityDeposits : ChartColors.green} />
-                        ))}
-                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 )}
