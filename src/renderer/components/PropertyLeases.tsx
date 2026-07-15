@@ -883,43 +883,8 @@ export default function PropertyLeases({
 
           if (finalSlots.length > 0) {
             generatedCount = finalSlots.length
-
-            // Post FUTURE_PDC_RECEIVED GL entries for each slot and capture voucher IDs
-            const slotsWithVouchers: PdcCheque[] = [...finalSlots]
-            if (accountingEngine && accounts && vouchers && setVouchers) {
-              const service = new PropertyAccountingService(accountingEngine, accounts, vouchers)
-              const newVouchers: Voucher[] = []
-              const prop = properties.find(p => p.id === newLease.propertyId)
-              const propertyType = prop?.type
-              for (let idx = 0; idx < finalSlots.length; idx++) {
-                const pdc = finalSlots[idx]
-                const draftResult = service.processFuturePdcReceived({
-                  id: newLease.id,
-                  leaseNumber: newLease.leaseNumber,
-                  tenantName: getTenantName(formTenantId),
-                  totalValue: finalAnnualRent,
-                  startDate: formStartDate,
-                  endDate: formEndDate,
-                  propertyType,
-                }, pdc.amount, pdc.chequeNumber || 'PDC', currency, 'user')
-
-                if (draftResult.success && draftResult.voucher) {
-                  const postResult = autoPostVoucher(accountingEngine, draftResult.voucher, accounts)
-                  if (postResult.success && postResult.voucher) {
-                    // Link voucher ID back into the slot record
-                    slotsWithVouchers[idx] = { ...slotsWithVouchers[idx], voucherId: postResult.voucher.id }
-                    newVouchers.push(postResult.voucher)
-                  }
-                }
-              }
-              if (newVouchers.length > 0) {
-                setVouchers(prev => [...newVouchers, ...prev])
-                invalidateBalanceCache()
-              }
-            }
-
             setPdcCheques(prev => {
-              const updated = [...prev, ...slotsWithVouchers]
+              const updated = [...prev, ...finalSlots]
               console.log(`[PDC Generation] Number created: ${finalSlots.length}`)
               console.log(`[PDC Generation] Number after save: ${updated.length}`)
               return updated

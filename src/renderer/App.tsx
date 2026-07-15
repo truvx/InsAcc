@@ -126,6 +126,27 @@ function runMigrations() {
       }
     }
 
+    const removeRedundantPdcVouchersKey = 'insacc_prop_remove_redundant_pdc_vouchers_v1'
+    if (!localStorage.getItem(removeRedundantPdcVouchersKey)) {
+      try {
+        const vouchersRaw = localStorage.getItem('insacc_prop_vouchers')
+        if (vouchersRaw) {
+          const vouchers = JSON.parse(vouchersRaw)
+          if (Array.isArray(vouchers)) {
+            const cleaned = vouchers.filter(v => {
+              const desc = v.description || ''
+              const isPdcReceived = desc.includes('PDC Received: Chq') || v.number?.startsWith('JV-PDC-FIX')
+              return !isPdcReceived
+            })
+            localStorage.setItem('insacc_prop_vouchers', JSON.stringify(cleaned))
+          }
+        }
+        localStorage.setItem(removeRedundantPdcVouchersKey, 'true')
+      } catch (e) {
+        console.error('Failed to remove redundant PDC vouchers:', e)
+      }
+    }
+
     const pdcFixKey = 'insacc_prop_pdc_fix_13000_v1'
     if (!localStorage.getItem(pdcFixKey)) {
       try {
@@ -1187,7 +1208,13 @@ export default function App() {
 
   React.useEffect(() => {
     let changed = false
-    const updatedPropVouchers = propVouchers.map(v => {
+    const filteredVouchers = propVouchers.filter(v => {
+      const desc = v.description || ''
+      const isPdcReceived = desc.includes('PDC Received: Chq') || v.number?.startsWith('JV-PDC-FIX')
+      if (isPdcReceived) changed = true
+      return !isPdcReceived
+    })
+    const updatedPropVouchers = filteredVouchers.map(v => {
       let vChanged = false
       const updatedLines = v.lines.map(l => {
         if (l.accountId === '1320' || l.accountId === '1130') {
