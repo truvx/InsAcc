@@ -431,8 +431,7 @@ export default function PropertyLeases({
   const [generatePdcSchedule, setGeneratePdcSchedule] = useState(true)
 
 
-  // Security Deposit payment capture
-  const [depositReceived, setDepositReceived] = useState(true)
+  const depositReceived = true
   const defaultBank = useMemo(() => getDefaultPropertyReceiptBankAccount(propAccounts), [propAccounts])
   const [depositBankId, setDepositBankId] = useState(defaultBank ? defaultBank.id : '')
   const [depositPaymentMode, setDepositPaymentMode] = useState<'Cash' | 'Security Cheque' | 'Bank Transfer'>('Bank Transfer')
@@ -494,7 +493,6 @@ export default function PropertyLeases({
     setFormNotes('')
 
     setGeneratePdcSchedule(true)
-    setDepositReceived(false)
     setDepositBankId(defaultBank ? defaultBank.id : '')
   }
 
