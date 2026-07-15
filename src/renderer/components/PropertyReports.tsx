@@ -231,27 +231,27 @@ export default function PropertyReports({
           <>
             <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 24 }}>
               <div className="kpi-card" style={{ borderTop: '2px solid var(--success)', padding: '12px 14px' }}>
-                <div className="kpi-label" style={{ fontSize: 10 }}>Cash</div>
+                <div className="kpi-label" style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', textTransform: 'capitalize', letterSpacing: 'normal' }}>Cash</div>
                 <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(accountingKpis.cash)}</div>
               </div>
               <div className="kpi-card" style={{ borderTop: '2px solid var(--primary)', padding: '12px 14px' }}>
-                <div className="kpi-label" style={{ fontSize: 10 }}>Bank Balance</div>
+                <div className="kpi-label" style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', textTransform: 'capitalize', letterSpacing: 'normal' }}>Bank Balance</div>
                 <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(accountingKpis.bankBalance)}</div>
               </div>
               <div className="kpi-card" style={{ borderTop: '2px solid var(--accent)', padding: '12px 14px' }}>
-                <div className="kpi-label" style={{ fontSize: 10 }}>PDC</div>
+                <div className="kpi-label" style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', textTransform: 'capitalize', letterSpacing: 'normal' }}>PDC</div>
                 <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(accountingKpis.pdc)}</div>
               </div>
               <div className="kpi-card" style={{ borderTop: '2px solid var(--success)', padding: '12px 14px' }}>
-                <div className="kpi-label" style={{ fontSize: 10 }}>Rental Income</div>
+                <div className="kpi-label" style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', textTransform: 'capitalize', letterSpacing: 'normal' }}>Rental Income</div>
                 <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(accountingKpis.rentalIncome)}</div>
               </div>
               <div className="kpi-card" style={{ borderTop: '2px solid var(--danger)', padding: '12px 14px' }}>
-                <div className="kpi-label" style={{ fontSize: 10 }}>Expenses</div>
+                <div className="kpi-label" style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', textTransform: 'capitalize', letterSpacing: 'normal' }}>Expenses</div>
                 <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(accountingKpis.totalExpenses)}</div>
               </div>
               <div className="kpi-card" style={{ borderTop: '2px solid var(--primary-text)', padding: '12px 14px' }}>
-                <div className="kpi-label" style={{ fontSize: 10 }}>Net Income</div>
+                <div className="kpi-label" style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', textTransform: 'capitalize', letterSpacing: 'normal' }}>Net Income</div>
                 <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(accountingKpis.netIncome)}</div>
               </div>
             </div>

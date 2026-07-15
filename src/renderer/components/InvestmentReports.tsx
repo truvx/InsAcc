@@ -311,27 +311,27 @@ export default function InvestmentReports({
           <>
             <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 24 }}>
               <div className="kpi-card" style={{ borderTop: '2px solid #8B5CF6', padding: '12px 14px' }}>
-                <div className="kpi-label" style={{ fontSize: 10 }}>Net Worth</div>
+                <div className="kpi-label" style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', textTransform: 'capitalize', letterSpacing: 'normal' }}>Net Worth</div>
                 <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(financialOverview.netWorth)}</div>
               </div>
               <div className="kpi-card" style={{ borderTop: '2px solid #3B82F6', padding: '12px 14px' }}>
-                <div className="kpi-label" style={{ fontSize: 10 }}>Cash</div>
+                <div className="kpi-label" style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', textTransform: 'capitalize', letterSpacing: 'normal' }}>Cash</div>
                 <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(financialOverview.cash)}</div>
               </div>
               <div className="kpi-card" style={{ borderTop: '2px solid #10B981', padding: '12px 14px' }}>
-                <div className="kpi-label" style={{ fontSize: 10 }}>Investments</div>
+                <div className="kpi-label" style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', textTransform: 'capitalize', letterSpacing: 'normal' }}>Investments</div>
                 <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(financialOverview.investments)}</div>
               </div>
               <div className="kpi-card" style={{ borderTop: '2px solid #F59E0B', padding: '12px 14px' }}>
-                <div className="kpi-label" style={{ fontSize: 10 }}>Bank Balance</div>
+                <div className="kpi-label" style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', textTransform: 'capitalize', letterSpacing: 'normal' }}>Bank Balance</div>
                 <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(financialOverview.bankBalance)}</div>
               </div>
               <div className="kpi-card" style={{ borderTop: '2px solid #06B6D4', padding: '12px 14px' }}>
-                <div className="kpi-label" style={{ fontSize: 10 }}>Revenue</div>
+                <div className="kpi-label" style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', textTransform: 'capitalize', letterSpacing: 'normal' }}>Revenue</div>
                 <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(financialOverview.revenue)}</div>
               </div>
               <div className="kpi-card" style={{ borderTop: '2px solid #EF4444', padding: '12px 14px' }}>
-                <div className="kpi-label" style={{ fontSize: 10 }}>Expenses</div>
+                <div className="kpi-label" style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', textTransform: 'capitalize', letterSpacing: 'normal' }}>Expenses</div>
                 <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(financialOverview.expenses)}</div>
               </div>
             </div>
