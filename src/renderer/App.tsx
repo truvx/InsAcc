@@ -92,14 +92,14 @@ function runMigrations() {
       localStorage.setItem(clearedLeasesKey, 'true')
     }
 
-    const arToRrMigrationKey = 'insacc_prop_ar_1320_to_rr_1130_v2'
-    if (!localStorage.getItem(arToRrMigrationKey)) {
+    const receivablesConsolidationKey = 'insacc_prop_receivables_consolidation_v1'
+    if (!localStorage.getItem(receivablesConsolidationKey)) {
       try {
         const propRaw = localStorage.getItem('insacc_prop_chart_accounts')
         if (propRaw) {
           const propAccts = JSON.parse(propRaw)
           if (Array.isArray(propAccts)) {
-            const filtered = propAccts.filter((a: any) => a.code !== '1320')
+            const filtered = propAccts.filter((a: any) => a.code !== '1320' && a.code !== '1130')
             localStorage.setItem('insacc_prop_chart_accounts', JSON.stringify(filtered))
           }
         }
@@ -110,8 +110,8 @@ function runMigrations() {
             const remapped = vouchers.map((v: any) => {
               if (!v?.lines) return v
               const lines = v.lines.map((l: any) => {
-                if (l.accountId === '1320') {
-                  return { ...l, accountId: '1130' }
+                if (l.accountId === '1320' || l.accountId === '1130') {
+                  return { ...l, accountId: '1410' }
                 }
                 return l
               })
@@ -120,9 +120,9 @@ function runMigrations() {
             localStorage.setItem('insacc_prop_vouchers', JSON.stringify(remapped))
           }
         }
-        localStorage.setItem(arToRrMigrationKey, 'true')
+        localStorage.setItem(receivablesConsolidationKey, 'true')
       } catch (e) {
-        console.error('AR to RR migration failed:', e)
+        console.error('Receivables consolidation migration failed:', e)
       }
     }
 
@@ -1168,8 +1168,9 @@ export default function App() {
       changed = true
     }
     const has1320 = updatedPropAccounts.some(a => a.code === '1320')
-    if (has1320) {
-      updatedPropAccounts = updatedPropAccounts.filter(a => a.code !== '1320')
+    const has1130 = updatedPropAccounts.some(a => a.code === '1130')
+    if (has1320 || has1130) {
+      updatedPropAccounts = updatedPropAccounts.filter(a => a.code !== '1320' && a.code !== '1130')
       changed = true
     }
     const migratedPropAccounts = updatedPropAccounts.map(a => {
@@ -1189,9 +1190,9 @@ export default function App() {
     const updatedPropVouchers = propVouchers.map(v => {
       let vChanged = false
       const updatedLines = v.lines.map(l => {
-        if (l.accountId === '1320') {
+        if (l.accountId === '1320' || l.accountId === '1130') {
           vChanged = true
-          return { ...l, accountId: '1130' }
+          return { ...l, accountId: '1410' }
         }
         return l
       })

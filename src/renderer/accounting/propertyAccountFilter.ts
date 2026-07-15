@@ -13,7 +13,6 @@ const SHARED_ROOT_CODES = new Set([
 const PROPERTY_ASSET_PREFIXES = [
   '1110', // Cash In Hand
   '1120', // Bank Accounts
-  '1130', // Rent Receivable
   '1270', // Real Estate / Properties
   '1410', // Post-dated Cheques Receivable
   '1420', // Security Cheques Received

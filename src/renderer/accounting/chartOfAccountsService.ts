@@ -283,7 +283,6 @@ export function initializeDefaultChartOfAccounts(country: string = 'UAE', module
     // Bank child accounts are NOT created here — they are added by
     // initializeApplication() with canonical IDs (acc-dib-current etc.)
     // to avoid duplicate accounts with the same code.
-    mkAcct('1130', '1130', 'Rent Receivable', 'asset', 'debit', '1000', 'Rent Receivable', 'property'),
     mkAcct('1270', '1270', 'Real Estate', 'asset', 'debit', '1000', 'Property Assets', 'property'),
     mkAcct('1410', '1410', isIndia ? 'PDC Receivables' : 'Post-dated Cheques Receivable', 'asset', 'debit', '1000', 'PDC Receivables Pool', 'property'),
     mkAcct('1420', '1420', 'Security Cheques Received', 'asset', 'debit', '1000', 'Security Cheques Received Pool', 'property'),
@@ -438,8 +437,6 @@ export function verifyAndCreateSystemAccounts(accounts: Account[], baseCurrency:
     // Property-specific accounts only
     ensureAccount('1110-prop', '1110', 'Cash In Hand', 'asset', 'debit', '1000', 'Cash', 'property')
     ensureAccount('1270', '1270', 'Real Estate', 'asset', 'debit', '1000', 'Property Assets', 'property')
-    ensureAccount('1320', '1320', 'Accounts Receivable', 'asset', 'debit', '1000', 'Accounts Receivable', 'property')
-    ensureAccount('1130', '1130', 'Rent Receivable', 'asset', 'debit', '1000', 'Rent Receivable', 'property')
     ensureAccount('1410', '1410', 'Post-dated Cheques Receivable', 'asset', 'debit', '1000', 'PDC Receivables Pool', 'property')
     ensureAccount('1420', '1420', 'Security Cheques Received', 'asset', 'debit', '1000', 'Security Cheques Received Pool', 'property')
     ensureAccount('2110', '2110', 'Deferred Revenue', 'liability', 'credit', '2000', 'Deferred Revenue', 'property')
