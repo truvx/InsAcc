@@ -49,11 +49,8 @@ export function generatePdcSlots(lease: LeaseEntry, startMonth: number, startYea
     const currentChequeDate = getChequeDateForIndex(i)
     const nextChequeDate = getChequeDateForIndex(i + 1)
     
-    // One day before next cheque date
-    const dueDateObj = new Date(nextChequeDate.getFullYear(), nextChequeDate.getMonth(), nextChequeDate.getDate() - 1)
-    
     const chequeDateStr = formatDateLocal(currentChequeDate)
-    const dueDateStr = formatDateLocal(dueDateObj)
+    const dueDateStr = chequeDateStr
 
     const amount = i === count - 1 ? lastChequeAmount : standardAmount
 
