@@ -212,6 +212,7 @@ export default function PropertyRouter(props: Props) {
         accounts={propAccounts}
         chartAccounts={propertyAccounts} chartVouchers={vouchers}
         bankMappings={bankMappings}
+        pdcCheques={pdcCheques}
         onNavigate={onNavigate}
       />
     case 'properties':
@@ -445,6 +446,8 @@ export default function PropertyRouter(props: Props) {
         accounts={propAccounts}
         chartAccounts={propertyAccounts} chartVouchers={vouchers}
         bankMappings={bankMappings}
+        pdcCheques={pdcCheques}
+        onNavigate={onNavigate}
       />
   }
 }

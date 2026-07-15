@@ -4,7 +4,7 @@ import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
-import type { PropertyEntry, UnitEntry, LeaseEntry, PropTransaction, PropAccount } from '../data/propertyTypes'
+import type { PropertyEntry, UnitEntry, LeaseEntry, PropTransaction, PropAccount, PdcCheque } from '../data/propertyTypes'
 import type { Account, Voucher } from '../accounting/types'
 import { getActiveVouchers } from '../accounting/voucherService'
 import { getPropertyFinancialSummary } from '../services/propertyFinancialAggregationService'
@@ -22,6 +22,7 @@ interface Props {
   chartAccounts: Account[]
   chartVouchers: Voucher[]
   bankMappings: any[]
+  pdcCheques?: PdcCheque[]
   onNavigate?: (page: string) => void
 }
 
@@ -108,6 +109,7 @@ function ChartCard({ title, subtitle, children }: { title: string; subtitle?: st
 
 function PropertyDashboardInner({
   currency = 'AED', properties, units, leases, accounts = [], chartAccounts, chartVouchers, bankMappings = [],
+  pdcCheques = [],
   onNavigate = () => {},
 }: Props) {
   const sym = currency
@@ -116,6 +118,52 @@ function PropertyDashboardInner({
   const vacancyRate = useMemo(() => units.length > 0 ? Math.round(((units.length - occupiedUnits.length) / units.length) * 100) : 0, [units, occupiedUnits])
   const occupancyRate = useMemo(() => 100 - vacancyRate, [vacancyRate])
   const monthlyRent = useMemo(() => occupiedUnits.reduce((s, u) => s + u.rentAmount, 0), [occupiedUnits])
+
+  const todayFormatted = useMemo(() => {
+    const d = new Date()
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    return `${d.getDate().toString().padStart(2, '0')}-${months[d.getMonth()]}-${d.getFullYear()}`
+  }, [])
+
+  const pdcStats = useMemo(() => {
+    const today = new Date()
+    const todayStr = today.toISOString().split('T')[0]
+    
+    const sevenDaysFromNow = new Date()
+    sevenDaysFromNow.setDate(today.getDate() + 7)
+    const sevenDaysStr = sevenDaysFromNow.toISOString().split('T')[0]
+    
+    const thirtyDaysFromNow = new Date()
+    thirtyDaysFromNow.setDate(today.getDate() + 30)
+    const thirtyDaysStr = thirtyDaysFromNow.toISOString().split('T')[0]
+    
+    const activePdcs = pdcCheques.filter(c => c.status === 'Pending')
+    
+    const dueToday = activePdcs.filter(c => c.dueDate === todayStr)
+    const dueTodayCount = dueToday.length
+    const dueTodayAmount = dueToday.reduce((s, c) => s + c.amount, 0)
+    
+    const next7Days = activePdcs.filter(c => c.dueDate >= todayStr && c.dueDate <= sevenDaysStr)
+    const next7DaysCount = next7Days.length
+    const next7DaysAmount = next7Days.reduce((s, c) => s + c.amount, 0)
+    
+    const next30Days = activePdcs.filter(c => c.dueDate >= todayStr && c.dueDate <= thirtyDaysStr)
+    const next30DaysCount = next30Days.length
+    const next30DaysAmount = next30Days.reduce((s, c) => s + c.amount, 0)
+    
+    const bouncedCheques = pdcCheques.filter(c => c.status === 'Bounced')
+    
+    return {
+      dueToday,
+      dueTodayCount,
+      dueTodayAmount,
+      next7DaysCount,
+      next7DaysAmount,
+      next30DaysCount,
+      next30DaysAmount,
+      bouncedCheques: bouncedCheques.slice(0, 5)
+    }
+  }, [pdcCheques])
 
   const accountingMetrics = useMemo(() => {
     const summary = getPropertyFinancialSummary(chartAccounts, chartVouchers, accounts, bankMappings)
@@ -224,127 +272,211 @@ function PropertyDashboardInner({
           } />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
-          <ChartCard title="Occupancy Rate" subtitle={`${occupiedUnits.length}/${units.length} units occupied`}>
-            {units.length === 0 ? (
-              <div style={{ padding: '24px 0' }}>
-                <EmptyState
-                  title="No Units Registered"
-                  text="Configure properties and units on the Properties page to begin tracking portfolio occupancy."
-                />
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, height: 240, justifyContent: 'center' }}>
-                <ResponsiveContainer width="100%" height={160}>
-                  <PieChart>
-                    <Pie data={[{ name: 'Occupied', value: occupiedUnits.length }, { name: 'Vacant', value: units.length - occupiedUnits.length }]}
-                      cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={3} dataKey="value">
-                      <Cell fill={primaryColor} />
-                      <Cell fill="#F3F4F6" />
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div style={{ fontSize: 24, fontWeight: 700, color: '#1F2937' }}>{occupancyRate}%</div>
-                <div style={{ fontSize: 13, color: '#6B7280' }}>Occupancy Rate</div>
-              </div>
-            )}
-          </ChartCard>
+        <div style={{ display: 'grid', gridTemplateColumns: '2.1fr 0.9fr', gap: 20, alignItems: 'start', marginBottom: 24 }}>
+          {/* Main Charts Area (Left) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              <ChartCard title="Occupancy Rate" subtitle={`${occupiedUnits.length}/${units.length} units occupied`}>
+                {units.length === 0 ? (
+                  <div style={{ padding: '24px 0' }}>
+                    <EmptyState
+                      title="No Units Registered"
+                      text="Configure properties and units on the Properties page to begin tracking portfolio occupancy."
+                    />
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, height: 240, justifyContent: 'center' }}>
+                    <ResponsiveContainer width="100%" height={160}>
+                      <PieChart>
+                        <Pie data={[{ name: 'Occupied', value: occupiedUnits.length }, { name: 'Vacant', value: units.length - occupiedUnits.length }]}
+                          cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={3} dataKey="value">
+                          <Cell fill={primaryColor} />
+                          <Cell fill="#F3F4F6" />
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div style={{ fontSize: 24, fontWeight: 700, color: '#1F2937' }}>{occupancyRate}%</div>
+                    <div style={{ fontSize: 13, color: '#6B7280' }}>Occupancy Rate</div>
+                  </div>
+                )}
+              </ChartCard>
 
-          <ChartCard title="Income vs Expenses" subtitle="Monthly comparison">
-            {incomeVsExpenseData.length === 0 ? (
-              <div style={{ padding: '24px 0' }}>
-                <EmptyState
-                  title="No Transactions Recorded"
-                  text="Record Receipt, Payment, or Journal vouchers in the Accounts sub-menu to display financial charts."
-                />
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={incomeVsExpenseData.slice(-6)}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={ChartConfig.grid} vertical={false} />
-                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: ChartConfig.axis }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: ChartConfig.axis }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtTick(v)} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-                  <Bar dataKey="Income" fill={ChartColors.green} radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Expenses" fill={ChartColors.red} radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </ChartCard>
-        </div>
+              <ChartCard title="Income vs Expenses" subtitle="Monthly comparison">
+                {incomeVsExpenseData.length === 0 ? (
+                  <div style={{ padding: '24px 0' }}>
+                    <EmptyState
+                      title="No Transactions Recorded"
+                      text="Record Receipt, Payment, or Journal vouchers in the Accounts sub-menu to display financial charts."
+                    />
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart data={incomeVsExpenseData.slice(-6)}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={ChartConfig.grid} vertical={false} />
+                      <XAxis dataKey="month" tick={{ fontSize: 11, fill: ChartConfig.axis }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 11, fill: ChartConfig.axis }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtTick(v)} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                      <Bar dataKey="Income" fill={ChartColors.green} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Expenses" fill={ChartColors.red} radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </ChartCard>
+            </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
-          <ChartCard title="Top Properties by Value" subtitle="Highest valued">
-            {properties.length === 0 ? (
-              <div style={{ padding: '24px 0' }}>
-                <EmptyState
-                  title="No Properties Registered"
-                  text="Register properties on the Properties page to visualize asset valuation breakdowns."
-                />
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={topPropertiesData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={ChartConfig.grid} vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: ChartConfig.axis }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: ChartConfig.axis }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtTick(v)} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="value" fill={PropertyPalette.properties} radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </ChartCard>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              <ChartCard title="Top Properties by Value" subtitle="Highest valued">
+                {properties.length === 0 ? (
+                  <div style={{ padding: '24px 0' }}>
+                    <EmptyState
+                      title="No Properties Registered"
+                      text="Register properties on the Properties page to visualize asset valuation breakdowns."
+                    />
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={topPropertiesData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={ChartConfig.grid} vertical={false} />
+                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: ChartConfig.axis }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 11, fill: ChartConfig.axis }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtTick(v)} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="value" fill={PropertyPalette.properties} radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </ChartCard>
 
-          <ChartCard title="Lease Expiry Timeline" subtitle="Months remaining">
-            {leaseExpiryData.length === 0 ? (
-              <div style={{ padding: '24px 0' }}>
-                <EmptyState
-                  title="No Active Leases"
-                  text="Add active tenant leases on the Leases page to track contract expiries."
-                />
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={leaseExpiryData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={ChartConfig.grid} vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: ChartConfig.axis }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={40} />
-                  <YAxis tick={{ fontSize: 11, fill: ChartConfig.axis }} axisLine={false} tickLine={false} label={{ value: 'Months', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: ChartConfig.axis } }} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="monthsLeft" name="Months Remaining" radius={[4, 4, 0, 0]}>
-                    {leaseExpiryData.map((l) => (
-                      <Cell key={l.name} fill={l.monthsLeft <= 3 ? ChartColors.red : l.monthsLeft <= 6 ? PropertyPalette.securityDeposits : ChartColors.green} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </ChartCard>
-        </div>
+              <ChartCard title="Lease Expiry Timeline" subtitle="Months remaining">
+                {leaseExpiryData.length === 0 ? (
+                  <div style={{ padding: '24px 0' }}>
+                    <EmptyState
+                      title="No Active Leases"
+                      text="Add active tenant leases on the Leases page to track contract expiries."
+                    />
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={leaseExpiryData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={ChartConfig.grid} vertical={false} />
+                      <XAxis dataKey="name" tick={{ fontSize: 10, fill: ChartConfig.axis }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={40} />
+                      <YAxis tick={{ fontSize: 11, fill: ChartConfig.axis }} axisLine={false} tickLine={false} label={{ value: 'Months', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: ChartConfig.axis } }} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="monthsLeft" name="Months Remaining" radius={[4, 4, 0, 0]}>
+                        {leaseExpiryData.map((l) => (
+                          <Cell key={l.name} fill={l.monthsLeft <= 3 ? ChartColors.red : l.monthsLeft <= 6 ? PropertyPalette.securityDeposits : ChartColors.green} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </ChartCard>
+            </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
-          <ChartCard title="Cash Flow" subtitle="Income, Expenses & Net over time">
-            {cashFlowData.length === 0 ? (
-              <div style={{ padding: '24px 0' }}>
-                <EmptyState
-                  title="No Cash Flow History"
-                  text="Cash flow tracking will populate automatically once vouchers are posted and reconciled."
-                />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
+              <ChartCard title="Cash Flow" subtitle="Income, Expenses & Net over time">
+                {cashFlowData.length === 0 ? (
+                  <div style={{ padding: '24px 0' }}>
+                    <EmptyState
+                      title="No Cash Flow History"
+                      text="Cash flow tracking will populate automatically once vouchers are posted and reconciled."
+                    />
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={240}>
+                    <AreaChart data={cashFlowData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                      <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtTick(v)} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Area type="monotone" dataKey="Income" stroke={primaryColor} fill={`${primaryColor}20`} strokeWidth={2} />
+                      <Area type="monotone" dataKey="Expenses" stroke="#EF4444" fill="#EF444420" strokeWidth={2} />
+                      <Area type="monotone" dataKey="Net" stroke="#5C63A6" fill="#5C63A620" strokeWidth={2} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+              </ChartCard>
+            </div>
+          </div>
+
+          {/* PDC & Cheques Alerts Sidebar (Right) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Cheques Due Today */}
+            <div style={{
+              background: pdcStats.dueTodayCount > 0 ? 'rgba(239, 68, 68, 0.08)' : 'var(--bg-secondary, #F9FAFB)',
+              border: pdcStats.dueTodayCount > 0 ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid var(--border)',
+              borderRadius: 12,
+              padding: 16,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 8, color: pdcStats.dueTodayCount > 0 ? '#EF4444' : '#5C63A6' }}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                <span style={{ fontWeight: 600, fontSize: 14, color: pdcStats.dueTodayCount > 0 ? '#991B1B' : '#374151' }}>Cheques Due Today ({todayFormatted})</span>
               </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={240}>
-                <AreaChart data={cashFlowData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtTick(v)} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="Income" stroke={primaryColor} fill={`${primaryColor}20`} strokeWidth={2} />
-                  <Area type="monotone" dataKey="Expenses" stroke="#EF4444" fill="#EF444420" strokeWidth={2} />
-                  <Area type="monotone" dataKey="Net" stroke="#5C63A6" fill="#5C63A620" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </ChartCard>
+              {pdcStats.dueTodayCount > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: '#991B1B' }}>{pdcStats.dueTodayCount} Cheques</div>
+                  <div style={{ fontSize: 13, color: '#991B1B', fontWeight: 500 }}>Total Amount: {sym} {pdcStats.dueTodayAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                </div>
+              ) : (
+                <span style={{ fontSize: 13, color: '#6B7280' }}>No cheques due today.</span>
+              )}
+            </div>
+
+            {/* Upcoming PDC Alerts */}
+            <div style={{
+              background: 'var(--bg-secondary, #FFFFFF)',
+              border: '1px solid var(--border)',
+              borderRadius: 12,
+              padding: 16,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 8, color: '#3B82F6' }}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span style={{ fontWeight: 600, fontSize: 14, color: '#374151' }}>Upcoming PDC Alerts</span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ paddingLeft: 12, borderLeft: '3px solid #3B82F6' }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#3B82F6', marginBottom: 4 }}>Within Next 7 Days</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: '#1F2937' }}>{pdcStats.next7DaysCount} Cheques</div>
+                  <div style={{ fontSize: 12, color: '#4B5563', marginTop: 2 }}>Total Amount: {sym} {pdcStats.next7DaysAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                </div>
+
+                <div style={{ paddingLeft: 12, borderLeft: '3px solid #3B82F6' }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#3B82F6', marginBottom: 4 }}>Within Next 30 Days</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: '#1F2937' }}>{pdcStats.next30DaysCount} Cheques</div>
+                  <div style={{ fontSize: 12, color: '#4B5563', marginTop: 2 }}>Total Amount: {sym} {pdcStats.next30DaysAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Bounced Cheques */}
+            <div style={{
+              background: 'var(--bg-secondary, #FFFFFF)',
+              border: '1px solid var(--border)',
+              borderRadius: 12,
+              padding: 16,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 8, color: '#EF4444' }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span style={{ fontWeight: 600, fontSize: 14, color: '#374151' }}>Recent Bounced Cheques</span>
+              </div>
+              {pdcStats.bouncedCheques.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {pdcStats.bouncedCheques.map(c => (
+                    <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, paddingBottom: 6, borderBottom: '1px solid #F3F4F6' }}>
+                      <div>
+                        <span style={{ fontWeight: 500, color: '#374151' }}>{c.chequeNumber}</span>
+                        <div style={{ color: '#9CA3AF', fontSize: 10 }}>{c.dueDate}</div>
+                      </div>
+                      <span style={{ fontWeight: 600, color: '#EF4444' }}>{sym} {c.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <span style={{ fontSize: 13, color: '#6B7280' }}>No recently bounced cheques.</span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </>
