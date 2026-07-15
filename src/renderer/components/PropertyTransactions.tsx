@@ -601,11 +601,11 @@ export default function PropertyTransactions({
   }, [propTransactions, pdcCheques, securityDeposits, propExpenses, tenants, leases])
 
   const totalIncome = useMemo(() =>
-    allTransactions.filter(t => t.type === 'credit').reduce((s, t) => s + t.amount, 0),
+    allTransactions.filter(t => t.type === 'credit' && t.category !== 'Security Deposit').reduce((s, t) => s + t.amount, 0),
     [allTransactions]
   )
   const totalExpense = useMemo(() =>
-    allTransactions.filter(t => t.type === 'debit').reduce((s, t) => s + t.amount, 0),
+    allTransactions.filter(t => t.type === 'debit' && t.category !== 'Security Deposit Refund').reduce((s, t) => s + t.amount, 0),
     [allTransactions]
   )
   const netIncome = totalIncome - totalExpense
@@ -615,6 +615,11 @@ export default function PropertyTransactions({
     if (typeFilter !== 'All') {
       const mappedType = typeFilter === 'Income' ? 'credit' : 'debit'
       result = result.filter(t => t.type === mappedType)
+      if (typeFilter === 'Income') {
+        result = result.filter(t => t.category !== 'Security Deposit')
+      } else if (typeFilter === 'Expense') {
+        result = result.filter(t => t.category !== 'Security Deposit Refund')
+      }
     }
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
@@ -664,11 +669,17 @@ export default function PropertyTransactions({
       key: 'type',
       header: 'Type',
       sortable: true,
-      render: txn => (
-        <Badge variant={txn.type === 'credit' ? 'success' : 'danger'}>
-          {txn.type === 'credit' ? 'Income' : 'Expense'}
-        </Badge>
-      ),
+      render: txn => {
+        const isLiability = txn.category === 'Security Deposit' || txn.category === 'Security Deposit Refund'
+        if (isLiability) {
+          return <Badge variant="info">Liability</Badge>
+        }
+        return (
+          <Badge variant={txn.type === 'credit' ? 'success' : 'danger'}>
+            {txn.type === 'credit' ? 'Income' : 'Expense'}
+          </Badge>
+        )
+      },
     },
     {
       key: 'amount',
@@ -676,6 +687,14 @@ export default function PropertyTransactions({
       sortable: true,
       numeric: true,
       render: txn => {
+        const isLiability = txn.category === 'Security Deposit' || txn.category === 'Security Deposit Refund'
+        if (isLiability) {
+          return (
+            <span style={{ fontWeight: 600, color: 'var(--text-secondary, #6B7280)' }}>
+              {fmt(txn.amount)}
+            </span>
+          )
+        }
         const isIncome = txn.type === 'credit'
         return (
           <span style={{ fontWeight: 600, color: isIncome ? 'var(--success)' : 'var(--danger)' }}>
