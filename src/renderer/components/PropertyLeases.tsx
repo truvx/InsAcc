@@ -471,8 +471,10 @@ export default function PropertyLeases({
   }, [formStartDate, formEndDate])
 
   React.useEffect(() => {
-    setFormPdcCount(String(computedPdcCount))
-  }, [computedPdcCount])
+    if (!editingId) {
+      setFormPdcCount(String(computedPdcCount))
+    }
+  }, [computedPdcCount, editingId])
 
   const resetForm = () => {
     setFormTenantId('')
