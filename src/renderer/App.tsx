@@ -306,6 +306,67 @@ function runMigrations() {
       }
     }
 
+    const securityDepositRemapFixKey = 'insacc_prop_security_deposit_remap_fix_v3'
+    if (!localStorage.getItem(securityDepositRemapFixKey)) {
+      try {
+        const depositsRaw = localStorage.getItem('insacc_security_deposits')
+        const vouchersRaw = localStorage.getItem('insacc_prop_vouchers')
+        if (depositsRaw && vouchersRaw) {
+          const deposits = JSON.parse(depositsRaw)
+          const vouchers = JSON.parse(vouchersRaw)
+          
+          if (Array.isArray(deposits) && Array.isArray(vouchers)) {
+            let modifiedVouchers = false
+            let modifiedDeposits = false
+            
+            const updatedDeposits = deposits.map(d => {
+              if (d.transactions) {
+                const hasReceipt = d.transactions.some((t: any) => t.type === 'Receipt')
+                if (hasReceipt) {
+                  const updatedTxs = d.transactions.map((t: any) => {
+                    if (t.type === 'Receipt') {
+                      modifiedDeposits = true
+                      return { ...t, paymentMode: 'Security Cheque', bankAccountId: undefined }
+                    }
+                    return t
+                  })
+                  return { ...d, transactions: updatedTxs }
+                }
+              }
+              return d
+            })
+            
+            const updatedVouchers = vouchers.map(v => {
+              const has2120Credit = v.lines?.some((l: any) => l.accountId === '2120' && l.type === 'Credit')
+              const bankDebitLine = v.lines?.find((l: any) => (l.accountId?.startsWith('1120') || l.accountId?.startsWith('1110')) && l.type === 'Debit')
+              
+              if (has2120Credit && bankDebitLine) {
+                modifiedVouchers = true
+                const updatedLines = v.lines.map((l: any) => {
+                  if (l === bankDebitLine) {
+                    return { ...l, accountId: '1420', narration: 'Security deposit PDC receivable' }
+                  }
+                  return l
+                })
+                return { ...v, description: v.description?.replace('Bank Transfer', 'Security Cheque'), lines: updatedLines }
+              }
+              return v
+            })
+            
+            if (modifiedVouchers) {
+              localStorage.setItem('insacc_prop_vouchers', JSON.stringify(updatedVouchers))
+            }
+            if (modifiedDeposits) {
+              localStorage.setItem('insacc_security_deposits', JSON.stringify(updatedDeposits))
+            }
+          }
+        }
+        localStorage.setItem(securityDepositRemapFixKey, 'true')
+      } catch (e) {
+        console.error('Security deposit remap fix migration failed:', e)
+      }
+    }
+
     const pdcFixKey = 'insacc_prop_pdc_fix_13000_v1'
     if (!localStorage.getItem(pdcFixKey)) {
       try {
