@@ -1334,7 +1334,7 @@ export default function PropertyLeases({
                 <div className="form-row">
                   <Input label="Security Deposit" type="number" value={formDeposit} onChange={e => setFormDeposit(e.target.value)} placeholder="0" />
                   <Select
-                    label="Security Deposit Mode *"
+                    label="Security Deposit Mode"
                     value={depositPaymentMode}
                     onChange={e => setDepositPaymentMode(e.target.value as any)}
                     options={[
