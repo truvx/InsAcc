@@ -1,4 +1,5 @@
 import React, { useMemo, useCallback } from 'react'
+import { motion } from 'framer-motion'
 import type { Account, Voucher, BankMapping } from '../accounting/types'
 import { SystemAccountRegistry } from '../accounting/systemAccountRegistry'
 import { getReportsProjection } from '../readModels/InvestmentReportsReadModel'
@@ -43,6 +44,83 @@ function downloadCSV(filename: string, headers: string[], rows: string[][]) {
   link.download = filename
   link.click()
   URL.revokeObjectURL(link.href)
+}
+
+function getReportTileInfo(id: string) {
+  switch (id) {
+    case 'balance-sheet':
+      return {
+        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>,
+        color: '#3B82F6',
+        desc: 'Asset, Liability & Equity summary'
+      }
+    case 'profit-loss':
+      return {
+        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>,
+        color: '#10B981',
+        desc: 'Revenue, Expense & net income trend'
+      }
+    case 'trial-balance':
+      return {
+        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v1"/><path d="M18 8h4a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-4"/><circle cx="8" cy="12" r="2"/></svg>,
+        color: '#F59E0B',
+        desc: 'Unadjusted ledger debit/credit balances'
+      }
+    case 'holdings':
+      return {
+        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/><line x1="12" y1="22" x2="12" y2="12.5"/><line x1="22" y1="8.5" x2="12" y2="12.5"/><line x1="2" y1="8.5" x2="12" y2="12.5"/></svg>,
+        color: '#8B5CF6',
+        desc: 'Detailed asset holdings and purity averages'
+      }
+    case 'cash-position':
+      return {
+        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+        color: '#06B6D4',
+        desc: 'Current cash ledger balances'
+      }
+    case 'investment-position':
+      return {
+        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>,
+        color: '#EC4899',
+        desc: 'Portfolio breakdown by class'
+      }
+    case 'purchase-report':
+      return {
+        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>,
+        color: '#3B82F6',
+        desc: 'Detailed purchase ledger records'
+      }
+    case 'bank-position':
+      return {
+        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="10" width="18" height="11" rx="2"/><path d="M12 2L2 7h20L12 2z"/></svg>,
+        color: '#10B981',
+        desc: 'Liquid balances in bank accounts'
+      }
+    case 'cash-flow':
+      return {
+        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 12H6M13 17l5-5-5-5"/></svg>,
+        color: '#F59E0B',
+        desc: 'Incoming vs outgoing cash flow trends'
+      }
+    case 'general-journal':
+      return {
+        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>,
+        color: '#6366F1',
+        desc: 'Chronological list of all journal entries'
+      }
+    case 'general-ledger':
+      return {
+        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M6 6h10M6 10h10M6 14h10"/></svg>,
+        color: '#8B5CF6',
+        desc: 'T-account ledgers and history'
+      }
+    default:
+      return {
+        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>,
+        color: '#6B7280',
+        desc: 'Detailed financial report'
+      }
+  }
 }
 
 export default function InvestmentReports({
@@ -231,65 +309,128 @@ export default function InvestmentReports({
       case 'overview':
         return (
           <>
-            <div className="kpi-grid" style={{ marginBottom: 20 }}>
-              <div className="kpi-card" style={{ borderTop: '2px solid var(--success)' }}>
+            <div className="kpi-grid" style={{ marginBottom: 24 }}>
+              <div className="kpi-card" style={{ borderTop: '2px solid #8B5CF6' }}>
                 <div className="kpi-label">Net Worth</div>
                 <div className="kpi-value" style={{ fontSize: 22 }}>{fmt(financialOverview.netWorth)}</div>
               </div>
-              <div className="kpi-card" style={{ borderTop: '2px solid var(--primary)' }}>
+              <div className="kpi-card" style={{ borderTop: '2px solid #3B82F6' }}>
                 <div className="kpi-label">Cash</div>
                 <div className="kpi-value" style={{ fontSize: 22 }}>{fmt(financialOverview.cash)}</div>
               </div>
-              <div className="kpi-card" style={{ borderTop: '2px solid var(--accent)' }}>
+              <div className="kpi-card" style={{ borderTop: '2px solid #10B981' }}>
                 <div className="kpi-label">Investments</div>
                 <div className="kpi-value" style={{ fontSize: 22 }}>{fmt(financialOverview.investments)}</div>
               </div>
-              <div className="kpi-card" style={{ borderTop: '2px solid var(--warning)' }}>
+              <div className="kpi-card" style={{ borderTop: '2px solid #F59E0B' }}>
                 <div className="kpi-label">Bank Balance</div>
                 <div className="kpi-value" style={{ fontSize: 22 }}>{fmt(financialOverview.bankBalance)}</div>
               </div>
-              <div className="kpi-card" style={{ borderTop: '2px solid var(--success)' }}>
+              <div className="kpi-card" style={{ borderTop: '2px solid #06B6D4' }}>
                 <div className="kpi-label">Revenue</div>
                 <div className="kpi-value" style={{ fontSize: 22 }}>{fmt(financialOverview.revenue)}</div>
               </div>
-              <div className="kpi-card" style={{ borderTop: '2px solid var(--danger)' }}>
+              <div className="kpi-card" style={{ borderTop: '2px solid #EF4444' }}>
                 <div className="kpi-label">Expenses</div>
                 <div className="kpi-value" style={{ fontSize: 22 }}>{fmt(financialOverview.expenses)}</div>
               </div>
             </div>
-            <div className="chart-grid">
-              <div className="card card-table">
-                <div className="card-body">
-                  <div className="text-sm fw-600 mb-2">Balance Sheet Summary</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
-                    <span className="text-sm">Total Assets</span>
-                    <span className="text-sm fw-600">{fmt(financialOverview.totalAssets)}</span>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '0.9fr 2.1fr', gap: 24, alignItems: 'stretch' }}>
+              {/* Left Card: Balance Sheet Summary */}
+              <div className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: 'linear-gradient(135deg, #FFFFFF 0%, #F9FAFB 100%)', border: '1px solid var(--border)', borderRadius: 12 }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#1F2937', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#3B82F6' }}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+                    Balance Sheet Summary
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
-                    <span className="text-sm">Total Liabilities</span>
-                    <span className="text-sm fw-600">{fmt(financialOverview.totalLiabilities)}</span>
+
+                  <div style={{ background: '#FFFFFF', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 16px', marginBottom: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.01)' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Assets</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#10B981', marginTop: 4 }}>{fmt(financialOverview.totalAssets)}</div>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid var(--border)' }}>
-                    <span className="text-sm fw-600">Net Worth</span>
-                    <span className="text-sm fw-600 text-purple">{fmt(financialOverview.netWorth)}</span>
+
+                  <div style={{ background: '#FFFFFF', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 16px', marginBottom: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.01)' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Liabilities</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#EF4444', marginTop: 4 }}>{fmt(financialOverview.totalLiabilities)}</div>
                   </div>
                 </div>
+
+                <div style={{ background: 'linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%)', border: '1px solid #DDD6FE', borderRadius: 12, padding: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#6D28D9', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>Current Net Worth</div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: '#5B21B6', marginTop: 4, textAlign: 'center' }}>{fmt(financialOverview.netWorth)}</div>
+
+                  {financialOverview.totalAssets > 0 && (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontWeight: 600, color: '#6D28D9', marginBottom: 4 }}>
+                        <span>Assets vs Liabilities</span>
+                        <span>{Math.round((financialOverview.netWorth / financialOverview.totalAssets) * 100)}% Equity</span>
+                      </div>
+                      <div style={{ height: 6, background: '#DDD6FE', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', background: '#8B5CF6', width: `${Math.max(0, Math.min(100, (financialOverview.netWorth / financialOverview.totalAssets) * 100))}%` }}></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="card card-table">
-                <div className="card-body">
-                  <div className="text-sm fw-600 mb-2">Quick Links</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {tabs.filter(t => t.id !== 'overview').map(link => (
-                      <button
+
+              {/* Right Card: Quick Links / Report Launchpad */}
+              <div className="card" style={{ padding: 24, border: '1px solid var(--border)', borderRadius: 12 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#1F2937', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#8B5CF6' }}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                  Available Financial Reports & Ledgers
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+                  {tabs.filter(t => t.id !== 'overview').map(link => {
+                    const info = getReportTileInfo(link.id);
+                    return (
+                      <motion.button
                         key={link.id}
-                        className="nav-item"
                         onClick={() => setActiveTab(link.id)}
-                        style={{ fontSize: 13, padding: '8px 12px' }}
+                        className="hover-lift"
+                        style={{
+                          background: '#FFFFFF',
+                          border: '1px solid var(--border)',
+                          borderRadius: 12,
+                          padding: 16,
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 8,
+                          alignItems: 'flex-start',
+                          width: '100%',
+                          minHeight: 110,
+                          transition: 'all 0.2s ease',
+                          boxShadow: '0 2px 6px -1px rgba(0,0,0,0.02)'
+                        }}
+                        whileHover={{
+                          borderColor: info.color,
+                          boxShadow: '0 8px 20px -4px rgba(0,0,0,0.04)',
+                          transform: 'translateY(-2px)'
+                        }}
                       >
-                        {link.label}
-                      </button>
-                    ))}
-                  </div>
+                        <div style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 8,
+                          background: `${info.color}12`,
+                          color: info.color,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginBottom: 4
+                        }}>
+                          {info.icon}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>{link.label}</div>
+                          <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2, lineHeight: 1.3 }}>{info.desc}</div>
+                        </div>
+                      </motion.button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
