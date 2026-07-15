@@ -406,7 +406,7 @@ export default function InvestmentReports({
                           boxShadow: '0 2px 6px -1px rgba(0,0,0,0.02)'
                         }}
                         whileHover={{
-                          borderColor: info.color,
+                          borderColor: '#9CA3AF',
                           boxShadow: '0 8px 20px -4px rgba(0,0,0,0.04)',
                           transform: 'translateY(-2px)'
                         }}
@@ -415,8 +415,8 @@ export default function InvestmentReports({
                           width: 32,
                           height: 32,
                           borderRadius: 8,
-                          background: `${info.color}12`,
-                          color: info.color,
+                          background: '#F3F4F6',
+                          color: '#4B5563',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
