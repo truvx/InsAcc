@@ -341,12 +341,34 @@ function InvestmentDashboardInner({
       </div>
 
       <div className="page-body">
-        <div className="premium-kpi-grid">
+        <div className="premium-kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
           <InvestmentKpiCard label="Portfolio Value" value={data.portfolioValue} currency={sym} accentColor="var(--gold)" />
           <InvestmentKpiCard label="Current Bank Balance" value={data.currentBankBalance} currency={sym} accentColor="var(--green)" />
           <InvestmentKpiCard label="Total Income" value={data.totalIncome} currency={sym} accentColor="var(--blue)" />
           <InvestmentKpiCard label="Total Expenses" value={data.totalExpenses} currency={sym} accentColor="var(--red)" />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 3fr', gap: 20, marginBottom: 24, alignItems: 'start' }}>
           <InvestmentKpiCard label="Net Cash Flow" value={data.netCashFlow} currency={sym} change={thisMonthChange} accentColor={data.netCashFlow >= 0 ? 'var(--green)' : '#EF4444'} isNetCash={true} />
+          <div className="card card-table" style={{ margin: 0 }}>
+            <div className="card-header">
+              <span className="card-title">Top Holdings</span>
+            </div>
+            <div className="card-body">
+              {(topHoldingsTree.children[0]?.children?.length ?? 0) === 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 120, color: 'var(--text-muted)', fontSize: 13 }}>
+                  No holdings
+                </div>
+              ) : (
+                <TreeView
+                  nodes={[topHoldingsTree]}
+                  expanded={expandedCategories}
+                  onToggle={toggleCategory}
+                  currency={currency}
+                />
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="chart-grid">
@@ -436,25 +458,6 @@ function InvestmentDashboardInner({
           </div>
         </div>
 
-        <div className="card card-table mb-6">
-          <div className="card-header">
-            <span className="card-title">Top Holdings</span>
-          </div>
-          <div className="card-body">
-            {(topHoldingsTree.children[0]?.children?.length ?? 0) === 0 ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 120, color: 'var(--text-muted)', fontSize: 13 }}>
-                No holdings
-              </div>
-            ) : (
-              <TreeView
-                nodes={[topHoldingsTree]}
-                expanded={expandedCategories}
-                onToggle={toggleCategory}
-                currency={currency}
-              />
-            )}
-          </div>
-        </div>
       </div>
     </>
   )
