@@ -309,30 +309,30 @@ export default function InvestmentReports({
       case 'overview':
         return (
           <>
-            <div className="kpi-grid" style={{ marginBottom: 24 }}>
-              <div className="kpi-card" style={{ borderTop: '2px solid #8B5CF6' }}>
-                <div className="kpi-label">Net Worth</div>
-                <div className="kpi-value" style={{ fontSize: 22 }}>{fmt(financialOverview.netWorth)}</div>
+            <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 24 }}>
+              <div className="kpi-card" style={{ borderTop: '2px solid #8B5CF6', padding: '12px 14px' }}>
+                <div className="kpi-label" style={{ fontSize: 10 }}>Net Worth</div>
+                <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(financialOverview.netWorth)}</div>
               </div>
-              <div className="kpi-card" style={{ borderTop: '2px solid #3B82F6' }}>
-                <div className="kpi-label">Cash</div>
-                <div className="kpi-value" style={{ fontSize: 22 }}>{fmt(financialOverview.cash)}</div>
+              <div className="kpi-card" style={{ borderTop: '2px solid #3B82F6', padding: '12px 14px' }}>
+                <div className="kpi-label" style={{ fontSize: 10 }}>Cash</div>
+                <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(financialOverview.cash)}</div>
               </div>
-              <div className="kpi-card" style={{ borderTop: '2px solid #10B981' }}>
-                <div className="kpi-label">Investments</div>
-                <div className="kpi-value" style={{ fontSize: 22 }}>{fmt(financialOverview.investments)}</div>
+              <div className="kpi-card" style={{ borderTop: '2px solid #10B981', padding: '12px 14px' }}>
+                <div className="kpi-label" style={{ fontSize: 10 }}>Investments</div>
+                <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(financialOverview.investments)}</div>
               </div>
-              <div className="kpi-card" style={{ borderTop: '2px solid #F59E0B' }}>
-                <div className="kpi-label">Bank Balance</div>
-                <div className="kpi-value" style={{ fontSize: 22 }}>{fmt(financialOverview.bankBalance)}</div>
+              <div className="kpi-card" style={{ borderTop: '2px solid #F59E0B', padding: '12px 14px' }}>
+                <div className="kpi-label" style={{ fontSize: 10 }}>Bank Balance</div>
+                <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(financialOverview.bankBalance)}</div>
               </div>
-              <div className="kpi-card" style={{ borderTop: '2px solid #06B6D4' }}>
-                <div className="kpi-label">Revenue</div>
-                <div className="kpi-value" style={{ fontSize: 22 }}>{fmt(financialOverview.revenue)}</div>
+              <div className="kpi-card" style={{ borderTop: '2px solid #06B6D4', padding: '12px 14px' }}>
+                <div className="kpi-label" style={{ fontSize: 10 }}>Revenue</div>
+                <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(financialOverview.revenue)}</div>
               </div>
-              <div className="kpi-card" style={{ borderTop: '2px solid #EF4444' }}>
-                <div className="kpi-label">Expenses</div>
-                <div className="kpi-value" style={{ fontSize: 22 }}>{fmt(financialOverview.expenses)}</div>
+              <div className="kpi-card" style={{ borderTop: '2px solid #EF4444', padding: '12px 14px' }}>
+                <div className="kpi-label" style={{ fontSize: 10 }}>Expenses</div>
+                <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(financialOverview.expenses)}</div>
               </div>
             </div>
 

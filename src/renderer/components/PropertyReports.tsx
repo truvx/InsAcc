@@ -229,30 +229,30 @@ export default function PropertyReports({
       case 'overview':
         return (
           <>
-            <div className="kpi-grid" style={{ marginBottom: 20 }}>
-              <div className="kpi-card" style={{ borderTop: '2px solid var(--success)' }}>
-                <div className="kpi-label">Cash</div>
-                <div className="kpi-value" style={{ fontSize: 22 }}>{fmt(accountingKpis.cash)}</div>
+            <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 24 }}>
+              <div className="kpi-card" style={{ borderTop: '2px solid var(--success)', padding: '12px 14px' }}>
+                <div className="kpi-label" style={{ fontSize: 10 }}>Cash</div>
+                <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(accountingKpis.cash)}</div>
               </div>
-              <div className="kpi-card" style={{ borderTop: '2px solid var(--primary)' }}>
-                <div className="kpi-label">Bank Balance</div>
-                <div className="kpi-value" style={{ fontSize: 22 }}>{fmt(accountingKpis.bankBalance)}</div>
+              <div className="kpi-card" style={{ borderTop: '2px solid var(--primary)', padding: '12px 14px' }}>
+                <div className="kpi-label" style={{ fontSize: 10 }}>Bank Balance</div>
+                <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(accountingKpis.bankBalance)}</div>
               </div>
-              <div className="kpi-card" style={{ borderTop: '2px solid var(--accent)' }}>
-                <div className="kpi-label">PDC</div>
-                <div className="kpi-value" style={{ fontSize: 22 }}>{fmt(accountingKpis.pdc)}</div>
+              <div className="kpi-card" style={{ borderTop: '2px solid var(--accent)', padding: '12px 14px' }}>
+                <div className="kpi-label" style={{ fontSize: 10 }}>PDC</div>
+                <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(accountingKpis.pdc)}</div>
               </div>
-              <div className="kpi-card" style={{ borderTop: '2px solid var(--success)' }}>
-                <div className="kpi-label">Rental Income</div>
-                <div className="kpi-value" style={{ fontSize: 22 }}>{fmt(accountingKpis.rentalIncome)}</div>
+              <div className="kpi-card" style={{ borderTop: '2px solid var(--success)', padding: '12px 14px' }}>
+                <div className="kpi-label" style={{ fontSize: 10 }}>Rental Income</div>
+                <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(accountingKpis.rentalIncome)}</div>
               </div>
-              <div className="kpi-card" style={{ borderTop: '2px solid var(--danger)' }}>
-                <div className="kpi-label">Expenses</div>
-                <div className="kpi-value" style={{ fontSize: 22 }}>{fmt(accountingKpis.totalExpenses)}</div>
+              <div className="kpi-card" style={{ borderTop: '2px solid var(--danger)', padding: '12px 14px' }}>
+                <div className="kpi-label" style={{ fontSize: 10 }}>Expenses</div>
+                <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(accountingKpis.totalExpenses)}</div>
               </div>
-              <div className="kpi-card" style={{ borderTop: '2px solid var(--primary-text)' }}>
-                <div className="kpi-label">Net Income</div>
-                <div className="kpi-value" style={{ fontSize: 22 }}>{fmt(accountingKpis.netIncome)}</div>
+              <div className="kpi-card" style={{ borderTop: '2px solid var(--primary-text)', padding: '12px 14px' }}>
+                <div className="kpi-label" style={{ fontSize: 10 }}>Net Income</div>
+                <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(accountingKpis.netIncome)}</div>
               </div>
             </div>
             <div className="chart-grid">
