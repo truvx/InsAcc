@@ -28,7 +28,7 @@ export default function LazyChart({ children, width = '100%', height = 300, plac
   }, [])
 
   return (
-    <div ref={ref} style={{ width, height, minHeight: height }}>
+    <div ref={ref} style={visible ? { width, minHeight: height } : { width, height, minHeight: height }}>
       {visible ? children : (placeholder || <div style={{ width, height }} />)}
     </div>
   )
