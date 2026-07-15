@@ -368,6 +368,7 @@ export default function PropertyRouter(props: Props) {
         pdcCheques={pdcCheques} setPdcCheques={setPdcCheques}
         leases={propLeases} tenants={propTenants}
         properties={mappedProperties}
+        units={mappedUnits}
         dateFormat={dateFormat} currency={currency}
         accounts={propertyAccounts}
         vouchers={vouchers}

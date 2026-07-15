@@ -744,19 +744,13 @@ export default function PropertyPdcManager({
       key: 'tenantName',
       header: 'Tenant',
       sortable: true,
-      render: row => <span className="text-sm">{chequeMeta[row.id]?.tenantName || 'Unknown'}</span>,
-    },
-    {
-      key: 'propertyName',
-      header: 'Property / Unit',
-      sortable: true,
       render: row => {
         const meta = chequeMeta[row.id]
         const unitNo = meta?.unitNumber
         
         return (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span className="text-sm text-secondary">{meta?.propertyName || '—'}</span>
+            <span className="text-sm fw-500">{meta?.tenantName || 'Unknown'}</span>
             {unitNo && unitNo !== '—' && (
               <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
                 {String(unitNo).toLowerCase().startsWith('unit') ? unitNo : `Unit ${unitNo}`}
@@ -764,6 +758,15 @@ export default function PropertyPdcManager({
             )}
           </div>
         )
+      },
+    },
+    {
+      key: 'propertyName',
+      header: 'Property',
+      sortable: true,
+      render: row => {
+        const meta = chequeMeta[row.id]
+        return <span className="text-sm text-secondary">{meta?.propertyName || '—'}</span>
       },
     },
     {
