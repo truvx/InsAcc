@@ -350,20 +350,20 @@ function InvestmentDashboardInner({
         </div>
 
         <div className="chart-grid mb-6">
-          <React.Suspense fallback={<div style={{ height: 300 }} />}>
-            <LazyChart><InvestmentGrowthChart dataByPeriod={data.investmentGrowthByPeriod} /></LazyChart>
+          <React.Suspense fallback={<div style={{ height: 370 }} />}>
+            <LazyChart height={370}><InvestmentGrowthChart dataByPeriod={data.investmentGrowthByPeriod} /></LazyChart>
           </React.Suspense>
-          <React.Suspense fallback={<div style={{ height: 300 }} />}>
-            <LazyChart><AssetAllocationPie data={assetAllocationData} /></LazyChart>
+          <React.Suspense fallback={<div style={{ height: 370 }} />}>
+            <LazyChart height={370}><AssetAllocationPie data={assetAllocationData} /></LazyChart>
           </React.Suspense>
         </div>
 
         <div className="chart-grid mb-6">
-          <React.Suspense fallback={<div style={{ height: 300 }} />}>
-            <LazyChart><CashFlowChart dataByPeriod={data.cashFlowByPeriod} /></LazyChart>
+          <React.Suspense fallback={<div style={{ height: 370 }} />}>
+            <LazyChart height={370}><CashFlowChart dataByPeriod={data.cashFlowByPeriod} /></LazyChart>
           </React.Suspense>
-          <React.Suspense fallback={<div style={{ height: 300 }} />}>
-            <LazyChart><IncomeExpenseChart dataByPeriod={data.cashFlowByPeriod} /></LazyChart>
+          <React.Suspense fallback={<div style={{ height: 370 }} />}>
+            <LazyChart height={370}><IncomeExpenseChart dataByPeriod={data.cashFlowByPeriod} /></LazyChart>
           </React.Suspense>
         </div>
 
