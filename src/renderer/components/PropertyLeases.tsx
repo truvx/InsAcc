@@ -603,7 +603,11 @@ export default function PropertyLeases({
     setFormDeposit(String(lease.deposit))
     setFormModeOfPayment(lease.modeOfPayment ?? String(lease.paymentFrequency ?? PDC_MODE))
 
-    setFormPdcStartDate(new Date().toISOString().split('T')[0])
+    const leasePdcs = pdcCheques.filter(p => p.leaseId === lease.id)
+    const firstPdc = leasePdcs.find(p => p.slotIndex === 0)
+    const defaultPdcDate = firstPdc ? firstPdc.dueDate : lease.startDate
+    setFormPdcStartDate(defaultPdcDate)
+
     setFormPdcCount(String(lease.pdcCount || ''))
     setFormDueDay(String(lease.paymentDueDay))
     setFormNotes(lease.notes || '')
