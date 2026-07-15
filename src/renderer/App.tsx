@@ -222,6 +222,90 @@ function runMigrations() {
       }
     }
 
+    const securityDepositCollectFixKey = 'insacc_prop_security_deposit_collect_fix_v2'
+    if (!localStorage.getItem(securityDepositCollectFixKey)) {
+      try {
+        const depositsRaw = localStorage.getItem('insacc_security_deposits')
+        const vouchersRaw = localStorage.getItem('insacc_prop_vouchers')
+        const accountsRaw = localStorage.getItem('insacc_prop_chart_accounts')
+        if (depositsRaw && vouchersRaw && accountsRaw) {
+          const deposits = JSON.parse(depositsRaw)
+          const vouchers = JSON.parse(vouchersRaw)
+          const accounts = JSON.parse(accountsRaw)
+          
+          if (Array.isArray(deposits) && Array.isArray(vouchers) && Array.isArray(accounts)) {
+            let modifiedVouchers = false
+            let modifiedDeposits = false
+            
+            const updatedDeposits = deposits.map(d => {
+              if (d.status === 'Expected') {
+                const amount = d.amount || 1000
+                if (amount > 0) {
+                  const ts = new Date().toISOString()
+                  const voucherId = `v-sec-dep-collect-fix-${Date.now()}`
+                  const desc = `Security Deposit Receipt (Security Cheque): Lease ${d.leaseId || ''} — Tenant: ${d.tenantName || ''}`
+                  
+                  const newVoucher = {
+                    id: voucherId,
+                    number: `RV-SEC-COLLECT`,
+                    type: 'Receipt',
+                    date: d.createdAt?.split('T')[0] || '2025-12-05',
+                    description: desc,
+                    referenceType: 'Lease',
+                    referenceId: d.leaseId,
+                    status: 'Posted',
+                    createdBy: 'system',
+                    createdAt: ts,
+                    updatedAt: ts,
+                    lines: [
+                      { accountId: '1420', type: 'Debit', amount, narration: 'Security deposit PDC receivable' },
+                      { accountId: '2120', type: 'Credit', amount, narration: 'Security deposit liability' }
+                    ]
+                  }
+                  
+                  vouchers.unshift(newVoucher)
+                  modifiedVouchers = true
+                  
+                  const rxTx = {
+                    id: `tx-sec-dep-${Date.now()}`,
+                    depositId: d.id,
+                    type: 'Receipt',
+                    amount,
+                    date: d.createdAt?.split('T')[0] || '2025-12-05',
+                    voucherId,
+                    notes: 'Deposit collected automatically on lease creation.',
+                    paymentMode: 'Security Cheque',
+                    status: 'Posted',
+                    createdBy: 'system',
+                    createdAt: ts,
+                    updatedAt: ts
+                  }
+                  
+                  modifiedDeposits = true
+                  return {
+                    ...d,
+                    status: 'Held',
+                    transactions: [...(d.transactions || []), rxTx]
+                  }
+                }
+              }
+              return d
+            })
+            
+            if (modifiedVouchers) {
+              localStorage.setItem('insacc_prop_vouchers', JSON.stringify(vouchers))
+            }
+            if (modifiedDeposits) {
+              localStorage.setItem('insacc_security_deposits', JSON.stringify(updatedDeposits))
+            }
+          }
+        }
+        localStorage.setItem(securityDepositCollectFixKey, 'true')
+      } catch (e) {
+        console.error('Security deposit collect fix migration failed:', e)
+      }
+    }
+
     const pdcFixKey = 'insacc_prop_pdc_fix_13000_v1'
     if (!localStorage.getItem(pdcFixKey)) {
       try {
