@@ -1183,7 +1183,14 @@ export default function PropertyLeases({
                             <div>{formatDate(l.endDate, dateFormat)}</div>
                           </td>
                           <td className="text-mono text-xs fw-600" style={{ textAlign: 'right' }}>
-                            <CurrencyText value={l.monthlyRent} currency={currency} />
+                            <div>
+                              <CurrencyText value={l.monthlyRent} currency={currency} />
+                              <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal', fontSize: 10, marginLeft: 2 }}>/mo</span>
+                            </div>
+                            <div style={{ color: 'var(--text-secondary)', fontSize: 10, marginTop: 3 }}>
+                              <span style={{ fontWeight: 'normal' }}>Yr: </span>
+                              <CurrencyText value={annualRent} currency={currency} />
+                            </div>
                           </td>
                           <td className="text-mono text-xs" style={{ textAlign: 'right', color: 'var(--text-secondary)' }}>
                             <CurrencyText value={l.deposit} currency={currency} />
