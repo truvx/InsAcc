@@ -14,7 +14,7 @@ import { getAccountBalance, invalidateBalanceCache } from '../accounting/ledgerS
 import { SystemAccountRegistry } from '../accounting/systemAccountRegistry'
 import { autoPostVoucher } from '../hooks/useVoucherLifecycle'
 import { computeDepositBalances, createInitialDeposit, addDepositTransaction } from '../services/propertyDepositService'
-import { getPropertyBankAccountId } from '../services/propertyAccountingService'
+import { getPropertyBankAccountId, validateBankChartLink } from '../services/propertyAccountingService'
 import { getDefaultPropertyReceiptBankAccount, getDefaultPropertyPaymentBankAccount } from '../services/bankingService'
 import VoucherTimeline from './VoucherTimeline'
 import AccountDrillDown from './AccountDrillDown'
@@ -674,6 +674,25 @@ export default function PropertyLeases({
       return
     }
 
+    const depAmt = Number(formDeposit) || 0
+    if (depAmt > 0) {
+      if (!depositPaymentMode) {
+        setToast({ visible: true, message: 'Please select a Security Deposit Mode', type: 'error' })
+        return
+      }
+      if (depositPaymentMode === 'Bank Transfer') {
+        if (!depositBankId) {
+          setToast({ visible: true, message: 'Please select a Receiving Trust Account for the bank transfer deposit', type: 'error' })
+          return
+        }
+        const bankLink = validateBankChartLink(depositBankId, propAccounts, bankMappings)
+        if (!bankLink.valid) {
+          setToast({ visible: true, message: bankLink.error + ' Please configure it in Bank Accounts or select Cash / Security Cheque.', type: 'error' })
+          return
+        }
+      }
+    }
+
     const nowStr = new Date().toISOString()
     const linkedTenantId = formTenantId
 
@@ -961,7 +980,6 @@ export default function PropertyLeases({
               if (appResult.success && appResult.voucher) {
                 const postResult = accountingEngine.post(appResult.voucher, 'user', accounts || [], vouchers || [])
                 if (postResult.success && postResult.voucher) {
-                  // Add the Receipt transaction to the Security Deposit object
                   secDeposit = addDepositTransaction(secDeposit, {
                     type: 'Receipt',
                     amount: finalDeposit,
@@ -974,8 +992,17 @@ export default function PropertyLeases({
                     createdBy: 'user',
                   }, 'user')
                   setVouchers?.(prev => [postResult.voucher!, ...prev])
+                } else {
+                  console.error('Post failed:', postResult.errors)
+                  setToast({ visible: true, message: 'Deposit posting failed: ' + postResult.errors[0]?.message, type: 'error' })
                 }
+              } else {
+                console.error('Approval failed:', appResult.errors)
+                setToast({ visible: true, message: 'Deposit approval failed: ' + appResult.errors[0]?.message, type: 'error' })
               }
+            } else {
+              console.error('Draft failed:', draftResult.errors)
+              setToast({ visible: true, message: 'Deposit processing failed: ' + draftResult.errors[0]?.message, type: 'error' })
             }
           }
         }
