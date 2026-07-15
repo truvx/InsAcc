@@ -328,8 +328,11 @@ export default function PropertyAccountsDashboard({ currency = 'AED', accounts, 
                       dataKey="month"
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fontSize: 11, fill: ChartConfig.axis }}
-                      interval="preserveStartEnd"
+                      tick={{ fontSize: 10, fill: ChartConfig.axis }}
+                      interval={0}
+                      angle={-25}
+                      textAnchor="end"
+                      height={45}
                     />
                     <YAxis
                       axisLine={false}
@@ -387,14 +390,17 @@ export default function PropertyAccountsDashboard({ currency = 'AED', accounts, 
             >
               <div className="chart-container">
                 <ResponsiveContainer width="100%" height={340}>
-                  <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }} barCategoryGap="25%">
                     <CartesianGrid strokeDasharray="3 3" stroke={ChartConfig.grid} vertical={false} />
                     <XAxis
                       dataKey="month"
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fontSize: 11, fill: ChartConfig.axis }}
-                      interval="preserveStartEnd"
+                      tick={{ fontSize: 10, fill: ChartConfig.axis }}
+                      interval={0}
+                      angle={-25}
+                      textAnchor="end"
+                      height={45}
                     />
                     <YAxis
                       axisLine={false}
@@ -414,14 +420,12 @@ export default function PropertyAccountsDashboard({ currency = 'AED', accounts, 
                       name="Income"
                       fill={ChartColors.green}
                       radius={[3, 3, 0, 0]}
-                      barSize={14}
                     />
                     <Bar
                       dataKey="expense"
                       name="Expenses"
                       fill={ChartColors.red}
                       radius={[3, 3, 0, 0]}
-                      barSize={14}
                     />
                   </BarChart>
                 </ResponsiveContainer>
