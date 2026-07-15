@@ -147,6 +147,81 @@ function runMigrations() {
       }
     }
 
+    const securityDepositFixKey = 'insacc_prop_security_deposit_fix_v1'
+    if (!localStorage.getItem(securityDepositFixKey)) {
+      try {
+        const depositsRaw = localStorage.getItem('insacc_security_deposits')
+        const vouchersRaw = localStorage.getItem('insacc_prop_vouchers')
+        const accountsRaw = localStorage.getItem('insacc_prop_chart_accounts')
+        if (depositsRaw && vouchersRaw && accountsRaw) {
+          const deposits = JSON.parse(depositsRaw)
+          const vouchers = JSON.parse(vouchersRaw)
+          const accounts = JSON.parse(accountsRaw)
+          
+          if (Array.isArray(deposits) && Array.isArray(vouchers) && Array.isArray(accounts)) {
+            let modifiedVouchers = false
+            let modifiedDeposits = false
+            
+            const updatedDeposits = deposits.map(d => {
+              const rxTx = d.transactions?.find((t: any) => t.type === 'Receipt')
+              if (rxTx && (!rxTx.voucherId || !vouchers.some(v => v.id === rxTx.voucherId))) {
+                const amount = rxTx.amount || d.amount || 0
+                if (amount > 0) {
+                  const isCheque = rxTx.paymentMode === 'Security Cheque' || rxTx.paymentMode === 'Cheque'
+                  const bankAcctId = rxTx.bankAccountId || (rxTx.paymentMode === 'Cash' ? accounts.find(a => a.code === '1110')?.id : accounts.find(a => a.code?.startsWith('1120') && a.code.length > 4)?.id)
+                  
+                  const ts = new Date().toISOString()
+                  const voucherId = `v-sec-dep-fix-${Date.now()}-${Math.random()}`
+                  const desc = `Security Deposit Receipt (${rxTx.paymentMode || 'Security Cheque'}): Lease ${d.leaseNumber || ''} — Tenant: ${d.tenantName || ''}`
+                  
+                  const lines = isCheque ? [
+                    { accountId: '1420', type: 'Debit', amount, narration: 'Security deposit PDC receivable' },
+                    { accountId: '2120', type: 'Credit', amount, narration: 'Security deposit liability' }
+                  ] : [
+                    { accountId: bankAcctId || '1110-prop', type: 'Debit', amount, narration: 'Security deposit received' },
+                    { accountId: '2120', type: 'Credit', amount, narration: 'Security deposit liability' }
+                  ]
+                  
+                  const newVoucher = {
+                    id: voucherId,
+                    number: `RV-SEC-FIX`,
+                    type: 'Receipt',
+                    date: rxTx.date || d.createdAt?.split('T')[0] || '2025-12-05',
+                    description: desc,
+                    referenceType: 'Lease',
+                    referenceId: d.leaseId,
+                    status: 'Posted',
+                    createdBy: 'system',
+                    createdAt: ts,
+                    updatedAt: ts,
+                    lines
+                  }
+                  
+                  vouchers.unshift(newVoucher)
+                  modifiedVouchers = true
+                  
+                  const updatedTxs = d.transactions.map((t: any) => t.type === 'Receipt' ? { ...t, voucherId } : t)
+                  modifiedDeposits = true
+                  return { ...d, transactions: updatedTxs }
+                }
+              }
+              return d
+            })
+            
+            if (modifiedVouchers) {
+              localStorage.setItem('insacc_prop_vouchers', JSON.stringify(vouchers))
+            }
+            if (modifiedDeposits) {
+              localStorage.setItem('insacc_security_deposits', JSON.stringify(updatedDeposits))
+            }
+          }
+        }
+        localStorage.setItem(securityDepositFixKey, 'true')
+      } catch (e) {
+        console.error('Security deposit fix migration failed:', e)
+      }
+    }
+
     const pdcFixKey = 'insacc_prop_pdc_fix_13000_v1'
     if (!localStorage.getItem(pdcFixKey)) {
       try {
@@ -1181,6 +1256,44 @@ export default function App() {
         parentId: '1000',
         isActive: true,
         description: 'Security Cheques Received Pool',
+        currency: currency === 'INR' ? 'INR' : currency === 'GBP' ? 'GBP' : 'AED',
+        createdAt: ts,
+        updatedAt: ts,
+        module: 'property'
+      })
+      changed = true
+    }
+    const has2120 = updatedPropAccounts.some(a => a.code === '2120')
+    if (!has2120) {
+      const ts = new Date().toISOString()
+      updatedPropAccounts.push({
+        id: '2120',
+        code: '2120',
+        name: 'Security Deposits Held',
+        type: 'liability',
+        normalBalance: 'credit',
+        parentId: '2000',
+        isActive: true,
+        description: 'Security Deposit Liability',
+        currency: currency === 'INR' ? 'INR' : currency === 'GBP' ? 'GBP' : 'AED',
+        createdAt: ts,
+        updatedAt: ts,
+        module: 'property'
+      })
+      changed = true
+    }
+    const has4160 = updatedPropAccounts.some(a => a.code === '4160')
+    if (!has4160) {
+      const ts = new Date().toISOString()
+      updatedPropAccounts.push({
+        id: '4160',
+        code: '4160',
+        name: 'Damage Recovery Income',
+        type: 'revenue',
+        normalBalance: 'credit',
+        parentId: '4000',
+        isActive: true,
+        description: 'Security deposit forfeiture & damage recovery income',
         currency: currency === 'INR' ? 'INR' : currency === 'GBP' ? 'GBP' : 'AED',
         createdAt: ts,
         updatedAt: ts,
