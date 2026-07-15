@@ -381,54 +381,63 @@ export default function InvestmentReports({
                   Available Financial Reports & Ledgers
                 </div>
 
+                <style>{`
+                  .report-tile {
+                    background: #FFFFFF;
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    padding: 16px;
+                    text-align: left;
+                    cursor: pointer;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    align-items: flex-start;
+                    width: 100%;
+                    min-height: 110px;
+                    transition: all 0.2s ease;
+                    box-shadow: 0 2px 6px -1px rgba(0,0,0,0.02);
+                  }
+                  .report-tile:hover {
+                    border-color: var(--primary) !important;
+                    box-shadow: 0 8px 24px -4px var(--primary-subtle) !important;
+                    transform: translateY(-2px);
+                  }
+                  .report-tile .tile-icon {
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 8px;
+                    background: #F3F4F6;
+                    color: #4B5563;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-bottom: 4px;
+                    transition: all 0.2s ease;
+                  }
+                  .report-tile:hover .tile-icon {
+                    background: var(--primary-subtle);
+                    color: var(--primary);
+                  }
+                `}</style>
+
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
                   {tabs.filter(t => t.id !== 'overview').map(link => {
                     const info = getReportTileInfo(link.id);
                     return (
-                      <motion.button
+                      <button
                         key={link.id}
                         onClick={() => setActiveTab(link.id)}
-                        className="hover-lift"
-                        style={{
-                          background: '#FFFFFF',
-                          border: '1px solid var(--border)',
-                          borderRadius: 12,
-                          padding: 16,
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 8,
-                          alignItems: 'flex-start',
-                          width: '100%',
-                          minHeight: 110,
-                          transition: 'all 0.2s ease',
-                          boxShadow: '0 2px 6px -1px rgba(0,0,0,0.02)'
-                        }}
-                        whileHover={{
-                          borderColor: '#9CA3AF',
-                          boxShadow: '0 8px 20px -4px rgba(0,0,0,0.04)',
-                          transform: 'translateY(-2px)'
-                        }}
+                        className="report-tile"
                       >
-                        <div style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: 8,
-                          background: '#F3F4F6',
-                          color: '#4B5563',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          marginBottom: 4
-                        }}>
+                        <div className="tile-icon">
                           {info.icon}
                         </div>
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>{link.label}</div>
                           <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2, lineHeight: 1.3 }}>{info.desc}</div>
                         </div>
-                      </motion.button>
+                      </button>
                     );
                   })}
                 </div>
