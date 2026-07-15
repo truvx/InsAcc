@@ -1123,6 +1123,7 @@ export default function PropertyLeases({
                     <th>Tenant</th>
                     <th>Period</th>
                     <th style={{ textAlign: 'right' }}>Monthly Rent</th>
+                    <th style={{ textAlign: 'right' }}>Annual Rent</th>
                     <th style={{ textAlign: 'right' }}>Deposit</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -1183,14 +1184,10 @@ export default function PropertyLeases({
                             <div>{formatDate(l.endDate, dateFormat)}</div>
                           </td>
                           <td className="text-mono text-xs fw-600" style={{ textAlign: 'right' }}>
-                            <div>
-                              <CurrencyText value={l.monthlyRent} currency={currency} />
-                              <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal', fontSize: 10, marginLeft: 2 }}>/mo</span>
-                            </div>
-                            <div style={{ color: 'var(--text-secondary)', fontSize: 10, marginTop: 3 }}>
-                              <span style={{ fontWeight: 'normal' }}>Yr: </span>
-                              <CurrencyText value={annualRent} currency={currency} />
-                            </div>
+                            <CurrencyText value={l.monthlyRent} currency={currency} />
+                          </td>
+                          <td className="text-mono text-xs fw-600" style={{ textAlign: 'right' }}>
+                            <CurrencyText value={annualRent} currency={currency} />
                           </td>
                           <td className="text-mono text-xs" style={{ textAlign: 'right', color: 'var(--text-secondary)' }}>
                             <CurrencyText value={l.deposit} currency={currency} />
@@ -1213,7 +1210,7 @@ export default function PropertyLeases({
 
                         {isExpanded && (
                           <tr style={{ background: 'var(--bg-secondary)' }}>
-                            <td colSpan={8} style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)' }}>
+                            <td colSpan={9} style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)' }}>
                               <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1.5fr', gap: 32 }}>
                                 
                                 {/* Tenant Details */}
