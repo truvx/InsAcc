@@ -349,7 +349,7 @@ function InvestmentDashboardInner({
           <InvestmentKpiCard label="Net Cash Flow" value={data.netCashFlow} currency={sym} change={thisMonthChange} accentColor={data.netCashFlow >= 0 ? 'var(--green)' : '#EF4444'} isNetCash={true} />
         </div>
 
-        <div className="chart-grid">
+        <div className="chart-grid mb-6">
           <React.Suspense fallback={<div style={{ height: 300 }} />}>
             <LazyChart><InvestmentGrowthChart dataByPeriod={data.investmentGrowthByPeriod} /></LazyChart>
           </React.Suspense>
@@ -358,7 +358,7 @@ function InvestmentDashboardInner({
           </React.Suspense>
         </div>
 
-        <div className="chart-grid">
+        <div className="chart-grid mb-6">
           <React.Suspense fallback={<div style={{ height: 300 }} />}>
             <LazyChart><CashFlowChart dataByPeriod={data.cashFlowByPeriod} /></LazyChart>
           </React.Suspense>
