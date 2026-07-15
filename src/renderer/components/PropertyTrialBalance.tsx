@@ -10,9 +10,13 @@ interface Props {
 }
 
 export default function PropertyTrialBalance({ currency = 'AED', accounts, vouchers }: Props) {
+  const filteredAccounts = useMemo(() => accounts.filter(a => a.code !== '1130'), [accounts])
   const { entries, totals } = useMemo(() => {
     const coa = generateChartOfAccountsReadModel(accounts, vouchers)
-    const e = generateTrialBalanceReadModel(coa)
+    const e = generateTrialBalanceReadModel(coa).filter(entry => {
+      const acct = accounts.find(a => a.id === entry.accountId)
+      return acct?.code !== '1130'
+    })
     const leafEntries = e.filter(entry => {
       const acct = accounts.find(a => a.id === entry.accountId)
       const isParent = acct ? accounts.some(child => child.parentId === acct.id && child.isActive) : false
@@ -35,7 +39,7 @@ export default function PropertyTrialBalance({ currency = 'AED', accounts, vouch
       </div>
       <TrialBalanceTree
         currency={currency}
-        accounts={accounts}
+        accounts={filteredAccounts}
         vouchers={vouchers}
         entries={entries}
         totals={totals}
