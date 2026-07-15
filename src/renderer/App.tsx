@@ -126,6 +126,47 @@ function runMigrations() {
       }
     }
 
+    const pdcFixKey = 'insacc_prop_pdc_fix_13000_v1'
+    if (!localStorage.getItem(pdcFixKey)) {
+      try {
+        const vouchersRaw = localStorage.getItem('insacc_prop_vouchers')
+        if (vouchersRaw) {
+          const vouchers = JSON.parse(vouchersRaw)
+          if (Array.isArray(vouchers)) {
+            const hasDiscrepancyVoucher = vouchers.some(v => v.description?.includes('PDC Received') && v.lines?.some((l: any) => l.accountId === '1410' && Math.abs(l.amount - 13000.04) < 0.05))
+            if (!hasDiscrepancyVoucher) {
+              const leaseVoucher = vouchers.find(v => v.description?.includes('LS-2026-0001') && v.lines?.some((l: any) => l.accountId === '1130' && Math.abs(l.amount - 66200) < 0.05))
+              if (leaseVoucher) {
+                const ts = new Date().toISOString()
+                const newVoucher = {
+                  id: `v-pdc-fix-13000-${Date.now()}`,
+                  number: `JV-PDC-FIX`,
+                  type: 'Journal',
+                  date: leaseVoucher.date || '2025-12-05',
+                  description: 'PDC Received: Chq PDC-1 for Lease LS-2026-0001',
+                  referenceType: 'Lease',
+                  referenceId: leaseVoucher.referenceId,
+                  status: 'Posted',
+                  createdBy: 'system',
+                  createdAt: ts,
+                  updatedAt: ts,
+                  lines: [
+                    { accountId: '1410', type: 'Debit', amount: 13000.04, narration: 'Post-dated cheque received' },
+                    { accountId: '1130', type: 'Credit', amount: 13000.04, narration: 'PDC receivable from tenant' }
+                  ]
+                }
+                vouchers.unshift(newVoucher)
+                localStorage.setItem('insacc_prop_vouchers', JSON.stringify(vouchers))
+              }
+            }
+          }
+        }
+        localStorage.setItem(pdcFixKey, 'true')
+      } catch (e) {
+        console.error('PDC fix migration failed:', e)
+      }
+    }
+
     const coaPatches = ['insacc_accounts', 'insacc_prop_chart_accounts']
     coaPatches.forEach(key => {
       const raw = localStorage.getItem(key)
