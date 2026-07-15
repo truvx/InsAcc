@@ -751,8 +751,7 @@ th {
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
   user-select: none;
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 1;
   background: var(--bg-tertiary);
   text-transform: uppercase;
