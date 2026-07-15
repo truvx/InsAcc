@@ -153,6 +153,10 @@ export default function TrialBalanceTree({ currency = 'AED', accounts, vouchers,
     <>
       <style>{`
         .tb-table { width: 100%; border-collapse: collapse; border-spacing: 0; }
+        .tb-table th {
+          position: relative !important;
+          top: auto !important;
+        }
         /* Header styling intentionally NOT overridden here — the Trial Balance
            reuses the shared canonical table-header style (theme.css thead/th:
            --bg-tertiary background, border, sticky, uppercase typography, 48px
