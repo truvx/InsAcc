@@ -1091,6 +1091,20 @@ export default function App() {
       setPdcCheques(newCheques)
     }
   }, [pdcCheques, setPdcCheques])
+
+  // Sync new default investment assets if they are missing from local storage
+  React.useEffect(() => {
+    const existingIds = new Set((investmentAssets || []).map(a => a.id))
+    const missing = defaultInvestmentAssets.filter(a => !existingIds.has(a.id))
+    if (missing.length > 0) {
+      setInvestmentAssets(prev => {
+        const prevList = prev || []
+        const seen = new Set(prevList.map(a => a.id))
+        const toAdd = missing.filter(a => !seen.has(a.id))
+        return [...prevList, ...toAdd]
+      })
+    }
+  }, [defaultInvestmentAssets, investmentAssets, setInvestmentAssets])
   const [bankReconciliations, setBankReconciliations] = useLazyPersistedState<BankReconciliationRecord[]>('insacc_bank_reconciliations', [])
   const [propBankReconciliations, setPropBankReconciliations] = useLazyPersistedState<BankReconciliationRecord[]>('insacc_prop_bank_reconciliations', [])
   const [propFiscalYears, setPropFiscalYears] = useLazyPersistedState<FiscalYear[]>('insacc_prop_fiscal_years', [])
