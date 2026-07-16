@@ -29,6 +29,7 @@ import History from './History'
 import Settings from './Settings'
 import PurchaseLedger from './PurchaseLedger'
 import InvestmentHoldings from './InvestmentHoldings'
+import InvestmentTotalAverageHolding from './InvestmentTotalAverageHolding'
 import PeriodClosingWizard from './PeriodClosingWizard'
 
 interface Props {
@@ -242,6 +243,18 @@ export default function InvestmentRouter(props: Props) {
     case 'holdings':
       return (
         <InvestmentHoldings
+          currency={currency}
+          accounts={investmentAccounts}
+          vouchers={vouchers}
+          purchaseRecords={purchaseRecords}
+          bankAccounts={bankAccounts}
+          bankMappings={bankMappings}
+          onNavigate={onNavigate}
+        />
+      )
+    case 'total-average-holding':
+      return (
+        <InvestmentTotalAverageHolding
           currency={currency}
           accounts={investmentAccounts}
           vouchers={vouchers}
