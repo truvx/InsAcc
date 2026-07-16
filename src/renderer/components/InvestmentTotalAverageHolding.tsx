@@ -104,19 +104,23 @@ export default function InvestmentTotalAverageHolding({
   }, [holdingsProjection])
 
   // Summary KPIs
-  const totalQuantity = useMemo(
-    () => purityWiseData.reduce((s, p) => s + p.totalQuantity, 0),
-    [purityWiseData]
-  )
+  const { goldQty, silverQty } = useMemo(() => {
+    let gold = 0
+    let silver = 0
+    for (const p of purityWiseData) {
+      const type = (p.purity || '').toLowerCase()
+      if (type === 'gold') {
+        gold += p.totalQuantity
+      } else if (type === 'silver') {
+        silver += p.totalQuantity
+      }
+    }
+    return { goldQty: gold, silverQty: silver }
+  }, [purityWiseData])
 
   const totalInvested = useMemo(
     () => purityWiseData.reduce((s, p) => s + p.totalInvested, 0),
     [purityWiseData]
-  )
-
-  const overallWeightedAvg = useMemo(
-    () => (totalQuantity > 0 ? totalInvested / totalQuantity : 0),
-    [totalQuantity, totalInvested]
   )
 
   // Columns for Purity-wise Table
@@ -234,16 +238,22 @@ export default function InvestmentTotalAverageHolding({
       <div className="page-body">
         <div className="kpi-grid">
           <KpiCard
-            label="Total Quantity"
-            value={`${totalQuantity.toLocaleString()} g`}
-            accentColor="var(--primary)"
+            label="Total Gold Qty"
+            value={`${goldQty.toLocaleString()} g`}
+            accentColor="var(--warning)"
             delay={0}
+          />
+          <KpiCard
+            label="Total Silver Qty"
+            value={`${silverQty.toLocaleString()} g`}
+            accentColor="var(--text-secondary)"
+            delay={0.05}
           />
           <KpiCard
             label="Total Invested"
             value={`${currency} ${totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
             accentColor="var(--success)"
-            delay={0.05}
+            delay={0.1}
           />
         </div>
 
