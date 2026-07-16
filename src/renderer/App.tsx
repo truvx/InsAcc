@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react'
 import { AnimatePresence } from 'framer-motion'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import type { Profile } from './data/sampleData'
 import type { UserEntry, LogEntry } from './data/types'
 import type { BankAccount, BankTransaction, StatementEntry } from './data/banking'
@@ -2624,30 +2625,39 @@ export default function App() {
 
   if (screen === 'login') {
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <Login
-          onSuccess={handleLoginSuccess}
-          storedPassword={storedPassword}
-          onBackToModule={selectedProfile ? handleBackToModule : undefined}
-          loginEntries={loginEntries}
-        />
-      </Suspense>
+      <>
+        <Suspense fallback={<LoadingFallback />}>
+          <Login
+            onSuccess={handleLoginSuccess}
+            storedPassword={storedPassword}
+            onBackToModule={selectedProfile ? handleBackToModule : undefined}
+            loginEntries={loginEntries}
+          />
+        </Suspense>
+        <SpeedInsights />
+      </>
     )
   }
 
   if (screen === 'profiles') {
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <ProfileSelection profiles={storedLoginProfiles} onSelect={handleProfileSelect} />
-      </Suspense>
+      <>
+        <Suspense fallback={<LoadingFallback />}>
+          <ProfileSelection profiles={storedLoginProfiles} onSelect={handleProfileSelect} />
+        </Suspense>
+        <SpeedInsights />
+      </>
     )
   }
 
   if (screen === 'module') {
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <ModuleSelection onSelect={handleModuleSelect} onBackToProfiles={() => setScreen('profiles')} />
-      </Suspense>
+      <>
+        <Suspense fallback={<LoadingFallback />}>
+          <ModuleSelection onSelect={handleModuleSelect} onBackToProfiles={() => setScreen('profiles')} />
+        </Suspense>
+        <SpeedInsights />
+      </>
     )
   }
 
@@ -2662,7 +2672,8 @@ export default function App() {
     }
 
     return (
-      <div className="app-shell" data-module={activeModule}>
+      <>
+        <div className="app-shell" data-module={activeModule}>
         <Suspense fallback={null}>
           <Sidebar
             activeModule={activeModule}
@@ -2731,7 +2742,9 @@ export default function App() {
             </AnimatePresence>
           </Suspense>
         </div>
-      </div>
+        </div>
+        <SpeedInsights />
+      </>
     )
   }
 
