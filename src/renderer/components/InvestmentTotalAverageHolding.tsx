@@ -60,7 +60,7 @@ export default function InvestmentTotalAverageHolding({
 
     const result: PurityGroup[] = []
     for (const [purity, group] of grouped) {
-      const totalQuantity = group.reduce((s, p) => s + p.quantity, 0)
+      const totalQuantity = group.reduce((s, p) => s + p.quantity * getAssetWeightMultiplier(p.assetName), 0)
       const totalInvested = group.reduce((s, p) => s + p.totalValue, 0)
       const purchaseCount = group.length
       const sumUnitPrice = group.reduce((s, p) => s + p.unitPrice, 0)
