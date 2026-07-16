@@ -89,11 +89,13 @@ export default function InvestmentTotalAverageHolding({
 
   const assetWiseData = useMemo((): AssetHoldingAverage[] => {
     return holdingsProjection.map((h) => {
-      const weightedAveragePrice = h.totalQuantity > 0 ? h.totalInvested / h.totalQuantity : 0
+      const multiplier = getAssetWeightMultiplier(h.assetName)
+      const qtyInGrams = h.totalQuantity * multiplier
+      const weightedAveragePrice = qtyInGrams > 0 ? h.totalInvested / qtyInGrams : 0
       return {
         assetName: h.assetName,
         assetType: h.assetType,
-        totalQuantity: h.totalQuantity,
+        totalQuantity: qtyInGrams,
         totalInvested: h.totalInvested,
         weightedAveragePrice,
         purityAveragePrice: h.simpleAvgPrice || 0,
