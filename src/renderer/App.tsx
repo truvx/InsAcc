@@ -1092,16 +1092,39 @@ export default function App() {
     }
   }, [pdcCheques, setPdcCheques])
 
-  // Sync new default investment assets if they are missing from local storage
+  // Sync new default investment assets if they are missing from local storage,
+  // and ensure all displayOrders match the latest master definition.
   React.useEffect(() => {
+    const defaultMap = new Map(defaultInvestmentAssets.map(a => [a.id, a]))
+    let needsUpdate = false
     const existingIds = new Set((investmentAssets || []).map(a => a.id))
     const missing = defaultInvestmentAssets.filter(a => !existingIds.has(a.id))
+    
     if (missing.length > 0) {
+      needsUpdate = true
+    } else {
+      for (const a of investmentAssets || []) {
+        const defaultAsset = defaultMap.get(a.id)
+        if (defaultAsset && defaultAsset.displayOrder !== a.displayOrder) {
+          needsUpdate = true
+          break
+        }
+      }
+    }
+
+    if (needsUpdate) {
       setInvestmentAssets(prev => {
         const prevList = prev || []
-        const seen = new Set(prevList.map(a => a.id))
+        const updatedList = prevList.map(a => {
+          const defaultAsset = defaultMap.get(a.id)
+          if (defaultAsset) {
+            return { ...a, displayOrder: defaultAsset.displayOrder }
+          }
+          return a
+        })
+        const seen = new Set(updatedList.map(a => a.id))
         const toAdd = missing.filter(a => !seen.has(a.id))
-        return [...prevList, ...toAdd]
+        return [...updatedList, ...toAdd]
       })
     }
   }, [defaultInvestmentAssets, investmentAssets, setInvestmentAssets])
