@@ -94,24 +94,6 @@ export default function InvestmentHoldings({
       },
     },
     {
-      key: 'simpleAvgPrice', header: 'Purity Avg Price', sortable: true, numeric: true, width: '180px',
-      render: h => {
-        const val = h.simpleAvgPrice || 0
-        const multiplier = getAssetWeightMultiplier(h.assetName)
-        if (multiplier > 1) {
-          const weightLabel = multiplier >= 1000 ? `${multiplier / 1000}kg` : `${multiplier}g`
-          const barPrice = val * multiplier
-          return (
-            <div style={{ textAlign: 'right' }}>
-              <span className="text-xs">{currency} {val.toLocaleString(undefined, { minimumFractionDigits: 2 })}/g</span>
-              <div className="text-xxs text-secondary" style={{ fontSize: '10px' }}>({currency} {barPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}/{weightLabel})</div>
-            </div>
-          )
-        }
-        return <span className="text-xs">{currency} {val.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-      },
-    },
-    {
       key: 'totalInvested', header: 'Invested', sortable: true, numeric: true, width: '110px',
       render: h => <span className="fw-600 text-xs">{currency} {h.totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>,
     },
@@ -308,7 +290,7 @@ export default function InvestmentHoldings({
         <div className="page-header-left">
           <div>
             <div className="page-title">Investment Holdings</div>
-            <div className="page-subtitle">{totalHoldings} holdings • {currency} {totalInvested.toLocaleString()} invested • Market: {currency} {totalMarketValue.toLocaleString()}</div>
+            <div className="page-subtitle">{totalHoldings} holdings • {currency} {totalInvested.toLocaleString()} invested</div>
           </div>
         </div>
       </div>
