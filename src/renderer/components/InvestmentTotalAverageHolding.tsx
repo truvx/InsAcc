@@ -133,27 +133,6 @@ export default function InvestmentTotalAverageHolding({
       render: (p) => <span className="text-xs">{p.totalQuantity.toLocaleString()} g</span>,
     },
     {
-      key: 'weightedAveragePrice',
-      header: 'Weighted Average Price',
-      sortable: true,
-      numeric: true,
-      render: (p) => {
-        const val = p.weightedAveragePrice
-        const multiplier = getAssetWeightMultiplier(p.purity) // Check by purity name
-        if (multiplier > 1) {
-          const weightLabel = multiplier >= 1000 ? `${multiplier / 1000}kg` : `${multiplier}g`
-          const barPrice = val * multiplier
-          return (
-            <div style={{ textAlign: 'right' }}>
-              <span className="text-xs">{currency} {val.toLocaleString(undefined, { minimumFractionDigits: 2 })}/g</span>
-              <div className="text-xxs text-secondary" style={{ fontSize: '10px' }}>({currency} {barPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}/{weightLabel})</div>
-            </div>
-          )
-        }
-        return <span className="text-xs">{currency} {val.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-      },
-    },
-    {
       key: 'purityAveragePrice',
       header: 'Purity Average (Simple)',
       sortable: true,
@@ -212,27 +191,6 @@ export default function InvestmentTotalAverageHolding({
       render: (a) => <span className="text-xs">{a.totalQuantity.toLocaleString()} g</span>,
     },
     {
-      key: 'weightedAveragePrice',
-      header: 'Weighted Average Price',
-      sortable: true,
-      numeric: true,
-      render: (a) => {
-        const val = a.weightedAveragePrice
-        const multiplier = getAssetWeightMultiplier(a.assetName)
-        if (multiplier > 1) {
-          const weightLabel = multiplier >= 1000 ? `${multiplier / 1000}kg` : `${multiplier}g`
-          const barPrice = val * multiplier
-          return (
-            <div style={{ textAlign: 'right' }}>
-              <span className="text-xs">{currency} {val.toLocaleString(undefined, { minimumFractionDigits: 2 })}/g</span>
-              <div className="text-xxs text-secondary" style={{ fontSize: '10px' }}>({currency} {barPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}/{weightLabel})</div>
-            </div>
-          )
-        }
-        return <span className="text-xs">{currency} {val.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-      },
-    },
-    {
       key: 'purityAveragePrice',
       header: 'Purity Average (Simple)',
       sortable: true,
@@ -284,12 +242,6 @@ export default function InvestmentTotalAverageHolding({
             value={`${currency} ${totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
             accentColor="var(--success)"
             delay={0.05}
-          />
-          <KpiCard
-            label="Overall Weighted Avg"
-            value={`${currency} ${overallWeightedAvg.toLocaleString(undefined, { minimumFractionDigits: 2 })}/g`}
-            accentColor="var(--warning)"
-            delay={0.1}
           />
         </div>
 
