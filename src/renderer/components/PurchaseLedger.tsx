@@ -175,11 +175,25 @@ export default function PurchaseLedger({
 
   const activeRecords = useMemo(() => purchaseRecords, [purchaseRecords])
 
-  const kpis = useMemo(() => ({
-    totalInvested: calculateTotalInvested(activeRecords),
-    totalQuantity: calculateTotalQuantity(activeRecords),
-    activeLots: activeRecords.filter(r => r.status === 'active').length,
-  }), [activeRecords])
+  const kpis = useMemo(() => {
+    let gold = 0
+    let silver = 0
+    for (const r of activeRecords) {
+      const type = (r.assetType || '').toLowerCase()
+      if (type === 'gold') {
+        gold += r.quantity * getAssetWeightMultiplier(r.assetName)
+      } else if (type === 'silver') {
+        silver += r.quantity * getAssetWeightMultiplier(r.assetName)
+      }
+    }
+    return {
+      totalInvested: calculateTotalInvested(activeRecords),
+      totalQuantity: calculateTotalQuantity(activeRecords),
+      activeLots: activeRecords.filter(r => r.status === 'active').length,
+      goldQty: gold,
+      silverQty: silver,
+    }
+  }, [activeRecords])
 
   const filtered = useMemo(() => {
     let result = activeRecords
@@ -1027,10 +1041,16 @@ export default function PurchaseLedger({
       accentColor: 'var(--accent)',
     },
     {
-      label: 'Total Quantity',
-      value: kpis.totalQuantity.toLocaleString(),
+      label: 'Total Gold Qty',
+      value: `${kpis.goldQty.toLocaleString()} g`,
       icon: <ActivityIcon />,
-      accentColor: 'var(--success)',
+      accentColor: 'var(--warning)',
+    },
+    {
+      label: 'Total Silver Qty',
+      value: `${kpis.silverQty.toLocaleString()} g`,
+      icon: <ActivityIcon />,
+      accentColor: 'var(--text-secondary)',
     },
     {
       label: 'Active Lots',
