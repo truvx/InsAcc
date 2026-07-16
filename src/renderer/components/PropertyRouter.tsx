@@ -414,15 +414,6 @@ export default function PropertyRouter(props: Props) {
         dateFormat={dateFormat}
         currentUser="User"
       />
-    case 'period-close':
-      return <PeriodClosingWizard
-        currency={currency}
-        accounts={propertyAccounts}
-        vouchers={vouchers}
-        setVouchers={setVouchers}
-        fiscalYears={fiscalYears}
-        setFiscalYears={setFiscalYears}
-      />
     case 'history':
       return <History auditEvents={propAuditEvents} language={language} onClearHistory={props.onClearTransactions} />
     case 'settings':

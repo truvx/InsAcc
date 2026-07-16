@@ -50,7 +50,6 @@ const PROP_ACCOUNTS_GROUP: NavGroup = {
     { id: 'profit-loss', label: 'Profit & Loss' },
     { id: 'pdc-manager', label: 'PDC Manager' },
     { id: 'deposit-manager', label: 'Security Deposits' },
-    { id: 'period-close', label: 'Period Closing' },
   ],
 }
 
@@ -65,7 +64,6 @@ const INV_ACCOUNTS_GROUP: NavGroup = {
     { id: 'trial-balance', label: 'Trial Balance' },
     { id: 'balance-sheet', label: 'Balance Sheet' },
     { id: 'profit-loss', label: 'Profit & Loss' },
-    { id: 'period-close', label: 'Period Closing' },
   ],
 }
 

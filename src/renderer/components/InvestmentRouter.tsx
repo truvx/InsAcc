@@ -264,17 +264,6 @@ export default function InvestmentRouter(props: Props) {
           onNavigate={onNavigate}
         />
       )
-    case 'period-close':
-      return (
-        <PeriodClosingWizard
-          currency={currency}
-          accounts={investmentAccounts}
-          vouchers={vouchers}
-          setVouchers={setVouchers}
-          fiscalYears={fiscalYears}
-          setFiscalYears={setFiscalYears}
-        />
-      )
     case 'documents':
       return (
         <Documents
