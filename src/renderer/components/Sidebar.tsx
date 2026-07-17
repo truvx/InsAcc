@@ -181,7 +181,7 @@ export default function Sidebar({ activeModule, activePage, onNavigate, onLogout
             <rect x="14" y="14" width="7" height="7" />
             <rect x="3" y="14" width="7" height="7" />
           </svg>
-          {activeModule === 'investment' ? 'Switch to Properties Management' : 'Switch to Investment Portfolio'}
+          {activeModule === 'investment' ? 'Switch to Properties' : 'Switch to Investments'}
         </button>
         <button className="btn btn-ghost" onClick={onLogout}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
