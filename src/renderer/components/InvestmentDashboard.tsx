@@ -39,6 +39,7 @@ interface InvestmentKpiCardProps {
   change?: { value: string; direction: 'up' | 'down' | 'neutral' }
   accentColor?: string
   isNetCash?: boolean
+  onClick?: () => void
 }
 
 function InvestmentKpiCard({
@@ -47,7 +48,8 @@ function InvestmentKpiCard({
   currency,
   change,
   accentColor,
-  isNetCash = false
+  isNetCash = false,
+  onClick
 }: InvestmentKpiCardProps) {
   const { valueStr, suffix } = formatPremiumCompact(value)
   const sign = value < 0 ? '-' : ''
@@ -60,11 +62,16 @@ function InvestmentKpiCard({
   return (
     <motion.div
       className="premium-kpi-card"
-      style={accentColor ? { borderTopColor: accentColor } as React.CSSProperties : undefined}
+      style={{
+        ...(accentColor ? { borderTopColor: accentColor } : {}),
+        cursor: onClick ? 'pointer' : 'default',
+      } as React.CSSProperties}
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      whileHover={{ y: -2 }}
+      whileHover={onClick ? { y: -4, scale: 1.02, boxShadow: '0 8px 20px rgba(0,0,0,0.06)' } : { y: -2 }}
+      whileTap={onClick ? { scale: 0.98 } : undefined}
+      onClick={onClick}
     >
       <div>
         <div className="premium-kpi-label">{label}</div>
@@ -342,11 +349,11 @@ function InvestmentDashboardInner({
 
       <div className="page-body">
         <div className="premium-kpi-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
-          <InvestmentKpiCard label="Portfolio Value" value={data.portfolioValue} currency={sym} accentColor="var(--gold)" />
-          <InvestmentKpiCard label="Current Bank Balance" value={data.currentBankBalance} currency={sym} accentColor="var(--green)" />
-          <InvestmentKpiCard label="Total Income" value={data.totalIncome} currency={sym} accentColor="var(--blue)" />
-          <InvestmentKpiCard label="Total Expenses" value={data.totalExpenses} currency={sym} accentColor="var(--red)" />
-          <InvestmentKpiCard label="Net Cash Flow" value={data.netCashFlow} currency={sym} change={thisMonthChange} accentColor={data.netCashFlow >= 0 ? 'var(--green)' : '#EF4444'} isNetCash={true} />
+          <InvestmentKpiCard label="Portfolio Value" value={data.portfolioValue} currency={sym} accentColor="var(--gold)" onClick={() => onNavigate('holdings')} />
+          <InvestmentKpiCard label="Current Bank Balance" value={data.currentBankBalance} currency={sym} accentColor="var(--green)" onClick={() => onNavigate('bank-accounts')} />
+          <InvestmentKpiCard label="Total Income" value={data.totalIncome} currency={sym} accentColor="var(--blue)" onClick={() => onNavigate('profit-loss')} />
+          <InvestmentKpiCard label="Total Expenses" value={data.totalExpenses} currency={sym} accentColor="var(--red)" onClick={() => onNavigate('profit-loss')} />
+          <InvestmentKpiCard label="Net Cash Flow" value={data.netCashFlow} currency={sym} change={thisMonthChange} accentColor={data.netCashFlow >= 0 ? 'var(--green)' : '#EF4444'} isNetCash={true} onClick={() => onNavigate('accounts-dashboard')} />
         </div>
 
         <div className="chart-grid mb-6">
