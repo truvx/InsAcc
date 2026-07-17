@@ -71,7 +71,7 @@ export default function PropertySettings({
         <div className="page-header-left">
           <div>
             <div className="page-title">Settings</div>
-            <div className="page-subtitle">Property module preferences</div>
+            <div className="page-subtitle">Properties Management preferences</div>
           </div>
         </div>
       </div>
@@ -320,7 +320,7 @@ export default function PropertySettings({
 
             <div style={{ paddingTop: 16, borderTop: '1px solid var(--border)' }}>
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                Reset all Property module data to defaults. This will permanently delete all properties, leases, tenants, accounts, and transactions.
+                Reset all Properties Management data to defaults. This will permanently delete all properties, leases, tenants, accounts, and transactions.
               </p>
               <Button
                 variant="secondary"

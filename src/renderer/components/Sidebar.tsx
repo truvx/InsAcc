@@ -137,7 +137,7 @@ export default function Sidebar({ activeModule, activePage, onNavigate, onLogout
       </div>
 
       <div className="sidebar-nav">
-        <div className="sidebar-section">{activeModule === 'investment' ? 'Investment' : 'Property'}</div>
+        <div className="sidebar-section">{activeModule === 'investment' ? 'Investment Portfolio' : 'Properties Management'}</div>
         {navItems.map(item => (
           <button
             key={item.id}
@@ -181,7 +181,7 @@ export default function Sidebar({ activeModule, activePage, onNavigate, onLogout
             <rect x="14" y="14" width="7" height="7" />
             <rect x="3" y="14" width="7" height="7" />
           </svg>
-          {activeModule === 'investment' ? 'Switch to Property' : 'Switch to Investment'}
+          {activeModule === 'investment' ? 'Switch to Properties Management' : 'Switch to Investment Portfolio'}
         </button>
         <button className="btn btn-ghost" onClick={onLogout}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">

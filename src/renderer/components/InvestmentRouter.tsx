@@ -308,7 +308,7 @@ export default function InvestmentRouter(props: Props) {
           dateFormat={dateFormat} onSetDateFormat={() => {}}
           language={language} onSetLanguage={() => {}}
           autoLogout="15 minutes" onSetAutoLogout={() => {}}
-          moduleLabel="Investment"
+          moduleLabel="Investment Portfolio"
           onResetAllData={onResetAllData}
           onAuditEvent={recordAuditEvent}
           investmentCategories={investmentCategories}

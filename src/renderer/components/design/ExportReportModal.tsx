@@ -288,7 +288,7 @@ export default function ExportReportModal({
                 margin: '3px 0 0', fontSize: 13,
                 color: 'var(--text-secondary, #7B8A99)', lineHeight: 1.4,
               }}>
-                Generate an audit-ready Excel workbook with full transaction details · {module} Module
+                Generate an audit-ready Excel workbook with full transaction details · {module === 'Property' ? 'Properties Management' : 'Investment Portfolio'}
               </p>
             </div>
           </div>

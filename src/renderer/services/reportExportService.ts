@@ -356,7 +356,7 @@ function sheetCover(p: ExcelExportParams, count: number): any {
   rows.push(blk())
   rows.push(cvr(p.reportTitle, 18, true, 'FFD700'))
   rows.push(blk())
-  rows.push(cvr(`${p.module} Module`, 12, false, C.primaryLight))
+  rows.push(cvr(p.module === 'Property' ? 'Properties Management' : 'Investment Portfolio', 12, false, C.primaryLight))
   rows.push(blk()); rows.push(blk()); rows.push(blk())
   rows.push(blkM())
   rows.push(meta('Reporting Period', p.periodLabel))
@@ -816,7 +816,7 @@ export async function exportAccountingExcel(p: ExcelExportParams): Promise<strin
 
   // 4. Save
   const today = new Date().toISOString().slice(0, 10)
-  const filename = `InsAcc_${p.module}_Report_${today}.xlsx`
+  const filename = `InsAcc_${p.module === 'Property' ? 'Properties_Management' : 'Investment_Portfolio'}_Report_${today}.xlsx`
   const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
   return saveWithDialog(filename, [{ name: 'Excel Workbook', extensions: ['xlsx'] }], buf)
 }
