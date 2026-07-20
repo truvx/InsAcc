@@ -23,6 +23,9 @@ import {
   Download, FileText, Plus, Trash2, Calendar
 } from 'lucide-react'
 
+import type { AuditEvent } from '../data/auditTypes'
+import { recordModuleEvent } from '../services/auditService'
+
 interface Props {
   pdcCheques: PdcCheque[]
   setPdcCheques: React.Dispatch<React.SetStateAction<PdcCheque[]>>
@@ -39,6 +42,7 @@ interface Props {
   propAccounts: PropAccount[]
   bankMappings: BankMapping[]
   onNavigate?: (page: string) => void
+  onAuditEvent?: (event: AuditEvent) => void
 }
 
 /* ─────────── Row action kebab menu ─────────── */
@@ -169,6 +173,7 @@ export default function PropertyPdcManager({
   propAccounts,
   bankMappings,
   onNavigate,
+  onAuditEvent,
 }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
@@ -413,6 +418,7 @@ export default function PropertyPdcManager({
       setPdcCheques(updated)
       setVouchers(prev => [postResult.voucher!, ...prev])
       invalidateBalanceCache()
+      onAuditEvent?.(recordModuleEvent('Property Transactions', 'Update', activePdc.chequeNumber, activePdc.id, `Cleared cheque ${activePdc.chequeNumber} via bank`))
       setToast({ visible: true, message: `Cheque ${activePdc.chequeNumber} cleared. Voucher ${postResult.voucher.number} posted.`, type: 'success' })
       setActiveAction(null)
       setActivePdc(null)
@@ -430,6 +436,7 @@ export default function PropertyPdcManager({
       })
       setPdcCheques(updated)
       invalidateBalanceCache()
+      onAuditEvent?.(recordModuleEvent('Property Transactions', 'Update', activePdc.chequeNumber, activePdc.id, `Cleared cheque ${activePdc.chequeNumber}`))
       setToast({ visible: true, message: `Cheque ${activePdc.chequeNumber} cleared.`, type: 'success' })
       setActiveAction(null)
       setActivePdc(null)
@@ -559,6 +566,7 @@ export default function PropertyPdcManager({
       setPdcCheques(updated)
       setVouchers(updatedVouchers)
       invalidateBalanceCache()
+      onAuditEvent?.(recordModuleEvent('Property Transactions', 'Update', activePdc.chequeNumber, activePdc.id, `Cheque ${activePdc.chequeNumber} marked as Bounced`))
       setToast({ visible: true, message: `Cheque ${activePdc.chequeNumber} marked as Bounced. Reversals posted.`, type: 'success' })
       setActiveAction(null)
       setActivePdc(null)
@@ -620,6 +628,7 @@ export default function PropertyPdcManager({
         bounceReason: cancelReason, user: 'user'
       })
       setPdcCheques(updated)
+      onAuditEvent?.(recordModuleEvent('Property Transactions', 'Update', activePdc.chequeNumber, activePdc.id, `Cheque ${activePdc.chequeNumber} returned / cancelled`))
       setToast({ visible: true, message: `Cheque ${activePdc.chequeNumber} cancelled.`, type: 'success' })
       setActiveAction(null)
       setActivePdc(null)
@@ -632,6 +641,7 @@ export default function PropertyPdcManager({
     if (!replaceTarget || !replaceChequeNumber.trim()) return
     const updated = replaceCheque(pdcCheques, replaceTarget.id, replaceChequeNumber.trim(), replaceDate)
     setPdcCheques(updated)
+    onAuditEvent?.(recordModuleEvent('Property Transactions', 'Update', replaceTarget.chequeNumber, replaceTarget.id, `Cheque ${replaceTarget.chequeNumber} replaced with ${replaceChequeNumber}`))
     setReplaceModalOpen(false)
     setReplaceTarget(null)
     setReplaceChequeNumber('')
@@ -661,6 +671,7 @@ export default function PropertyPdcManager({
         ? { ...chq, chequeNumber: editChequeNumberValue, chequeDate: editDateValue, updatedAt: now }
         : chq
     ))
+    onAuditEvent?.(recordModuleEvent('Property Transactions', 'Update', editChequeNumberValue, editDateTarget.id, `Updated cheque ${editDateTarget.chequeNumber} details`))
     setToast({ visible: true, message: 'Cheque details updated', type: 'success' })
     setEditDateModalOpen(false)
     setEditDateTarget(null)
@@ -671,6 +682,7 @@ export default function PropertyPdcManager({
   const handleDeletePDC = () => {
     if (!deletePdcTarget) return
     setPdcCheques(prev => prev.filter(c => c.id !== deletePdcTarget.id))
+    onAuditEvent?.(recordModuleEvent('Property Transactions', 'Delete', deletePdcTarget.chequeNumber, deletePdcTarget.id, `Deleted cheque ${deletePdcTarget.chequeNumber}`))
     setToast({ visible: true, message: `PDC ${deletePdcTarget.chequeNumber} deleted.`, type: 'success' })
     setDeletePdcTarget(null)
   }

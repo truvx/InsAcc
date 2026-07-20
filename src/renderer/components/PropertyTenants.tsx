@@ -23,6 +23,9 @@ function ChevronRight() {
   )
 }
 
+import type { AuditEvent } from '../data/auditTypes'
+import { recordModuleEvent } from '../services/auditService'
+
 interface Props {
   currency?: string
   dateFormat?: string
@@ -33,6 +36,7 @@ interface Props {
   units?: UnitEntry[]
   properties?: any[]
   onNavigate?: (page: string) => void
+  onAuditEvent?: (event: AuditEvent) => void
 }
 
 interface TenantForm {
@@ -79,7 +83,7 @@ const DEFAULT_FORM: TenantForm = {
   unitId: null,
 }
 
-export default function PropertyTenants({ currency: _currency, dateFormat = 'DD/MM/YYYY', language: _language, tenants, setTenants, leases = [], units = [], properties = [], onNavigate }: Props) {
+export default function PropertyTenants({ currency: _currency, dateFormat = 'DD/MM/YYYY', language: _language, tenants, setTenants, leases = [], units = [], properties = [], onNavigate, onAuditEvent }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
   const [showModal, setShowModal] = useState(false)
@@ -163,11 +167,14 @@ export default function PropertyTenants({ currency: _currency, dateFormat = 'DD/
     }
 
     if (editingId) {
+      const prevTenant = tenants.find(t => t.id === editingId)
       updateTenant(setTenants, editingId, form)
+      onAuditEvent?.(recordModuleEvent('Property', 'Update', form.name, editingId, `Updated tenant: ${form.name}`, 'Info', prevTenant as any, form as any))
       setToast({ visible: true, message: 'Tenant updated successfully', type: 'success' })
       setShowModal(false)
     } else {
       const created = createTenant(setTenants, form)
+      onAuditEvent?.(recordModuleEvent('Property', 'Create', created.name, created.id, `Created tenant: ${created.name}`))
       setToast({ visible: true, message: 'Tenant created successfully', type: 'success' })
       setShowModal(false)
       setSelectedTenantId(created.id)
@@ -183,6 +190,7 @@ export default function PropertyTenants({ currency: _currency, dateFormat = 'DD/
       return
     }
     deleteTenant(setTenants, deleteTarget.id)
+    onAuditEvent?.(recordModuleEvent('Property', 'Delete', deleteTarget.name, deleteTarget.id, `Deleted tenant: ${deleteTarget.name}`))
     setToast({ visible: true, message: 'Tenant deleted successfully', type: 'success' })
     setDeleteTarget(null)
     if (selectedTenantId === deleteTarget.id) setSelectedTenantId(null)

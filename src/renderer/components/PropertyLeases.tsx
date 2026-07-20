@@ -22,6 +22,9 @@ import Toast from './Toast'
 import ConfirmDialog from './design/ConfirmDialog'
 import { CurrencyText } from './design/CurrencyText'
 
+import type { AuditEvent } from '../data/auditTypes'
+import { recordModuleEvent } from '../services/auditService'
+
 interface Props {
   currency?: string
   dateFormat?: string
@@ -44,6 +47,7 @@ interface Props {
   bankMappings?: BankMapping[]
   depositMappings?: SecurityDepositGlMappings
   onNavigate?: (page: string) => void
+  onAuditEvent?: (event: AuditEvent) => void
 }
 
 // ── Reusable Component: LeaseKPIs ─────────────────────────────────────────────
@@ -376,7 +380,7 @@ export default function PropertyLeases({
   leases, setLeases, tenants, properties, units, setUnits,
   pdcCheques, setPdcCheques, accounts = [], vouchers = [], setVouchers,
   securityDeposits = [], setSecurityDeposits, accountingEngine, propAccounts = [],
-  bankMappings = [], depositMappings, onNavigate,
+  bankMappings = [], depositMappings, onNavigate, onAuditEvent,
 }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
   const [showModal, setShowModal] = useState(false)
@@ -635,6 +639,8 @@ export default function PropertyLeases({
       setUnits(result.units)
       if (setVouchers) setVouchers(result.vouchers)
 
+      onAuditEvent?.(recordModuleEvent('Property', 'Delete', lease.leaseNumber, lease.id, `Deleted lease ${lease.leaseNumber} and cascade-removed associated PDCs/vouchers`))
+
       const parts: string[] = ['Lease deleted']
       if (result.removedPdcCount > 0) parts.push(`${result.removedPdcCount} PDCs removed`)
       if (result.removedDepositCount > 0) parts.push(`${result.removedDepositCount} deposits removed`)
@@ -886,26 +892,29 @@ export default function PropertyLeases({
         processSecurityDepositForLease(updatedLease)
       }
 
-      setLeases(prev => prev.map(l =>
-        l.id === editingId ? {
-          ...l,
-          tenantId: linkedTenantId,
-          propertyId: formPropertyId,
-          unitId: formUnitId,
-          startDate: formStartDate,
-          endDate: formEndDate,
-          monthlyRent: finalMonthlyRent,
-          annualRent: finalAnnualRent,
-          deposit: finalDeposit,
-          modeOfPayment: formModeOfPayment,
-          paymentFrequency: formModeOfPayment,
-          pdcCount: formModeOfPayment === PDC_MODE ? (Number(formPdcCount) || 0) : 0,
+      const prevLease = leases.find(l => l.id === editingId)
+      const updatedLease = prevLease ? {
+        ...prevLease,
+        tenantId: linkedTenantId,
+        propertyId: formPropertyId,
+        unitId: formUnitId,
+        startDate: formStartDate,
+        endDate: formEndDate,
+        monthlyRent: finalMonthlyRent,
+        annualRent: finalAnnualRent,
+        deposit: finalDeposit,
+        modeOfPayment: formModeOfPayment,
+        paymentFrequency: formModeOfPayment,
+        pdcCount: formModeOfPayment === PDC_MODE ? (Number(formPdcCount) || 0) : 0,
+        paymentDueDay: Number(formDueDay) || 1,
+        notes: formNotes,
+        updatedAt: nowStr,
+      } : null
 
-          paymentDueDay: Number(formDueDay) || 1,
-          notes: formNotes,
-          updatedAt: nowStr,
-        } : l
-      ))
+      if (updatedLease) {
+        setLeases(prev => prev.map(l => l.id === editingId ? updatedLease : l))
+        onAuditEvent?.(recordModuleEvent('Property', 'Update', updatedLease.leaseNumber, editingId, `Updated lease ${updatedLease.leaseNumber}`, 'Info', prevLease as any, updatedLease as any))
+      }
       setToast({ visible: true, message: 'Lease updated', type: 'success' })
     } else {
       const leaseNumber = `LS-${new Date().getFullYear()}-${String(leases.length + 1).padStart(4, '0')}`
@@ -919,8 +928,8 @@ export default function PropertyLeases({
         endDate: formEndDate,
         monthlyRent: finalMonthlyRent,
         annualRent: finalAnnualRent,
-          deposit: finalDeposit,
-          modeOfPayment: formModeOfPayment,
+        deposit: finalDeposit,
+        modeOfPayment: formModeOfPayment,
         paymentFrequency: formModeOfPayment,
         pdcCount: formModeOfPayment === PDC_MODE ? (Number(formPdcCount) || 0) : 0,
 
@@ -935,6 +944,7 @@ export default function PropertyLeases({
       }
 
       setLeases(prev => [...prev, newLease])
+      onAuditEvent?.(recordModuleEvent('Property', 'Create', newLease.leaseNumber, newLease.id, `Created lease ${newLease.leaseNumber}`))
 
       // 2. Post lease creation journal entry — recognize total rental income
       if (accountingEngine && accounts && vouchers && setVouchers) {
@@ -1039,9 +1049,13 @@ export default function PropertyLeases({
   }
 
   const handleStatusChange = (leaseId: string, status: LeaseEntry['status']) => {
+    const prevLease = leases.find(l => l.id === leaseId)
     setLeases(prev => prev.map(l =>
       l.id === leaseId ? { ...l, status, updatedAt: new Date().toISOString() } : l
     ))
+    if (prevLease) {
+      onAuditEvent?.(recordModuleEvent('Property', 'Update', prevLease.leaseNumber, leaseId, `Lease status changed to ${status}`, 'Info', prevLease as any, { ...prevLease, status }))
+    }
     setToast({ visible: true, message: `Lease status changed to ${status}`, type: 'success' })
   }
 

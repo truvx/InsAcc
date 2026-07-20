@@ -1,6 +1,7 @@
 import React from 'react'
 import type { MainCategory, PropProperty, IncomeCategory, Customer } from '../data/propertyTypes'
 import PropertyHierarchy from './PropertyHierarchy'
+import type { AuditEvent } from '../data/auditTypes'
 
 interface Props {
   currency?: string
@@ -12,6 +13,7 @@ interface Props {
   setIncomeCategories: React.Dispatch<React.SetStateAction<IncomeCategory[]>>
   customers: Customer[]
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>
+  onAuditEvent?: (event: AuditEvent) => void
 }
 
 export default function PropertyProperties(props: Props) {

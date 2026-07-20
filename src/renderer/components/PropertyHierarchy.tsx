@@ -3,6 +3,9 @@ import type { MainCategory, PropProperty, IncomeCategory, Customer } from '../da
 import { Modal, PlusIcon, EditIcon, TrashIcon } from './design/DesignSystem'
 import { FolderTree, ChevronRight, ChevronDown, Plus, Pencil, Trash2, Eye, EyeOff, Search } from 'lucide-react'
 
+import type { AuditEvent } from '../data/auditTypes'
+import { recordModuleEvent } from '../services/auditService'
+
 interface Props {
   currency?: string
   mainCategories: MainCategory[]
@@ -13,6 +16,7 @@ interface Props {
   setIncomeCategories: React.Dispatch<React.SetStateAction<IncomeCategory[]>>
   customers: Customer[]
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>
+  onAuditEvent?: (event: AuditEvent) => void
 }
 
 interface TreeNode {
@@ -136,6 +140,7 @@ export default function PropertyHierarchy({
   propProperties, setPropProperties,
   incomeCategories, setIncomeCategories,
   customers, setCustomers,
+  onAuditEvent,
 }: Props) {
   const [search, setSearch] = useState('')
 
@@ -242,10 +247,13 @@ export default function PropertyHierarchy({
 
   // Action handlers
   const handleAddCategory = (name: string) => {
-    setMainCategories(prev => [...prev, { id: nextId('mc'), name }])
+    const newId = nextId('mc')
+    setMainCategories(prev => [...prev, { id: newId, name }])
+    onAuditEvent?.(recordModuleEvent('Property', 'Create', name, newId, `Created main property category: ${name}`))
   }
   const handleEditCategory = (id: string, name: string) => {
     setMainCategories(prev => prev.map(c => c.id === id ? { ...c, name } : c))
+    onAuditEvent?.(recordModuleEvent('Property', 'Update', name, id, `Renamed main property category to: ${name}`))
   }
   const handleDeleteCategory = (id: string) => {
     const propsToDel = propProperties.filter(p => p.mainCategoryId === id)
@@ -256,14 +264,18 @@ export default function PropertyHierarchy({
     setPropProperties(prev => prev.filter(p => p.mainCategoryId !== id))
     setIncomeCategories(prev => prev.filter(ic => !propIds.includes(ic.propertyId)))
     setCustomers(prev => prev.filter(c => !icIds.includes(c.incomeCategoryId)))
+    onAuditEvent?.(recordModuleEvent('Property', 'Delete', id, id, `Deleted main property category: ${id} and all its children`))
   }
 
   const handleAddProperty = (mainCategoryId: string, name: string) => {
-    setPropProperties(prev => [...prev, { id: nextId('prop'), mainCategoryId, name }])
+    const newId = nextId('prop')
+    setPropProperties(prev => [...prev, { id: newId, mainCategoryId, name }])
     setExpandedNodeIds(prev => new Set(prev).add(mainCategoryId))
+    onAuditEvent?.(recordModuleEvent('Property', 'Create', name, newId, `Created property: ${name}`))
   }
   const handleEditProperty = (id: string, name: string) => {
     setPropProperties(prev => prev.map(p => p.id === id ? { ...p, name } : p))
+    onAuditEvent?.(recordModuleEvent('Property', 'Update', name, id, `Renamed property to: ${name}`))
   }
   const handleDeleteProperty = (id: string) => {
     const icsToDel = incomeCategories.filter(ic => ic.propertyId === id)
@@ -271,29 +283,38 @@ export default function PropertyHierarchy({
     setPropProperties(prev => prev.filter(p => p.id !== id))
     setIncomeCategories(prev => prev.filter(ic => ic.propertyId !== id))
     setCustomers(prev => prev.filter(c => !icIds.includes(c.incomeCategoryId)))
+    onAuditEvent?.(recordModuleEvent('Property', 'Delete', id, id, `Deleted property: ${id}`))
   }
 
   const handleAddIncomeCategory = (propertyId: string, name: string) => {
-    setIncomeCategories(prev => [...prev, { id: nextId('ic'), propertyId, name }])
+    const newId = nextId('ic')
+    setIncomeCategories(prev => [...prev, { id: newId, propertyId, name }])
     setExpandedNodeIds(prev => new Set(prev).add(propertyId))
+    onAuditEvent?.(recordModuleEvent('Property', 'Create', name, newId, `Created unit: ${name}`))
   }
   const handleEditIncomeCategory = (id: string, name: string) => {
     setIncomeCategories(prev => prev.map(ic => ic.id === id ? { ...ic, name } : ic))
+    onAuditEvent?.(recordModuleEvent('Property', 'Update', name, id, `Renamed unit to: ${name}`))
   }
   const handleDeleteIncomeCategory = (id: string) => {
     setIncomeCategories(prev => prev.filter(ic => ic.id !== id))
     setCustomers(prev => prev.filter(c => c.incomeCategoryId !== id))
+    onAuditEvent?.(recordModuleEvent('Property', 'Delete', id, id, `Deleted unit: ${id}`))
   }
 
   const handleAddCustomer = (incomeCategoryId: string, name: string) => {
-    setCustomers(prev => [...prev, { id: nextId('cust'), incomeCategoryId, name }])
+    const newId = nextId('cust')
+    setCustomers(prev => [...prev, { id: newId, incomeCategoryId, name }])
     setExpandedNodeIds(prev => new Set(prev).add(incomeCategoryId))
+    onAuditEvent?.(recordModuleEvent('Property', 'Create', name, newId, `Created tenant reference: ${name}`))
   }
   const handleEditCustomer = (id: string, name: string) => {
     setCustomers(prev => prev.map(c => c.id === id ? { ...c, name } : c))
+    onAuditEvent?.(recordModuleEvent('Property', 'Update', name, id, `Renamed tenant reference to: ${name}`))
   }
   const handleDeleteCustomer = (id: string) => {
     setCustomers(prev => prev.filter(c => c.id !== id))
+    onAuditEvent?.(recordModuleEvent('Property', 'Delete', id, id, `Deleted tenant reference: ${id}`))
   }
 
   // Expand / Collapse all helper utilities

@@ -226,6 +226,7 @@ export default function PropertyRouter(props: Props) {
         setIncomeCategories={setIncomeCategories}
         customers={customers}
         setCustomers={setCustomers}
+        onAuditEvent={setPropAuditEvents ? (e => setPropAuditEvents(prev => [e, ...prev])) : undefined}
       />
     case 'tenants':
       return <PropertyTenants
@@ -234,6 +235,7 @@ export default function PropertyRouter(props: Props) {
         leases={propLeases} units={mappedUnits}
         properties={mappedProperties}
         onNavigate={onNavigate}
+        onAuditEvent={setPropAuditEvents ? (e => setPropAuditEvents(prev => [e, ...prev])) : undefined}
       />
     case 'leases':
       return <PropertyLeases
@@ -248,6 +250,7 @@ export default function PropertyRouter(props: Props) {
         accountingEngine={accountingEngine} propAccounts={propAccounts}
         bankMappings={bankMappings} depositMappings={depositMappings}
         onNavigate={onNavigate}
+        onAuditEvent={setPropAuditEvents ? (e => setPropAuditEvents(prev => [e, ...prev])) : undefined}
       />
     case 'expenses':
       return <PropertyExpenses
@@ -378,6 +381,7 @@ export default function PropertyRouter(props: Props) {
         propAccounts={propAccounts}
         bankMappings={bankMappings}
         onNavigate={onNavigate}
+        onAuditEvent={setPropAuditEvents ? (e => setPropAuditEvents(prev => [e, ...prev])) : undefined}
       />
     case 'deposit-manager':
       return <PropertyDepositManager
@@ -394,6 +398,7 @@ export default function PropertyRouter(props: Props) {
         setSecurityDeposits={setSecurityDeposits}
         depositMappings={depositMappings}
         setDepositMappings={setDepositMappings}
+        onAuditEvent={setPropAuditEvents ? (e => setPropAuditEvents(prev => [e, ...prev])) : undefined}
       />
     case 'reports':
       return <PropertyReports

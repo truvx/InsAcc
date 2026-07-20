@@ -12,19 +12,19 @@ InsAcc is a **desktop-only, offline-first** financial management application bui
 
 ```
 ┌─────────────────────────────────────────────┐
-│                Electron Shell                │
+│                Electron Shell               │
 │  ┌─────────────────────────────────────────┐│
-│  │         React Application (Vite)         ││
-│  │  ┌──────┐ ┌──────────┐ ┌────────────┐  ││
-│  │  │ UI   │ │ Read     │ │ Accounting  │  ││
-│  │  │ Comp.│◄│ Models   │◄│ Engine      │  ││
-│  │  │      │ │(useMemo) │ │(Write Side) │  ││
-│  │  └──┬───┘ └──────────┘ └─────┬──────┘  ││
+│  │         React Application (Vite)        ││
+│  │  ┌──────┐ ┌──────────┐ ┌────────────┐   ││
+│  │  │ UI   │ │ Read     │ │ Accounting │   ││
+│  │  │ Comp.│◄│ Models   │◄│ Engine     │   ││
+│  │  │      │ │(useMemo) │ │(Write Side)│   ││
+│  │  └──┬───┘ └──────────┘ └─────┬──────┘   ││
 │  │     │                        │          ││
 │  │  ┌──▼────────────────────────▼──────┐   ││
-│  │  │       localStorage (Electron)     │   ││
-│  │  │  keys: insacc_*                   │   ││
-│  │  └───────────────────────────────────┘   ││
+│  │  │       localStorage (Electron)    │   ││
+│  │  │  keys: insacc_*                  │   ││
+│  │  └──────────────────────────────────┘   ││
 │  └─────────────────────────────────────────┘│
 │  ┌─────────────────────────────────────────┐│
 │  │        Electron Main Process            ││

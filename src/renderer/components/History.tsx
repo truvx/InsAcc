@@ -12,8 +12,15 @@ interface Props {
 
 const MODULE_COLORS: Record<string, string> = {
   Investments: '#0A0A6F',
+  Property: '#5C63A6',
+  'Property Reports': '#DE8DA9',
+  'Property Transactions': '#059669',
+  'Property Bank Accounts': '#06B6D4',
+  'Property Documents': '#D97706',
+  'Property Settings': 'var(--text-muted)',
   'Purchase Ledger': '#3BA549',
   Transactions: '#059669',
+  Accounting: '#0A0A6F',
   'Bank Accounts': '#06B6D4',
   Documents: '#D97706',
   Reports: '#DE8DA9',
@@ -57,17 +64,6 @@ type GroupKey = 'Today' | 'Yesterday' | 'This Week' | 'This Month' | 'Older'
 
 const GROUP_ORDER: GroupKey[] = ['Today', 'Yesterday', 'This Week', 'This Month', 'Older']
 
-const MODULE_OPTIONS: { value: string; label: string }[] = [
-  { value: '', label: 'All Modules' },
-  { value: 'Investments', label: 'Investments' },
-  { value: 'Purchase Ledger', label: 'Purchase Ledger' },
-  { value: 'Transactions', label: 'Transactions' },
-  { value: 'Bank Accounts', label: 'Bank Accounts' },
-  { value: 'Documents', label: 'Documents' },
-  { value: 'Reports', label: 'Reports' },
-  { value: 'Settings', label: 'Settings' },
-]
-
 const ACTION_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'All Actions' },
   { value: 'Create', label: 'Create' },
@@ -89,7 +85,14 @@ const SEVERITY_OPTIONS: { value: string; label: string }[] = [
 
 function ModuleIcon({ module }: { module: string }) {
   const color = MODULE_COLORS[module] || '#6B7280'
-  const letter = module === 'Purchase Ledger' ? 'PL' : module === 'Bank Accounts' ? 'BA' : module[0]
+  let letter = module[0]
+  if (module === 'Purchase Ledger') letter = 'PL'
+  else if (module === 'Bank Accounts') letter = 'BA'
+  else if (module === 'Property Transactions') letter = 'PT'
+  else if (module === 'Property Bank Accounts') letter = 'PBA'
+  else if (module === 'Property Expenses') letter = 'PE'
+  else if (module === 'Property Documents') letter = 'PD'
+  else if (module === 'Property Reports') letter = 'PR'
   return (
     <div className="module-icon" style={{ background: color }}>
       {letter}
@@ -111,6 +114,14 @@ export default function History({ auditEvents, language = 'English', onClearHist
   const [filterDateEnd, setFilterDateEnd] = useState('')
   const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(GROUP_ORDER))
+
+  const moduleOptions = useMemo(() => {
+    const modules = new Set(auditEvents.map(e => e.module))
+    return [
+      { value: '', label: 'All Modules' },
+      ...Array.from(modules).sort().map(m => ({ value: m, label: m })),
+    ]
+  }, [auditEvents])
 
   const toggleGroup = useCallback((group: string) => {
     setExpandedGroups(prev => {
@@ -204,7 +215,7 @@ export default function History({ auditEvents, language = 'English', onClearHist
               <Select
                 value={filterModule}
                 onChange={e => setFilterModule(e.target.value)}
-                options={MODULE_OPTIONS}
+                options={moduleOptions}
                 style={{ margin: 0, minWidth: '150px' }}
               />
               <Select

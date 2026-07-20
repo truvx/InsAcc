@@ -15,6 +15,9 @@ import { printVoucher } from '../utils/printVoucherHelper'
 import { CurrencyText } from './design/CurrencyText'
 import { formatCurrency } from '../utils/currencyHelpers'
 
+import type { AuditEvent } from '../data/auditTypes'
+import { recordModuleEvent } from '../services/auditService'
+
 interface Props {
   leases: LeaseEntry[]
   tenants: TenantEntry[]
@@ -31,6 +34,7 @@ interface Props {
   setSecurityDeposits: React.Dispatch<React.SetStateAction<SecurityDeposit[]>>
   depositMappings: SecurityDepositGlMappings
   setDepositMappings: React.Dispatch<React.SetStateAction<SecurityDepositGlMappings>>
+  onAuditEvent?: (event: AuditEvent) => void
 }
 
 const STATUS_COLORS: Record<SecurityDepositStatus, 'success' | 'warning' | 'danger' | 'neutral'> = {
@@ -303,7 +307,8 @@ function DepositActionsMenu({
 export default function PropertyDepositManager({
   leases, tenants, properties, dateFormat = 'DD/MM/YYYY', currency = 'AED',
   accounts, vouchers, setVouchers, accountingEngine, propAccounts, bankMappings,
-  securityDeposits, setSecurityDeposits, depositMappings, setDepositMappings
+  securityDeposits, setSecurityDeposits, depositMappings, setDepositMappings,
+  onAuditEvent
 }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
@@ -817,6 +822,7 @@ export default function PropertyDepositManager({
 
       setSecurityDeposits(prev => prev.map(d => d.id === activeDeposit.id ? updated : d))
       setVouchers(prev => [postedVoucher, ...prev])
+      onAuditEvent?.(recordModuleEvent('Property Transactions', 'Update', activeDeposit.leaseId, activeDeposit.id, `Refunded security deposit of ${currency} ${amountNum.toLocaleString()}`))
       setToast({ visible: true, message: `Successfully recorded refund of ${currency} ${amountNum.toLocaleString()}. Voucher ${postedVoucher.number} posted.`, type: 'success' })
       closeWizard()
     } catch (e: any) {
@@ -900,6 +906,7 @@ export default function PropertyDepositManager({
 
       setSecurityDeposits(prev => prev.map(d => d.id === activeDeposit.id ? updated : d))
       setVouchers(prev => [postedVoucher, ...prev])
+      onAuditEvent?.(recordModuleEvent('Property Transactions', 'Update', activeDeposit.leaseId, activeDeposit.id, `Forfeited security deposit of ${currency} ${amountNum.toLocaleString()}`))
       setToast({ visible: true, message: `Successfully recorded forfeiture of ${currency} ${amountNum.toLocaleString()}. Voucher ${postedVoucher.number} posted.`, type: 'success' })
       closeWizard()
     } catch (e: any) {
