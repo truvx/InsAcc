@@ -509,6 +509,9 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  position: relative;
+  z-index: 2;
+  background: var(--sidebar-bg);
 }
 
 .sidebar-footer .btn-secondary {
