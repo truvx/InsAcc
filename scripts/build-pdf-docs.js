@@ -181,7 +181,7 @@ li {
 }
 
 .cover-title {
-  font-size: 28pt;
+  font-size: 26pt;
   font-weight: 800;
   color: #FFFFFF;
   margin-bottom: 12px;
@@ -189,7 +189,7 @@ li {
 }
 
 .cover-subtitle {
-  font-size: 16pt;
+  font-size: 15pt;
   font-weight: 400;
   color: #C7D2FE;
   margin-bottom: 32px;
@@ -235,8 +235,8 @@ function buildHTMLDocument(title, subtitle, markdownContent) {
     <div class="cover-subtitle">${subtitle}</div>
     <div style="width: 80px; height: 4px; background: #6366F1; margin: 20px auto;"></div>
     <div class="cover-meta">
-      <strong>InsAcc Enterprise Asset & Investment Platform v1.0.0</strong><br>
-      Single Source of Truth Specification — Complete Master Edition<br>
+      <strong>InsAcc Enterprise Asset & Investment Platform v2.0.0 Target Server</strong><br>
+      Single Source of Truth Specification — Official Installation Manual<br>
       Release Date: July 22, 2026 | Status: Official Publication<br>
       Classification: Commercial Enterprise Documentation
     </div>
@@ -270,43 +270,43 @@ async function main() {
 
   const rootDir = path.join(__dirname, '..')
 
-  // Clean up any existing individual PDFs in docs/enterprise/pdf/
-  const existingFiles = fs.readdirSync(pdfOutputDir)
-  for (const file of existingFiles) {
-    if (file.endsWith('.pdf')) {
-      fs.unlinkSync(path.join(pdfOutputDir, file))
-      console.log(`[CLEANUP] Deleted individual PDF: ${file}`)
-    }
-  }
+  // 1. Generate Dedicated Database Server Setup Guide PDF
+  const dbSetupGuideMarkdown = fs.readFileSync(path.join(rootDir, 'docs', 'POSTGRESQL_DATABASE_SERVER_STEP_BY_STEP_GUIDE.md'), 'utf-8')
+  const dbSetupHTML = buildHTMLDocument(
+    'PostgreSQL 17 Database Server Setup Manual',
+    'Detailed Step-by-Step Installation, Security Hardening, Tuning & Verification Guide',
+    dbSetupGuideMarkdown
+  )
+  const dbSetupPdfPath = path.join(pdfOutputDir, 'InsAcc_PostgreSQL_Database_Server_Step_By_Step_Guide.pdf')
+  console.log('[BUILDING PDF] InsAcc_PostgreSQL_Database_Server_Step_By_Step_Guide.pdf...')
+  await convertHTMLToPDF(browser, dbSetupHTML, dbSetupPdfPath)
+  console.log(`[SUCCESS] Dedicated Database Setup PDF Generated: ${dbSetupPdfPath}`)
 
-  // Master Document Compilation List (In Sequential Order)
+  // 2. Generate Master Consolidated Suite PDF (Updated with Step-by-Step Guide)
   const masterFilePaths = [
-    // Core Specifications
+    path.join(rootDir, 'docs', 'POSTGRESQL_DATABASE_SERVER_STEP_BY_STEP_GUIDE.md'),
     path.join(rootDir, 'docs', 'MASTER_ARCHITECTURE.md'),
     path.join(rootDir, 'docs', 'DATABASE_DESIGN_SPECIFICATION.md'),
     path.join(rootDir, 'docs', 'DATABASE_SERVER_SETUP_GUIDE.md'),
     path.join(rootDir, 'docs', 'ACCOUNTING_ENGINE_SPECIFICATION.md'),
     path.join(rootDir, 'docs', 'API_CONTRACT.md'),
 
-    // Volume 01: System Installation & Deployment Guide
+    // Volumes 01-09
     path.join(rootDir, 'docs', 'enterprise', 'Volume_01_Installation_Guide', 'Chapter_01_System_Requirements_and_Prerequisites.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_01_Installation_Guide', 'Chapter_02_Desktop_Client_Deployment.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_01_Installation_Guide', 'Chapter_03_Build_From_Source.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_01_Installation_Guide', 'Chapter_04_Deployment_Verification.md'),
 
-    // Volume 02: Data Management & Persistence Guide
     path.join(rootDir, 'docs', 'enterprise', 'Volume_02_Data_Management_Guide', 'Chapter_01_LocalStorage_Persistence_Architecture.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_02_Data_Management_Guide', 'Chapter_02_Schema_Versioning_and_Migrations.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_02_Data_Management_Guide', 'Chapter_03_Target_Database_Migration_Plan_[To_Be_Implemented].md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_02_Data_Management_Guide', 'Chapter_04_Database_Server_Setup_Guide_[To_Be_Implemented].md'),
 
-    // Volume 03: System Administrator Guide
     path.join(rootDir, 'docs', 'enterprise', 'Volume_03_System_Administrator_Guide', 'Chapter_01_Initial_Setup_and_Company_Configuration.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_03_System_Administrator_Guide', 'Chapter_02_User_Profiles_and_Access_Control.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_03_System_Administrator_Guide', 'Chapter_03_Chart_of_Accounts_Management.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_03_System_Administrator_Guide', 'Chapter_04_Period_Closing_Operations.md'),
 
-    // Volume 04: End-User Operations Manual
     path.join(rootDir, 'docs', 'enterprise', 'Volume_04_End_User_Manual', 'Chapter_01_Getting_Started_and_Navigation.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_04_End_User_Manual', 'Chapter_02_Investment_Portfolio_Management.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_04_End_User_Manual', 'Chapter_03_Purchase_Ledger_Operations.md'),
@@ -316,28 +316,23 @@ async function main() {
     path.join(rootDir, 'docs', 'enterprise', 'Volume_04_End_User_Manual', 'Chapter_07_Double_Entry_Voucher_Operations.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_04_End_User_Manual', 'Chapter_08_Financial_Reporting_and_Exports.md'),
 
-    // Volume 05: Interface and Integration Specification
     path.join(rootDir, 'docs', 'enterprise', 'Volume_05_Interface_and_Integration_Spec', 'Chapter_01_Desktop_IPC_Bridge.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_05_Interface_and_Integration_Spec', 'Chapter_02_Import_and_Export_Interfaces.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_05_Interface_and_Integration_Spec', 'Chapter_03_Target_REST_API_[To_Be_Implemented].md'),
 
-    // Volume 06: Developer Architecture & Technical Specification
     path.join(rootDir, 'docs', 'enterprise', 'Volume_06_Developer_Architecture_Guide', 'Chapter_01_System_Architecture_and_CQRS.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_06_Developer_Architecture_Guide', 'Chapter_02_Double_Entry_Accounting_Engine.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_06_Developer_Architecture_Guide', 'Chapter_03_Read_Models_and_Formatters.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_06_Developer_Architecture_Guide', 'Chapter_04_UI_Design_System_and_Tokens.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_06_Developer_Architecture_Guide', 'Chapter_05_Playwright_Test_Framework.md'),
 
-    // Volume 07: Disaster Recovery & Business Continuity Guide
     path.join(rootDir, 'docs', 'enterprise', 'Volume_07_Disaster_Recovery_Guide', 'Chapter_01_Backup_Strategy_and_Automation.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_07_Disaster_Recovery_Guide', 'Chapter_02_Data_Restoration_and_Emergency_Recovery.md'),
 
-    // Volume 08: Security Guide
     path.join(rootDir, 'docs', 'enterprise', 'Volume_08_Security_Guide', 'Chapter_01_Client_Security_and_Isolation.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_08_Security_Guide', 'Chapter_02_Credential_Storage_and_Authentication_Gaps.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_08_Security_Guide', 'Chapter_03_Security_Hardening_Roadmap_[To_Be_Implemented].md'),
 
-    // Volume 09: Enterprise Appendices
     path.join(rootDir, 'docs', 'enterprise', 'Volume_09_Appendices', 'Appendix_A_Accounting_Event_Registry.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_09_Appendices', 'Appendix_B_Posting_Rules_Table.md'),
     path.join(rootDir, 'docs', 'enterprise', 'Volume_09_Appendices', 'Appendix_C_Storage_Key_Dictionary.md'),
@@ -345,32 +340,27 @@ async function main() {
   ]
 
   let masterMarkdown = `# InsAcc Enterprise ERP Documentation Suite\n## Complete Master Edition\n\n`
-
   for (const filePath of masterFilePaths) {
     if (fs.existsSync(filePath)) {
-      const content = fs.readFileSync(filePath, 'utf-8')
-      masterMarkdown += content + '\n\n<div class="page-break"></div>\n\n'
-    } else {
-      console.warn(`[WARN] File not found: ${filePath}`)
+      masterMarkdown += fs.readFileSync(filePath, 'utf-8') + '\n\n<div class="page-break"></div>\n\n'
     }
   }
 
-  // Generate Single Master PDF
   const masterOutputName = 'InsAcc_Enterprise_Documentation_Suite_Master.pdf'
   const masterPdfPath = path.join(pdfOutputDir, masterOutputName)
 
-  console.log(`[BUILDING SINGLE MASTER PDF] ${masterOutputName}...`)
+  console.log(`[BUILDING MASTER PDF] ${masterOutputName}...`)
   const masterHTML = buildHTMLDocument(
     'InsAcc Enterprise Documentation Suite',
-    'Complete 9-Volume & Platform Core Master Edition',
+    'Complete Master Enterprise Reference Manual',
     masterMarkdown
   )
   
   await convertHTMLToPDF(browser, masterHTML, masterPdfPath)
-  console.log(`[SUCCESS] Single Master PDF Generated: ${masterPdfPath}`)
+  console.log(`[SUCCESS] Master PDF Generated: ${masterPdfPath}`)
 
   await browser.close()
-  console.log('[COMPLETE] Single Master PDF generated. All individual volume PDFs purged.')
+  console.log('[COMPLETE] Database Server Setup PDF & Master Suite compiled successfully.')
 }
 
 main().catch(err => {

@@ -2447,12 +2447,14 @@ export default function App() {
     if (activeModule === 'property') {
       setPropVouchers([])
       setPropAuditEvents([])
+      setPropExpenses([])
     } else {
       setVouchers([])
       setAuditEvents([])
+      setPurchaseRecords([])
     }
     invalidateBalanceCache()
-  }, [activeModule, setPropVouchers, setPropAuditEvents, setVouchers, setAuditEvents])
+  }, [activeModule, setPropVouchers, setPropAuditEvents, setPropExpenses, setVouchers, setAuditEvents, setPurchaseRecords])
 
   const handleResetAllData = useCallback(() => {
     resetInvestments()
