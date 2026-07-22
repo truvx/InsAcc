@@ -22,7 +22,6 @@ import InvestmentPaymentVoucher from './InvestmentPaymentVoucher'
 import InvestmentJournalVoucher from './InvestmentJournalVoucher'
 import InvestmentReports from './InvestmentReports'
 import InvestmentBankAccounts from './InvestmentBankAccounts'
-import InvestmentHistory from './InvestmentHistory'
 
 import Documents from './Documents'
 import History from './History'
@@ -233,8 +232,7 @@ export default function InvestmentRouter(props: Props) {
       )
     case 'history':
       return (
-        <InvestmentHistory
-          vouchers={vouchers}
+        <History
           auditEvents={auditEvents}
           language={language}
           onClearHistory={props.onClearTransactions}

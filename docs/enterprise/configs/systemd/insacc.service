@@ -1,0 +1,30 @@
+# Systemd Service Unit Configuration for InsAcc Enterprise API [To Be Implemented]
+# File: /etc/systemd/system/insacc.service
+
+[Unit]
+Description=InsAcc Enterprise REST API Backend Service
+Documentation=https://docs.insacc.com
+After=network.target postgresql.service nginx.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=insacc
+Group=insacc
+WorkingDirectory=/opt/insacc/backend
+ExecStart=/usr/bin/node /opt/insacc/backend/dist/server.js
+Restart=always
+RestartSec=5s
+
+# Environment Variables
+Environment=NODE_ENV=production
+Environment=PORT=3000
+
+# Security Hardening Directives
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
