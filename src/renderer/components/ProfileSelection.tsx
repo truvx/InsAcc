@@ -5,6 +5,7 @@ import type { Profile } from '../data/sampleData'
 interface Props {
   profiles: Profile[]
   onSelect: (profile: Profile) => void
+  onBackToLogin: () => void
 }
 
 const ROLE_STYLE: Record<string, { gradient: string; color: string }> = {
@@ -28,12 +29,45 @@ const cardVariants = {
   }),
 }
 
-export default function ProfileSelection({ profiles, onSelect }: Props) {
+export default function ProfileSelection({ profiles, onSelect, onBackToLogin }: Props) {
   return (
     <div className="ps-page">
       <div className="ps-layout">
         <div className="ps-left">
-          <div className="ps-brand">
+          <div className="ps-brand" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button
+              onClick={onBackToLogin}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                borderRadius: 6,
+                fontSize: 14,
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 500,
+                color: '#5C6A86',
+                marginRight: 8,
+                transition: 'all 150ms',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(92, 106, 134, 0.08)'
+                e.currentTarget.style.color = '#1E293B'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.color = '#5C6A86'
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                <line x1="19" y1="12" x2="5" y2="12" />
+                <polyline points="12 19 5 12 12 5" />
+              </svg>
+              Back
+            </button>
             <div className="ps-logo">I</div>
             <div>
               <div className="ps-brand-name">InsAcc</div>

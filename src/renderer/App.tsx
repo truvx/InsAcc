@@ -2754,7 +2754,11 @@ export default function App() {
   if (screen === 'profiles') {
     return (
       <Suspense fallback={<LoadingFallback />}>
-        <ProfileSelection profiles={storedLoginProfiles} onSelect={handleProfileSelect} />
+        <ProfileSelection
+          profiles={storedLoginProfiles}
+          onSelect={handleProfileSelect}
+          onBackToLogin={() => setScreen('login')}
+        />
       </Suspense>
     )
   }
