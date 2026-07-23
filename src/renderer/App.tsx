@@ -2454,6 +2454,37 @@ export default function App() {
       setPurchaseRecords([])
     }
     invalidateBalanceCache()
+
+    // Sync cleared state to Supabase immediately if enabled
+    try {
+      const enabledVal = localStorage.getItem('insacc_supabase_enabled')
+      const enabled = enabledVal ? JSON.parse(enabledVal) === true : false
+      
+      const rawUrl = localStorage.getItem('insacc_supabase_url')
+      const url = rawUrl ? JSON.parse(rawUrl) : ''
+      
+      const rawKey = localStorage.getItem('insacc_supabase_key')
+      const anonKey = rawKey ? JSON.parse(rawKey) : ''
+      
+      if (enabled && url && anonKey) {
+        import('./services/supabaseSyncService').then(({ getSupabaseClient, pushState }) => {
+          const client = getSupabaseClient(url, anonKey)
+          if (client) {
+            if (activeModule === 'property') {
+              pushState(client, 'insacc_prop_vouchers', [])
+              pushState(client, 'insacc_prop_audit_events', [])
+              pushState(client, 'insacc_prop_expenses', [])
+            } else {
+              pushState(client, 'insacc_vouchers', [])
+              pushState(client, 'insacc_audit_events', [])
+              pushState(client, 'insacc_purchases_ledger', [])
+            }
+          }
+        })
+      }
+    } catch (err) {
+      console.error('Failed to sync cleared history to Supabase:', err)
+    }
   }, [activeModule, setPropVouchers, setPropAuditEvents, setPropExpenses, setVouchers, setAuditEvents, setPurchaseRecords])
 
   const handleResetAllData = useCallback(() => {
