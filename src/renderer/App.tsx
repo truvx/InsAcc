@@ -2835,7 +2835,7 @@ export default function App() {
                 <line x1="19" y1="12" x2="5" y2="12" />
                 <polyline points="12 19 5 12 12 5" />
               </svg>
-              {activePage === 'dashboard' ? 'Back to Modules' : 'Back to Dashboard'}
+              {activePage === 'dashboard' ? 'Back to Portfolios' : 'Back to Dashboard'}
             </button>
             <button
               onClick={handleChangeProfile}

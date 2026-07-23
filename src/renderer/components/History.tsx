@@ -118,7 +118,7 @@ export default function History({ auditEvents, language = 'English', onClearHist
   const moduleOptions = useMemo(() => {
     const modules = new Set(auditEvents.map(e => e.module))
     return [
-      { value: '', label: 'All Modules' },
+      { value: '', label: 'All Sections' },
       ...Array.from(modules).sort().map(m => ({ value: m, label: m })),
     ]
   }, [auditEvents])
@@ -254,7 +254,7 @@ export default function History({ auditEvents, language = 'English', onClearHist
             <input
               type="text"
               className="data-table-search-input"
-              placeholder="Search by module, entity, action, description..."
+              placeholder="Search by section, entity, action, description..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
@@ -275,7 +275,7 @@ export default function History({ auditEvents, language = 'English', onClearHist
               </svg>
             }
             title="No events found"
-            text="Events from all modules will appear here automatically"
+            text="Events from all sections will appear here automatically"
           />
         ) : (
           <div className="history-layout">
@@ -356,7 +356,7 @@ export default function History({ auditEvents, language = 'English', onClearHist
                       <div className="history-detail-section">
                         <div className="history-detail-section-title">Overview</div>
                         <div className="history-detail-row">
-                          <span className="history-detail-label">Module</span>
+                          <span className="history-detail-label">Section</span>
                           <span className="history-detail-value">
                             <Badge variant="primary">{selectedEvent.module}</Badge>
                           </span>
