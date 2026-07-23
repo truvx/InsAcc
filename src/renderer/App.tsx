@@ -2445,6 +2445,15 @@ export default function App() {
 
   const handleClearTransactions = useCallback(() => {
     const performClear = async () => {
+      // Clean up dynamic asset sub-accounts that were auto-created for previous purchases
+      let cleanedAccounts = accounts
+      try {
+        cleanedAccounts = accounts.filter(a => !a.description?.includes('Auto-created for purchase'))
+        setAccounts(cleanedAccounts)
+      } catch (err) {
+        console.error('Error cleaning dynamic accounts:', err)
+      }
+
       // 1. Clear Investment Module transaction/history states locally
       setVouchers([])
       setAuditEvents([])
@@ -2487,6 +2496,7 @@ export default function App() {
           const client = getSupabaseClient(url, anonKey)
           if (client) {
             await Promise.all([
+              pushState(client, 'insacc_accounts', cleanedAccounts),
               pushState(client, 'insacc_vouchers', []),
               pushState(client, 'insacc_audit_events', []),
               pushState(client, 'insacc_purchases_ledger', []),
@@ -2520,7 +2530,7 @@ export default function App() {
 
     performClear()
   }, [
-    setVouchers, setAuditEvents, setPurchaseRecords, setPurchases, setTransactions,
+    accounts, setAccounts, setVouchers, setAuditEvents, setPurchaseRecords, setPurchases, setTransactions,
     setBankTransactions, setBankReconciliations, setStatement, setBalance, setDocuments,
     setPropVouchers, setPropAuditEvents, setPropExpenses, setPropTenants, setPropLeases,
     setPdcCheques, setSecurityDeposits, setPropDocuments, setPropTransactions, setPropBankReconciliations
