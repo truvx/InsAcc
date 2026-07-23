@@ -2433,6 +2433,18 @@ export default function App() {
     setScreen('module')
   }, [])
 
+  const handleGoBack = useCallback(() => {
+    if (activePage === 'dashboard') {
+      setScreen('module')
+    } else {
+      setActivePage('dashboard')
+    }
+  }, [activePage])
+
+  const handleBackToProfiles = useCallback(() => {
+    setScreen('profiles')
+  }, [])
+
   const handleChangeProfile = useCallback(() => {
     setSelectedProfile(null)
     setScreen('profiles')
@@ -2733,7 +2745,7 @@ export default function App() {
         <Login
           onSuccess={handleLoginSuccess}
           storedPassword={storedPassword}
-          onBackToModule={selectedProfile ? handleBackToModule : undefined}
+          onBackToModule={handleBackToProfiles}
           loginEntries={loginEntries}
         />
       </Suspense>
@@ -2785,7 +2797,7 @@ export default function App() {
             style={{
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'flex-end',
+              justifyContent: 'space-between',
               padding: '0 24px',
               height: 48,
               flexShrink: 0,
@@ -2793,6 +2805,38 @@ export default function App() {
               borderBottom: '1px solid var(--header-border)',
             }}
           >
+            <button
+              onClick={handleGoBack}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                borderRadius: 6,
+                fontSize: 14,
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 500,
+                color: '#5C6A86',
+                transition: 'all 150ms',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = activeModule === 'property' ? 'rgba(222,141,169,0.08)' : 'rgba(59,165,73,0.08)'
+                e.currentTarget.style.color = activeModule === 'property' ? '#DE8DA9' : '#3BA549'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.color = '#5C6A86'
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                <line x1="19" y1="12" x2="5" y2="12" />
+                <polyline points="12 19 5 12 12 5" />
+              </svg>
+              {activePage === 'dashboard' ? 'Back to Modules' : 'Back to Dashboard'}
+            </button>
             <button
               onClick={handleChangeProfile}
               style={{
