@@ -2444,76 +2444,81 @@ export default function App() {
   }, [])
 
   const handleClearTransactions = useCallback(() => {
-    // 1. Clear Investment Module transaction/history states
-    setVouchers([])
-    setAuditEvents([])
-    setPurchaseRecords([])
-    setPurchases([])
-    setTransactions([])
-    setBankTransactions([])
-    setBankReconciliations([])
-    setStatement([])
-    setBalance(0)
-    setDocuments([])
+    const performClear = async () => {
+      // 1. Clear Investment Module transaction/history states locally
+      setVouchers([])
+      setAuditEvents([])
+      setPurchaseRecords([])
+      setPurchases([])
+      setTransactions([])
+      setBankTransactions([])
+      setBankReconciliations([])
+      setStatement([])
+      setBalance(0)
+      setDocuments([])
 
-    // 2. Clear Property Module transaction/history states
-    setPropVouchers([])
-    setPropAuditEvents([])
-    setPropExpenses([])
-    setPropTenants([])
-    setPropLeases([])
-    setPdcCheques([])
-    setSecurityDeposits([])
-    setPropDocuments([])
-    setPropTransactions([])
-    setPropBankReconciliations([])
+      // 2. Clear Property Module transaction/history states locally
+      setPropVouchers([])
+      setPropAuditEvents([])
+      setPropExpenses([])
+      setPropTenants([])
+      setPropLeases([])
+      setPdcCheques([])
+      setSecurityDeposits([])
+      setPropDocuments([])
+      setPropTransactions([])
+      setPropBankReconciliations([])
 
-    invalidateBalanceCache()
+      invalidateBalanceCache()
 
-    // 3. Sync cleared states to Supabase immediately if enabled
-    try {
-      const enabledVal = localStorage.getItem('insacc_supabase_enabled')
-      const enabled = enabledVal ? JSON.parse(enabledVal) === true : false
-      
-      const rawUrl = localStorage.getItem('insacc_supabase_url')
-      const url = rawUrl ? JSON.parse(rawUrl) : ''
-      
-      const rawKey = localStorage.getItem('insacc_supabase_key')
-      const anonKey = rawKey ? JSON.parse(rawKey) : ''
-      
-      if (enabled && url && anonKey) {
-        import('./services/supabaseSyncService').then(({ getSupabaseClient, pushState }) => {
+      // 3. Sync cleared states to Supabase and wait for all to complete
+      try {
+        const enabledVal = localStorage.getItem('insacc_supabase_enabled')
+        const enabled = enabledVal ? JSON.parse(enabledVal) === true : false
+        
+        const rawUrl = localStorage.getItem('insacc_supabase_url')
+        const url = rawUrl ? JSON.parse(rawUrl) : ''
+        
+        const rawKey = localStorage.getItem('insacc_supabase_key')
+        const anonKey = rawKey ? JSON.parse(rawKey) : ''
+        
+        if (enabled && url && anonKey) {
+          const { getSupabaseClient, pushState } = await import('./services/supabaseSyncService')
           const client = getSupabaseClient(url, anonKey)
           if (client) {
-            // Push cleared Investment keys
-            pushState(client, 'insacc_vouchers', [])
-            pushState(client, 'insacc_audit_events', [])
-            pushState(client, 'insacc_purchases_ledger', [])
-            pushState(client, 'insacc_purchases', [])
-            pushState(client, 'insacc_transactions', [])
-            pushState(client, 'insacc_bank_transactions', [])
-            pushState(client, 'insacc_bank_reconciliations', [])
-            pushState(client, 'insacc_statement', [])
-            pushState(client, 'insacc_balance', 0)
-            pushState(client, 'insacc_documents', [])
-
-            // Push cleared Property keys
-            pushState(client, 'insacc_prop_vouchers', [])
-            pushState(client, 'insacc_prop_audit_events', [])
-            pushState(client, 'insacc_prop_expenses', [])
-            pushState(client, 'insacc_prop_tenants', [])
-            pushState(client, 'insacc_prop_leases', [])
-            pushState(client, 'insacc_pdc_cheques', [])
-            pushState(client, 'insacc_security_deposits', [])
-            pushState(client, 'insacc_prop_documents', [])
-            pushState(client, 'insacc_prop_transactions', [])
-            pushState(client, 'insacc_prop_bank_reconciliations', [])
+            await Promise.all([
+              pushState(client, 'insacc_vouchers', []),
+              pushState(client, 'insacc_audit_events', []),
+              pushState(client, 'insacc_purchases_ledger', []),
+              pushState(client, 'insacc_purchases', []),
+              pushState(client, 'insacc_transactions', []),
+              pushState(client, 'insacc_bank_transactions', []),
+              pushState(client, 'insacc_bank_reconciliations', []),
+              pushState(client, 'insacc_statement', []),
+              pushState(client, 'insacc_balance', 0),
+              pushState(client, 'insacc_documents', []),
+              pushState(client, 'insacc_prop_vouchers', []),
+              pushState(client, 'insacc_prop_audit_events', []),
+              pushState(client, 'insacc_prop_expenses', []),
+              pushState(client, 'insacc_prop_tenants', []),
+              pushState(client, 'insacc_prop_leases', []),
+              pushState(client, 'insacc_pdc_cheques', []),
+              pushState(client, 'insacc_security_deposits', []),
+              pushState(client, 'insacc_prop_documents', []),
+              pushState(client, 'insacc_prop_transactions', []),
+              pushState(client, 'insacc_prop_bank_reconciliations', [])
+            ])
           }
-        })
+        }
+      } catch (err) {
+        console.error('Failed to sync cleared history to Supabase:', err)
       }
-    } catch (err) {
-      console.error('Failed to sync cleared history to Supabase:', err)
+
+      // 4. Reload page to restart all read models and state machines cleanly
+      window.location.reload()
     }
+
+    performClear()
   }, [
     setVouchers, setAuditEvents, setPurchaseRecords, setPurchases, setTransactions,
     setBankTransactions, setBankReconciliations, setStatement, setBalance, setDocuments,
