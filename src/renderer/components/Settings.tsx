@@ -236,22 +236,6 @@ export default function Settings({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 500 }}>Application Theme</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Current: {currentTheme === 'dark' ? 'Dark Mode' : 'Light Turquoise'}</div>
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button className={`chart-period ${currentTheme === 'light' ? 'active' : ''}`} onClick={() => { onThemeChange('light'); onAuditEvent?.(recordModuleEvent('Settings', 'Update', 'Theme', '', `Theme changed to Light`)) }} style={{ padding: '8px 20px', fontSize: 13 }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6, verticalAlign: 'middle' }}><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                    Light
-                  </button>
-                  <button className={`chart-period ${currentTheme === 'dark' ? 'active' : ''}`} onClick={() => { onThemeChange('dark'); onAuditEvent?.(recordModuleEvent('Settings', 'Update', 'Theme', '', `Theme changed to Dark`)) }} style={{ padding: '8px 20px', fontSize: 13 }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6, verticalAlign: 'middle' }}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                    Dark
-                  </button>
-                </div>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
-                <div>
                   <div style={{ fontSize: 14, fontWeight: 500 }}>Default Currency</div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Current: {currency}</div>
                 </div>
