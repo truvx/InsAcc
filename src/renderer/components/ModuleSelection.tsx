@@ -182,7 +182,40 @@ export default function ModuleSelection({ onSelect, onBackToProfiles }: Props) {
         <div className="ms-left">
           <div className="ms-left-bg" />
           <div className="ms-left-content">
-            <div className="ms-brand">
+            <div className="ms-brand" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button
+                onClick={onBackToProfiles}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 12px',
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  borderRadius: 6,
+                  fontSize: 14,
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 500,
+                  color: '#5C6A86',
+                  marginRight: 8,
+                  transition: 'all 150ms',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = 'rgba(92, 106, 134, 0.08)'
+                  e.currentTarget.style.color = '#1E293B'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = '#5C6A86'
+                }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                  <line x1="19" y1="12" x2="5" y2="12" />
+                  <polyline points="12 19 5 12 12 5" />
+                </svg>
+                Back
+              </button>
               <div className="ms-logo-mark">I</div>
               <div className="ms-logo-text">InsAcc</div>
             </div>
