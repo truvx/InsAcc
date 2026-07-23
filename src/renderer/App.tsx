@@ -2745,7 +2745,6 @@ export default function App() {
         <Login
           onSuccess={handleLoginSuccess}
           storedPassword={storedPassword}
-          onBackToModule={handleBackToProfiles}
           loginEntries={loginEntries}
         />
       </Suspense>
