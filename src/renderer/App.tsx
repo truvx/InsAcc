@@ -2452,6 +2452,7 @@ export default function App() {
       setVouchers([])
       setAuditEvents([])
       setPurchaseRecords([])
+      setPurchases([])
     }
     invalidateBalanceCache()
 
@@ -2478,6 +2479,7 @@ export default function App() {
               pushState(client, 'insacc_vouchers', [])
               pushState(client, 'insacc_audit_events', [])
               pushState(client, 'insacc_purchases_ledger', [])
+              pushState(client, 'insacc_purchases', [])
             }
           }
         })
@@ -2485,7 +2487,7 @@ export default function App() {
     } catch (err) {
       console.error('Failed to sync cleared history to Supabase:', err)
     }
-  }, [activeModule, setPropVouchers, setPropAuditEvents, setPropExpenses, setVouchers, setAuditEvents, setPurchaseRecords])
+  }, [activeModule, setPropVouchers, setPropAuditEvents, setPropExpenses, setVouchers, setAuditEvents, setPurchaseRecords, setPurchases])
 
   const handleResetAllData = useCallback(() => {
     resetInvestments()
