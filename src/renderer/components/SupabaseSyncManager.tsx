@@ -45,6 +45,14 @@ export default function SupabaseSyncManager() {
         if (active) setShowSkip(true)
       }, 3000)
 
+      // Ultimate failsafe: hide the loader after 15 seconds no matter what.
+      setTimeout(() => {
+        if (active) {
+          setLoading(false)
+          ;(window as any).supabaseSyncInitialized = true
+        }
+      }, 15000)
+
       const client = getSupabaseClient(url, anonKey)
       if (!client) {
         (window as any).supabaseSyncInitialized = true
