@@ -5607,3 +5607,52 @@ span.account-link:hover {
   .tv-value { width: 90px; }
   .tv-pct { width: 55px; }
 }
+
+.btn svg {
+  vertical-align: middle;
+  margin-top: -2px;
+}
+
+.new-txn-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--text-primary);
+  border-radius: 4px;
+}
+.new-txn-dropdown-item:hover {
+  background: var(--bg-tertiary);
+}
+.new-txn-dropdown-item svg {
+  flex-shrink: 0;
+}
+
+.new-txn-dropdown-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  padding: 8px 12px !important;
+  border: none !important;
+  background: none !important;
+  cursor: pointer !important;
+  font-family: var(--font-sans) !important;
+  font-size: 14px !important;
+  color: var(--text-primary) !important;
+  border-radius: 4px !important;
+  text-align: left !important;
+}
+.new-txn-dropdown-item:hover {
+  background: var(--bg-tertiary) !important;
+}
+.new-txn-dropdown-item svg {
+  flex-shrink: 0 !important;
+  vertical-align: middle !important;
+}
