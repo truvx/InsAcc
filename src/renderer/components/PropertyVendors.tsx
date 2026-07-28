@@ -55,10 +55,10 @@ export default function PropertyVendors({
   currency = 'AED',
   dateFormat = 'DD/MM/YYYY',
   language = 'en',
-  vendors,
+  vendors = [],
   setVendors,
-  expenses,
-  properties,
+  expenses = [],
+  properties = [],
   onAuditEvent,
 }: Props) {
   const [search, setSearch] = useState('')
