@@ -34,6 +34,7 @@ export function useLazyPersistedState<T>(key: string, defaultValue: T): [T, Reac
   })
 
   const isFirstRender = useRef(true)
+  const isRemoteUpdate = useRef(false)
 
   useEffect(() => {
     try {
@@ -51,6 +52,16 @@ export function useLazyPersistedState<T>(key: string, defaultValue: T): [T, Reac
 
       localStorage.setItem(key, stateStr)
       cache.set(key, stateStr)
+
+      // Skip pushing to Supabase if this state update came from remote sync or while pulling
+      if (isRemoteUpdate.current) {
+        isRemoteUpdate.current = false
+        return
+      }
+
+      if ((window as any).isSupabasePulling) {
+        return
+      }
 
       // Sync to Supabase if enabled and initialized
       if (key !== 'insacc_supabase_url' && key !== 'insacc_supabase_key' && key !== 'insacc_supabase_enabled') {
@@ -75,18 +86,36 @@ export function useLazyPersistedState<T>(key: string, defaultValue: T): [T, Reac
     } catch {}
   }, [state, key])
 
-  // Listen to storage events (triggered by Supabase realtime listener or other tabs)
+  // Listen to storage events & custom remote sync events
   useEffect(() => {
     const handleStorageChange = (e: any) => {
       if (e.key === key && e.newValue !== null) {
         try {
           const parsed = JSON.parse(e.newValue) as T
+          isRemoteUpdate.current = true
+          cache.set(key, e.newValue)
           setState(parsed)
         } catch {}
       }
     }
+
+    const handleRemoteSync = (e: CustomEvent<{ key: string; value: any }>) => {
+      if (e.detail && e.detail.key === key) {
+        try {
+          const valStr = JSON.stringify(e.detail.value)
+          isRemoteUpdate.current = true
+          cache.set(key, valStr)
+          setState(e.detail.value)
+        } catch {}
+      }
+    }
+
     window.addEventListener('storage' as any, handleStorageChange)
-    return () => window.removeEventListener('storage' as any, handleStorageChange)
+    window.addEventListener('insacc-remote-sync' as any, handleRemoteSync)
+    return () => {
+      window.removeEventListener('storage' as any, handleStorageChange)
+      window.removeEventListener('insacc-remote-sync' as any, handleRemoteSync)
+    }
   }, [key])
 
   const reset = useCallback(() => {

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { getSupabaseClient, pullAllStates } from '../services/supabaseSyncService'
+import { getSupabaseClient, pullAllStates, pushAllLocalData } from '../services/supabaseSyncService'
+import { clearPersistedCache } from '../utils/lazyPersistedState'
 
 export default function SupabaseSyncManager() {
   const [status, setStatus] = useState<'disconnected' | 'connected' | 'syncing' | 'error'>('disconnected')
@@ -26,6 +27,7 @@ export default function SupabaseSyncManager() {
 
       if (!enabled || !url || !anonKey) {
         (window as any).supabaseSyncInitialized = true
+        (window as any).isSupabasePulling = false
         setStatus('disconnected')
         localStorage.setItem('insacc_supabase_status', 'disconnected')
         return
@@ -38,6 +40,7 @@ export default function SupabaseSyncManager() {
       const client = getSupabaseClient(url, anonKey)
       if (!client) {
         (window as any).supabaseSyncInitialized = true
+        (window as any).isSupabasePulling = false
         setStatus('error')
         localStorage.setItem('insacc_supabase_status', 'error')
         setLoading(false)
@@ -47,8 +50,15 @@ export default function SupabaseSyncManager() {
       try {
         // Initial Pull Phase
         if (!(window as any).supabaseSyncInitialized) {
+          (window as any).isSupabasePulling = true
           const records = await pullAllStates(client)
-          if (active && records.length > 0) {
+
+          if (active && records.length === 0) {
+            // Supabase database is empty — push local data up to populate it
+            await pushAllLocalData(url, anonKey)
+          } else if (active && records.length > 0) {
+            // Supabase database has records — populate local storage & React state
+            clearPersistedCache()
             for (const record of records) {
               if (
                 record.key &&
@@ -58,11 +68,11 @@ export default function SupabaseSyncManager() {
               ) {
                 const stateStr = JSON.stringify(record.value)
                 localStorage.setItem(record.key, stateStr)
-                // Dispatch event so active useLazyPersistedState states update in real-time
-                window.dispatchEvent(new StorageEvent('storage', { key: record.key, newValue: stateStr }))
+                window.dispatchEvent(new CustomEvent('insacc-remote-sync', { detail: { key: record.key, value: record.value } }))
               }
             }
           }
+          (window as any).isSupabasePulling = false
           (window as any).supabaseSyncInitialized = true
         }
 
@@ -89,7 +99,7 @@ export default function SupabaseSyncManager() {
                   const stateStr = JSON.stringify(record.value)
                   if (localStorage.getItem(record.key) !== stateStr) {
                     localStorage.setItem(record.key, stateStr)
-                    window.dispatchEvent(new StorageEvent('storage', { key: record.key, newValue: stateStr }))
+                    window.dispatchEvent(new CustomEvent('insacc-remote-sync', { detail: { key: record.key, value: record.value } }))
                   }
                 }
               }
@@ -99,6 +109,7 @@ export default function SupabaseSyncManager() {
       } catch (err) {
         console.error('Failed to initialize Supabase Realtime channel:', err)
         if (active) {
+          (window as any).isSupabasePulling = false
           (window as any).supabaseSyncInitialized = true
           setStatus('error')
           localStorage.setItem('insacc_supabase_status', 'error')
