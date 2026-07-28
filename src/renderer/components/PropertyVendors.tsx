@@ -501,7 +501,7 @@ export default function PropertyVendors({
           {/* Drawer Panel */}
           <div style={{
             position: 'relative', width: '100%', maxWidth: 640,
-            background: 'var(--bg-primary)', boxShadow: '-4px 0 24px rgba(0,0,0,0.15)',
+            background: 'var(--surface)', boxShadow: '-4px 0 24px rgba(0,0,0,0.15)',
             display: 'flex', flexDirection: 'column', overflow: 'hidden',
             animation: 'slideInRight 0.3s ease-out',
           }}>
@@ -518,34 +518,32 @@ export default function PropertyVendors({
                     {drawerVendor.contactPerson && ` · ${drawerVendor.contactPerson}`}
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <Button variant="ghost" size="sm" onClick={handlePrintLedger} title="Print Ledger"><Printer size={16} /></Button>
-                  <button onClick={() => setDrawerVendor(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4 }}>
-                    <CloseIcon />
-                  </button>
+                  <Button variant="ghost" size="sm" onClick={() => setDrawerVendor(null)} title="Close"><CloseIcon /></Button>
                 </div>
               </div>
               {/* Summary Cards */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 16 }}>
                 <div style={{
                   padding: '12px 16px', borderRadius: 10,
-                  background: 'var(--bg-primary)', border: '1px solid var(--border)',
+                  background: 'var(--card)', border: '1px solid var(--border)',
                 }}>
                   <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Paid</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent)', marginTop: 4 }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)', marginTop: 4 }}>
                     <CurrencyText value={vendorLedgerTotal} currency={currency} />
                   </div>
                 </div>
                 <div style={{
                   padding: '12px 16px', borderRadius: 10,
-                  background: 'var(--bg-primary)', border: '1px solid var(--border)',
+                  background: 'var(--card)', border: '1px solid var(--border)',
                 }}>
                   <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Payments</div>
                   <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4 }}>{vendorLedger.length}</div>
                 </div>
                 <div style={{
                   padding: '12px 16px', borderRadius: 10,
-                  background: 'var(--bg-primary)', border: '1px solid var(--border)',
+                  background: 'var(--card)', border: '1px solid var(--border)',
                 }}>
                   <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Status</div>
                   <div style={{ marginTop: 4 }}>
