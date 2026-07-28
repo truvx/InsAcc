@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 interface Props {
   onSelect: (module: 'investment' | 'property') => void
   onBackToProfiles: () => void
+  onBackToLogin: () => void
 }
 
 function ShieldIcon() {
@@ -138,7 +139,7 @@ function ModuleCard({
   )
 }
 
-export default function ModuleSelection({ onSelect, onBackToProfiles }: Props) {
+export default function ModuleSelection({ onSelect, onBackToProfiles, onBackToLogin }: Props) {
   return (
     <div className="ms-screen">
       <motion.div
@@ -183,39 +184,6 @@ export default function ModuleSelection({ onSelect, onBackToProfiles }: Props) {
           <div className="ms-left-bg" />
           <div className="ms-left-content">
             <div className="ms-brand" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button
-                onClick={onBackToProfiles}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '6px 12px',
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  borderRadius: 6,
-                  fontSize: 14,
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 500,
-                  color: '#5C6A86',
-                  marginRight: 8,
-                  transition: 'all 150ms',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = 'rgba(92, 106, 134, 0.08)'
-                  e.currentTarget.style.color = '#1E293B'
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = 'transparent'
-                  e.currentTarget.style.color = '#5C6A86'
-                }}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                  <line x1="19" y1="12" x2="5" y2="12" />
-                  <polyline points="12 19 5 12 12 5" />
-                </svg>
-                Back
-              </button>
               <div className="ms-logo-mark">I</div>
               <div className="ms-logo-text">InsAcc</div>
             </div>
@@ -244,19 +212,40 @@ export default function ModuleSelection({ onSelect, onBackToProfiles }: Props) {
               })}
             </div>
 
-            <div className="ms-charts">
-              <svg className="ms-chart-svg" viewBox="0 0 400 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="20" y="70" width="20" height="40" rx="3" fill="#2F54C8" opacity="0.08" />
-                <rect x="50" y="45" width="20" height="65" rx="3" fill="#2F54C8" opacity="0.08" />
-                <rect x="80" y="55" width="20" height="55" rx="3" fill="#2F54C8" opacity="0.08" />
-                <rect x="110" y="30" width="20" height="80" rx="3" fill="#2F54C8" opacity="0.08" />
-                <rect x="140" y="50" width="20" height="60" rx="3" fill="#2F54C8" opacity="0.08" />
-                <rect x="170" y="25" width="20" height="85" rx="3" fill="#2F54C8" opacity="0.08" />
-                <path d="M220 85 L260 65 L300 70 L340 45 L380 50" stroke="#DE8DA9" strokeWidth="2.5" opacity="0.1" vectorEffect="non-scaling-stroke" />
-                <circle cx="260" cy="65" r="4" fill="#DE8DA9" opacity="0.12" />
-                <circle cx="340" cy="45" r="4" fill="#DE8DA9" opacity="0.12" />
-                <circle cx="380" cy="50" r="4" fill="#DE8DA9" opacity="0.12" />
-              </svg>
+            <div className="ms-charts" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <button
+                onClick={onBackToLogin}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 12px',
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  borderRadius: 6,
+                  fontSize: 14,
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 500,
+                  color: '#5C6A86',
+                  transition: 'all 150ms',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)'
+                  e.currentTarget.style.color = '#EF4444'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = '#5C6A86'
+                }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                Back to Login
+              </button>
             </div>
 
             <div className="ms-copyright">

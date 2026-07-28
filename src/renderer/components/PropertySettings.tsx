@@ -103,13 +103,7 @@ export default function PropertySettings({
                 onChange={e => { onSetLanguage(e.target.value); setToast({ visible: true, message: 'Language updated', type: 'success' }) }}
                 options={LANGUAGE_OPTIONS}
               />
-              <div className="form-group">
-                <label className="form-label">Theme</label>
-                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                  <Button variant={currentTheme === 'light' ? 'primary' : 'secondary'} size="sm" onClick={() => onThemeChange('light')}>Light</Button>
-                  <Button variant={currentTheme === 'dark' ? 'primary' : 'secondary'} size="sm" onClick={() => onThemeChange('dark')}>Dark</Button>
-                </div>
-              </div>
+
             </div>
           </div>
         </div>

@@ -2766,13 +2766,17 @@ export default function App() {
     )
   }
 
-  if (screen === 'module') {
-    return (
-      <Suspense fallback={<LoadingFallback />}>
-        <ModuleSelection onSelect={handleModuleSelect} onBackToProfiles={() => setScreen('profiles')} />
-      </Suspense>
-    )
-  }
+    if (screen === 'module') {
+      return (
+        <Suspense fallback={<LoadingFallback />}>
+          <ModuleSelection 
+            onSelect={handleModuleSelect} 
+            onBackToProfiles={() => setScreen('profiles')} 
+            onBackToLogin={() => setScreen('login')}
+          />
+        </Suspense>
+      )
+    }
 
   if (screen === 'dashboard') {
     const renderPage = () => {
