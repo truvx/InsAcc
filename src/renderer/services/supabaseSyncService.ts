@@ -92,6 +92,7 @@ export async function pushAllLocalData(url: string, anonKey: string): Promise<bo
   if (!client) return false
 
   try {
+    let allSuccess = true
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
       if (
@@ -104,14 +105,16 @@ export async function pushAllLocalData(url: string, anonKey: string): Promise<bo
         const valStr = localStorage.getItem(key)
         if (valStr) {
           try {
-            await pushState(client, key, JSON.parse(valStr))
+            const success = await pushState(client, key, JSON.parse(valStr))
+            if (!success) allSuccess = false
           } catch (err) {
             console.error(`Failed to push single key ${key}:`, err)
+            allSuccess = false
           }
         }
       }
     }
-    return true
+    return allSuccess
   } catch (e) {
     console.error('Failed to push all local data:', e)
     return false

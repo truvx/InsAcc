@@ -126,7 +126,7 @@ export default function PropertySettings({
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Enable Realtime for the table
+ALTER TABLE public.app_sync_state DISABLE ROW LEVEL SECURITY;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.app_sync_state;`}
               </pre>
             </div>
