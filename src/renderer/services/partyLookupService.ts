@@ -1,4 +1,4 @@
-import type { TenantEntry, LeaseEntry, PropertyEntry, UnitEntry } from '../data/propertyTypes'
+import type { TenantEntry, LeaseEntry, PropertyEntry, UnitEntry, VendorEntry } from '../data/propertyTypes'
 import type { Vendor, MasterCustomer } from '../data/masterData'
 import type { PurchaseRecord } from '../data/purchaseLedger'
 
@@ -20,6 +20,7 @@ export class PartyLookupService {
   private properties: PropertyEntry[]
   private units: UnitEntry[]
   private vendors: Vendor[]
+  private propVendors: VendorEntry[]
   private customers: MasterCustomer[]
   private purchaseRecords: PurchaseRecord[]
 
@@ -29,6 +30,7 @@ export class PartyLookupService {
     properties?: PropertyEntry[]
     units?: UnitEntry[]
     vendors?: Vendor[]
+    propVendors?: VendorEntry[]
     customers?: MasterCustomer[]
     purchaseRecords?: PurchaseRecord[]
   }) {
@@ -37,6 +39,7 @@ export class PartyLookupService {
     this.properties = data.properties || []
     this.units = data.units || []
     this.vendors = data.vendors || []
+    this.propVendors = data.propVendors || []
     this.customers = data.customers || []
     this.purchaseRecords = data.purchaseRecords || []
   }
@@ -183,9 +186,14 @@ export class PartyLookupService {
 
   getPaymentParties(module: 'property' | 'investment'): Party[] {
     if (module === 'property') {
-      return this.getVendors().map(v => ({
-        ...v,
+      return this.propVendors.map(v => ({
+        id: v.id,
+        name: v.name,
         type: 'Vendor / Provider',
+        secondaryText: v.category || 'Vendor',
+        phone: v.phone,
+        email: v.email,
+        code: v.id,
       }))
     } else {
       return this.getSuppliers().map(s => ({

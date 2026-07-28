@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import type { Account, Voucher, BankMapping, PostingResult } from '../accounting/types'
-import type { PropAccount, LeaseEntry, TenantEntry, PropertyEntry, UnitEntry } from '../data/propertyTypes'
+import type { PropAccount, LeaseEntry, TenantEntry, PropertyEntry, UnitEntry, VendorEntry } from '../data/propertyTypes'
 import type { PurchaseRecord } from '../data/purchaseLedger'
 import { Button, Input, Select, Badge, EmptyState, SearchIcon, CloseIcon } from './design/DesignSystem'
 import { useMasterData } from '../contexts/MasterDataContext'
@@ -46,6 +46,7 @@ interface Props {
   setPdcCheques?: React.Dispatch<React.SetStateAction<PdcCheque[]>>
   onAuditEvent?: (event: AuditEvent) => void
   auditEvents?: AuditEvent[]
+  vendors?: VendorEntry[]
 }
 
 export default function PropertyReceiptVoucher({
@@ -58,6 +59,7 @@ export default function PropertyReceiptVoucher({
   pdcCheques = [], setPdcCheques,
   onAuditEvent,
   auditEvents = [],
+  vendors = [],
 }: Props) {
   const {
     detailVoucher, setDetailVoucher,
@@ -65,14 +67,14 @@ export default function PropertyReceiptVoucher({
     handlePost, handleApprove, handleCancel, handleDiscard, handleReverse
   } = useVoucherLifecycle(accountingEngine, accounts, setVouchers)
 
-  const { vendors, customers } = useMasterData()
+  const { customers } = useMasterData()
 
   const lookupService = useMemo(() => new PartyLookupService({
     tenants,
     leases,
     properties,
     units,
-    vendors,
+    propVendors: vendors,
     customers,
     purchaseRecords,
   }), [tenants, leases, properties, units, vendors, customers, purchaseRecords])
