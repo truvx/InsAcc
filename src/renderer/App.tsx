@@ -2554,7 +2554,7 @@ export default function App() {
     setPdcCheques, setSecurityDeposits, setPropDocuments, setPropTransactions, setPropBankReconciliations
   ])
 
-  const handleResetAllData = useCallback(() => {
+  const handleResetAllData = useCallback(async () => {
     resetInvestments()
     resetTransactions()
     resetBankAccounts()
@@ -2584,6 +2584,30 @@ export default function App() {
     setPropBankReconciliations([])
     setPropFiscalYears(getDefaultFiscalYears())
     setInvFiscalYears(getDefaultFiscalYears())
+    
+    // Wipe Supabase database before reloading so the old data isn't pulled back
+    try {
+      const enabledVal = localStorage.getItem('insacc_supabase_enabled')
+      const enabled = enabledVal ? JSON.parse(enabledVal) === true : false
+      
+      const rawUrl = localStorage.getItem('insacc_supabase_url')
+      const url = rawUrl ? JSON.parse(rawUrl) : ''
+      
+      const rawKey = localStorage.getItem('insacc_supabase_key')
+      const anonKey = rawKey ? JSON.parse(rawKey) : ''
+      
+      if (enabled && url && anonKey) {
+        const { getSupabaseClient } = await import('./services/supabaseSyncService')
+        const client = getSupabaseClient(url, anonKey)
+        if (client) {
+          // Delete all records except the status
+          await client.from('app_sync_state').delete().neq('key', 'insacc_supabase_status')
+        }
+      }
+    } catch (err) {
+      console.error('Failed to clear Supabase data on reset:', err)
+    }
+
     window.location.reload()
   }, [
     resetInvestments, resetTransactions, resetBankAccounts, resetBankTransactions,
