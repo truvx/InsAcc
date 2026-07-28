@@ -5,11 +5,12 @@ import { clearPersistedCache } from '../utils/lazyPersistedState'
 export default function SupabaseSyncManager() {
   const [status, setStatus] = useState<'disconnected' | 'connected' | 'syncing' | 'error'>('disconnected')
   const [loading, setLoading] = useState(false)
+  const [showSkip, setShowSkip] = useState(false)
 
   useEffect(() => {
     let active = true
     let channel: any = null
-    let fallbackTimeout: any = null
+    let skipTimer: any = null
 
     // Set window variable default so lazyPersistedState works
     if (typeof (window as any).supabaseSyncInitialized === 'undefined') {
@@ -39,13 +40,9 @@ export default function SupabaseSyncManager() {
       localStorage.setItem('insacc_supabase_status', 'syncing')
       setLoading(true)
 
-      // Fallback timer: NEVER block the app UI for more than 3 seconds
-      fallbackTimeout = setTimeout(() => {
-        if (active) {
-          (window as any).isSupabasePulling = false
-          (window as any).supabaseSyncInitialized = true
-          setLoading(false)
-        }
+      // Show skip button after 3 seconds if it's still loading (Supabase cold starts can take 10s+)
+      skipTimer = setTimeout(() => {
+        if (active) setShowSkip(true)
       }, 3000)
 
       const client = getSupabaseClient(url, anonKey)
@@ -55,7 +52,7 @@ export default function SupabaseSyncManager() {
         setStatus('error')
         localStorage.setItem('insacc_supabase_status', 'error')
         setLoading(false)
-        if (fallbackTimeout) clearTimeout(fallbackTimeout)
+        if (skipTimer) clearTimeout(skipTimer)
         return
       }
 
@@ -63,17 +60,24 @@ export default function SupabaseSyncManager() {
         // Initial Pull Phase
         if (!(window as any).supabaseSyncInitialized) {
           (window as any).isSupabasePulling = true
+          
+          // Await pull without timeout so we don't accidentally wipe a slow cold-started DB!
+          const records = await pullAllStates(client)
 
-          // Race pullAllStates against a 2.5s network timeout
-          const pullPromise = pullAllStates(client)
-          const timeoutPromise = new Promise<any[]>((resolve) => setTimeout(() => resolve([]), 2500))
-          const records = await Promise.race([pullPromise, timeoutPromise])
-
-          if (active && records.length === 0) {
-            // Supabase database is empty — push local data in background (non-blocking!)
+          if (active && records === null) {
+            // ERROR OCCURRED (e.g. table does not exist, RLS blocked, network error). DO NOT PUSH!
+            (window as any).isSupabasePulling = false
+            (window as any).supabaseSyncInitialized = true
+            setStatus('error')
+            localStorage.setItem('insacc_supabase_status', 'error')
+            setLoading(false)
+            if (skipTimer) clearTimeout(skipTimer)
+            return
+          } else if (active && records && records.length === 0) {
+            // DB successfully queried and is EMPTY. Safe to push local data.
             pushAllLocalData(url, anonKey).catch(err => console.error('Background push error:', err))
-          } else if (active && records.length > 0) {
-            // Supabase database has records — populate local storage & React state
+          } else if (active && records && records.length > 0) {
+            // DB has records — populate local storage & React state
             clearPersistedCache()
             for (const record of records) {
               if (
@@ -96,7 +100,7 @@ export default function SupabaseSyncManager() {
           setStatus('connected')
           localStorage.setItem('insacc_supabase_status', 'connected')
           setLoading(false)
-          if (fallbackTimeout) clearTimeout(fallbackTimeout)
+          if (skipTimer) clearTimeout(skipTimer)
         }
 
         // Setup Realtime listener for live updates
@@ -133,7 +137,7 @@ export default function SupabaseSyncManager() {
           setStatus('error')
           localStorage.setItem('insacc_supabase_status', 'error')
           setLoading(false)
-          if (fallbackTimeout) clearTimeout(fallbackTimeout)
+          if (skipTimer) clearTimeout(skipTimer)
         }
       }
     }
@@ -158,7 +162,7 @@ export default function SupabaseSyncManager() {
 
     return () => {
       active = false
-      if (fallbackTimeout) clearTimeout(fallbackTimeout)
+      if (skipTimer) clearTimeout(skipTimer)
       window.removeEventListener('storage', handleSettingsSyncToggle)
       if (channel) {
         channel.unsubscribe()
@@ -198,22 +202,24 @@ export default function SupabaseSyncManager() {
         <div style={{ fontSize: 16, fontWeight: 500 }}>Syncing database...</div>
         <div style={{ fontSize: 12, color: '#aaa', marginTop: 8, marginBottom: 20 }}>Fetching latest records from your cloud server</div>
         
-        <button
-          onClick={handleSkip}
-          style={{
-            background: 'rgba(255,255,255,0.15)',
-            border: '1px solid rgba(255,255,255,0.3)',
-            color: '#fff',
-            padding: '8px 16px',
-            borderRadius: 6,
-            fontSize: 13,
-            cursor: 'pointer',
-            fontWeight: 500,
-            transition: 'all 0.2s'
-          }}
-        >
-          Skip & Continue to App
-        </button>
+        {showSkip && (
+          <button
+            onClick={handleSkip}
+            style={{
+              background: 'rgba(255,255,255,0.15)',
+              border: '1px solid rgba(255,255,255,0.3)',
+              color: '#fff',
+              padding: '8px 16px',
+              borderRadius: 6,
+              fontSize: 13,
+              cursor: 'pointer',
+              fontWeight: 500,
+              transition: 'all 0.2s'
+            }}
+          >
+            Skip & Continue to App
+          </button>
+        )}
 
         <style>{`
           @keyframes spin {

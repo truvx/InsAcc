@@ -62,7 +62,7 @@ export async function pushState(client: SupabaseClient, key: string, value: any)
   }
 }
 
-export async function pullAllStates(client: SupabaseClient): Promise<SyncRecord[]> {
+export async function pullAllStates(client: SupabaseClient): Promise<SyncRecord[] | null> {
   try {
     const { data, error } = await client
       .from('app_sync_state')
@@ -70,12 +70,12 @@ export async function pullAllStates(client: SupabaseClient): Promise<SyncRecord[
     
     if (error) {
       console.error('Error pulling all states:', error)
-      return []
+      return null
     }
     return data || []
   } catch (e) {
     console.error('Exception pulling all states:', e)
-    return []
+    return null
   }
 }
 
