@@ -116,6 +116,21 @@ export default function PropertySettings({
             <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>
               Connect your database to Supabase to enable real-time sync across your devices (laptop, mobile phone, tablet).
             </p>
+
+            <div style={{ background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)', padding: 12, borderRadius: 8, marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', marginBottom: 8 }}>Required: Run this SQL in your Supabase SQL Editor first!</div>
+              <pre style={{ fontSize: 11, background: 'var(--bg-primary)', padding: 8, borderRadius: 4, overflowX: 'auto', border: '1px solid var(--border)', userSelect: 'all' }}>
+{`CREATE TABLE IF NOT EXISTS public.app_sync_state (
+  key TEXT PRIMARY KEY,
+  value JSONB NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable Realtime for the table
+ALTER PUBLICATION supabase_realtime ADD TABLE public.app_sync_state;`}
+              </pre>
+            </div>
+
             <div className="form-group">
               <Input
                 label="Supabase URL"
