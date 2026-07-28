@@ -168,11 +168,11 @@ export default function PropertyVendors({
         status: form.status,
       })
       if (onAuditEvent) {
-        onAuditEvent(recordModuleEvent('property', 'vendor_updated', `Updated vendor: ${form.name}`))
+        onAuditEvent(recordModuleEvent('property', 'Update', form.name, editingVendor.id, `Updated vendor: ${form.name}`))
       }
       setToast({ message: 'Vendor updated successfully', type: 'success' })
     } else {
-      createVendor(setVendors, {
+      const newVendor = createVendor(setVendors, {
         name: form.name.trim(),
         category: form.category,
         contactPerson: form.contactPerson.trim() || undefined,
@@ -185,7 +185,7 @@ export default function PropertyVendors({
         status: form.status,
       })
       if (onAuditEvent) {
-        onAuditEvent(recordModuleEvent('property', 'vendor_created', `Created vendor: ${form.name}`))
+        onAuditEvent(recordModuleEvent('property', 'Create', form.name, newVendor.id, `Created vendor: ${form.name}`))
       }
       setToast({ message: 'Vendor created successfully', type: 'success' })
     }
@@ -202,7 +202,7 @@ export default function PropertyVendors({
     }
     deleteVendor(setVendors, deleteTarget.id)
     if (onAuditEvent) {
-      onAuditEvent(recordModuleEvent('property', 'vendor_deleted', `Deleted vendor: ${deleteTarget.name}`))
+      onAuditEvent(recordModuleEvent('property', 'Delete', deleteTarget.name, deleteTarget.id, `Deleted vendor: ${deleteTarget.name}`))
     }
     setToast({ message: 'Vendor deleted', type: 'success' })
     setDeleteTarget(null)
@@ -405,8 +405,7 @@ export default function PropertyVendors({
         <DataTable
           data={filtered}
           columns={columns}
-          onRowClick={(v: VendorEntry) => setDrawerVendor(v)}
-          getRowId={(v: VendorEntry) => v.id}
+          keyExtractor={(v: VendorEntry) => v.id}
           pageSize={15}
         />
       )}
