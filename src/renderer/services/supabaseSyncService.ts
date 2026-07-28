@@ -41,7 +41,7 @@ export interface SyncRecord {
   updated_at?: string
 }
 
-export async function pushState(client: SupabaseClient, key: string, value: any): Promise<boolean> {
+export async function pushState(client: SupabaseClient, key: string, value: any): Promise<{ success: boolean, error?: string }> {
   try {
     const { error } = await client
       .from('app_sync_state')
@@ -53,12 +53,12 @@ export async function pushState(client: SupabaseClient, key: string, value: any)
 
     if (error) {
       console.error(`Error pushing state for ${key}:`, error)
-      return false
+      return { success: false, error: error.message }
     }
-    return true
-  } catch (e) {
+    return { success: true }
+  } catch (e: any) {
     console.error(`Exception pushing state for ${key}:`, e)
-    return false
+    return { success: false, error: e?.message || 'Unknown exception' }
   }
 }
 
@@ -87,12 +87,13 @@ export async function pullAllStates(client: SupabaseClient): Promise<SyncRecord[
   }
 }
 
-export async function pushAllLocalData(url: string, anonKey: string): Promise<boolean> {
+export async function pushAllLocalData(url: string, anonKey: string): Promise<{ success: boolean, error?: string }> {
   const client = getSupabaseClient(url, anonKey)
-  if (!client) return false
+  if (!client) return { success: false, error: 'Failed to initialize Supabase client. Check URL and Key.' }
 
   try {
     let allSuccess = true
+    let lastError = ''
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
       if (
@@ -105,18 +106,22 @@ export async function pushAllLocalData(url: string, anonKey: string): Promise<bo
         const valStr = localStorage.getItem(key)
         if (valStr) {
           try {
-            const success = await pushState(client, key, JSON.parse(valStr))
-            if (!success) allSuccess = false
-          } catch (err) {
+            const result = await pushState(client, key, JSON.parse(valStr))
+            if (!result.success) {
+              allSuccess = false
+              lastError = result.error || 'Unknown error'
+            }
+          } catch (err: any) {
             console.error(`Failed to push single key ${key}:`, err)
             allSuccess = false
+            lastError = err?.message || 'Exception occurred'
           }
         }
       }
     }
-    return allSuccess
-  } catch (e) {
+    return { success: allSuccess, error: lastError }
+  } catch (e: any) {
     console.error('Failed to push all local data:', e)
-    return false
+    return { success: false, error: e?.message || 'Fatal exception' }
   }
 }

@@ -769,11 +769,11 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.app_sync_state;`}
                       if (supabaseUrl && supabaseKey) {
                         setToast({ visible: true, message: 'Uploading local database to Supabase...', type: 'success' })
                         const { pushAllLocalData } = await import('../services/supabaseSyncService')
-                        const success = await pushAllLocalData(supabaseUrl, supabaseKey)
-                        if (success) {
+                        const result = await pushAllLocalData(supabaseUrl, supabaseKey)
+                        if (result.success) {
                           setToast({ visible: true, message: 'All local data pushed successfully!', type: 'success' })
                         } else {
-                          setToast({ visible: true, message: 'Failed to push local data.', type: 'error' })
+                          setToast({ visible: true, message: `Failed to push: ${result.error || 'Unknown error'}`, type: 'error' })
                         }
                       }
                     }}
