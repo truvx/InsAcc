@@ -1044,7 +1044,7 @@ export default function PropertyExpenses({
               }}
               options={[
                 { value: '', label: 'No Vendor (Manual Paid To)' },
-                ...vendors.map(v => ({ value: v.id, label: v.name }))
+                ...vendors.map(v => ({ value: v?.id || '', label: v?.name || 'Unnamed Vendor' }))
               ]}
             />
           )}

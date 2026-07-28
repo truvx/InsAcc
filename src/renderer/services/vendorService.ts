@@ -56,12 +56,12 @@ export function searchVendors(
   if (!query.trim()) return vendors
   const q = query.toLowerCase()
   return vendors.filter(v =>
-    v.name.toLowerCase().includes(q) ||
-    v.category.toLowerCase().includes(q) ||
-    (v.contactPerson || '').toLowerCase().includes(q) ||
-    (v.phone || '').toLowerCase().includes(q) ||
-    (v.email || '').toLowerCase().includes(q) ||
-    (v.trn || '').toLowerCase().includes(q) ||
-    (v.notes || '').toLowerCase().includes(q)
+    (v?.name || '').toLowerCase().includes(q) ||
+    (v?.category || '').toLowerCase().includes(q) ||
+    (v?.contactPerson || '').toLowerCase().includes(q) ||
+    (v?.phone || '').toLowerCase().includes(q) ||
+    (v?.email || '').toLowerCase().includes(q) ||
+    (v?.trn || '').toLowerCase().includes(q) ||
+    (v?.notes || '').toLowerCase().includes(q)
   )
 }

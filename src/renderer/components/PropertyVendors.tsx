@@ -97,7 +97,7 @@ export default function PropertyVendors({
     [vendorPaymentTotals]
   )
 
-  const activeVendors = useMemo(() => vendors.filter(v => v.status === 'Active').length, [vendors])
+  const activeVendors = useMemo(() => vendors.filter(v => v?.status === 'Active').length, [vendors])
 
   // ── Filtered list ──
   const filtered = useMemo(() => {
@@ -210,9 +210,9 @@ export default function PropertyVendors({
 
   const handleExportExcel = useCallback(() => {
     const rows = filtered.map(v => ({
-      'Name': v.name,
-      'Category': v.category,
-      'Contact Person': v.contactPerson || '',
+      'Name': v?.name || '',
+      'Category': v?.category || '',
+      'Contact Person': v?.contactPerson || '',
       'Phone': v.phone || '',
       'Email': v.email || '',
       'TRN': v.trn || '',
@@ -278,17 +278,17 @@ export default function PropertyVendors({
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: '#fff', fontWeight: 700, fontSize: 14,
           }}>
-            {v.name.charAt(0).toUpperCase()}
+            {v?.name?.charAt(0)?.toUpperCase() || '?'}
           </div>
           <div>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>{v.name}</div>
-            {v.contactPerson && <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{v.contactPerson}</div>}
+            <div style={{ fontWeight: 600, fontSize: 14 }}>{v?.name || 'Unnamed Vendor'}</div>
+            {v?.contactPerson && <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{v.contactPerson}</div>}
           </div>
         </div>
       ),
     },
-    { key: 'category', header: 'Category', sortable: true },
-    { key: 'phone', header: 'Phone', render: (v: VendorEntry) => v.phone || '–' },
+    { key: 'category', header: 'Category', sortable: true, render: (v: VendorEntry) => v?.category || '–' },
+    { key: 'phone', header: 'Phone', render: (v: VendorEntry) => v?.phone || '–' },
     {
       key: 'totalPaid',
       header: 'Total Paid',
@@ -336,7 +336,7 @@ export default function PropertyVendors({
 
   // ── Category options ──
   const usedCategories = useMemo(() => {
-    const set = new Set(vendors.map(v => v.category))
+    const set = new Set(vendors.map(v => v?.category).filter(Boolean))
     DEFAULT_VENDOR_CATEGORIES.forEach(c => set.add(c))
     return Array.from(set).sort()
   }, [vendors])
@@ -367,15 +367,25 @@ export default function PropertyVendors({
             </button>
           )}
         </div>
-        <Select value={filterCategory} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterCategory(e.target.value)} style={{ minWidth: 160 }}>
-          <option value="">All Categories</option>
-          {usedCategories.map(c => <option key={c} value={c}>{c}</option>)}
-        </Select>
-        <Select value={filterStatus} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value)} style={{ minWidth: 120 }}>
-          <option value="">All Status</option>
-          <option value="Active">Active</option>
-          <option value="Inactive">Inactive</option>
-        </Select>
+        <Select
+          value={filterCategory}
+          onChange={(e: any) => setFilterCategory(e.target.value)}
+          style={{ minWidth: 160 }}
+          options={[
+            { value: '', label: 'All Categories' },
+            ...usedCategories.map(c => ({ value: c, label: c }))
+          ]}
+        />
+        <Select
+          value={filterStatus}
+          onChange={(e: any) => setFilterStatus(e.target.value)}
+          style={{ minWidth: 120 }}
+          options={[
+            { value: '', label: 'All Status' },
+            { value: 'Active', label: 'Active' },
+            { value: 'Inactive', label: 'Inactive' }
+          ]}
+        />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           <Button variant="secondary" size="sm" onClick={handleExportExcel}><Download size={15} /> Export</Button>
           <Button onClick={openAddModal}><PlusIcon /> Add Vendor</Button>
@@ -410,10 +420,15 @@ export default function PropertyVendors({
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Category *</label>
-              <Select value={form.category} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm(f => ({ ...f, category: e.target.value }))} style={{ width: '100%' }}>
-                <option value="">Select category...</option>
-                {usedCategories.map(c => <option key={c} value={c}>{c}</option>)}
-              </Select>
+              <Select
+                value={form.category}
+                onChange={(e: any) => setForm(f => ({ ...f, category: e.target.value }))}
+                style={{ width: '100%' }}
+                options={[
+                  { value: '', label: 'Select category...' },
+                  ...usedCategories.map(c => ({ value: c, label: c }))
+                ]}
+              />
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Contact Person</label>
@@ -433,10 +448,15 @@ export default function PropertyVendors({
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Status</label>
-              <Select value={form.status} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm(f => ({ ...f, status: e.target.value as 'Active' | 'Inactive' }))} style={{ width: '100%' }}>
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </Select>
+              <Select
+                value={form.status}
+                onChange={(e: any) => setForm(f => ({ ...f, status: e.target.value as 'Active' | 'Inactive' }))}
+                style={{ width: '100%' }}
+                options={[
+                  { value: 'Active', label: 'Active' },
+                  { value: 'Inactive', label: 'Inactive' }
+                ]}
+              />
             </div>
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Address</label>
