@@ -101,12 +101,14 @@ export async function pushAllLocalData(url: string, anonKey: string): Promise<{ 
         key.startsWith('insacc_') &&
         key !== 'insacc_supabase_url' &&
         key !== 'insacc_supabase_key' &&
-        key !== 'insacc_supabase_enabled'
+        key !== 'insacc_supabase_enabled' &&
+        key !== 'insacc_supabase_status'
       ) {
         const valStr = localStorage.getItem(key)
         if (valStr) {
           try {
-            const result = await pushState(client, key, JSON.parse(valStr))
+            const parsedVal = JSON.parse(valStr)
+            const result = await pushState(client, key, parsedVal)
             if (!result.success) {
               allSuccess = false
               lastError = result.error || 'Unknown error'
