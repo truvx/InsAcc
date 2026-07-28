@@ -1,7 +1,7 @@
 import React from 'react'
 import type { Account, Voucher, BankMapping, BankReconciliationRecord, FiscalYear } from '../accounting/types'
 import type { LoginEntry } from '../App'
-import type { PropAccount, PropTransaction, PropertyEntry, UnitEntry, TenantEntry, LeaseEntry, PdcCheque, MainCategory, PropProperty, IncomeCategory, Customer, SecurityDeposit, SecurityDepositGlMappings, PropertyTransactionCategory, PropertyExpense } from '../data/propertyTypes'
+import type { PropAccount, PropTransaction, PropertyEntry, UnitEntry, TenantEntry, LeaseEntry, PdcCheque, MainCategory, PropProperty, IncomeCategory, Customer, SecurityDeposit, SecurityDepositGlMappings, PropertyTransactionCategory, PropertyExpense, VendorEntry } from '../data/propertyTypes'
 import type { AuditEvent } from '../data/auditTypes'
 import type { AccountingEngine } from '../accounting/accountingEngine'
 import type { PurchaseRecord } from '../data/purchaseLedger'
@@ -22,6 +22,7 @@ import PropertyProfitLoss from './PropertyProfitLoss'
 import PropertyPdcManager from './PropertyPdcManager'
 import PropertyDepositManager from './PropertyDepositManager'
 import PropertyExpenses from './PropertyExpenses'
+import PropertyVendors from './PropertyVendors'
 import PropertyReports from './PropertyReports'
 import PropertyDocuments from './PropertyDocuments'
 import PropertySettings from './PropertySettings'
@@ -79,6 +80,8 @@ interface Props {
   setPropertyTransactionCategories?: React.Dispatch<React.SetStateAction<PropertyTransactionCategory[]>>
   propExpenses?: PropertyExpense[]
   setPropExpenses?: React.Dispatch<React.SetStateAction<PropertyExpense[]>>
+  propVendors?: VendorEntry[]
+  setPropVendors?: React.Dispatch<React.SetStateAction<VendorEntry[]>>
   fiscalYears: FiscalYear[]
   setFiscalYears: React.Dispatch<React.SetStateAction<FiscalYear[]>>
   
@@ -119,6 +122,8 @@ export default function PropertyRouter(props: Props) {
     setPropertyTransactionCategories,
     propExpenses = [],
     setPropExpenses,
+    propVendors = [],
+    setPropVendors,
     fiscalYears,
     setFiscalYears,
   } = props
@@ -237,6 +242,14 @@ export default function PropertyRouter(props: Props) {
         onNavigate={onNavigate}
         onAuditEvent={setPropAuditEvents ? (e => setPropAuditEvents(prev => [e, ...prev])) : undefined}
       />
+    case 'vendors':
+      return <PropertyVendors
+        currency={currency} dateFormat={dateFormat} language={language}
+        vendors={propVendors} setVendors={setPropVendors!}
+        expenses={propExpenses}
+        properties={mappedProperties}
+        onAuditEvent={setPropAuditEvents ? (e => setPropAuditEvents(prev => [e, ...prev])) : undefined}
+      />
     case 'leases':
       return <PropertyLeases
         currency={currency} dateFormat={dateFormat} language={language}
@@ -259,6 +272,7 @@ export default function PropertyRouter(props: Props) {
         language={language}
         expenses={propExpenses}
         setExpenses={setPropExpenses}
+        vendors={propVendors}
         properties={mappedProperties}
         units={mappedUnits}
         propAccounts={propAccounts}

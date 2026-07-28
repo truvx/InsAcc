@@ -4,7 +4,7 @@ import type { Profile } from './data/sampleData'
 import type { UserEntry, LogEntry } from './data/types'
 import type { BankAccount, BankTransaction, StatementEntry } from './data/banking'
 import type { AuditEvent } from './data/auditTypes'
-import type { PropAccount, PropTransaction, PropertyEntry, UnitEntry, TenantEntry, LeaseEntry, PdcCheque, PropDocItem, MainCategory, PropProperty, IncomeCategory, Customer, SecurityDeposit, SecurityDepositTransaction, SecurityDepositGlMappings, PropertyExpense, PropertyTransactionCategory } from './data/propertyTypes'
+import type { PropAccount, PropTransaction, PropertyEntry, UnitEntry, TenantEntry, LeaseEntry, PdcCheque, PropDocItem, MainCategory, PropProperty, IncomeCategory, Customer, SecurityDeposit, SecurityDepositTransaction, SecurityDepositGlMappings, PropertyExpense, PropertyTransactionCategory, VendorEntry } from './data/propertyTypes'
 import {
   getDefaultPropertyTransactionCategories,
   getDefaultMainCategories,
@@ -1055,6 +1055,7 @@ export default function App() {
   const [propDocuments, setPropDocuments] = useLazyPersistedState<PropDocItem[]>('insacc_prop_documents', [])
   const [propAuditEvents, setPropAuditEvents] = useLazyPersistedState<import('./data/auditTypes').AuditEvent[]>('insacc_prop_audit_events', [])
   const [propExpenses, setPropExpenses] = useLazyPersistedState<PropertyExpense[]>('insacc_prop_expenses', [])
+  const [propVendors, setPropVendors] = useLazyPersistedState<VendorEntry[]>('insacc_prop_vendors', [])
   const [propertyTransactionCategories, setPropertyTransactionCategories] = useLazyPersistedState<PropertyTransactionCategory[]>('insacc_property_transaction_categories', defaultPropTxCats)
 
   const [investmentCategories, setInvestmentCategories] = useLazyPersistedState<InvestmentCategory[]>('insacc_inv_categories', defaultInvestmentCategories)
@@ -2651,6 +2652,8 @@ export default function App() {
           setDepositMappings={setDepositMappings}
           propExpenses={propExpenses}
           setPropExpenses={setPropExpenses}
+          propVendors={propVendors}
+          setPropVendors={setPropVendors}
           propertyTransactionCategories={propertyTransactionCategories}
           setPropertyTransactionCategories={setPropertyTransactionCategories}
           fiscalYears={propFiscalYears}

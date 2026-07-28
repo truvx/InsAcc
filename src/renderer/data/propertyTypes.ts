@@ -484,7 +484,41 @@ export interface PropertyExpense {
   paymentReference?: string
   status: 'Paid' | 'Pending'
   voucherId?: string | null
+  vendorId?: string | null
   createdAt: string
   updatedAt: string
 }
 
+export interface VendorEntry {
+  id: string
+  name: string
+  category: string
+  contactPerson?: string
+  phone?: string
+  email?: string
+  trn?: string
+  address?: string
+  bankDetails?: string
+  notes?: string
+  status: 'Active' | 'Inactive'
+  createdAt: string
+  updatedAt: string
+}
+
+export const DEFAULT_VENDOR_CATEGORIES = [
+  'Engineering Consultant',
+  'Government Agency',
+  'Utility Provider',
+  'Maintenance Contractor',
+  'Legal Service',
+  'Insurance Provider',
+  'Building Material Supplier',
+  'Cleaning Service',
+  'Security Service',
+  'IT / Telecom',
+  'Interior Design',
+  'Plumbing',
+  'Electrical',
+  'HVAC',
+  'Other',
+]

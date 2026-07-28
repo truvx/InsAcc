@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react'
-import type { PropertyExpense, PropertyEntry, UnitEntry, PropAccount } from '../data/propertyTypes'
+import type { PropertyExpense, PropertyEntry, UnitEntry, PropAccount, VendorEntry } from '../data/propertyTypes'
 import type { Account, Voucher, VoucherLine, VoucherType, BankMapping } from '../accounting/types'
 import type { AuditEvent } from '../data/auditTypes'
 import { recordModuleEvent } from '../services/auditService'
@@ -31,6 +31,7 @@ interface Props {
   vouchers: Voucher[]
   setVouchers?: React.Dispatch<React.SetStateAction<Voucher[]>>
   bankMappings?: BankMapping[]
+  vendors?: VendorEntry[]
   onAuditEvent?: (event: AuditEvent) => void
 }
 
@@ -71,6 +72,7 @@ export default function PropertyExpenses({
   vouchers = [],
   setVouchers,
   bankMappings = [],
+  vendors = [],
   onAuditEvent
 }: Props) {
   const fmt = (n: number) => <CurrencyText value={n} currency={currency} />
@@ -98,6 +100,7 @@ export default function PropertyExpenses({
   const [formCategory, setFormCategory] = useState('')
   const [formPropertyId, setFormPropertyId] = useState('')
   const [formUnitId, setFormUnitId] = useState('')
+  const [formVendorId, setFormVendorId] = useState('')
   const [formPaidTo, setFormPaidTo] = useState('')
   const [formDescription, setFormDescription] = useState('')
   const [formAmount, setFormAmount] = useState('')
@@ -200,9 +203,10 @@ export default function PropertyExpenses({
 
   const resetForm = () => {
     setFormDate(new Date().toISOString().split('T')[0])
-    setFormCategory('')
+    setEditingId(null)
     setFormPropertyId('')
     setFormUnitId('')
+    setFormVendorId('')
     setFormPaidTo('')
     setFormDescription('')
     setFormAmount('')
@@ -210,7 +214,6 @@ export default function PropertyExpenses({
     setFormPaymentMethod('Cash In Hand')
     setFormPaymentMode('Bank Transfer')
     setFormBankAccountId('')
-    setEditingId(null)
   }
 
   const handleOpenAdd = () => {
@@ -220,10 +223,11 @@ export default function PropertyExpenses({
 
   const handleOpenEdit = (exp: PropertyExpense) => {
     setEditingId(exp.id)
-    setFormDate(exp.date)
+    setFormDate(exp.date.split('T')[0])
     setFormCategory(exp.category)
     setFormPropertyId(exp.propertyId)
     setFormUnitId(exp.unitId || '')
+    setFormVendorId(exp.vendorId || '')
     setFormPaidTo(exp.paidTo)
     setFormDescription(exp.description)
     setFormAmount(String(exp.amount))
@@ -255,10 +259,11 @@ export default function PropertyExpenses({
     const updatedExpense: PropertyExpense = {
       id: expenseId,
       expenseNo,
-      date: formDate,
+      date: new Date(formDate).toISOString(),
       propertyId: formPropertyId,
       unitId: formUnitId || null,
       category: formCategory,
+      vendorId: formVendorId || null,
       paidTo: formPaidTo,
       description: formDescription,
       amount: expenseAmount,
@@ -1025,6 +1030,24 @@ export default function PropertyExpenses({
               { value: '__custom__', label: '+ Add Custom Category' }
             ]}
           />
+          {vendors.length > 0 && (
+            <Select
+              label="Select Vendor (Optional)"
+              value={formVendorId}
+              onChange={e => {
+                const vid = e.target.value
+                setFormVendorId(vid)
+                if (vid) {
+                  const v = vendors.find(v => v.id === vid)
+                  if (v) setFormPaidTo(v.name)
+                }
+              }}
+              options={[
+                { value: '', label: 'No Vendor (Manual Paid To)' },
+                ...vendors.map(v => ({ value: v.id, label: v.name }))
+              ]}
+            />
+          )}
           <Input label="Vendor / Paid To" value={formPaidTo} onChange={e => setFormPaidTo(e.target.value)} placeholder="e.g. Al Futtaim Services" />
           <Input label="Description / Narration" value={formDescription} onChange={e => setFormDescription(e.target.value)} placeholder="e.g. AC maintenance works" />
           <Input label="Amount" type="number" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0.00" />
