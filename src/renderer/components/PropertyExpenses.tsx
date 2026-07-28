@@ -346,15 +346,17 @@ export default function PropertyExpenses({
       return [updatedVoucher, ...filtered]
     })
 
-    onAuditEvent?.(
-      recordModuleEvent(
-        'Property Transactions',
-        editingId ? 'Update' : 'Create',
-        expenseNo,
-        expenseId,
-        `${editingId ? 'Updated' : 'Recorded'} property expense ${expenseNo} (${formCategory}) paid to ${formPaidTo} for AED ${totalAmount.toLocaleString()}`
+    if (!editingId) {
+      onAuditEvent?.(
+        recordModuleEvent(
+          'Property Transactions',
+          'Create',
+          expenseNo,
+          expenseId,
+          `Recorded property expense ${expenseNo} (${formCategory}) paid to ${formPaidTo} for AED ${totalAmount.toLocaleString()}`
+        )
       )
-    )
+    }
 
     setToast({ visible: true, message: `Expense ${expenseNo} saved successfully.`, type: 'success' })
     setShowForm(false)
@@ -367,7 +369,20 @@ export default function PropertyExpenses({
     if (!target) return
 
     setExpenses?.(prev => prev.filter(e => e.id !== deleteTarget))
-    setVouchers?.(prev => prev.filter(v => v.id !== `vch-exp-${deleteTarget}`))
+    setVouchers?.(prev => {
+      const filtered = prev.filter(v => v.id !== `vch-exp-${deleteTarget}`)
+      
+      // Cleanup orphaned category account if it has no other vouchers
+      const categoryAcctId = target.category ? (accounts.find(a => a.name.toLowerCase() === target.category.toLowerCase() && a.type === 'expense' && a.isActive)?.id) : null
+      if (categoryAcctId && setAccounts) {
+        const hasOtherVouchers = filtered.some(v => v.lines.some(l => l.accountId === categoryAcctId))
+        if (!hasOtherVouchers) {
+          setAccounts(accts => accts.map(a => a.id === categoryAcctId ? { ...a, isActive: false, updatedAt: new Date().toISOString() } : a))
+        }
+      }
+      
+      return filtered
+    })
 
     onAuditEvent?.(
       recordModuleEvent(
@@ -441,7 +456,7 @@ export default function PropertyExpenses({
     const expenseAccountId = ensureCategoryAccount(exp.category)
     const offsetAccountId = exp.paymentChannel === 'Cash In Hand'
       ? (accounts.find(a => a.id === '1110-prop' || a.code === '1110')?.id || '1110-prop')
-      : exp.bankAccountId || '1110-prop'
+      : (getPropertyBankAccountId(exp.bankAccountId || '', propAccounts, bankMappings) || accounts.find(a => a.id === '1120-prop' || a.code === '1120')?.id || '1120-prop')
 
     const vchType: VoucherType = 'Payment'
     const vchNumber = VoucherNumberService.generateNextNumber(vchType, exp.date, vouchers)

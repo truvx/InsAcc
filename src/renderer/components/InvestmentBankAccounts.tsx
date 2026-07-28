@@ -18,6 +18,7 @@ import type { BankReconciliationRecord, BankStatementLine } from '../accounting/
 import BankImportModal from './BankImportModal'
 import BankAccountActionsMenu from './design/BankAccountActionsMenu'
 import { invalidateBalanceCache, getAccountBalance } from '../accounting/ledgerService'
+import { generateChildCode } from '../accounting/chartOfAccountsService'
 import { CurrencyText } from './design/CurrencyText'
 import BankReconciliationDashboard from './BankReconciliationDashboard'
 import { getBankDashboardProjection, getAccountStatementProjection } from '../readModels/InvestmentBankReadModel'
@@ -232,7 +233,7 @@ export default function InvestmentBankAccounts({
 
     const ledgerAcct = {
       id: `acct-${Date.now()}`,
-      code: `1120${Math.floor(Math.random() * 90) + 10}`,
+      code: generateChildCode('1120', accounts),
       name: formInstitution,
       type: 'asset' as any,
       normalBalance: 'debit' as any,

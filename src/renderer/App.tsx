@@ -2456,6 +2456,11 @@ export default function App() {
     setScreen('login')
   }, [])
 
+  const handleDeleteAuditEvent = useCallback((eventId: string) => {
+    setPropAuditEvents(prev => prev.filter(e => e.id !== eventId))
+    setAuditEvents(prev => prev.filter(e => e.id !== eventId))
+  }, [])
+
   const handleClearTransactions = useCallback(() => {
     const performClear = async () => {
       // Clean up dynamic asset sub-accounts that were auto-created for previous purchases
@@ -2609,6 +2614,7 @@ export default function App() {
           setSupabaseEnabled={setSupabaseEnabled}
           onClearTransactions={handleClearTransactions}
           onResetAllData={handleResetAllData}
+          onDeleteEvent={handleDeleteAuditEvent}
           loginEntries={loginEntries}
           setLoginEntries={setLoginEntries}
           accounts={propChartAccounts}
@@ -2675,6 +2681,7 @@ export default function App() {
         supabaseEnabled={supabaseEnabled}
         setSupabaseEnabled={setSupabaseEnabled}
         onClearTransactions={handleClearTransactions}
+        onDeleteEvent={handleDeleteAuditEvent}
         loginEntries={loginEntries}
         setLoginEntries={setLoginEntries}
         accounts={accounts}

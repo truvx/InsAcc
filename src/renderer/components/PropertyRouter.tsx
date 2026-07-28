@@ -97,6 +97,7 @@ interface Props {
 
   onClearTransactions?: () => void
   onResetAllData?: () => void
+  onDeleteEvent?: (eventId: string) => void
 }
 
 export default function PropertyRouter(props: Props) {
@@ -434,7 +435,7 @@ export default function PropertyRouter(props: Props) {
         currentUser="User"
       />
     case 'history':
-      return <History auditEvents={propAuditEvents} language={language} onClearHistory={props.onClearTransactions} />
+      return <History auditEvents={propAuditEvents} language={language} onClearHistory={props.onClearTransactions} onDeleteEvent={props.onDeleteEvent} />
     case 'settings':
       return <PropertySettings
         currentTheme="light" onThemeChange={() => {}}

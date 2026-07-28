@@ -1,13 +1,14 @@
 import React, { useState, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { AuditEvent, AuditModule, AuditAction, AuditSeverity } from '../data/auditTypes'
-import { Badge, Button, EmptyState, CloseIcon, SearchIcon, Select } from './design/DesignSystem'
+import { Badge, Button, EmptyState, CloseIcon, SearchIcon, Select, TrashIcon } from './design/DesignSystem'
 import { formatDate, t } from '../utils'
 
 interface Props {
   auditEvents: AuditEvent[]
   language?: string
   onClearHistory?: () => void
+  onDeleteEvent?: (eventId: string) => void
 }
 
 const MODULE_COLORS: Record<string, string> = {
@@ -105,7 +106,7 @@ const itemVariants = {
   animate: { opacity: 1, x: 0 },
 }
 
-export default function History({ auditEvents, language = 'English', onClearHistory }: Props) {
+export default function History({ auditEvents, language = 'English', onClearHistory, onDeleteEvent }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterModule, setFilterModule] = useState('')
   const [filterAction, setFilterAction] = useState('')
@@ -315,8 +316,28 @@ export default function History({ auditEvents, language = 'English', onClearHist
                                 </div>
                                 <div className="activity-item-desc">{event.description}</div>
                               </div>
-                              <div className="activity-item-right">
+                              <div className="activity-item-right" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <div className="activity-item-date">{formatTime(event.timestamp)}</div>
+                                {onDeleteEvent && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="activity-item-delete-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (confirm('Are you sure you want to delete this event from history?')) {
+                                        onDeleteEvent(event.id);
+                                        if (selectedEvent?.id === event.id) {
+                                          setSelectedEvent(null);
+                                        }
+                                      }
+                                    }}
+                                    style={{ padding: '4px', minWidth: '24px', height: '24px', opacity: 0.5 }}
+                                    title="Delete event"
+                                  >
+                                    <TrashIcon />
+                                  </Button>
+                                )}
                               </div>
                             </motion.div>
                           )

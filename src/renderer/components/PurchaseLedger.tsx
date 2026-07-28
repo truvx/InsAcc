@@ -367,12 +367,6 @@ export default function PurchaseLedger({
         return (
           <div>
             <span className="text-secondary text-xs">{formatDate(r.purchaseDate, dateFormat)}</span>
-            {v?.modifiedAt && (
-              <div style={{ fontSize: '10px', color: '#B91C1C', marginTop: '2px', fontWeight: 500 }} title={`Last modified on ${v.modifiedAt}`}>
-                Edited<br/>
-                <span style={{ fontSize: '9px', color: '#6B7280', fontWeight: 'normal' }}>{formatModifiedDateTime(v.modifiedAt)}</span>
-              </div>
-            )}
           </div>
         )
       },

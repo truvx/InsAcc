@@ -21,6 +21,7 @@ import type { BankReconciliationRecord, BankStatementLine } from '../accounting/
 import BankImportModal from './BankImportModal'
 import BankAccountActionsMenu from './design/BankAccountActionsMenu'
 import { invalidateBalanceCache, getAccountBalance } from '../accounting/ledgerService'
+import { generateChildCode } from '../accounting/chartOfAccountsService'
 import { CurrencyText } from './design/CurrencyText'
 import { formatCurrency } from '../utils/currencyHelpers'
 
@@ -284,7 +285,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
     }
     const ledgerAcct = {
       id: `acct-${Date.now()}`,
-      code: `1120${Math.floor(Math.random() * 90) + 10}`,
+      code: generateChildCode('1120', accounts),
       name: formInstitution,
       type: 'asset' as any,
       normalBalance: 'debit' as any,
@@ -548,19 +549,11 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
     }
 
     // Safely remove the child account representing the bank from the Chart of Accounts.
-    // Never remove the root parent account ('1120' or '1120-prop').
+    // Use the mapping ID as the authoritative lookup — never rely on name matching.
+    // Never remove the root parent account ('1120').
     setAccounts(prev => prev.filter(acct => {
       if (acct.id === '1120' || acct.code === '1120') return true
       if (mapping && acct.id === mapping.accountId) return false
-      
-      const isChild = acct.parentId === '1120' || acct.parentId === '1120-prop' || (acct.code && acct.code.startsWith('1120') && acct.code !== '1120')
-      if (isChild) {
-        const cleanAcctName = acct.name.toLowerCase()
-        const cleanInst = deleteAccountTarget.institution.toLowerCase()
-        if (cleanAcctName.includes(cleanInst) || (deleteAccountTarget.accountNumber && cleanAcctName.includes(deleteAccountTarget.accountNumber.toLowerCase()))) {
-          return false
-        }
-      }
       return true
     }))
 

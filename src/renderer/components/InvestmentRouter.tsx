@@ -63,7 +63,9 @@ interface Props {
   onSetStoredPassword: (pw: string) => void
   theme: string
   onThemeChange: (t: string) => void
+  onClearTransactions?: () => void
   onResetAllData: () => void
+  onDeleteEvent?: (eventId: string) => void
   recordAuditEvent: (event: AuditEvent) => void
   setAccounts: React.Dispatch<React.SetStateAction<Account[]>>
   bankReconciliations: BankReconciliationRecord[]
@@ -236,6 +238,7 @@ export default function InvestmentRouter(props: Props) {
           auditEvents={auditEvents}
           language={language}
           onClearHistory={props.onClearTransactions}
+          onDeleteEvent={props.onDeleteEvent}
         />
       )
     case 'holdings':

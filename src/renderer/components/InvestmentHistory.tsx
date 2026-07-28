@@ -2,16 +2,18 @@ import React, { useMemo, useState } from 'react'
 import type { Voucher } from '../accounting/types'
 import type { AuditEvent } from '../data/auditTypes'
 import { getHistoryProjection, filterHistory, type HistoryFilter } from '../readModels/InvestmentHistoryReadModel'
+import { TrashIcon } from './design/DesignSystem'
 
 interface Props {
   vouchers: Voucher[]
   auditEvents: AuditEvent[]
   language?: string
   onClearHistory?: () => void
+  onDeleteEvent?: (eventId: string) => void
 }
 
 export default function InvestmentHistory({
-  vouchers, auditEvents, language = 'English', onClearHistory,
+  vouchers, auditEvents, language = 'English', onClearHistory, onDeleteEvent
 }: Props) {
   const [filter, setFilter] = useState<HistoryFilter>('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -141,8 +143,22 @@ export default function InvestmentHistory({
                         {item.amount > 0 && <span className="text-xs text-mono fw-600">AED {item.amount.toLocaleString()}</span>}
                       </div>
                     </div>
-                    <div className="text-xs text-secondary" style={{ flexShrink: 0 }}>
+                    <div className="text-xs text-secondary" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                       {fmtDateTime(item.date)}
+                      {onDeleteEvent && item.type === 'audit_event' && (
+                        <button
+                          className="btn btn-ghost activity-item-delete-btn"
+                          onClick={() => {
+                            if (confirm('Are you sure you want to delete this event from history?')) {
+                              onDeleteEvent(item.id)
+                            }
+                          }}
+                          style={{ padding: 4, height: 24, width: 24, opacity: 0.5, border: 'none', background: 'transparent', cursor: 'pointer' }}
+                          title="Delete event"
+                        >
+                          <TrashIcon />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
