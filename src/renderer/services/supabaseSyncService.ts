@@ -64,9 +64,17 @@ export async function pushState(client: SupabaseClient, key: string, value: any)
 
 export async function pullAllStates(client: SupabaseClient): Promise<SyncRecord[] | null> {
   try {
-    const { data, error } = await client
-      .from('app_sync_state')
-      .select('*')
+    const pullPromise = client.from('app_sync_state').select('*')
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000))
+    
+    const result = await Promise.race([pullPromise, timeoutPromise])
+    
+    if (result === null) {
+      console.error('Timeout pulling all states')
+      return null
+    }
+
+    const { data, error } = result
     
     if (error) {
       console.error('Error pulling all states:', error)
