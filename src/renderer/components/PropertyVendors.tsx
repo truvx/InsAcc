@@ -413,7 +413,7 @@ export default function PropertyVendors({
 
       {/* ── Add/Edit Modal ── */}
       {showModal && (
-        <Modal title={editingVendor ? 'Edit Vendor' : 'Add Vendor'} onClose={() => setShowModal(false)}>
+        <Modal open={true} title={editingVendor ? 'Edit Vendor' : 'Add Vendor'} onClose={() => setShowModal(false)}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Vendor Name *</label>
