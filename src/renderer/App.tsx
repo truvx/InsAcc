@@ -2496,6 +2496,7 @@ export default function App() {
       setPropTransactions([])
       setPropBankReconciliations([])
       setMasterVendors([])
+      setPropVendors([])
 
       invalidateBalanceCache()
 
@@ -2536,7 +2537,8 @@ export default function App() {
               pushState(client, 'insacc_prop_documents', []),
               pushState(client, 'insacc_prop_transactions', []),
               pushState(client, 'insacc_prop_bank_reconciliations', []),
-              pushState(client, 'insacc_master_vendors', [])
+              pushState(client, 'insacc_master_vendors', []),
+              pushState(client, 'insacc_prop_vendors', [])
             ])
           }
         }
@@ -2554,7 +2556,7 @@ export default function App() {
     setBankTransactions, setBankReconciliations, setStatement, setBalance, setDocuments,
     setPropVouchers, setPropAuditEvents, setPropExpenses, setPropTenants, setPropLeases,
     setPdcCheques, setSecurityDeposits, setPropDocuments, setPropTransactions, setPropBankReconciliations,
-    setMasterVendors
+    setMasterVendors, setPropVendors
   ])
 
   const handleResetAllData = useCallback(async () => {
