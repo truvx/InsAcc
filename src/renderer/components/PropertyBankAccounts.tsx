@@ -51,7 +51,7 @@ const statusOptions = [
 ]
 
 type DialogType = 'addAccount' | 'editAccount' | 'deposit' | 'withdraw' | 'transfer' | null
-type TxnFilter = 'all' | 'deposits' | 'withdrawals' | 'transfers'
+type TxnFilter = 'all' | 'deposits' | 'transfers'
 
 import type { AccountingEngine } from '../accounting/accountingEngine'
 import type { Account, Voucher, BankMapping } from '../accounting/types'
@@ -226,7 +226,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
   const filteredTransactions = useMemo(() => {
     let result = accountTransactions
     if (txnFilter === 'deposits') result = result.filter(t => t.type === 'credit')
-    else if (txnFilter === 'withdrawals') result = result.filter(t => t.type === 'debit')
+    else if (txnFilter === 'transfers') result = result.filter(t => t.type === 'debit')
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
       result = result.filter(t =>
@@ -903,7 +903,6 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
   const filterOptions: { value: TxnFilter; label: string }[] = [
     { value: 'all', label: 'All' },
     { value: 'deposits', label: 'Deposits' },
-    { value: 'withdrawals', label: 'Withdrawals' },
     { value: 'transfers', label: 'Transfers' },
   ]
 
@@ -1127,12 +1126,8 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
                     <span className="account-stat-value text-success"><CurrencyText value={accountStats.deposits} currency={currency} /></span>
                   </div>
                   <div className="account-stat">
-                    <span className="account-stat-label">Total Withdrawals</span>
+                    <span className="account-stat-label">Total Transfers</span>
                     <span className="account-stat-value text-danger"><CurrencyText value={accountStats.withdrawals} currency={currency} /></span>
-                  </div>
-                  <div className="account-stat">
-                    <span className="account-stat-label">Transfers</span>
-                    <span className="account-stat-value">{accountStats.transfers}</span>
                   </div>
                   <div className="account-stat">
                     <span className="account-stat-label">Status</span>

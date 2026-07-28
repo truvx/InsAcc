@@ -69,7 +69,7 @@ export default function InvestmentBankAccounts({
   const [formStatus, setFormStatus] = useState<'active' | 'archived' | 'closed' | 'hidden'>('active')
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' })
   const [searchQuery, setSearchQuery] = useState('')
-  const [txnFilter, setTxnFilter] = useState<'all' | 'deposits' | 'withdrawals' | 'transfers'>('all')
+  const [txnFilter, setTxnFilter] = useState<'all' | 'deposits' | 'transfers'>('all')
   const [importOpen, setImportOpen] = useState(false)
   const [selectedHistoryRec, setSelectedHistoryRec] = useState<BankReconciliationRecord | null>(null)
   const [selectedReconRec, setSelectedReconRec] = useState<BankReconciliationRecord | null>(null)
@@ -159,7 +159,7 @@ export default function InvestmentBankAccounts({
   const filteredTransactions = useMemo(() => {
     let result = accountTransactions
     if (txnFilter === 'deposits') result = result.filter(t => t.type === 'credit')
-    else if (txnFilter === 'withdrawals') result = result.filter(t => t.type === 'debit')
+    else if (txnFilter === 'transfers') result = result.filter(t => t.type === 'debit')
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
       result = result.filter(t =>
