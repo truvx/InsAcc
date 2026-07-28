@@ -626,6 +626,7 @@ export default function PropertyVendors({
       {/* Delete Confirm */}
       {deleteTarget && (
         <ConfirmDialog
+          open={true}
           title="Delete Vendor"
           message={`Are you sure you want to delete "${deleteTarget.name}"? This action cannot be undone.`}
           confirmLabel="Delete"
