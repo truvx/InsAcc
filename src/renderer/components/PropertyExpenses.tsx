@@ -10,7 +10,7 @@ import ActionsMenu from './design/ActionsMenu'
 import Toast from './Toast'
 import { formatDate } from '../utils'
 import { VoucherNumberService } from '../services/voucherNumberService'
-import { getAccountTypeBalance } from '../accounting/ledgerService'
+import { getAccountTypeBalance, invalidateBalanceCache } from '../accounting/ledgerService'
 import { Trash2, Printer, Eye, MoreVertical, Download } from 'lucide-react'
 import * as XLSX from 'xlsx-js-style'
 import { CurrencyText } from './design/CurrencyText'
@@ -256,6 +256,8 @@ export default function PropertyExpenses({
     const existing = expenses.find(e => e.id === expenseId)
     const expenseNo = existing ? existing.expenseNo : `EXP-${String(expenses.length + 1).padStart(4, '0')}`
 
+    const oldVoucherId = existing?.voucherId || `vch-exp-${expenseId}`
+
     const updatedExpense: PropertyExpense = {
       id: expenseId,
       expenseNo,
@@ -274,7 +276,7 @@ export default function PropertyExpenses({
       paymentMode: formPaymentMode as any,
       paymentChannel: formPaymentMode === 'Cash' ? 'Cash In Hand' as const : 'Bank Account' as const,
       status: 'Paid',
-      voucherId: `vch-exp-${expenseId}`,
+      voucherId: oldVoucherId,
       createdAt: existing ? existing.createdAt : new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }
@@ -287,7 +289,7 @@ export default function PropertyExpenses({
       : (getPropertyBankAccountId(formBankAccountId, propAccounts, bankMappings) || accounts.find(a => a.id === '1120-prop' || a.code === '1120')?.id || '1120-prop')
 
     const vchType: VoucherType = 'Payment'
-    const existingVoucher = vouchers.find(v => v.id === `vch-exp-${expenseId}`)
+    const existingVoucher = vouchers.find(v => v.id === oldVoucherId)
     const vchNumber = existingVoucher ? existingVoucher.number : VoucherNumberService.generateNextNumber(vchType, formDate, vouchers)
 
     const lines: VoucherLine[] = [
@@ -316,7 +318,7 @@ export default function PropertyExpenses({
     ]
 
     const updatedVoucher: Voucher = {
-      id: `vch-exp-${expenseId}`,
+      id: oldVoucherId,
       number: vchNumber,
       date: formDate,
       type: vchType,
@@ -342,9 +344,11 @@ export default function PropertyExpenses({
 
     // Save Voucher
     setVouchers?.(prev => {
-      const filtered = prev.filter(v => v.id !== `vch-exp-${expenseId}`)
+      const filtered = prev.filter(v => v.id !== oldVoucherId)
       return [updatedVoucher, ...filtered]
     })
+
+    invalidateBalanceCache()
 
     if (!editingId) {
       onAuditEvent?.(
@@ -383,6 +387,8 @@ export default function PropertyExpenses({
       
       return filtered
     })
+
+    invalidateBalanceCache()
 
     onAuditEvent?.(
       recordModuleEvent(
@@ -512,6 +518,8 @@ export default function PropertyExpenses({
       const filtered = prev.filter(v => v.id !== `vch-exp-${exp.id}`)
       return [updatedVoucher, ...filtered]
     })
+    
+    invalidateBalanceCache()
 
     onAuditEvent?.(
       recordModuleEvent(
