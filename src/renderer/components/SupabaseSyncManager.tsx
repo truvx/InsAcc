@@ -180,47 +180,30 @@ export default function SupabaseSyncManager() {
     return (
       <div style={{
         position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.85)',
+        bottom: 24,
+        right: 24,
+        background: '#1e293b',
+        border: '1px solid #334155',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
         zIndex: 99999,
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
+        padding: '12px 16px',
+        borderRadius: 8,
         color: '#fff',
-        fontFamily: 'Inter, sans-serif'
+        fontFamily: 'Inter, sans-serif',
+        pointerEvents: 'none' // Don't block clicks underneath!
       }}>
         <div className="spinner" style={{
-          width: 40,
-          height: 40,
-          border: '4px solid rgba(255,255,255,0.1)',
-          borderTop: '4px solid #00f2fe',
+          width: 16,
+          height: 16,
+          border: '2px solid rgba(255,255,255,0.1)',
+          borderTop: '2px solid #00f2fe',
           borderRadius: '50%',
           animation: 'spin 1s linear infinite',
-          marginBottom: 16
+          marginRight: 12
         }} />
-        <div style={{ fontSize: 16, fontWeight: 500 }}>Syncing database...</div>
-        <div style={{ fontSize: 12, color: '#aaa', marginTop: 8, marginBottom: 20 }}>Fetching latest records from your cloud server</div>
-        
-        {showSkip && (
-          <button
-            onClick={handleSkip}
-            style={{
-              background: 'rgba(255,255,255,0.15)',
-              border: '1px solid rgba(255,255,255,0.3)',
-              color: '#fff',
-              padding: '8px 16px',
-              borderRadius: 6,
-              fontSize: 13,
-              cursor: 'pointer',
-              fontWeight: 500,
-              transition: 'all 0.2s'
-            }}
-          >
-            Skip & Continue to App
-          </button>
-        )}
-
+        <div style={{ fontSize: 13, fontWeight: 500 }}>Syncing cloud database...</div>
         <style>{`
           @keyframes spin {
             0% { transform: rotate(0deg); }
