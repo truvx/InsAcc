@@ -352,17 +352,18 @@ export default function PropertyVendors({
       </div>
 
       {/* Toolbar */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16, alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: '1 1 240px', maxWidth: 360 }}>
-          <SearchIcon style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', width: 16, height: 16 }} />
-          <Input
+      <div className="data-table-toolbar" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16, alignItems: 'center' }}>
+        <div className="data-table-search">
+          <SearchIcon />
+          <input
+            type="text"
+            className="data-table-search-input"
             placeholder="Search vendors..."
             value={search}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-            style={{ paddingLeft: 34, width: '100%' }}
           />
           {search && (
-            <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+            <button className="data-table-search-clear" onClick={() => setSearch('')}>
               <CloseIcon />
             </button>
           )}
@@ -370,7 +371,7 @@ export default function PropertyVendors({
         <Select
           value={filterCategory}
           onChange={(e: any) => setFilterCategory(e.target.value)}
-          style={{ minWidth: 160 }}
+          style={{ minWidth: 160, margin: 0 }}
           options={[
             { value: '', label: 'All Categories' },
             ...usedCategories.map(c => ({ value: c, label: c }))
@@ -379,7 +380,7 @@ export default function PropertyVendors({
         <Select
           value={filterStatus}
           onChange={(e: any) => setFilterStatus(e.target.value)}
-          style={{ minWidth: 120 }}
+          style={{ minWidth: 120, margin: 0 }}
           options={[
             { value: '', label: 'All Status' },
             { value: 'Active', label: 'Active' },
