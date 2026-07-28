@@ -705,11 +705,13 @@ export default function Settings({
                 <pre style={{ fontSize: 11, background: 'var(--bg-primary)', padding: 8, borderRadius: 4, overflowX: 'auto', border: '1px solid var(--border)', userSelect: 'all' }}>
 {`CREATE TABLE IF NOT EXISTS public.app_sync_state (
   key TEXT PRIMARY KEY,
-  value JSONB NOT NULL,
+  value JSONB,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-ALTER TABLE public.app_sync_state DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.app_sync_state ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public access" ON public.app_sync_state;
+CREATE POLICY "Allow public access" ON public.app_sync_state FOR ALL USING (true);
 ALTER PUBLICATION supabase_realtime ADD TABLE public.app_sync_state;`}
                 </pre>
               </div>

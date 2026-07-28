@@ -113,22 +113,20 @@ export default function PropertySettings({
             <span className="card-title">Cloud Database Sync (Supabase)</span>
           </div>
           <div className="card-body">
-            <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>
-              Connect your database to Supabase to enable real-time sync across your devices (laptop, mobile phone, tablet).
-            </p>
-
-            <div style={{ background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)', padding: 12, borderRadius: 8, marginBottom: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', marginBottom: 8 }}>Required: Run this SQL in your Supabase SQL Editor first!</div>
-              <pre style={{ fontSize: 11, background: 'var(--bg-primary)', padding: 8, borderRadius: 4, overflowX: 'auto', border: '1px solid var(--border)', userSelect: 'all' }}>
+            <div style={{ marginBottom: 16, padding: '12px 16px', background: 'rgba(0, 242, 254, 0.1)', border: '1px solid rgba(0, 242, 254, 0.2)', borderRadius: 8, fontSize: 13, color: '#e2e8f0', lineHeight: 1.5 }}>
+              <strong>Setup Required:</strong> Before enabling sync, you must run this SQL snippet in your Supabase project's SQL Editor to create the necessary table:
+              <div style={{ background: '#0f172a', padding: 12, borderRadius: 6, marginTop: 8, fontFamily: 'monospace', fontSize: 12, color: '#a5b4fc', whiteSpace: 'pre-wrap' }}>
 {`CREATE TABLE IF NOT EXISTS public.app_sync_state (
   key TEXT PRIMARY KEY,
-  value JSONB NOT NULL,
+  value JSONB,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-ALTER TABLE public.app_sync_state DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.app_sync_state ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public access" ON public.app_sync_state;
+CREATE POLICY "Allow public access" ON public.app_sync_state FOR ALL USING (true);
 ALTER PUBLICATION supabase_realtime ADD TABLE public.app_sync_state;`}
-              </pre>
+              </div>
             </div>
 
             <div className="form-group">
