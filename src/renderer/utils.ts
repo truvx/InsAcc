@@ -103,7 +103,9 @@ export function t(key: string, lang: string = 'English'): string {
 
 export function formatDate(dateStr: string, format: string = 'DD/MM/YYYY'): string {
   if (!dateStr) return ''
-  const parts = dateStr.split('-')
+  // Strip time portion from ISO datetime strings (e.g. "2026-07-28T00:00:00.000Z")
+  const datePart = dateStr.split('T')[0]
+  const parts = datePart.split('-')
   if (parts.length !== 3) return dateStr
   const [y, m, d] = parts
   if (format === 'MM/DD/YYYY') return `${m}/${d}/${y}`
