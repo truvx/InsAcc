@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { getSupabaseClient, pullAllStates, pushAllLocalData } from '../services/supabaseSyncService'
+import { invalidateBalanceCache } from '../accounting/ledgerService'
 import { clearPersistedCache } from '../utils/lazyPersistedState'
 
 export default function SupabaseSyncManager() {
@@ -97,6 +98,7 @@ export default function SupabaseSyncManager() {
                 const stateStr = JSON.stringify(record.value)
                 localStorage.setItem(record.key, stateStr)
                 window.dispatchEvent(new CustomEvent('insacc-remote-sync', { detail: { key: record.key, value: record.value } }))
+                invalidateBalanceCache()
               }
             }
           }
@@ -131,6 +133,7 @@ export default function SupabaseSyncManager() {
                   if (localStorage.getItem(record.key) !== stateStr) {
                     localStorage.setItem(record.key, stateStr)
                     window.dispatchEvent(new CustomEvent('insacc-remote-sync', { detail: { key: record.key, value: record.value } }))
+                    invalidateBalanceCache()
                   }
                 }
               }
