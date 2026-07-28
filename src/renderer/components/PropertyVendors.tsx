@@ -296,7 +296,7 @@ export default function PropertyVendors({
       sortValue: (v: VendorEntry) => vendorPaymentTotals[v.id] || 0,
       render: (v: VendorEntry) => (
         <span style={{ fontWeight: 600, color: 'var(--accent)' }}>
-          <CurrencyText amount={vendorPaymentTotals[v.id] || 0} currency={currency} />
+          <CurrencyText value={vendorPaymentTotals[v.id] || 0} currency={currency} />
         </span>
       ),
     },
@@ -513,7 +513,7 @@ export default function PropertyVendors({
                 }}>
                   <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Paid</div>
                   <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent)', marginTop: 4 }}>
-                    <CurrencyText amount={vendorLedgerTotal} currency={currency} />
+                    <CurrencyText value={vendorLedgerTotal} currency={currency} />
                   </div>
                 </div>
                 <div style={{
@@ -584,7 +584,7 @@ export default function PropertyVendors({
                           <td style={{ padding: '10px', fontSize: 13 }}>{prop?.name || '–'}</td>
                           <td style={{ padding: '10px', fontSize: 13 }}>{exp.category}</td>
                           <td style={{ padding: '10px', fontSize: 13, textAlign: 'right', fontWeight: 600 }}>
-                            <CurrencyText amount={exp.totalAmount} currency={currency} />
+                            <CurrencyText value={exp.totalAmount} currency={currency} />
                           </td>
                         </tr>
                       )
@@ -594,7 +594,7 @@ export default function PropertyVendors({
                     <tr style={{ borderTop: '2px solid var(--border)' }}>
                       <td colSpan={4} style={{ padding: '10px', fontSize: 14, fontWeight: 700 }}>Total</td>
                       <td style={{ padding: '10px', fontSize: 14, fontWeight: 700, textAlign: 'right', color: 'var(--accent)' }}>
-                        <CurrencyText amount={vendorLedgerTotal} currency={currency} />
+                        <CurrencyText value={vendorLedgerTotal} currency={currency} />
                       </td>
                     </tr>
                   </tfoot>
