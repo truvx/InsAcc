@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { getSupabaseClient, pushState } from '../services/supabaseSyncService'
 
 const cache = new Map<string, string | null>()
 let cacheLoaded = false
@@ -75,12 +76,10 @@ export function useLazyPersistedState<T>(key: string, defaultValue: T): [T, Reac
         const anonKey = rawKey ? JSON.parse(rawKey) : ''
         
         if (enabled && url && anonKey && (window as any).supabaseSyncInitialized) {
-          import('../services/supabaseSyncService').then(({ getSupabaseClient, pushState }) => {
-            const client = getSupabaseClient(url, anonKey)
-            if (client) {
-              pushState(client, key, state)
-            }
-          })
+          const client = getSupabaseClient(url, anonKey)
+          if (client) {
+            pushState(client, key, state).catch(err => console.error('Push failed:', err))
+          }
         }
       }
     } catch {}

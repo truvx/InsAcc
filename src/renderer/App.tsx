@@ -34,6 +34,7 @@ import { invalidateBalanceCache } from './accounting/ledgerService'
 import { useLazyPersistedState, clearPersistedCache } from './utils/lazyPersistedState'
 import { MasterDataProvider } from './contexts/MasterDataContext'
 import SupabaseSyncManager from './components/SupabaseSyncManager'
+import { getSupabaseClient, pushState } from './services/supabaseSyncService'
 
 export interface LoginEntry {
   email: string
@@ -2512,7 +2513,7 @@ export default function App() {
         const anonKey = rawKey ? JSON.parse(rawKey) : ''
         
         if (enabled && url && anonKey) {
-          const { getSupabaseClient, pushState } = await import('./services/supabaseSyncService')
+
           const client = getSupabaseClient(url, anonKey)
           if (client) {
             await Promise.all([
@@ -2602,7 +2603,7 @@ export default function App() {
       const anonKey = rawKey ? JSON.parse(rawKey) : ''
       
       if (enabled && url && anonKey) {
-        const { getSupabaseClient } = await import('./services/supabaseSyncService')
+
         const client = getSupabaseClient(url, anonKey)
         if (client) {
           // Delete all records except the status

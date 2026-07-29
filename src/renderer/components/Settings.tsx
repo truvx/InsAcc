@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import type { UserEntry, LogEntry } from '../data/types'
+import type { LoginEntry } from '../App'
 import type { AuditEvent } from '../data/auditTypes'
+import { pushAllLocalData } from '../services/supabaseSyncService'
 import { recordModuleEvent } from '../services/auditService'
 import type { InvestmentCategory, InvestmentAsset } from '../data/investmentMasterData'
 import { getActiveCategories, getAssetsForCategory } from '../data/investmentMasterData'
@@ -770,7 +772,6 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.app_sync_state;`}
                     onClick={async () => {
                       if (supabaseUrl && supabaseKey) {
                         setToast({ visible: true, message: 'Uploading local database to Supabase...', type: 'success' })
-                        const { pushAllLocalData } = await import('../services/supabaseSyncService')
                         const result = await pushAllLocalData(supabaseUrl, supabaseKey)
                         if (result.success) {
                           setToast({ visible: true, message: 'All local data pushed successfully!', type: 'success' })

@@ -1,7 +1,7 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Input, Select, Button } from './design/DesignSystem'
 import Toast from './Toast'
-import { useState } from 'react'
+import { pushAllLocalData } from '../services/supabaseSyncService'
 import type { LoginEntry } from '../App'
 
 interface Props {
@@ -180,7 +180,6 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.app_sync_state;`}
                   onClick={async () => {
                     if (supabaseUrl && supabaseKey) {
                       setToast({ visible: true, message: 'Uploading local database to Supabase...', type: 'success' })
-                      const { pushAllLocalData } = await import('../services/supabaseSyncService')
                       const result = await pushAllLocalData(supabaseUrl, supabaseKey)
                       if (result.success) {
                         setToast({ visible: true, message: 'All local data pushed successfully!', type: 'success' })
