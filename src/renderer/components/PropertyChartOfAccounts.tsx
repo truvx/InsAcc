@@ -294,7 +294,7 @@ export default function PropertyChartOfAccounts({ currency = 'AED', accounts, vo
               style={{ cursor: 'pointer' }}
             >
               <td>
-                <span className="coa-code">{node.account.code}</span>
+                <span className="coa-code"></span>
               </td>
               <td>
                 <div className="coa-namecell">
@@ -329,7 +329,7 @@ export default function PropertyChartOfAccounts({ currency = 'AED', accounts, vo
               onClick={() => hasChildren && toggleNode(node.account.id)}
             >
               <td>
-                <span className="coa-code">{node.account.code}</span>
+                {!hasChildren && <span className="coa-code">{node.account.code}</span>}
               </td>
               <td>
                 <div className="coa-namecell" style={{ paddingLeft: depth * 20 }}>

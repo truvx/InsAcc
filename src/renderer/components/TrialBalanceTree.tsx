@@ -427,7 +427,7 @@ function TreeRow({
               <div className="tb-toggle-placeholder" />
             )}
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
-              <span className="tb-code">{node.code}</span>
+              {!node.isParent && <span className="tb-code">{node.code}</span>}
               <span className={`tb-name${node.isParent ? ' parent' : ''}`}>{node.name}</span>
             </div>
           </div>

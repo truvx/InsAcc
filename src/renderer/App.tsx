@@ -24,7 +24,7 @@ import type { InvestmentCategory, InvestmentAsset } from './data/investmentMaste
 import { getDefaultInvestmentCategories, getDefaultInvestmentAssets } from './data/investmentMasterData'
 import type { MasterDataState } from './contexts/MasterDataContext'
 import { createAccountingEngine } from './accounting/accountingEngine'
-import { initializeDefaultChartOfAccounts, generateChildCode } from './accounting/chartOfAccountsService'
+import { initializeDefaultChartOfAccounts, generateChildCode, shortenAccountCodes } from './accounting/chartOfAccountsService'
 import { syncAllInvestments } from './services/investmentAggregationService'
 import { getDefaultCurrencies, getDefaultTaxCodes, getDefaultPaymentTerms } from './services/masterDataService'
 import { initializeApplication } from './services/initializationService'
@@ -1038,6 +1038,21 @@ export default function App() {
   const [vouchers, setVouchers] = useLazyPersistedState<Voucher[]>('insacc_vouchers', [])
   const [bankMappings, setBankMappings] = useLazyPersistedState<BankMapping[]>('insacc_bank_mappings', [])
   const [propChartAccounts, setPropChartAccounts] = useLazyPersistedState<Account[]>('insacc_prop_chart_accounts', [])
+  
+  useEffect(() => {
+    if (accounts.length > 0) {
+      const updated = shortenAccountCodes(accounts)
+      if (updated !== accounts) setAccounts(updated)
+    }
+  }, [accounts, setAccounts])
+
+  useEffect(() => {
+    if (propChartAccounts.length > 0) {
+      const updated = shortenAccountCodes(propChartAccounts)
+      if (updated !== propChartAccounts) setPropChartAccounts(updated)
+    }
+  }, [propChartAccounts, setPropChartAccounts])
+
   const [propVouchers, setPropVouchers] = useLazyPersistedState<Voucher[]>('insacc_prop_vouchers', [])
   const [propBankMappings, setPropBankMappings] = useLazyPersistedState<BankMapping[]>('insacc_prop_bank_mappings', [])
 

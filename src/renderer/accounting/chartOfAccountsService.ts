@@ -113,20 +113,29 @@ export function isParentAccount(account: Account, accounts: Account[]): boolean 
 }
 
 export function generateChildCode(parentCode: string, accounts: Account[]): string {
-  const prefix = parentCode
-  const children = accounts
-    .filter(a => a.code.startsWith(prefix) && a.code.length > prefix.length)
-    .map(a => a.code)
-    .sort()
-
-  if (children.length === 0) {
-    return `${prefix}01`
+  const existingCodes = new Set(accounts.map(a => a.code))
+  
+  // Try to find the "base" prefix by removing trailing zeros
+  const basePrefix = parentCode.replace(/0+$/, '')
+  // The target length should be at least 4 digits, but if parent is longer, use parent length
+  const targetLength = Math.max(4, parentCode.length)
+  
+  let seq = 1
+  while (true) {
+    const seqStr = String(seq)
+    let candidate = ''
+    if (basePrefix.length + seqStr.length > targetLength) {
+      // It overflows, just append it
+      candidate = `${basePrefix}${seqStr}`
+    } else {
+      candidate = basePrefix + seqStr.padStart(targetLength - basePrefix.length, '0')
+    }
+    
+    if (!existingCodes.has(candidate)) {
+      return candidate
+    }
+    seq++
   }
-
-  const lastCode = children[children.length - 1]
-  const lastSeq = lastCode.slice(prefix.length)
-  const nextSeq = String(Number(lastSeq) + 1).padStart(lastSeq.length, '0')
-  return `${prefix}${nextSeq}`
 }
 
 export function createChildAccount(
@@ -452,4 +461,47 @@ export function verifyAndCreateSystemAccounts(accounts: Account[], baseCurrency:
   }
 
   return updatedAccounts
+}
+
+export function shortenAccountCodes(accounts: Account[]): Account[] {
+  let changed = false
+  const existingCodes = new Set(accounts.map(a => a.code))
+  
+  const updatedAccounts = accounts.map(a => {
+    // Only shorten leaf accounts (ledgers) that have a code 6 digits or longer
+    // and aren't root codes.
+    if (a.code.length >= 6 && a.parentId) {
+      const parent = accounts.find(p => p.id === a.parentId)
+      if (parent) {
+        const basePrefix = parent.code.replace(/0+$/, '')
+        const targetLength = Math.max(4, parent.code.length)
+        
+        // Find next available short code
+        let seq = 1
+        let newCode = ''
+        while (true) {
+          const seqStr = String(seq)
+          if (basePrefix.length + seqStr.length > targetLength) {
+            newCode = `${basePrefix}${seqStr}`
+          } else {
+            newCode = basePrefix + seqStr.padStart(targetLength - basePrefix.length, '0')
+          }
+          if (!existingCodes.has(newCode) || newCode === a.code) {
+            break
+          }
+          seq++
+        }
+        
+        if (newCode !== a.code) {
+          existingCodes.delete(a.code)
+          existingCodes.add(newCode)
+          changed = true
+          return { ...a, code: newCode }
+        }
+      }
+    }
+    return a
+  })
+  
+  return changed ? updatedAccounts : accounts
 }

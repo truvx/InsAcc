@@ -134,7 +134,7 @@ export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vou
                         {!isGroup && (
                           <>
                             <span style={{ fontWeight: isSubGroup ? 600 : 400, fontSize: 13 }}>{row.account.name}</span>
-                            <span style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 8 }}>{row.account.code}</span>
+                            {!isSubGroup && <span style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 8 }}>{row.account.code}</span>}
                           </>
                         )}
                       </div>
