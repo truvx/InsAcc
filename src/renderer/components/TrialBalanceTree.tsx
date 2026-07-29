@@ -290,7 +290,7 @@ export default function TrialBalanceTree({ currency = 'AED', accounts, vouchers,
                           <td />
                           <td />
                         </tr>
-                        {isGroupExpanded && renderTree(nodes)}
+                        {isGroupExpanded && renderTree(nodes.flatMap(n => n.children))}
                       </React.Fragment>
                     )
                   })}
