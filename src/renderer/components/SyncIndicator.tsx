@@ -26,14 +26,23 @@ export default function SyncIndicator() {
       setSyncingKeys(prev => {
         const next = new Set(prev)
         next.delete(key)
+        
         if (next.size === 0) {
-          setLastSyncStatus(success ? 'success' : 'error')
-          // Hide after 3 seconds
-          if (timeout) clearTimeout(timeout)
-          timeout = setTimeout(() => {
-            setShowStatus(false)
-            setLastSyncStatus(null)
-          }, 3000)
+          // Force it to show "syncing" for a minimum of 800ms so it doesn't just flash instantly
+          const minDisplayTime = 800
+          
+          setTimeout(() => {
+            setLastSyncStatus(success ? 'success' : 'error')
+            
+            // Hide after 3 seconds of showing the result
+            if (timeout) clearTimeout(timeout)
+            timeout = setTimeout(() => {
+              setShowStatus(false)
+              setTimeout(() => {
+                setLastSyncStatus(null)
+              }, 300) // Wait for fade out animation
+            }, 3000)
+          }, minDisplayTime)
         }
         return next
       })
@@ -49,7 +58,7 @@ export default function SyncIndicator() {
     }
   }, [])
 
-  if (!showStatus) return null;
+
 
   return (
     <div 
@@ -73,7 +82,7 @@ export default function SyncIndicator() {
         pointerEvents: showStatus ? 'auto' : 'none'
       }}
     >
-      {syncingKeys.size > 0 && (
+      {(syncingKeys.size > 0 || lastSyncStatus === null) && (
         <>
           <RefreshCw size={20} style={{ color: '#5C63A6', animation: 'spin 1s linear infinite' }} />
           <span style={{ fontSize: '14px', fontWeight: 500, letterSpacing: '0.02em' }}>
