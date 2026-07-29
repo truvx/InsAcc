@@ -103,7 +103,7 @@ export function ensurePropertyBankMappings(
       '1120',
       childName,
       updatedAccounts,
-      { description: `Bank account: ${bank.id}`, currency: bank.currency },
+      { description: `Bank account: ${bank.id}`, currency: bank.currency, module: 'property' },
     )
     updatedAccounts = nextAccounts
     const mapping: BankMapping = {

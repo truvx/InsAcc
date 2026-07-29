@@ -142,7 +142,7 @@ export function createChildAccount(
   parentCode: string,
   name: string,
   accounts: Account[],
-  options?: Partial<Pick<Account, 'description' | 'currency'>>,
+  options?: Partial<Pick<Account, 'description' | 'currency' | 'module'>>,
 ): { account: Account; updatedAccounts: Account[] } {
   const parent = getAccountByCode(parentCode, accounts)
   if (!parent) {
@@ -161,6 +161,7 @@ export function createChildAccount(
     isActive: true,
     description: options?.description ?? `Auto-created ${name}`,
     currency: options?.currency ?? parent.currency ?? 'AED',
+    module: options?.module,
     createdAt: n,
     updatedAt: n,
   }

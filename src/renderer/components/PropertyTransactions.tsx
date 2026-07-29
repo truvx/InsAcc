@@ -205,6 +205,10 @@ export default function PropertyTransactions({
       setToast({ visible: true, message: 'Amount must be greater than zero', type: 'error' })
       return false
     }
+    if (formPaymentChannel === 'Bank Account' && !formBankAccount) {
+      setToast({ visible: true, message: 'Bank Account is mandatory', type: 'error' })
+      return false
+    }
     return true
   }
 

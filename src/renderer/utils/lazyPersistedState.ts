@@ -54,13 +54,14 @@ export function useLazyPersistedState<T>(key: string, defaultValue: T): [T, Reac
       try {
         localStorage.setItem(key, stateStr)
         cache.set(key, stateStr)
-        // Set dirty flag to protect against page refresh before push completes
         if (!isRemoteUpdate.current) {
           localStorage.setItem(`insacc_dirty_${key}`, 'true')
         }
       } catch (err) {
-        console.error('localStorage.setItem failed for key:', key, err)
+        console.error(`Error saving ${key} to localStorage:`, err)
       }
+
+      console.log('HOOK-DEBUG', key, 'isRemoteUpdate:', isRemoteUpdate.current);
 
       // Skip pushing to Supabase if this state update came from remote sync or while pulling
       if (isRemoteUpdate.current) {
@@ -83,6 +84,8 @@ export function useLazyPersistedState<T>(key: string, defaultValue: T): [T, Reac
         const rawKey = localStorage.getItem('insacc_supabase_key')
         const anonKey = rawKey ? JSON.parse(rawKey) : ''
         
+        console.log('HOOK-DEBUG', key, 'enabled:', enabled, 'url:', !!url, 'anonKey:', !!anonKey, 'initialized:', (window as any).supabaseSyncInitialized);
+
         if (enabled && url && anonKey && (window as any).supabaseSyncInitialized) {
           const client = getSupabaseClient(url, anonKey)
           if (client) {
@@ -133,10 +136,17 @@ export function useLazyPersistedState<T>(key: string, defaultValue: T): [T, Reac
     window.addEventListener('storage' as any, handleStorageChange)
     window.addEventListener('insacc-remote-sync' as any, handleRemoteSync)
     return () => {
-      window.removeEventListener('storage' as any, handleStorageChange)
-      window.removeEventListener('insacc-remote-sync' as any, handleRemoteSync)
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('insacc-remote-sync', handleRemoteSync)
     }
   }, [key])
+
+  // Expose to window for testing ONLY if key is insacc_prop_expenses
+  useEffect(() => {
+    if (key === 'insacc_prop_expenses') {
+      (window as any).testSetPropExpenses = setState;
+    }
+  }, [key, setState]);
 
   const reset = useCallback(() => {
     try {
