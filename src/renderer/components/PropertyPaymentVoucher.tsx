@@ -129,11 +129,23 @@ export default function PropertyPaymentVoucher({
   ], [propAccounts, formBankAccount])
 
   const coaOptions = useMemo(() => {
+    const leafAccounts = accounts.filter(a => {
+      if (!a.isActive) return false
+      // Exclude parent accounts (those that have children)
+      const hasChildren = accounts.some(child => child.parentId === a.id && child.isActive)
+      if (hasChildren) return false
+      return true
+    })
+    // Sort: expense accounts first, then others
+    const sorted = [...leafAccounts].sort((a, b) => {
+      const aIsExpense = a.type === 'expense' ? 0 : 1
+      const bIsExpense = b.type === 'expense' ? 0 : 1
+      if (aIsExpense !== bIsExpense) return aIsExpense - bIsExpense
+      return a.code.localeCompare(b.code)
+    })
     return [
       { value: '', label: 'Select account to debit' },
-      ...accounts
-        .filter(a => a.isActive)
-        .map(a => ({ value: a.id, label: `${a.code} — ${a.name} (${a.type.toUpperCase()})` }))
+      ...sorted.map(a => ({ value: a.id, label: `${a.code} — ${a.name} (${a.type})` }))
     ]
   }, [accounts])
 
@@ -224,7 +236,7 @@ export default function PropertyPaymentVoucher({
       return
     }
     if (!formExpenseAccount) {
-      showToast('Please select expense type', 'error')
+      showToast('Please select an account to debit', 'error')
       return
     }
     if (!formDescription) {
