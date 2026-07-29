@@ -139,7 +139,9 @@ export default function SupabaseSyncManager() {
               }
             }
           )
-          .subscribe()
+          .subscribe((status, err) => {
+            if (err) console.error('Realtime subscribe error:', err)
+          })
       } catch (err) {
         console.error('Failed to initialize Supabase Realtime channel:', err)
         if (active) {
