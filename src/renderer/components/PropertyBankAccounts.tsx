@@ -162,11 +162,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
     return bankReconciliations.filter(r => r.bankAccountId === selectedId)
   }, [bankReconciliations, selectedId])
 
-  useEffect(() => {
-    if (propAccounts.length > 0 && !selectedId) {
-      setSelectedId((propAccounts.find(a => a.status === 'active') || propAccounts[0]).id)
-    }
-  }, [propAccounts])
+  // Default auto-selection removed per user request
 
   const dashboard = useMemo(
     () => getBankDashboardProjection(propAccounts, bankMappings, accounts, vouchers),
@@ -565,12 +561,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
     invalidateBalanceCache()
 
     if (selectedId === acctId) {
-      const remaining = propAccounts.filter(a => a.id !== acctId)
-      if (remaining.length > 0) {
-        setSelectedId((remaining.find(a => a.status === 'active') || remaining[0]).id)
-      } else {
-        setSelectedId(null)
-      }
+      setSelectedId(null)
     }
 
     const accDesc = deleteAccountTarget.institution;

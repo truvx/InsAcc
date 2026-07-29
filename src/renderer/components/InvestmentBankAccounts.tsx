@@ -492,12 +492,7 @@ export default function InvestmentBankAccounts({
     invalidateBalanceCache()
 
     if (selectedId === acctId) {
-      const remaining = bankAccounts.filter(a => a.id !== acctId)
-      if (remaining.length > 0) {
-        setSelectedId((remaining.find(a => a.status === 'active') || remaining[0]).id)
-      } else {
-        setSelectedId(null)
-      }
+      setSelectedId(null)
     }
 
     const accDesc = deleteAccountTarget.institution;
