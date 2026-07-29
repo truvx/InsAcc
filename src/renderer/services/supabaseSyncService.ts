@@ -112,6 +112,8 @@ export async function pushAllLocalData(url: string, anonKey: string): Promise<{ 
             if (!result.success) {
               allSuccess = false
               lastError = result.error || 'Unknown error'
+            } else {
+              localStorage.removeItem(`insacc_dirty_${key}`)
             }
           } catch (err: any) {
             console.error(`Failed to push single key ${key}:`, err)

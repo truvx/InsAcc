@@ -54,6 +54,10 @@ export function useLazyPersistedState<T>(key: string, defaultValue: T): [T, Reac
       try {
         localStorage.setItem(key, stateStr)
         cache.set(key, stateStr)
+        // Set dirty flag to protect against page refresh before push completes
+        if (!isRemoteUpdate.current) {
+          localStorage.setItem(`insacc_dirty_${key}`, 'true')
+        }
       } catch (err) {
         console.error('localStorage.setItem failed for key:', key, err)
       }
@@ -82,7 +86,13 @@ export function useLazyPersistedState<T>(key: string, defaultValue: T): [T, Reac
         if (enabled && url && anonKey && (window as any).supabaseSyncInitialized) {
           const client = getSupabaseClient(url, anonKey)
           if (client) {
-            pushState(client, key, state).catch(err => console.error('Push failed:', err))
+            pushState(client, key, state)
+              .then((res) => {
+                if (res.success) {
+                  localStorage.removeItem(`insacc_dirty_${key}`)
+                }
+              })
+              .catch(err => console.error('Push failed:', err))
           }
         }
       }
