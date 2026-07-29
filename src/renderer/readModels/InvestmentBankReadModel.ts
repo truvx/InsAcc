@@ -129,11 +129,17 @@ export function getAccountStatementProjection(
   if (!account) return { account: undefined, statement: [], stats: { deposits: 0, withdrawals: 0, transfers: 0 } }
 
   const mapping = bankMappings.find(m => m.bankAccountId === accountId)
-  const bankCoaId = account.chartAccountId || mapping?.accountId || ''
+  const bankCoaId = (account as any).chartAccountId || mapping?.accountId || ''
+
+  console.log('[BankStatement] accountId=', accountId, 'chartAccountId=', (account as any).chartAccountId, 'mapping=', mapping?.accountId, 'resolved bankCoaId=', bankCoaId)
+  console.log('[BankStatement] accounts count=', accounts.length, 'coaFound=', accounts.some(a => a.id === bankCoaId), 'vouchers count=', vouchers.length)
+  const matchingLines = vouchers.flatMap(v => v.lines).filter(l => l.accountId === bankCoaId)
+  console.log('[BankStatement] voucher lines matching bankCoaId=', matchingLines.length, matchingLines)
 
   const statement = bankCoaId
     ? getAccountStatement(bankCoaId, vouchers, accounts, '0000-01-01', '9999-12-31')
     : []
+  console.log('[BankStatement] statement entries=', statement.length, statement)
 
   const deposits = statement.reduce((s, line) => s + line.debit, 0)
   const withdrawals = statement.reduce((s, line) => s + line.credit, 0)
