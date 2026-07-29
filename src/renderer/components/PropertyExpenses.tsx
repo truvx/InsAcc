@@ -1106,7 +1106,7 @@ export default function PropertyExpenses({
                 { value: '', label: 'Select Bank Account' },
                 ...propAccounts.map(ba => ({
                   value: ba.id,
-                  label: ba.institution || ba.name || 'Bank Account'
+                  label: ba.institution || (ba as any).name || 'Bank Account'
                 }))
               ]}
             />

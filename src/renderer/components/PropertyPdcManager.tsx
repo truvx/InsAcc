@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import type { PdcCheque, LeaseEntry, TenantEntry, PropAccount, PropertyEntry } from '../data/propertyTypes'
+import type { PdcCheque, LeaseEntry, TenantEntry, PropAccount, PropertyEntry, UnitEntry } from '../data/propertyTypes'
 import type { Column } from './design/Table'
 import { Badge, Button, SearchIcon, CloseIcon, EmptyState, Modal, Select, KpiCard, ChevronLeftIcon } from './design/DesignSystem'
 import { formatDate } from '../utils'

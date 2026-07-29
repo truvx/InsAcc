@@ -168,7 +168,7 @@ export default function PropertyVendors({
         status: form.status,
       })
       if (onAuditEvent) {
-        onAuditEvent(recordModuleEvent('property', 'Update', form.name, editingVendor.id, `Updated vendor: ${form.name}`))
+        onAuditEvent(recordModuleEvent('Property', 'Update', form.name, editingVendor.id, `Updated vendor: ${form.name}`))
       }
       setToast({ message: 'Vendor updated successfully', type: 'success' })
     } else {
@@ -185,7 +185,7 @@ export default function PropertyVendors({
         status: form.status,
       })
       if (onAuditEvent) {
-        onAuditEvent(recordModuleEvent('property', 'Create', form.name, newVendor.id, `Created vendor: ${form.name}`))
+        onAuditEvent(recordModuleEvent('Property', 'Create', form.name, newVendor.id, `Created vendor: ${form.name}`))
       }
       setToast({ message: 'Vendor created successfully', type: 'success' })
     }
@@ -202,7 +202,7 @@ export default function PropertyVendors({
     }
     deleteVendor(setVendors, deleteTarget.id)
     if (onAuditEvent) {
-      onAuditEvent(recordModuleEvent('property', 'Delete', deleteTarget.name, deleteTarget.id, `Deleted vendor: ${deleteTarget.name}`))
+      onAuditEvent(recordModuleEvent('Property', 'Delete', deleteTarget.name, deleteTarget.id, `Deleted vendor: ${deleteTarget.name}`))
     }
     setToast({ message: 'Vendor deleted', type: 'success' })
     setDeleteTarget(null)
@@ -305,7 +305,7 @@ export default function PropertyVendors({
       header: 'Payments',
       sortable: true,
       sortValue: (v: VendorEntry) => vendorExpenseCounts[v.id] || 0,
-      render: (v: VendorEntry) => <Badge variant="info">{vendorExpenseCounts[v.id] || 0}</Badge>,
+      render: (v: VendorEntry) => <Badge variant="neutral">{vendorExpenseCounts[v.id] || 0}</Badge>,
     },
     {
       key: 'status',
@@ -398,7 +398,7 @@ export default function PropertyVendors({
         <EmptyState
           icon={<svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>}
           title="No Vendors"
-          description="Add your first vendor or supplier to track payments."
+          text="Add your first vendor or supplier to track payments."
           action={<Button variant="primary" onClick={openAddModal} icon={<PlusIcon />}>Add Vendor</Button>}
         />
       ) : (
@@ -637,7 +637,7 @@ export default function PropertyVendors({
       )}
 
       {/* Toast */}
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {toast && <Toast visible={true} message={toast.message} type={toast.type as any} onClose={() => setToast(null)} />}
 
       {/* Slide animation keyframes */}
       <style>{`

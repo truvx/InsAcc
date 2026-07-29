@@ -137,7 +137,7 @@ export function useLazyPersistedState<T>(key: string, defaultValue: T): [T, Reac
     window.addEventListener('insacc-remote-sync' as any, handleRemoteSync)
     return () => {
       window.removeEventListener('storage', handleStorageChange)
-      window.removeEventListener('insacc-remote-sync', handleRemoteSync)
+      window.removeEventListener('insacc-remote-sync', handleRemoteSync as EventListener)
     }
   }, [key])
 

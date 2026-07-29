@@ -51,7 +51,19 @@ export function getBankDashboardProjection(
 
   const accountsProjection: BankAccountProjection[] = bankAccounts.map(acct => {
     const mapping = bankMappings.find(m => m.bankAccountId === acct.id)
-    const bankCoaId = acct.chartAccountId || mapping?.accountId || ''
+    let bankCoaId = acct.chartAccountId || mapping?.accountId || ''
+    
+    // Auto-heal if missing or pointing to a parent account (like 1120)
+    if (!bankCoaId || bankCoaId === '1120' || accounts.some(a => a.id === bankCoaId && accounts.some(child => child.parentId === a.id))) {
+      const parent1120 = accounts.find(a => a.code === '1120')
+      if (parent1120) {
+        const matchingLedgerAcct = accounts.find(a => a.parentId === parent1120.id && a.isActive && (a.name.toLowerCase().includes(acct.institution.toLowerCase()) || acct.institution.toLowerCase().includes(a.name.toLowerCase())))
+        if (matchingLedgerAcct) {
+          bankCoaId = matchingLedgerAcct.id
+        }
+      }
+    }
+
     
     // Bank balance must come ONLY from the ledger — same single source of truth
     // as Trial Balance / Balance Sheet. Uses getAccountBalance directly to avoid
@@ -129,7 +141,18 @@ export function getAccountStatementProjection(
   if (!account) return { account: undefined, statement: [], stats: { deposits: 0, withdrawals: 0, transfers: 0 } }
 
   const mapping = bankMappings.find(m => m.bankAccountId === accountId)
-  const bankCoaId = (account as any).chartAccountId || mapping?.accountId || ''
+  let bankCoaId = (account as any).chartAccountId || mapping?.accountId || ''
+
+  // Auto-heal if missing or pointing to a parent account (like 1120)
+  if (!bankCoaId || bankCoaId === '1120' || accounts.some(a => a.id === bankCoaId && accounts.some(child => child.parentId === a.id))) {
+    const parent1120 = accounts.find(a => a.code === '1120')
+    if (parent1120) {
+      const matchingLedgerAcct = accounts.find(a => a.parentId === parent1120.id && a.isActive && (a.name.toLowerCase().includes(account.institution.toLowerCase()) || account.institution.toLowerCase().includes(a.name.toLowerCase())))
+      if (matchingLedgerAcct) {
+        bankCoaId = matchingLedgerAcct.id
+      }
+    }
+  }
 
   console.log('[BankStatement] accountId=', accountId, 'chartAccountId=', (account as any).chartAccountId, 'mapping=', mapping?.accountId, 'resolved bankCoaId=', bankCoaId)
   console.log('[BankStatement] accounts count=', accounts.length, 'coaFound=', accounts.some(a => a.id === bankCoaId), 'vouchers count=', vouchers.length)
