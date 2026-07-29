@@ -589,16 +589,40 @@ export default function PropertyTransactions({
       }
     })
 
+    const voucherTxns = (vouchers || []).map(v => {
+      const typeStr = v.type === 'Receipt' ? 'credit' : 'debit'
+      return {
+        id: v.id,
+        accountId: '',
+        date: v.date,
+        type: typeStr as any,
+        amount: v.totalAmount,
+        description: v.notes || `${v.type} Voucher ${v.voucherNumber}`,
+        category: `${v.type} Voucher`,
+        status: v.status === 'Posted' ? 'cleared' as const : v.status === 'Void' ? 'void' as const : 'pending' as const,
+        reference: v.voucherNumber,
+        paymentMode: v.paymentMode || 'Bank Transfer',
+        paymentChannel: v.paymentChannel || 'Bank Account',
+        paymentReference: v.paymentReference || '',
+        bankAccountId: null,
+        createdAt: v.createdAt,
+        updatedAt: v.updatedAt,
+        createdBy: v.createdBy || 'user',
+        updatedBy: v.updatedBy || 'user'
+      }
+    })
+
     const uniqueTxns = new Map<string, any>()
     manualTxns.forEach(t => uniqueTxns.set(t.id, t))
     pdcTxns.forEach(t => uniqueTxns.set(t.id, t))
     depositTxns.forEach(t => uniqueTxns.set(t.id, t))
     expenseTxns.forEach(t => uniqueTxns.set(t.id, t))
+    voucherTxns.forEach(t => uniqueTxns.set(t.id, t))
 
     return Array.from(uniqueTxns.values()).sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     )
-  }, [propTransactions, pdcCheques, securityDeposits, propExpenses, tenants, leases])
+  }, [propTransactions, pdcCheques, securityDeposits, propExpenses, tenants, leases, vouchers])
 
   const totalIncome = useMemo(() =>
     allTransactions.filter(t => t.type === 'credit' && t.category !== 'Security Deposit').reduce((s, t) => s + t.amount, 0),
