@@ -56,24 +56,24 @@ export default function SyncIndicator() {
           initial={{ opacity: 0, y: 50, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.9 }}
-          className="fixed bottom-6 right-6 z-50 flex items-center space-x-3 bg-gray-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-gray-700/50 backdrop-blur-md"
+          className="sync-indicator-container"
         >
           {syncingKeys.size > 0 && (
             <>
-              <RefreshCw className="w-5 h-5 text-blue-400 animate-spin" />
-              <span className="text-sm font-medium tracking-wide">Syncing to cloud...</span>
+              <RefreshCw className="sync-icon-spin" size={20} />
+              <span className="sync-text">Syncing to cloud...</span>
             </>
           )}
           {syncingKeys.size === 0 && lastSyncStatus === 'success' && (
             <>
-              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-              <span className="text-sm font-medium tracking-wide">Saved to cloud</span>
+              <CheckCircle2 className="sync-icon-success" size={20} />
+              <span className="sync-text">Saved to cloud</span>
             </>
           )}
           {syncingKeys.size === 0 && lastSyncStatus === 'error' && (
             <>
-              <CloudOff className="w-5 h-5 text-rose-400" />
-              <span className="text-sm font-medium tracking-wide">Sync failed</span>
+              <CloudOff className="sync-icon-error" size={20} />
+              <span className="sync-text">Sync failed</span>
             </>
           )}
         </motion.div>

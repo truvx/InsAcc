@@ -5656,3 +5656,55 @@ span.account-link:hover {
   flex-shrink: 0 !important;
   vertical-align: middle !important;
 }
+
+/* Sync Indicator */
+.sync-indicator-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  padding: 12px 20px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color);
+  animation: slideInUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.sync-indicator-container.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(20px) scale(0.95);
+  transition: all 0.3s ease;
+}
+
+@keyframes slideInUp {
+  0% { opacity: 0; transform: translateY(30px) scale(0.9); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.sync-icon-spin {
+  animation: spin 1s linear infinite;
+  color: var(--color-primary);
+}
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+.sync-icon-success {
+  color: var(--color-success);
+}
+
+.sync-icon-error {
+  color: var(--color-danger);
+}
+
+.sync-text {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
