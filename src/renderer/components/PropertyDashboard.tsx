@@ -28,12 +28,16 @@ interface Props {
 
 import { formatPremiumCompact } from '../utils/reportFormatters'
 
+import { UaeDirhamIcon } from './design/UaeDirhamIcon';
+
 function fmt(n: number, sym = 'AED', accentColor?: string) {
   const { valueStr, suffix } = formatPremiumCompact(n);
   const sign = n < 0 ? '-' : '';
   return (
     <span className="kpi-value-inner">
-      <span className="kpi-currency">{sign}{sym}</span>
+      <span className="kpi-currency" style={{ display: 'inline-flex', alignItems: 'center' }}>
+        {sign}{sym === 'AED' ? <UaeDirhamIcon /> : sym}
+      </span>
       <span className="kpi-compact-amount" style={accentColor ? { color: accentColor } : undefined}>{valueStr}{suffix}</span>
     </span>
   );

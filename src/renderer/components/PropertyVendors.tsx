@@ -347,7 +347,7 @@ export default function PropertyVendors({
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
         <KpiCard label="Total Vendors" value={String(vendors.length)} />
         <KpiCard label="Active Vendors" value={String(activeVendors)} />
-        <KpiCard label="Total Paid to Vendors" value={formatCurrency(totalPaidAllVendors, currency)} />
+        <KpiCard label="Total Paid to Vendors" value={<CurrencyText value={totalPaidAllVendors} currency={currency} />} />
         <KpiCard label="Linked Expenses" value={String(expenses.filter(e => e.vendorId).length)} />
       </div>
 

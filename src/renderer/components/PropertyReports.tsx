@@ -6,6 +6,7 @@ import type { AuditEvent } from '../data/auditTypes'
 import { recordModuleEvent } from '../services/auditService'
 import { validateLedgerBalance } from '../accounting/ledgerService'
 import { formatCurrency, formatPercentage } from '../utils/reportFormatters'
+import { UaeDirhamIcon } from './design/UaeDirhamIcon'
 import { KpiCard, ChartCard, Button, Badge, EmptyState, ChevronDownIcon, PortfolioIcon, ActivityIcon, TrendingUpIcon } from './design/DesignSystem'
 import PeriodSelector, { type PeriodOption, getPeriodDates } from './PeriodSelector'
 import { t } from '../utils'
@@ -119,7 +120,11 @@ export default function PropertyReports({
     { id: 'expense-report', label: 'Expense Report' },
   ]
 
-  const fmt = (n: number) => `${currency} ${n.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+  const fmt = (n: number) => (
+    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+      {currency === 'AED' ? <UaeDirhamIcon /> : currency} {n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+    </span>
+  );
 
   // ── Accounting KPIs ──
   const accountingKpis = useMemo(() => {

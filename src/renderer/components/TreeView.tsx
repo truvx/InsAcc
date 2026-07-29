@@ -20,10 +20,12 @@ interface TreeItemProps {
   isLast: boolean
 }
 
+import { UaeDirhamIcon } from './design/UaeDirhamIcon'
+
 function fmt(n: number, sym = 'AED') {
   const { valueStr, suffix } = formatPremiumCompact(n)
   const sign = n < 0 ? '-' : ''
-  return <>{sign}{sym} {valueStr}{suffix}</>
+  return <span style={{ display: 'inline-flex', alignItems: 'center' }}>{sign}{sym === 'AED' ? <UaeDirhamIcon /> : sym} {valueStr}{suffix}</span>
 }
 
 function Chevron({ expanded }: { expanded: boolean }) {

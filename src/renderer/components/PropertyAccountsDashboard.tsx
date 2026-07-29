@@ -75,7 +75,13 @@ function IconWrapper({ children, color }: { children: React.ReactNode; color: st
   return <div className="kpi-card-icon" style={{ background: `${color}18`, color }}>{children}</div>
 }
 
-const fmt = (n: number, sym: string) => `${sym} ${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+import { UaeDirhamIcon } from './design/UaeDirhamIcon';
+
+const fmt = (n: number, sym: string) => (
+  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+    {sym === 'AED' ? <UaeDirhamIcon /> : sym} {Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+  </span>
+);
 
 export default function PropertyAccountsDashboard({ currency = 'AED', accounts, vouchers, bankAccounts, bankMappings, properties, leases = [], tenants = [] }: Props) {
   const [drillAccountId, setDrillAccountId] = useState<string | null>(null)
