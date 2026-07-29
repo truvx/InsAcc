@@ -598,7 +598,7 @@ export default function PropertyVendors({
                           transition: 'background 0.15s',
                         }}>
                           <td style={{ padding: '10px', fontSize: 13 }}>{formatDate(exp.date, dateFormat)}</td>
-                          <td style={{ padding: '10px', fontSize: 13, fontFamily: 'monospace' }}>{exp.expenseNo}</td>
+                          <td style={{ padding: '10px', fontSize: 13, fontWeight: 700 }}>{exp.expenseNo}</td>
                           <td style={{ padding: '10px', fontSize: 13 }}>{prop?.name || '–'}</td>
                           <td style={{ padding: '10px', fontSize: 13 }}>{exp.category}</td>
                           <td style={{ padding: '10px', fontSize: 13, textAlign: 'right', fontWeight: 600 }}>

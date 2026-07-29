@@ -290,7 +290,7 @@ export default function InvestmentReports({
             <p style={{ color: 'var(--text-primary)', marginBottom: 16, lineHeight: 1.5 }}>
               The ledger is not balanced. Trial Balance validation failed:
             </p>
-            <div style={{ backgroundColor: 'white', padding: 16, borderRadius: 6, marginBottom: 16, fontFamily: 'monospace', fontSize: 14 }}>
+            <div style={{ backgroundColor: 'white', padding: 16, borderRadius: 6, marginBottom: 16, fontWeight: 700, fontSize: 15, fontVariantNumeric: 'tabular-nums' }}>
               <div>Total Debit: {ledgerValidation.totalDebit}</div>
               <div>Total Credit: {ledgerValidation.totalCredit}</div>
               <div style={{ color: 'var(--danger, #EF4444)', fontWeight: 600, marginTop: 8 }}>
