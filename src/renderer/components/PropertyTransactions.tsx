@@ -746,7 +746,7 @@ export default function PropertyTransactions({
     },
     {
       key: 'actions',
-      header: 'Actions',
+      header: '',
       render: txn => {
         const isManual = propTransactions.some(mt => mt.id === txn.id)
         return (

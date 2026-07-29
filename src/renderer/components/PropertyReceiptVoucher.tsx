@@ -490,7 +490,7 @@ export default function PropertyReceiptVoucher({
     },
     {
       key: 'actions',
-      header: 'Actions',
+      header: '',
       render: v => (
         <div className="table-actions" style={{ display: 'flex', justifyContent: 'center' }}>
           <ActionsMenu
