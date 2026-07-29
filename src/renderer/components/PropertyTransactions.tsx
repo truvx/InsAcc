@@ -436,24 +436,36 @@ export default function PropertyTransactions({
 
   const handleDelete = () => {
     if (!deleteTarget) return
+    const isManual = propTransactions.some(t => t.id === deleteTarget)
     const deleted = propTransactions.find(t => t.id === deleteTarget)
-    if (setPropTransactions) {
+
+    if (isManual && setPropTransactions) {
       setPropTransactions(prev => prev.filter(t => t.id !== deleteTarget))
+      // Also remove its GL voucher
+      const voucherId = `vch-${deleteTarget}`
+      if (setVouchers) {
+        setVouchers(prev => prev.filter(v => v.id !== voucherId))
+      }
     }
 
-    // --- GL Voucher Deleting ---
-    const voucherId = `vch-${deleteTarget}`
-    if (setVouchers) {
-      setVouchers(prev => prev.filter(v => v.id !== voucherId))
+    // Delete voucher-based transaction (Receipt/Payment voucher)
+    const isVoucher = (vouchers || []).some(v => v.id === deleteTarget)
+    if (isVoucher && setVouchers) {
+      setVouchers(prev => prev.filter(v => v.id !== deleteTarget))
     }
+
+    // Delete expense-based transaction
+    const isExpense = (propExpenses || []).some(e => e.id === deleteTarget)
+    if (isExpense && setPropExpenses) {
+      setPropExpenses(prev => prev.filter(e => e.id !== deleteTarget))
+    }
+
     invalidateBalanceCache()
-    // ---------------------------
-
     setDeleteTarget(null)
-    if (deleted) {
-      const delType = deleted.type === 'credit' ? 'Income' : 'Expense'
-      onAuditEvent?.(recordModuleEvent('Property Transactions', 'Delete', `${delType} - ${deleted.category}`, deleted.id, `Deleted ${delType} transaction: ${deleted.category} ${currency}${deleted.amount.toLocaleString()}`))
-    }
+
+    const txnType = deleted?.type === 'credit' ? 'Income' : 'Expense'
+    const txnCategory = deleted?.category || (isVoucher ? 'Voucher' : 'Transaction')
+    onAuditEvent?.(recordModuleEvent('Property Transactions', 'Delete', `${txnType} - ${txnCategory}`, deleteTarget, `Deleted transaction ${deleteTarget}`))
     setToast({ visible: true, message: 'Transaction deleted', type: 'success' })
   }
 
@@ -737,14 +749,13 @@ export default function PropertyTransactions({
       header: 'Actions',
       render: txn => {
         const isManual = propTransactions.some(mt => mt.id === txn.id)
-        if (!isManual) {
-          return <span className="text-xs text-secondary">System Generated</span>
-        }
         return (
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            <Button variant="ghost" size="sm" onClick={() => handleEdit(txn)} aria-label="Edit">
-              <EditIcon />
-            </Button>
+            {isManual && (
+              <Button variant="ghost" size="sm" onClick={() => handleEdit(txn)} aria-label="Edit">
+                <EditIcon />
+              </Button>
+            )}
             <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(txn.id)} aria-label="Delete">
               <TrashIcon />
             </Button>
