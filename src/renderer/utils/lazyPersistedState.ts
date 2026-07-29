@@ -51,8 +51,12 @@ export function useLazyPersistedState<T>(key: string, defaultValue: T): [T, Reac
         }
       }
 
-      localStorage.setItem(key, stateStr)
-      cache.set(key, stateStr)
+      try {
+        localStorage.setItem(key, stateStr)
+        cache.set(key, stateStr)
+      } catch (err) {
+        console.error('localStorage.setItem failed for key:', key, err)
+      }
 
       // Skip pushing to Supabase if this state update came from remote sync or while pulling
       if (isRemoteUpdate.current) {
@@ -82,7 +86,9 @@ export function useLazyPersistedState<T>(key: string, defaultValue: T): [T, Reac
           }
         }
       }
-    } catch {}
+    } catch (err) {
+      console.error(`useLazyPersistedState error for key ${key}:`, err)
+    }
   }, [state, key])
 
   // Listen to storage events & custom remote sync events
