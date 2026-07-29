@@ -91,8 +91,8 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
         padding: '16px 20px', borderBottom: '1px solid var(--divider)',
         display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0
       }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', color: accentColor }}>{icon}</span>
-        <span style={{ fontWeight: 700, fontSize: 16, color: accentColor }}>{title}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-secondary)' }}>{icon}</span>
+        <span style={{ fontWeight: 600, fontSize: 16, color: 'var(--text-primary)' }}>{title}</span>
         <span style={{ fontSize: 12, color: '#9CA3AF', marginLeft: 'auto' }}>
           {rows.filter(r => r.depth === 0).length} sections
         </span>
@@ -161,7 +161,7 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
         background: 'var(--bg-secondary)',
         flexShrink: 0
       }}>
-        <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>Total {title}</span>
+        <span style={{ fontWeight: 600, fontSize: 14, color: accentColor }}>Total {title}</span>
         <CurrencyText value={total} currency={currency} className="text-md fw-700" style={{ color: accentColor }} />
       </div>
     </div>

@@ -174,17 +174,17 @@ export default function InvestmentProfitLoss({ currency = 'AED', accounts, vouch
                   padding: '16px 20px', borderBottom: '1px solid var(--divider)',
                   display: 'flex', alignItems: 'center', gap: 8,
                 }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', color: '#059669' }}><TrendingUp size={16} strokeWidth={1.75} /></span>
-                  <span style={{ fontWeight: 700, fontSize: 16, color: '#059669' }}>Revenue</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-secondary)' }}><TrendingUp size={16} strokeWidth={1.75} /></span>
+                  <span style={{ fontWeight: 600, fontSize: 16, color: 'var(--text-primary)' }}>Revenue</span>
                   <span style={{ fontSize: 12, color: '#9CA3AF', marginLeft: 'auto' }}>
                     {revenueRows.filter(r => r.depth === 0).length} sections
                   </span>
                 </div>
                 {renderTable('Revenue', revenueRows, totalRevenue, '#059669', '#059669')}
                 <div style={{
-                  padding: '12px 20px', borderTop: '2px solid var(--divider)',
+                  padding: '14px 20px', borderTop: '1px solid var(--divider)',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  background: '#05966908',
+                  background: 'var(--bg-secondary)',
                 }}>
                   <span style={{ fontWeight: 700, fontSize: 14, color: '#059669' }}>Total Revenue</span>
                   <CurrencyText value={totalRevenue} currency={currency} className="text-md fw-700" style={{ color: '#059669' }} />
@@ -196,17 +196,17 @@ export default function InvestmentProfitLoss({ currency = 'AED', accounts, vouch
                   padding: '16px 20px', borderBottom: '1px solid var(--divider)',
                   display: 'flex', alignItems: 'center', gap: 8,
                 }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', color: '#DC2626' }}><TrendingDown size={16} strokeWidth={1.75} /></span>
-                  <span style={{ fontWeight: 700, fontSize: 16, color: '#DC2626' }}>Expenses</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-secondary)' }}><TrendingDown size={16} strokeWidth={1.75} /></span>
+                  <span style={{ fontWeight: 600, fontSize: 16, color: 'var(--text-primary)' }}>Expenses</span>
                   <span style={{ fontSize: 12, color: '#9CA3AF', marginLeft: 'auto' }}>
                     {expenseRows.filter(r => r.depth === 0).length} sections
                   </span>
                 </div>
                 {renderTable('Expenses', expenseRows, totalExpenses, '#DC2626', '#DC2626')}
                 <div style={{
-                  padding: '12px 20px', borderTop: '2px solid var(--divider)',
+                  padding: '14px 20px', borderTop: '1px solid var(--divider)',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  background: '#DC262608',
+                  background: 'var(--bg-secondary)',
                 }}>
                   <span style={{ fontWeight: 700, fontSize: 14, color: '#DC2626' }}>Total Expenses</span>
                   <CurrencyText value={totalExpenses} currency={currency} className="text-md fw-700" style={{ color: '#DC2626' }} />
