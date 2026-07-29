@@ -34,6 +34,7 @@ import { invalidateBalanceCache } from './accounting/ledgerService'
 import { useLazyPersistedState, clearPersistedCache } from './utils/lazyPersistedState'
 import { MasterDataProvider } from './contexts/MasterDataContext'
 import SupabaseSyncManager from './components/SupabaseSyncManager'
+import SyncIndicator from './components/SyncIndicator'
 import { getSupabaseClient, pushState } from './services/supabaseSyncService'
 
 export interface LoginEntry {
@@ -2835,6 +2836,7 @@ export default function App() {
       return (
         <MasterDataProvider value={masterDataValue}>
           <SupabaseSyncManager />
+          <SyncIndicator />
           {renderPageContent()}
         </MasterDataProvider>
       )

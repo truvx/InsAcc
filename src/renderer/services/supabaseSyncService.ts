@@ -108,7 +108,9 @@ export async function pushAllLocalData(url: string, anonKey: string): Promise<{ 
         if (valStr) {
           try {
             const parsedVal = JSON.parse(valStr)
+            window.dispatchEvent(new CustomEvent('insacc-sync-start', { detail: { key } }))
             const result = await pushState(client, key, parsedVal)
+            window.dispatchEvent(new CustomEvent('insacc-sync-end', { detail: { key, success: result.success } }))
             if (!result.success) {
               allSuccess = false
               lastError = result.error || 'Unknown error'
@@ -117,6 +119,7 @@ export async function pushAllLocalData(url: string, anonKey: string): Promise<{ 
             }
           } catch (err: any) {
             console.error(`Failed to push single key ${key}:`, err)
+            window.dispatchEvent(new CustomEvent('insacc-sync-end', { detail: { key, success: false } }))
             allSuccess = false
             lastError = err?.message || 'Exception occurred'
           }

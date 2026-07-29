@@ -86,13 +86,18 @@ export function useLazyPersistedState<T>(key: string, defaultValue: T): [T, Reac
         if (enabled && url && anonKey && (window as any).supabaseSyncInitialized) {
           const client = getSupabaseClient(url, anonKey)
           if (client) {
+            window.dispatchEvent(new CustomEvent('insacc-sync-start', { detail: { key } }))
             pushState(client, key, state)
               .then((res) => {
+                window.dispatchEvent(new CustomEvent('insacc-sync-end', { detail: { key, success: res.success } }))
                 if (res.success) {
                   localStorage.removeItem(`insacc_dirty_${key}`)
                 }
               })
-              .catch(err => console.error('Push failed:', err))
+              .catch(err => {
+                window.dispatchEvent(new CustomEvent('insacc-sync-end', { detail: { key, success: false } }))
+                console.error('Push failed:', err)
+              })
           }
         }
       }
