@@ -5666,13 +5666,12 @@ span.account-link:hover {
   display: flex;
   align-items: center;
   gap: 12px;
-  background-color: var(--bg-surface);
+  background-color: var(--surface);
   color: var(--text-primary);
   padding: 12px 20px;
   border-radius: 12px;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-  border: 1px solid var(--border-color);
-  animation: slideInUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 1px solid var(--border);
 }
 
 .sync-indicator-container.hidden {
@@ -5689,18 +5688,18 @@ span.account-link:hover {
 
 .sync-icon-spin {
   animation: spin 1s linear infinite;
-  color: var(--color-primary);
+  color: var(--primary);
 }
 @keyframes spin {
   100% { transform: rotate(360deg); }
 }
 
 .sync-icon-success {
-  color: var(--color-success);
+  color: var(--success);
 }
 
 .sync-icon-error {
-  color: var(--color-danger);
+  color: var(--danger);
 }
 
 .sync-text {
