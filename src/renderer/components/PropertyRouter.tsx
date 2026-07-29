@@ -309,7 +309,7 @@ export default function PropertyRouter(props: Props) {
         propAccounts={propAccounts} setPropAccounts={setPropAccounts}
         bankReconciliations={bankReconciliations}
         setBankReconciliations={setBankReconciliations}
-        accounts={propertyAccounts}
+        accounts={accounts}
         setAccounts={setAccounts}
         vouchers={vouchers}
         setVouchers={setVouchers}
