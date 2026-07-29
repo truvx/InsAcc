@@ -57,9 +57,9 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
 
   const tree = useMemo(() => buildAccountTree(accounts) as unknown as TreeNode[], [accounts])
 
-  const assetRows = useMemo(() => flatRowsFromTree(tree, balances, ['asset']).filter(r => r.account.code !== '1130'), [tree, balances])
-  const liabilityRows = useMemo(() => flatRowsFromTree(tree, balances, ['liability']), [tree, balances])
-  const rawEquityRows = useMemo(() => flatRowsFromTree(tree, balances, ['equity']).filter(r => r.account.code !== '3200'), [tree, balances])
+  const assetRows = useMemo(() => flatRowsFromTree(tree, balances, ['asset']).filter(r => r.account.code !== '1130' && r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 })), [tree, balances])
+  const liabilityRows = useMemo(() => flatRowsFromTree(tree, balances, ['liability']).filter(r => r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 })), [tree, balances])
+  const rawEquityRows = useMemo(() => flatRowsFromTree(tree, balances, ['equity']).filter(r => r.account.code !== '3200' && r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 })), [tree, balances])
 
   const equityRows = useMemo(() => {
     if (bsModel.currentYearProfit === 0) return rawEquityRows
@@ -69,7 +69,7 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
         type: 'equity', normalBalance: 'credit', parentId: null, isActive: true,
         description: '', currency, createdAt: '', updatedAt: '',
       } as Account,
-      depth: 1,
+      depth: 0,
       balance: bsModel.currentYearProfit,
     })
   }, [rawEquityRows, bsModel.currentYearProfit, currency])
