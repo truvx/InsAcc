@@ -1,5 +1,6 @@
 import React from 'react';
 import { formatCurrency } from '../../utils/currencyHelpers';
+import { UaeDirhamIcon } from './UaeDirhamIcon';
 
 interface CurrencyTextProps {
   value: number;
@@ -32,8 +33,8 @@ export const CurrencyText: React.FC<CurrencyTextProps> = ({
         ...style 
       }}
     >
-      <span className="currency-symbol" style={{ opacity: 0.65, fontWeight: 500, fontSize: '0.85em', marginRight: '4px' }}>
-        {currency}
+      <span className="currency-symbol" style={{ opacity: 0.65, fontWeight: 500, fontSize: '0.85em', marginRight: '4px', display: 'inline-flex', alignItems: 'center' }}>
+        {currency === 'AED' ? <UaeDirhamIcon /> : currency}
       </span>
       {' '}
       <span className="currency-val">
