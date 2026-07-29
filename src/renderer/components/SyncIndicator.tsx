@@ -61,13 +61,13 @@ export default function SyncIndicator() {
           {syncingKeys.size > 0 && (
             <>
               <RefreshCw className="sync-icon-spin" size={20} />
-              <span className="sync-text">Syncing to cloud...</span>
+              <span className="sync-text">Saving to cloud...</span>
             </>
           )}
           {syncingKeys.size === 0 && lastSyncStatus === 'success' && (
             <>
               <CheckCircle2 className="sync-icon-success" size={20} />
-              <span className="sync-text">Saved to cloud</span>
+              <span className="sync-text">Saved</span>
             </>
           )}
           {syncingKeys.size === 0 && lastSyncStatus === 'error' && (
