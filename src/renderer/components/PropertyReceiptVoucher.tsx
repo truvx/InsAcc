@@ -448,6 +448,16 @@ export default function PropertyReceiptVoucher({
       render: v => <span className="text-sm" style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}>{v.description}</span>,
     },
     {
+      key: 'amount',
+      header: 'Amount',
+      sortable: true,
+      numeric: true,
+      render: v => {
+        const total = v.lines.reduce((s: number, l: any) => s + (l.type === 'Debit' ? (l.baseAmount ?? l.amount) : 0), 0)
+        return <span className="fw-600 text-sm" style={{ color: 'var(--accent)' }}>{currency} {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+      },
+    },
+    {
       key: 'reference',
       header: 'Reference',
       render: v => {
