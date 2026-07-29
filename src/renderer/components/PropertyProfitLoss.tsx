@@ -56,8 +56,8 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
 
   const tree = useMemo(() => buildAccountTree(accounts) as unknown as TreeNode[], [accounts])
 
-  const revenueRows = useMemo(() => flatRowsFromTree(tree, balances, ['revenue']), [tree, balances])
-  const expenseRows = useMemo(() => flatRowsFromTree(tree, balances, ['expense']), [tree, balances])
+  const revenueRows = useMemo(() => flatRowsFromTree(tree, balances, ['revenue']).filter(r => r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 })), [tree, balances])
+  const expenseRows = useMemo(() => flatRowsFromTree(tree, balances, ['expense']).filter(r => r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 })), [tree, balances])
 
   const totalRevenue = plModel.totalRevenue
   const totalExpenses = plModel.totalExpenses
@@ -182,11 +182,11 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
                 </div>
                 {renderTable('Revenue', revenueRows, totalRevenue, '#059669', '#059669')}
                 <div style={{
-                  padding: '12px 20px', borderTop: '2px solid var(--divider)',
+                  padding: '14px 20px', borderTop: '1px solid var(--divider)',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  background: '#05966908',
+                  background: 'var(--bg-secondary)',
                 }}>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: '#059669' }}>Total Revenue</span>
+                  <span style={{ fontWeight: 600, fontSize: 14, color: '#059669' }}>Total Revenue</span>
                   <CurrencyText value={totalRevenue} currency={currency} className="text-md fw-700" style={{ color: '#059669' }} />
                 </div>
               </div>
@@ -204,11 +204,11 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
                 </div>
                 {renderTable('Expenses', expenseRows, totalExpenses, '#DC2626', '#DC2626')}
                 <div style={{
-                  padding: '12px 20px', borderTop: '2px solid var(--divider)',
+                  padding: '14px 20px', borderTop: '1px solid var(--divider)',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  background: '#DC262608',
+                  background: 'var(--bg-secondary)',
                 }}>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: '#DC2626' }}>Total Expenses</span>
+                  <span style={{ fontWeight: 600, fontSize: 14, color: '#DC2626' }}>Total Expenses</span>
                   <CurrencyText value={totalExpenses} currency={currency} className="text-md fw-700" style={{ color: '#DC2626' }} />
                 </div>
               </div>
