@@ -1204,51 +1204,51 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
                     )}
                   </div>
                 </div>
-
-                {remainingAccounts.length > 0 && (
-                  <div className="mt-6">
-                    <div className="text-md fw-600 mb-4">Other Accounts</div>
-                    <div className="account-cards-grid">
-                      {remainingAccounts.map(acct => {
-                        const bal = accountBalances[acct.id] ?? 0
-                        const lastDate = lastActivityMap[acct.id]
-                        return (
-                          <div
-                            key={acct.id}
-                            className={`account-card compact prop-theme-${acct.theme}${acct.status !== 'active' ? ' account-card-inactive' : ''}`}
-                            onClick={() => setSelectedId(acct.id)}
-                            style={{ position: 'relative' }}
-                          >
-                            <div className="account-card-theme" />
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                              <div className="account-card-institution" style={{ flex: 1, paddingRight: 24 }}>{acct.institution}</div>
-                              <BankAccountActionsMenu
-                                onView={() => setSelectedId(acct.id)}
-                                onEdit={() => openEditDialog(acct)}
-                                onDelete={() => setDeleteAccountTarget(acct)}
-                                triggerStyle={{ padding: '2px 4px', height: 'auto', background: 'transparent', minWidth: 'auto' }}
-                              />
-                            </div>
-                            <div className="account-card-name">&nbsp;</div>
-                            <div className="account-card-balance">{currency} {bal.toLocaleString()}</div>
-                            <div className="account-card-footer">
-                              <span className="text-muted text-xs">
-                                {lastDate ? formatDate(lastDate, dateFormat) : '—'}
-                              </span>
-                            </div>
-                            {acct.status !== 'active' && (
-                              <div className="mt-1">
-                                <Badge variant="neutral">{acct.status}</Badge>
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
               </div>
               </>
+            )}
+
+            {remainingAccounts.length > 0 && (
+              <div className="mt-6">
+                <div className="text-md fw-600 mb-4">{selectedAccount ? 'Other Accounts' : 'All Accounts'}</div>
+                <div className="account-cards-grid">
+                  {remainingAccounts.map(acct => {
+                    const bal = accountBalances[acct.id] ?? 0
+                    const lastDate = lastActivityMap[acct.id]
+                    return (
+                      <div
+                        key={acct.id}
+                        className={`account-card compact prop-theme-${acct.theme}${acct.status !== 'active' ? ' account-card-inactive' : ''}`}
+                        onClick={() => setSelectedId(acct.id)}
+                        style={{ position: 'relative' }}
+                      >
+                        <div className="account-card-theme" />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div className="account-card-institution" style={{ flex: 1, paddingRight: 24 }}>{acct.institution}</div>
+                          <BankAccountActionsMenu
+                            onView={() => setSelectedId(acct.id)}
+                            onEdit={() => openEditDialog(acct)}
+                            onDelete={() => setDeleteAccountTarget(acct)}
+                            triggerStyle={{ padding: '2px 4px', height: 'auto', background: 'transparent', minWidth: 'auto' }}
+                          />
+                        </div>
+                        <div className="account-card-name">&nbsp;</div>
+                        <div className="account-card-balance">{currency} {bal.toLocaleString()}</div>
+                        <div className="account-card-footer">
+                          <span className="text-muted text-xs">
+                            {lastDate ? formatDate(lastDate, dateFormat) : '—'}
+                          </span>
+                        </div>
+                        {acct.status !== 'active' && (
+                          <div className="mt-1">
+                            <Badge variant="neutral">{acct.status}</Badge>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
             )}
           </>
         )}
