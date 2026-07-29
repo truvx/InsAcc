@@ -10,6 +10,7 @@ export interface BankAccount {
   iban?: string
   swift?: string
   branch?: string
+  chartAccountId?: string
   createdAt: string
   updatedAt: string
   createdBy: string

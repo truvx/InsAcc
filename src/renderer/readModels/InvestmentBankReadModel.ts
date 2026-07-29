@@ -51,7 +51,7 @@ export function getBankDashboardProjection(
 
   const accountsProjection: BankAccountProjection[] = bankAccounts.map(acct => {
     const mapping = bankMappings.find(m => m.bankAccountId === acct.id)
-    const bankCoaId = mapping?.accountId || ''
+    const bankCoaId = acct.chartAccountId || mapping?.accountId || ''
     
     // Bank balance must come ONLY from the ledger — same single source of truth
     // as Trial Balance / Balance Sheet. Uses getAccountBalance directly to avoid
@@ -129,7 +129,7 @@ export function getAccountStatementProjection(
   if (!account) return { account: undefined, statement: [], stats: { deposits: 0, withdrawals: 0, transfers: 0 } }
 
   const mapping = bankMappings.find(m => m.bankAccountId === accountId)
-  const bankCoaId = mapping?.accountId || ''
+  const bankCoaId = account.chartAccountId || mapping?.accountId || ''
 
   const statement = bankCoaId
     ? getAccountStatement(bankCoaId, vouchers, accounts, '0000-01-01', '9999-12-31')
