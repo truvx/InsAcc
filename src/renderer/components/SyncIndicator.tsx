@@ -76,13 +76,15 @@ export default function SyncIndicator() {
       {syncingKeys.size > 0 && (
         <>
           <RefreshCw size={20} style={{ color: '#5C63A6', animation: 'spin 1s linear infinite' }} />
-          <span style={{ fontSize: '14px', fontWeight: 500, letterSpacing: '0.02em' }}>Saving to cloud...</span>
+          <span style={{ fontSize: '14px', fontWeight: 500, letterSpacing: '0.02em' }}>
+            {syncingKeys.has('booting') ? 'Syncing with cloud...' : 'Saving to cloud...'}
+          </span>
         </>
       )}
       {syncingKeys.size === 0 && lastSyncStatus === 'success' && (
         <>
           <CheckCircle2 size={20} style={{ color: '#22C55E' }} />
-          <span style={{ fontSize: '14px', fontWeight: 500, letterSpacing: '0.02em' }}>Saved</span>
+          <span style={{ fontSize: '14px', fontWeight: 500, letterSpacing: '0.02em' }}>Synced</span>
         </>
       )}
       {syncingKeys.size === 0 && lastSyncStatus === 'error' && (

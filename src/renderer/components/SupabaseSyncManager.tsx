@@ -69,6 +69,7 @@ export default function SupabaseSyncManager() {
         // Initial Pull Phase
         if (!(window as any).supabaseSyncInitialized) {
           (window as any).isSupabasePulling = true
+          window.dispatchEvent(new CustomEvent('insacc-sync-start', { detail: { key: 'booting' } }))
           
           // Await pull without timeout so we don't accidentally wipe a slow cold-started DB!
           const records = await pullAllStates(client)
@@ -81,6 +82,7 @@ export default function SupabaseSyncManager() {
             localStorage.setItem('insacc_supabase_status', 'error')
             setLoading(false)
             if (skipTimer) clearTimeout(skipTimer)
+            window.dispatchEvent(new CustomEvent('insacc-sync-end', { detail: { key: 'booting', success: false } }))
             return
           } else if (active && records && records.length === 0) {
             // DB successfully queried and is EMPTY. Safe to push local data.
@@ -121,6 +123,7 @@ export default function SupabaseSyncManager() {
           localStorage.setItem('insacc_supabase_status', 'connected')
           setLoading(false)
           if (skipTimer) clearTimeout(skipTimer)
+          window.dispatchEvent(new CustomEvent('insacc-sync-end', { detail: { key: 'booting', success: true } }))
         }
 
         // Setup Realtime listener for live updates
@@ -200,41 +203,8 @@ export default function SupabaseSyncManager() {
   }
 
   if (loading && !(window as any).supabaseSyncInitialized) {
-    return (
-      <div style={{
-        position: 'fixed',
-        bottom: 24,
-        right: 24,
-        background: '#1e293b',
-        border: '1px solid #334155',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-        zIndex: 99999,
-        display: 'flex',
-        alignItems: 'center',
-        padding: '12px 16px',
-        borderRadius: 8,
-        color: '#fff',
-        fontFamily: 'Inter, sans-serif',
-        pointerEvents: 'none' // Don't block clicks underneath!
-      }}>
-        <div className="spinner" style={{
-          width: 16,
-          height: 16,
-          border: '2px solid rgba(255,255,255,0.1)',
-          borderTop: '2px solid #00f2fe',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-          marginRight: 12
-        }} />
-        <div style={{ fontSize: 13, fontWeight: 500 }}>Syncing cloud database...</div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
-    )
+    // We are deliberately hiding the dark popup. The global SyncIndicator handles this now.
+    return null
   }
 
   return null
