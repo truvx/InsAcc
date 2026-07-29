@@ -11,40 +11,40 @@ const SHARED_ROOT_CODES = new Set([
 
 /** Property-specific asset code prefixes */
 const PROPERTY_ASSET_PREFIXES = [
-  '1110', // Cash In Hand
-  '1120', // Bank Accounts
-  '1270', // Real Estate / Properties
-  '1410', // Post-dated Cheques Receivable
-  '1420', // Security Cheques Received
+  '111', // Cash In Hand
+  '112', // Bank Accounts
+  '127', // Real Estate / Properties
+  '141', // Post-dated Cheques Receivable
+  '142', // Security Cheques Received
 ]
 
 /** Property-specific liability code prefixes */
 const PROPERTY_LIABILITY_PREFIXES = [
-  '2100', // Accounts Payable
-  '2110', // Deferred Revenue
-  '2120', // Security Deposits Held
+  '210', // Accounts Payable
+  '211', // Deferred Revenue
+  '212', // Security Deposits Held
 ]
 
 /** Property-specific equity code prefixes */
 const PROPERTY_EQUITY_PREFIXES = [
-  '3120', // Retained Earnings
-  '3200', // Current Year Earnings
+  '312', // Retained Earnings
+  '320', // Current Year Earnings
 ]
 
 /** Property-specific revenue code prefixes */
 const PROPERTY_REVENUE_PREFIXES = [
-  '4120', // Building Rental Income
-  '4200', // Villa Rental Income
-  '4210', // Apartment Rental Income
+  '412', // Building Rental Income
+  '420', // Villa Rental Income
+  '421', // Apartment Rental Income
 ]
 
 /** Property-specific expense code prefixes */
 const PROPERTY_EXPENSE_PREFIXES = [
-  '5100', // Repair Expense
-  '5110', // Management Fees
-  '5120', // Maintenance Expense
-  '5180', // Miscellaneous Property Expenses
-  '5210', // Purchase Input VAT Expense
+  '510', // Repair Expense
+  '511', // Management Fees
+  '512', // Maintenance Expense
+  '518', // Miscellaneous Property Expenses
+  '521', // Purchase Input VAT Expense
 ]
 
 /** All property-valid prefixes combined */
@@ -100,8 +100,8 @@ export function isPropertyAccount(account: Account): boolean {
     return true
   }
 
-  // Handle bank accounts under 1120 specially to avoid showing investment bank accounts
-  if (account.code.startsWith('1120') && account.code.length > 4) {
+  // Handle bank accounts under 112 (1120 and children) specially to avoid showing investment bank accounts
+  if (account.code.startsWith('112') && account.code.length > 3) {
     if (account.name.toLowerCase().includes('investment')) {
       return false
     }
