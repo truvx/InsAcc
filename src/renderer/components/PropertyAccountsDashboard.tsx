@@ -213,7 +213,7 @@ export default function PropertyAccountsDashboard({ currency = 'AED', accounts, 
         <div style={{ fontWeight: 600, marginBottom: 4, color: ChartConfig.labels }}>{tooltipLabel}</div>
         {payload.map((entry: any, idx: number) => (
           <div key={idx} style={{ color: entry.color, fontSize: 13, fontWeight: 500 }}>
-            {entry.name}: {formatCurrency(entry.value, currency)}
+            {entry.name}: <CurrencyText value={entry.value} currency={currency} />
           </div>
         ))}
       </div>

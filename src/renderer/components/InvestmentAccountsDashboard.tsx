@@ -36,17 +36,29 @@ const KPI_LABEL_STYLE: React.CSSProperties = {
   letterSpacing: '0.08em',
 }
 
-function fmtFull(n: number, sym: string): string {
-  return `${sym} ${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+import { UaeDirhamIcon } from './design/UaeDirhamIcon'
+
+function fmtFull(n: number, sym: string) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+      {sym === 'AED' ? <UaeDirhamIcon /> : sym} {Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+    </span>
+  )
 }
 
-function fmtCompact(n: number, sym: string): string {
+function fmtCompact(n: number, sym: string) {
   const abs = Math.abs(n)
-  if (abs === 0) return `${sym} 0`
-  if (abs >= 1_000_000_000) return `${sym} ${(n / 1_000_000_000).toFixed(2)}B`
-  if (abs >= 1_000_000) return `${sym} ${(n / 1_000_000).toFixed(2)}M`
-  if (abs >= 1_000) return `${sym} ${Math.round(n / 1_000)}K`
-  return `${sym} ${Math.round(n)}`
+  let valStr = '0'
+  if (abs >= 1_000_000_000) valStr = `${(abs / 1_000_000_000).toFixed(2)}B`
+  else if (abs >= 1_000_000) valStr = `${(abs / 1_000_000).toFixed(2)}M`
+  else if (abs >= 1_000) valStr = `${Math.round(abs / 1_000)}K`
+  else if (abs > 0) valStr = `${Math.round(abs)}`
+  
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+      {n < 0 ? '-' : ''}{sym === 'AED' ? <UaeDirhamIcon /> : sym} {valStr}
+    </span>
+  )
 }
 
 function FormatCompact({ value, currency }: { value: number; currency: string }) {

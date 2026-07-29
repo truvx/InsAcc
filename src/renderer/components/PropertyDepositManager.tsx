@@ -1341,7 +1341,7 @@ export default function PropertyDepositManager({
           </div>
           <div className="form-group" style={{ marginTop: 12 }}>
             <label className="form-label">Required Amount</label>
-            <input type="text" className="form-control" value={formatCurrency(enrichedDeposits.find(d => d.id === activeDeposit.id)?.outstandingAmount || 0, currency)} disabled />
+            <input type="text" className="form-control" value=<CurrencyText value={enrichedDeposits.find(d => d.id === activeDeposit.id)?.outstandingAmount || 0} currency={currency} /> disabled />
           </div>
           <div className="form-group" style={{ marginTop: 12 }}>
             <Input
@@ -1416,7 +1416,7 @@ export default function PropertyDepositManager({
         <Modal open={true} title="Post Security Deposit Refund" onClose={closeWizard}>
           <div className="form-group">
             <label className="form-label">Current Held Balance</label>
-            <input type="text" className="form-control" value={formatCurrency(enrichedDeposits.find(d => d.id === activeDeposit.id)?.currentBalance || 0, currency)} disabled />
+            <input type="text" className="form-control" value=<CurrencyText value={enrichedDeposits.find(d => d.id === activeDeposit.id)?.currentBalance || 0} currency={currency} /> disabled />
           </div>
           <div className="form-group" style={{ marginTop: 12 }}>
             <Input
@@ -1493,7 +1493,7 @@ export default function PropertyDepositManager({
         <Modal open={true} title="Post Security Deposit Forfeiture" onClose={closeWizard}>
           <div className="form-group">
             <label className="form-label">Current Held Balance</label>
-            <input type="text" className="form-control" value={formatCurrency(enrichedDeposits.find(d => d.id === activeDeposit.id)?.currentBalance || 0, currency)} disabled />
+            <input type="text" className="form-control" value=<CurrencyText value={enrichedDeposits.find(d => d.id === activeDeposit.id)?.currentBalance || 0} currency={currency} /> disabled />
           </div>
           <div className="form-group" style={{ marginTop: 12 }}>
             <Input
@@ -1559,7 +1559,7 @@ export default function PropertyDepositManager({
         <Modal open={true} title="Deposit Security Deposit PDC Cheque" onClose={closeWizard}>
           <div className="form-group">
             <label className="form-label">Current Held Balance</label>
-            <input type="text" className="form-control" value={formatCurrency(enrichedDeposits.find(d => d.id === activeDeposit.id)?.currentBalance || 0, currency)} disabled />
+            <input type="text" className="form-control" value=<CurrencyText value={enrichedDeposits.find(d => d.id === activeDeposit.id)?.currentBalance || 0} currency={currency} /> disabled />
           </div>
           <div className="form-group" style={{ marginTop: 12 }}>
             <Input
@@ -1622,7 +1622,7 @@ export default function PropertyDepositManager({
         <Modal open={true} title="Partial Security Deposit Refund with Retainment" onClose={closeWizard}>
           <div className="form-group">
             <label className="form-label">Current Held Balance</label>
-            <input type="text" className="form-control" value={formatCurrency(enrichedDeposits.find(d => d.id === activeDeposit.id)?.currentBalance || 0, currency)} disabled />
+            <input type="text" className="form-control" value=<CurrencyText value={enrichedDeposits.find(d => d.id === activeDeposit.id)?.currentBalance || 0} currency={currency} /> disabled />
           </div>
           <div className="form-group" style={{ marginTop: 12 }}>
             <Input

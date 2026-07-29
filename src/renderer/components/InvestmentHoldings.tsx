@@ -269,8 +269,8 @@ export default function InvestmentHoldings({
                           <tr key={`${v.id}-${line.id}`}>
                             <td className="text-xs text-mono fw-500">{v.number}</td>
                             <td className="text-xs text-secondary">{v.date.substring(0, 10)}</td>
-                            <td className="text-xs text-mono text-success">{line.type === 'Debit' ? formatCurrency(line.baseAmount, currency) : '—'}</td>
-                            <td className="text-xs text-mono text-danger">{line.type === 'Credit' ? formatCurrency(line.baseAmount, currency) : '—'}</td>
+                            <td className="text-xs text-mono text-success">{line.type === 'Debit' ? <CurrencyText value={line.baseAmount} currency={currency} /> : '—'}</td>
+                            <td className="text-xs text-mono text-danger">{line.type === 'Credit' ? <CurrencyText value={line.baseAmount} currency={currency} /> : '—'}</td>
                             <td className="text-xs text-secondary" style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {line.narration || v.description}
                             </td>

@@ -5,6 +5,7 @@ import { SystemAccountRegistry } from '../accounting/systemAccountRegistry'
 import { getReportsProjection } from '../readModels/InvestmentReportsReadModel'
 import type { PurchaseRecord } from '../data/purchaseLedger'
 import type { BankAccount, BankTransaction } from '../data/banking'
+import { UaeDirhamIcon } from './design/UaeDirhamIcon'
 import BankAccountAvatar from './BankAccountAvatar'
 import { formatAssetType } from '../data/investmentMasterData'
 import { exportAccountingExcel } from '../services/reportExportService'
@@ -171,7 +172,11 @@ export default function InvestmentReports({
     }
   }
 
-  const fmt = (n: number) => `${currency} ${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const fmt = (n: number) => (
+    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+      {currency === 'AED' ? <UaeDirhamIcon /> : currency} {Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+    </span>
+  );
   const fmtSimple = (n: number) => Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
   const projection = useMemo(

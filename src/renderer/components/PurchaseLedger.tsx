@@ -40,6 +40,7 @@ import { DataTable, type Column } from './design/Table'
 import BankAccountAvatar from './BankAccountAvatar'
 import EntityForm from './design/EntityForm'
 import ConfirmDialog from './design/ConfirmDialog'
+import { CurrencyText } from './design/CurrencyText'
 import {
   KpiCard, Button, Badge, Select, Input, EmptyState, Modal,
   PortfolioIcon, TrendingUpIcon, ActivityIcon, CalendarIcon, PlusIcon,
@@ -391,11 +392,11 @@ export default function PurchaseLedger({
     },
     {
       key: 'unitPrice', header: 'Unit Price', sortable: true, numeric: true, width: '100px',
-      render: r => <span className="text-xs">{formatCurrency(r.unitPrice, currency)}</span>,
+      render: r => <span className="text-xs"><CurrencyText value={r.unitPrice} currency={currency} /></span>,
     },
     {
       key: 'totalValue', header: 'Total', sortable: true, numeric: true, width: '110px',
-      render: r => <span className="fw-600 text-xs text-gold">{formatCurrency(r.totalValue, currency)}</span>,
+      render: r => <span className="fw-600 text-xs text-gold"><CurrencyText value={r.totalValue} currency={currency} /></span>,
     },
     {
       key: 'fundingBank', header: 'Paid From',
@@ -485,7 +486,7 @@ export default function PurchaseLedger({
       render: r => {
         const d = purchaseDetailMap.get(r.id)
         return d?.currentValue ? (
-          <span className="text-xs fw-500">{formatCurrency(d.currentValue, currency)}</span>
+          <span className="text-xs fw-500"><CurrencyText value={d.currentValue} currency={currency} /></span>
         ) : <span className="text-xs text-secondary">—</span>
       },
     },
@@ -1030,7 +1031,7 @@ export default function PurchaseLedger({
   const kpiCards = [
     {
       label: 'Total Invested',
-      value: formatCurrency(kpis.totalInvested, currency),
+      value: <CurrencyText value={kpis.totalInvested} currency={currency} />,
       icon: <TrendingUpIcon />,
       accentColor: 'var(--accent)',
     },
@@ -1173,7 +1174,7 @@ export default function PurchaseLedger({
               <div className="kpi-grid" style={{ marginBottom: 0 }}>
                 <div className="kpi-card" style={{ borderTop: '2px solid var(--accent)', padding: 12 }}>
                   <div className="kpi-label">Total Value</div>
-                  <div className="kpi-value" style={{ fontSize: 18 }}>{formatCurrency(p.totalValue, currency)}</div>
+                  <div className="kpi-value" style={{ fontSize: 18 }}><CurrencyText value={p.totalValue} currency={currency} /></div>
                 </div>
                 <div className="kpi-card" style={{ borderTop: '2px solid var(--success)', padding: 12 }}>
                   <div className="kpi-label">Posting Status</div>
@@ -1204,8 +1205,8 @@ export default function PurchaseLedger({
                         <tr key={line.id}>
                           <td className="text-xs">{acct?.name || line.accountId}</td>
                           <td className="text-xs text-mono">{acct?.code || '—'}</td>
-                          <td className="text-xs text-mono text-success">{line.type === 'Debit' ? formatCurrency(line.baseAmount, currency) : '—'}</td>
-                          <td className="text-xs text-mono text-danger">{line.type === 'Credit' ? formatCurrency(line.baseAmount, currency) : '—'}</td>
+                          <td className="text-xs text-mono text-success">{line.type === 'Debit' ? <CurrencyText value={line.baseAmount} currency={currency} /> : '—'}</td>
+                          <td className="text-xs text-mono text-danger">{line.type === 'Credit' ? <CurrencyText value={line.baseAmount} currency={currency} /> : '—'}</td>
                           <td className="text-xs text-secondary">{line.narration || ''}</td>
                         </tr>
                       )
@@ -1241,8 +1242,8 @@ export default function PurchaseLedger({
                           <tr key={`${v.id}-${line.id}`}>
                             <td className="text-xs text-mono fw-500">{v.number}</td>
                             <td className="text-xs">{acct?.name || line.accountId}</td>
-                            <td className="text-xs text-mono text-success">{line.type === 'Debit' ? formatCurrency(line.baseAmount, currency) : '—'}</td>
-                            <td className="text-xs text-mono text-danger">{line.type === 'Credit' ? formatCurrency(line.baseAmount, currency) : '—'}</td>
+                            <td className="text-xs text-mono text-success">{line.type === 'Debit' ? <CurrencyText value={line.baseAmount} currency={currency} /> : '—'}</td>
+                            <td className="text-xs text-mono text-danger">{line.type === 'Credit' ? <CurrencyText value={line.baseAmount} currency={currency} /> : '—'}</td>
                             <td className="text-xs text-secondary">{line.narration || v.description}</td>
                           </tr>
                         )
@@ -1259,7 +1260,7 @@ export default function PurchaseLedger({
                   <div className="text-xs text-secondary">Type: <span className="fw-500">{formatAssetType(p.assetType)}</span></div>
                   <div className="text-xs text-secondary">Date: <span className="fw-500">{formatDate(p.purchaseDate, dateFormat)}</span></div>
                   <div className="text-xs text-secondary">Quantity: <span className="fw-500">{p.quantity.toLocaleString()}</span></div>
-                  <div className="text-xs text-secondary">Unit Price: <span className="fw-500">{formatCurrency(p.unitPrice, currency)}</span></div>
+                  <div className="text-xs text-secondary">Unit Price: <span className="fw-500"><CurrencyText value={p.unitPrice} currency={currency} /></span></div>
                   <div className="text-xs text-secondary">Buyer: <span className="fw-500">{p.buyer || '—'}</span></div>
                   <div className="text-xs text-secondary">Chart Account: <span className="fw-500">{p.accountCode || '—'}</span></div>
                   <div className="text-xs text-secondary">Voucher: <span className="fw-500">{p.voucherNumber || '—'}</span></div>
@@ -1281,7 +1282,7 @@ export default function PurchaseLedger({
                             <tr key={c.id}>
                               <td className="text-xs">{getAccountName(c.expenseType)}</td>
                               <td className="text-xs text-secondary">{c.description || '—'}</td>
-                              <td className="text-xs text-mono text-right">{formatCurrency(c.amount, currency)}</td>
+                              <td className="text-xs text-mono text-right"><CurrencyText value={c.amount} currency={currency} /></td>
                               <td className="text-xs text-mono">{c.voucherNumber || '—'}</td>
                             </tr>
                           ))}
@@ -1289,10 +1290,10 @@ export default function PurchaseLedger({
                       </table>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end', marginTop: 8 }}>
                         <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                          Additional Costs Total: <span className="fw-600">{formatCurrency(p.additionalCosts.reduce((s, c) => s + c.amount, 0), currency)}</span>
+                          Additional Costs Total: <span className="fw-600"><CurrencyText value={p.additionalCosts.reduce((s, c) => s + c.amount, 0)} currency={currency} /></span>
                         </div>
                         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)' }}>
-                          Total Purchase Cost: <span>{formatCurrency(p.totalValue + p.additionalCosts.reduce((s, c) => s + c.amount, 0), currency)}</span>
+                          Total Purchase Cost: <span><CurrencyText value={p.totalValue + p.additionalCosts.reduce((s, c) => s + c.amount, 0)} currency={currency} /></span>
                         </div>
                       </div>
                     </div>
@@ -1573,16 +1574,16 @@ export default function PurchaseLedger({
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-secondary)' }}>
               <span>Commodity Price:</span>
-              <span className="fw-500">{formatCurrency(commodityPrice, currency)}</span>
+              <span className="fw-500"><CurrencyText value={commodityPrice} currency={currency} /></span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-secondary)' }}>
               <span>+ Additional Costs:</span>
-              <span className="fw-500">{formatCurrency(additionalTotal, currency)}</span>
+              <span className="fw-500"><CurrencyText value={additionalTotal} currency={currency} /></span>
             </div>
             <div style={{ height: '1px', background: 'var(--divider)', margin: '2px 0' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 'bold' }}>
               <span>Total Purchase Cost:</span>
-              <span style={{ color: 'var(--primary)' }}>{formatCurrency(totalPurchaseCost, currency)}</span>
+              <span style={{ color: 'var(--primary)' }}><CurrencyText value={totalPurchaseCost} currency={currency} /></span>
             </div>
           </div>
         </div>

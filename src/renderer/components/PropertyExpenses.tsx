@@ -609,9 +609,9 @@ export default function PropertyExpenses({
                 <tr>
                   <td>${exp.category}</td>
                   <td>${exp.description || '—'}</td>
-                   <td style="text-align: right;">${formatCurrency(exp.amount, currency)}</td>
-                   <td style="text-align: right;">${formatCurrency(exp.tax || 0, currency)}</td>
-                   <td style="text-align: right; font-weight: bold;">${formatCurrency(exp.totalAmount, currency)}</td>
+                   <td style="text-align: right;">$<CurrencyText value={exp.amount} currency={currency} /></td>
+                   <td style="text-align: right;">$<CurrencyText value={exp.tax || 0} currency={currency} /></td>
+                   <td style="text-align: right; font-weight: bold;">$<CurrencyText value={exp.totalAmount} currency={currency} /></td>
                 </tr>
               </tbody>
             </table>

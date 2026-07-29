@@ -253,12 +253,12 @@ export default function PropertyVendors({
               <td>${prop?.name || '–'}</td>
               <td>${e.category}</td>
               <td>${e.paymentMethod}</td>
-              <td style="text-align:right">${formatCurrency(e.totalAmount, currency)}</td>
+              <td style="text-align:right">$<CurrencyText value={e.totalAmount} currency={currency} /></td>
             </tr>`
           }).join('')}
         </tbody>
       </table>
-      <p class="total">Total Paid: ${formatCurrency(vendorLedgerTotal, currency)}</p>
+      <p class="total">Total Paid: $<CurrencyText value={vendorLedgerTotal} currency={currency} /></p>
     </body></html>`)
     win.document.close()
     win.print()

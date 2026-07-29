@@ -21,7 +21,7 @@ export default function CategoryBreakdownChart({ data, currency = 'AED' }: Props
             contentStyle={ChartConfig.tooltip.contentStyle}
             itemStyle={ChartConfig.tooltip.itemStyle}
             cursor={ChartConfig.tooltip.cursor}
-            formatter={(value: number, name: string, props: any) => [`${formatCurrency(value, currency)} (${props.payload.percentage}%)`, props.payload.category]}
+            formatter={(value: number, name: string, props: any) => [`$<CurrencyText value={value} currency={currency} /> (${props.payload.percentage}%)`, props.payload.category]}
           />
           <Bar dataKey="amount" radius={[0, 6, 6, 0]} barSize={20}>
             {data.map((_, index) => (
