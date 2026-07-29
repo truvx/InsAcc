@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react'
+import { CurrencyText } from './design/CurrencyText'
 import type { Account, Voucher, BankMapping } from '../accounting/types'
 import type { BankAccount } from '../data/banking'
 import type { PurchaseRecord } from '../data/purchaseLedger'
@@ -151,12 +152,12 @@ export default function InvestmentTotalAverageHolding({
           const barPrice = val * multiplier
           return (
             <div style={{ textAlign: 'right' }}>
-              <span className="text-xs">{currency} {val.toLocaleString(undefined, { minimumFractionDigits: 2 })}/g</span>
-              <div className="text-xxs text-secondary" style={{ fontSize: '10px' }}>({currency} {barPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}/{weightLabel})</div>
+              <span className="text-xs"><CurrencyText value={val} currency={currency} />/g</span>
+              <div className="text-xxs text-secondary" style={{ fontSize: '10px' }}>(<CurrencyText value={barPrice} currency={currency} />/{weightLabel})</div>
             </div>
           )
         }
-        return <span className="text-xs">{currency} {val.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        return <span className="text-xs"><CurrencyText value={val} currency={currency} /></span>
       },
     },
     {
@@ -164,7 +165,7 @@ export default function InvestmentTotalAverageHolding({
       header: 'Total Invested',
       sortable: true,
       numeric: true,
-      render: (p) => <span className="fw-600 text-xs">{currency} {p.totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>,
+      render: (p) => <span className="fw-600 text-xs"><CurrencyText value={p.totalInvested} currency={currency} /></span>,
     },
     {
       key: 'purchaseCount',
@@ -209,12 +210,12 @@ export default function InvestmentTotalAverageHolding({
           const barPrice = val * multiplier
           return (
             <div style={{ textAlign: 'right' }}>
-              <span className="text-xs">{currency} {val.toLocaleString(undefined, { minimumFractionDigits: 2 })}/g</span>
-              <div className="text-xxs text-secondary" style={{ fontSize: '10px' }}>({currency} {barPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}/{weightLabel})</div>
+              <span className="text-xs"><CurrencyText value={val} currency={currency} />/g</span>
+              <div className="text-xxs text-secondary" style={{ fontSize: '10px' }}>(<CurrencyText value={barPrice} currency={currency} />/{weightLabel})</div>
             </div>
           )
         }
-        return <span className="text-xs">{currency} {val.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        return <span className="text-xs"><CurrencyText value={val} currency={currency} /></span>
       },
     },
     {
@@ -222,7 +223,7 @@ export default function InvestmentTotalAverageHolding({
       header: 'Total Invested',
       sortable: true,
       numeric: true,
-      render: (a) => <span className="fw-600 text-xs">{currency} {a.totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>,
+      render: (a) => <span className="fw-600 text-xs"><CurrencyText value={a.totalInvested} currency={currency} /></span>,
     },
   ]
 
@@ -251,7 +252,7 @@ export default function InvestmentTotalAverageHolding({
           />
           <KpiCard
             label="Total Invested"
-            value={`${currency} ${totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+            value={<CurrencyText value={totalInvested} currency={currency} />}
             accentColor="var(--success)"
             delay={0.1}
           />

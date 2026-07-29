@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react'
+import { CurrencyText } from './design/CurrencyText'
 import type { AssetHolding } from '../data/assetTypes'
 import type { Account, Voucher, BankMapping } from '../accounting/types'
 import type { BankAccount } from '../data/banking'
@@ -85,23 +86,23 @@ export default function InvestmentHoldings({
           const barPrice = h.avgPurchaseValue * multiplier
           return (
             <div style={{ textAlign: 'right' }}>
-              <span className="text-xs">{currency} {h.avgPurchaseValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}/g</span>
-              <div className="text-xxs text-secondary" style={{ fontSize: '10px' }}>({currency} {barPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}/{weightLabel})</div>
+              <span className="text-xs"><CurrencyText value={h.avgPurchaseValue} currency={currency} />/g</span>
+              <div className="text-xxs text-secondary" style={{ fontSize: '10px' }}>(<CurrencyText value={barPrice} currency={currency} />/{weightLabel})</div>
             </div>
           )
         }
-        return <span className="text-xs">{currency} {h.avgPurchaseValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        return <span className="text-xs"><CurrencyText value={h.avgPurchaseValue} currency={currency} /></span>
       },
     },
     {
       key: 'totalInvested', header: 'Invested', sortable: true, numeric: true, width: '110px',
-      render: h => <span className="fw-600 text-xs">{currency} {h.totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>,
+      render: h => <span className="fw-600 text-xs"><CurrencyText value={h.totalInvested} currency={currency} /></span>,
     },
     {
       key: 'unrealizedGain', header: 'Unrealized', sortable: true, numeric: true, width: '110px',
       render: h => (
         <span className={`text-xs fw-600 ${h.unrealizedGain >= 0 ? 'text-success' : 'text-danger'}`}>
-          {h.unrealizedGain >= 0 ? '+' : ''}{currency} {h.unrealizedGain.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          {h.unrealizedGain >= 0 ? '+' : ''}<CurrencyText value={h.unrealizedGain} currency={currency} />
         </span>
       ),
     },
@@ -153,15 +154,15 @@ export default function InvestmentHoldings({
             <div className="kpi-grid" style={{ marginBottom: 0 }}>
               <div className="kpi-card" style={{ borderTop: '2px solid var(--accent)', padding: 12 }}>
                 <div className="kpi-label">Invested</div>
-                <div className="kpi-value" style={{ fontSize: 18 }}>{currency} {detailHolding.totalInvested.toLocaleString()}</div>
+                <div className="kpi-value" style={{ fontSize: 18 }}><CurrencyText value={detailHolding.totalInvested} currency={currency} /></div>
               </div>
               <div className="kpi-card" style={{ borderTop: '2px solid var(--success)', padding: 12 }}>
                 <div className="kpi-label">Market Value</div>
-                <div className="kpi-value" style={{ fontSize: 18, color: 'var(--primary)' }}>{currency} {detailHolding.marketValue.toLocaleString()}</div>
+                <div className="kpi-value" style={{ fontSize: 18, color: 'var(--primary)' }}><CurrencyText value={detailHolding.marketValue} currency={currency} /></div>
               </div>
               <div className="kpi-card" style={{ borderTop: '2px solid var(--warning)', padding: 12 }}>
                 <div className="kpi-label">Average Unit Price</div>
-                <div className="kpi-value" style={{ fontSize: 18 }}>{currency} {detailHolding.avgPurchaseValue.toLocaleString()}</div>
+                <div className="kpi-value" style={{ fontSize: 18 }}><CurrencyText value={detailHolding.avgPurchaseValue} currency={currency} /></div>
               </div>
               <div className="kpi-card" style={{ borderTop: '2px solid var(--primary-text)', padding: 12 }}>
                 <div className="kpi-label">Portfolio</div>
@@ -202,17 +203,17 @@ export default function InvestmentHoldings({
                               <td className="text-xs text-secondary">{p.purchaseDate.substring(0, 10)}</td>
                               <td className="text-xs">{p.quantity.toLocaleString()}</td>
                               <td className="text-xs text-mono">
-                                {currency} {p.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}/g
+                                <CurrencyText value={p.unitPrice} currency={currency} />/g
                                 {(() => {
                                   const mult = getAssetWeightMultiplier(p.assetName)
                                   if (mult > 1) {
                                     const label = mult >= 1000 ? `${mult / 1000}kg` : `${mult}g`
-                                    return <div className="text-xxs text-secondary" style={{ fontSize: '10px' }}>({currency} {(p.unitPrice * mult).toLocaleString(undefined, { minimumFractionDigits: 2 })}/{label})</div>
+                                    return <div className="text-xxs text-secondary" style={{ fontSize: '10px' }}>(<CurrencyText value={p.unitPrice * mult} currency={currency} />/{label})</div>
                                   }
                                   return null
                                 })()}
                               </td>
-                              <td className="text-xs text-mono fw-600">{currency} {p.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                              <td className="text-xs text-mono fw-600"><CurrencyText value={p.totalValue} currency={currency} /></td>
                               <td className="text-xs text-secondary" style={{ whiteSpace: 'nowrap' }}>
                                 {fundingBank ? (
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -290,7 +291,7 @@ export default function InvestmentHoldings({
         <div className="page-header-left">
           <div>
             <div className="page-title">Investment Holdings</div>
-            <div className="page-subtitle">{totalHoldings} holdings • {currency} {totalInvested.toLocaleString()} invested</div>
+            <div className="page-subtitle">{totalHoldings} holdings • <CurrencyText value={totalInvested} currency={currency} /> invested</div>
           </div>
         </div>
       </div>

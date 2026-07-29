@@ -78,7 +78,7 @@ function InvestmentKpiCard({
       <div>
         <div className="premium-kpi-label">{label}</div>
         <div className="premium-kpi-value-container">
-          <span className="premium-kpi-currency">{sign}{currency}</span>
+          <span className="premium-kpi-currency" style={{ display: 'inline-flex', alignItems: 'center' }}>{sign}{currency === 'AED' ? <UaeDirhamIcon /> : currency}</span>
           <span className="premium-kpi-amount" style={{ color: valueColor }}>{valueStr}{suffix}</span>
         </div>
       </div>
