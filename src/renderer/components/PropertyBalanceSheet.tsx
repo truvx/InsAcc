@@ -108,7 +108,7 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={2} style={{ padding: '24px 20px', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>
+                <td colSpan={2} style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>
                   No {title.toLowerCase()} data
                 </td>
               </tr>
@@ -125,26 +125,27 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
                     }}
                     style={{
                       cursor: 'pointer',
-                      background: isGroup ? `${accentColor}0a` : 'transparent',
+                      background: 'transparent',
                     }}
+                    className="hover-bg-secondary"
                   >
-                    <td style={{ padding: isGroup ? '13px 20px' : '11px 20px', borderBottom: '1px solid #F9FAFB' }}>
-                      <div style={{ paddingLeft: isGroup ? 0 : isSubGroup ? 14 : 26 }}>
-                        {isGroup && <span style={{ fontWeight: 600, fontSize: 14, color: accentColor }}>{row.account.name}</span>}
+                    <td style={{ padding: '12px 20px', borderBottom: '1px solid var(--divider)' }}>
+                      <div style={{ paddingLeft: isGroup ? 0 : isSubGroup ? 16 : 32 }}>
+                        {isGroup && <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>{row.account.name}</span>}
                         {!isGroup && (
                           <>
-                            <span style={{ fontWeight: isSubGroup ? 500 : 400, fontSize: 13 }}>{row.account.name}</span>
-                            {!isSubGroup && <span style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 8 }}>{row.account.code}</span>}
+                            <span style={{ fontWeight: isSubGroup ? 500 : 400, fontSize: 13, color: 'var(--text-secondary)' }}>{row.account.name}</span>
+                            {!isSubGroup && <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 8 }}>{row.account.code}</span>}
                           </>
                         )}
                       </div>
                     </td>
-                    <td style={{ padding: isGroup ? '13px 20px' : '11px 20px', textAlign: 'right', borderBottom: '1px solid #F9FAFB' }}>
+                    <td style={{ padding: '12px 20px', textAlign: 'right', borderBottom: '1px solid var(--divider)' }}>
                       <CurrencyText
                         value={row.balance}
                         currency={currency}
-                        className={isGroup ? 'fw-600' : row.balance >= 0 ? 'text-primary' : 'text-danger'}
-                        style={{ color: isGroup ? accentColor : undefined }}
+                        className={isGroup ? 'fw-600' : 'fw-500'}
+                        style={{ color: isGroup ? 'var(--text-primary)' : 'var(--text-secondary)' }}
                       />
                     </td>
                   </tr>
@@ -155,12 +156,12 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
         </table>
       </div>
       <div style={{
-        padding: '12px 20px', borderTop: '2px solid var(--divider)',
+        padding: '14px 20px', borderTop: '1px solid var(--divider)',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        background: `${accentColor}08`,
+        background: 'var(--bg-secondary)',
         flexShrink: 0
       }}>
-        <span style={{ fontWeight: 700, fontSize: 14, color: accentColor }}>Total {title}</span>
+        <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>Total {title}</span>
         <CurrencyText value={total} currency={currency} className="text-md fw-700" style={{ color: accentColor }} />
       </div>
     </div>

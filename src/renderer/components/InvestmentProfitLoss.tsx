@@ -92,32 +92,37 @@ export default function InvestmentProfitLoss({ currency = 'AED', accounts, vouch
               const isGroup = row.depth === 0
               const isSubGroup = row.depth === 1
               return (
-                <tr
-                  key={row.account.id}
-                  onClick={() => {
-                    setDrillAccountId(row.account.id)
-                    setDrillAccountName(row.account.name)
-                  }}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <td style={{ padding: isGroup ? '10px 16px' : '8px 16px', borderBottom: '1px solid #F9FAFB' }}>
-                    <div style={{ paddingLeft: isGroup ? 0 : isSubGroup ? 20 : 36 }}>
-                      {isGroup && <span style={{ fontWeight: 700, fontSize: 14, color: accentColor }}>{row.account.name}</span>}
-                      {!isGroup && (
-                        <>
-                          <span style={{ fontWeight: isSubGroup ? 600 : 400, fontSize: 13 }}>{row.account.name}</span>
-                          {!isSubGroup && <span style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 8 }}>{row.account.code}</span>}
-                        </>
-                      )}
-                    </div>
-                  </td>
-                  <td style={{ padding: isGroup ? '10px 16px' : '8px 16px', textAlign: 'right', borderBottom: '1px solid #F9FAFB' }}>
-                    <CurrencyText
-                      value={row.balance}
-                      currency={currency}
-                      className={isGroup ? 'fw-700' : row.balance >= 0 ? 'text-primary' : 'text-danger'}
-                    />
-                  </td>
+                  <tr
+                    key={row.account.id}
+                    onClick={() => {
+                      setDrillAccountId(row.account.id)
+                      setDrillAccountName(row.account.name)
+                    }}
+                    style={{
+                      cursor: 'pointer',
+                      background: 'transparent',
+                    }}
+                    className="hover-bg-secondary"
+                  >
+                    <td style={{ padding: '12px 20px', borderBottom: '1px solid var(--divider)' }}>
+                      <div style={{ paddingLeft: isGroup ? 0 : isSubGroup ? 16 : 32 }}>
+                        {isGroup && <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>{row.account.name}</span>}
+                        {!isGroup && (
+                          <>
+                            <span style={{ fontWeight: isSubGroup ? 500 : 400, fontSize: 13, color: 'var(--text-secondary)' }}>{row.account.name}</span>
+                            {!isSubGroup && <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 8 }}>{row.account.code}</span>}
+                          </>
+                        )}
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px 20px', textAlign: 'right', borderBottom: '1px solid var(--divider)' }}>
+                      <CurrencyText
+                        value={row.balance}
+                        currency={currency}
+                        className={isGroup ? 'fw-600' : 'fw-500'}
+                        style={{ color: isGroup ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+                      />
+                    </td>
                 </tr>
               )
             })
