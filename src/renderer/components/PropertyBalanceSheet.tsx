@@ -154,15 +154,6 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
           </tbody>
         </table>
       </div>
-      <div style={{
-        padding: '12px 20px', borderTop: '2px solid var(--divider)',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        background: `${accentColor}08`,
-        flexShrink: 0
-      }}>
-        <span style={{ fontWeight: 700, fontSize: 14, color: accentColor }}>Total {title}</span>
-        <CurrencyText value={total} currency={currency} className="text-md fw-700" style={{ color: accentColor }} />
-      </div>
     </div>
   )
 
