@@ -29,8 +29,8 @@ export default function SupabaseSyncManager() {
       const anonKey = rawKey ? JSON.parse(rawKey) : ''
 
       if (!enabled || !url || !anonKey) {
-        (window as any).supabaseSyncInitialized = true
-        (window as any).isSupabasePulling = false
+        ;(window as any).supabaseSyncInitialized = true
+        ;(window as any).isSupabasePulling = false
         setStatus('disconnected')
         localStorage.setItem('insacc_supabase_status', 'disconnected')
         setLoading(false)
@@ -56,8 +56,8 @@ export default function SupabaseSyncManager() {
 
       const client = getSupabaseClient(url, anonKey)
       if (!client) {
-        (window as any).supabaseSyncInitialized = true
-        (window as any).isSupabasePulling = false
+        ;(window as any).supabaseSyncInitialized = true
+        ;(window as any).isSupabasePulling = false
         setStatus('error')
         localStorage.setItem('insacc_supabase_status', 'error')
         setLoading(false)
@@ -68,7 +68,7 @@ export default function SupabaseSyncManager() {
       try {
         // Initial Pull Phase
         if (!(window as any).supabaseSyncInitialized) {
-          (window as any).isSupabasePulling = true
+          ;(window as any).isSupabasePulling = true
           window.dispatchEvent(new CustomEvent('insacc-sync-start', { detail: { key: 'booting' } }))
           
           // Await pull without timeout so we don't accidentally wipe a slow cold-started DB!
@@ -76,8 +76,8 @@ export default function SupabaseSyncManager() {
 
           if (active && records === null) {
             // ERROR OCCURRED (e.g. table does not exist, RLS blocked, network error). DO NOT PUSH!
-            (window as any).isSupabasePulling = false
-            (window as any).supabaseSyncInitialized = true
+            ;(window as any).isSupabasePulling = false
+            ;(window as any).supabaseSyncInitialized = true
             setStatus('error')
             localStorage.setItem('insacc_supabase_status', 'error')
             setLoading(false)
@@ -117,8 +117,8 @@ export default function SupabaseSyncManager() {
         }
 
         if (active) {
-          (window as any).isSupabasePulling = false
-          (window as any).supabaseSyncInitialized = true
+          ;(window as any).isSupabasePulling = false
+          ;(window as any).supabaseSyncInitialized = true
           setStatus('connected')
           localStorage.setItem('insacc_supabase_status', 'connected')
           setLoading(false)
@@ -158,8 +158,8 @@ export default function SupabaseSyncManager() {
       } catch (err) {
         console.error('Failed to initialize Supabase Realtime channel:', err)
         if (active) {
-          (window as any).isSupabasePulling = false
-          (window as any).supabaseSyncInitialized = true
+          ;(window as any).isSupabasePulling = false
+          ;(window as any).supabaseSyncInitialized = true
           setStatus('error')
           localStorage.setItem('insacc_supabase_status', 'error')
           setLoading(false)
@@ -180,7 +180,7 @@ export default function SupabaseSyncManager() {
         if (channel) {
           channel.unsubscribe()
         }
-        (window as any).supabaseSyncInitialized = false
+        ;(window as any).supabaseSyncInitialized = false
         initSync()
       }
     }
@@ -197,8 +197,8 @@ export default function SupabaseSyncManager() {
   }, [])
 
   const handleSkip = () => {
-    (window as any).isSupabasePulling = false
-    (window as any).supabaseSyncInitialized = true
+    ;(window as any).isSupabasePulling = false
+    ;(window as any).supabaseSyncInitialized = true
     setLoading(false)
   }
 

@@ -591,24 +591,25 @@ export default function PropertyTransactions({
 
     const voucherTxns = (vouchers || []).map(v => {
       const typeStr = v.type === 'Receipt' ? 'credit' : 'debit'
+      const amount = v.lines.reduce((sum, l) => sum + (l.type === 'Debit' ? l.amount : 0), 0)
       return {
         id: v.id,
         accountId: '',
         date: v.date,
         type: typeStr as any,
-        amount: v.totalAmount,
-        description: v.notes || `${v.type} Voucher ${v.voucherNumber}`,
-        category: `${v.type} Voucher`,
-        status: v.status === 'Posted' ? 'cleared' as const : v.status === 'Void' ? 'void' as const : 'pending' as const,
-        reference: v.voucherNumber,
+        amount: amount,
+        description: v.description || `${v.type} Voucher ${v.number}`,
+        category: v.type === 'Receipt' ? 'Receipt Voucher' : (v.type === 'Payment' ? 'Payment Voucher' : 'Journal Voucher'),
+        status: v.status === 'Posted' ? 'cleared' as const : (v.status === 'Cancelled' || v.status === 'Reversed') ? 'void' as any : 'pending' as const,
+        reference: v.number,
         paymentMode: v.paymentMode || 'Bank Transfer',
         paymentChannel: v.paymentChannel || 'Bank Account',
-        paymentReference: v.paymentReference || '',
+        paymentReference: v.paymentReference,
         bankAccountId: null,
         createdAt: v.createdAt,
         updatedAt: v.updatedAt,
-        createdBy: v.createdBy || 'user',
-        updatedBy: v.updatedBy || 'user'
+        createdBy: v.createdBy,
+        updatedBy: v.createdBy || 'user'
       }
     })
 
@@ -696,10 +697,10 @@ export default function PropertyTransactions({
       render: txn => {
         const isLiability = txn.category === 'Security Deposit' || txn.category === 'Security Deposit Refund'
         if (isLiability) {
-          return <Badge variant="info">Liability</Badge>
+          return <Badge variant="neutral">Liability</Badge>
         }
         return (
-          <Badge variant={txn.type === 'credit' ? 'success' : 'danger'}>
+          <Badge variant={txn.status === 'cleared' ? 'success' : (txn.status === 'pending' ? 'warning' : 'neutral')}>
             {txn.type === 'credit' ? 'Income' : 'Expense'}
           </Badge>
         )

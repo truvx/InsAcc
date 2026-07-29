@@ -362,7 +362,6 @@ export default function PropertyExpenses({
       )
     }
 
-    setToast({ visible: true, message: `Expense ${expenseNo} saved successfully.`, type: 'success' })
     setShowForm(false)
     resetForm()
   }

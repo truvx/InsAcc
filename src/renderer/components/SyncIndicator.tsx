@@ -6,10 +6,11 @@ export default function SyncIndicator() {
   const [syncingKeys, setSyncingKeys] = useState<Set<string>>(new Set())
   const [lastSyncStatus, setLastSyncStatus] = useState<'success' | 'error' | null>(null)
   const [showStatus, setShowStatus] = useState(false)
+  const minDisplayTimeoutRef = React.useRef<any>(null)
+  const hideTimeoutRef = React.useRef<any>(null)
+  const fadeTimeoutRef = React.useRef<any>(null)
 
   useEffect(() => {
-    let timeout: any
-
     const handleStart = (e: any) => {
       const { key } = e.detail
       setSyncingKeys(prev => {
@@ -18,7 +19,11 @@ export default function SyncIndicator() {
         return next
       })
       setShowStatus(true)
-      if (timeout) clearTimeout(timeout)
+      // Clear any hiding timers since we are syncing again
+      if (minDisplayTimeoutRef.current) clearTimeout(minDisplayTimeoutRef.current)
+      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current)
+      if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current)
+      setLastSyncStatus(null)
     }
 
     const handleEnd = (e: any) => {
@@ -28,17 +33,18 @@ export default function SyncIndicator() {
         next.delete(key)
         
         if (next.size === 0) {
-          // Force it to show "syncing" for a minimum of 800ms so it doesn't just flash instantly
           const minDisplayTime = 800
           
-          setTimeout(() => {
+          if (minDisplayTimeoutRef.current) clearTimeout(minDisplayTimeoutRef.current)
+          if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current)
+          if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current)
+          
+          minDisplayTimeoutRef.current = setTimeout(() => {
             setLastSyncStatus(success ? 'success' : 'error')
             
-            // Hide after 3 seconds of showing the result
-            if (timeout) clearTimeout(timeout)
-            timeout = setTimeout(() => {
+            hideTimeoutRef.current = setTimeout(() => {
               setShowStatus(false)
-              setTimeout(() => {
+              fadeTimeoutRef.current = setTimeout(() => {
                 setLastSyncStatus(null)
               }, 300) // Wait for fade out animation
             }, 3000)
@@ -54,7 +60,9 @@ export default function SyncIndicator() {
     return () => {
       window.removeEventListener('insacc-sync-start', handleStart)
       window.removeEventListener('insacc-sync-end', handleEnd)
-      if (timeout) clearTimeout(timeout)
+      if (minDisplayTimeoutRef.current) clearTimeout(minDisplayTimeoutRef.current)
+      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current)
+      if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current)
     }
   }, [])
 
