@@ -49,35 +49,51 @@ export default function SyncIndicator() {
     }
   }, [])
 
+  if (!showStatus) return null;
+
   return (
-    <AnimatePresence>
-      {showStatus && (
-        <motion.div
-          initial={{ opacity: 0, y: 50, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.9 }}
-          className="sync-indicator-container"
-        >
-          {syncingKeys.size > 0 && (
-            <>
-              <RefreshCw className="sync-icon-spin" size={20} />
-              <span className="sync-text">Saving to cloud...</span>
-            </>
-          )}
-          {syncingKeys.size === 0 && lastSyncStatus === 'success' && (
-            <>
-              <CheckCircle2 className="sync-icon-success" size={20} />
-              <span className="sync-text">Saved</span>
-            </>
-          )}
-          {syncingKeys.size === 0 && lastSyncStatus === 'error' && (
-            <>
-              <CloudOff className="sync-icon-error" size={20} />
-              <span className="sync-text">Sync failed</span>
-            </>
-          )}
-        </motion.div>
+    <div 
+      style={{
+        position: 'fixed',
+        bottom: '24px',
+        right: '24px',
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        backgroundColor: '#FFFFFF',
+        color: '#1F2937',
+        padding: '12px 20px',
+        borderRadius: '12px',
+        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+        border: '1px solid #E5E7EB',
+        transition: 'all 0.3s ease',
+        transform: showStatus ? 'translateY(0) scale(1)' : 'translateY(20px) scale(0.95)',
+        opacity: showStatus ? 1 : 0,
+        pointerEvents: showStatus ? 'auto' : 'none'
+      }}
+    >
+      {syncingKeys.size > 0 && (
+        <>
+          <RefreshCw size={20} style={{ color: '#5C63A6', animation: 'spin 1s linear infinite' }} />
+          <span style={{ fontSize: '14px', fontWeight: 500, letterSpacing: '0.02em' }}>Saving to cloud...</span>
+        </>
       )}
-    </AnimatePresence>
+      {syncingKeys.size === 0 && lastSyncStatus === 'success' && (
+        <>
+          <CheckCircle2 size={20} style={{ color: '#22C55E' }} />
+          <span style={{ fontSize: '14px', fontWeight: 500, letterSpacing: '0.02em' }}>Saved</span>
+        </>
+      )}
+      {syncingKeys.size === 0 && lastSyncStatus === 'error' && (
+        <>
+          <CloudOff size={20} style={{ color: '#EF4444' }} />
+          <span style={{ fontSize: '14px', fontWeight: 500, letterSpacing: '0.02em' }}>Sync failed</span>
+        </>
+      )}
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+      `}} />
+    </div>
   )
 }
