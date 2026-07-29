@@ -2059,6 +2059,137 @@ export default function App() {
   }, [propChartAccounts, propBankMappings, setPropChartAccounts, setPropBankMappings])
 
   useEffect(() => {
+    const repairMigrationKey = 'insacc_prop_bank_coa_repair_v2'
+    if (localStorage.getItem(repairMigrationKey)) return
+    if (propAccounts.length === 0 || propChartAccounts.length === 0) return // Wait for data to load
+
+    let accountsChanged = false
+    let mappingsChanged = false
+    let vouchersChanged = false
+
+    const bankParent = propChartAccounts.find(a => a.code === '1120')
+    if (!bankParent) return
+
+    const newAccounts = [...propChartAccounts]
+    const newMappings = [...propBankMappings]
+    const newVouchers = [...propVouchers]
+
+    // Helper to generate a new child code
+    const getNextChildCode = (parentCode: string) => {
+      let maxNum = 0
+      newAccounts.forEach(a => {
+        if (a.code.startsWith(parentCode) && a.code !== parentCode) {
+          const num = parseInt(a.code.slice(parentCode.length), 10)
+          if (!isNaN(num) && num > maxNum) maxNum = num
+        }
+      })
+      return `${parentCode}${maxNum + 1}`
+    }
+
+    for (const bank of propAccounts) {
+      const mappingIdx = newMappings.findIndex(m => m.bankAccountId === bank.id)
+      let targetLedgerAccountId = ''
+
+      // Look for an existing ledger account that either is already mapped, or has matching name
+      let childAcctIdx = newAccounts.findIndex(a => 
+        a.parentId === bankParent.id && 
+        ((mappingIdx >= 0 && a.id === newMappings[mappingIdx].accountId && a.id !== bankParent.id) || 
+         a.name.toLowerCase().includes(bank.institution.toLowerCase()) || 
+         bank.institution.toLowerCase().includes(a.name.toLowerCase()))
+      )
+
+      if (childAcctIdx >= 0) {
+        // We found an existing child account. Reactivate it if needed.
+        targetLedgerAccountId = newAccounts[childAcctIdx].id
+        if (!newAccounts[childAcctIdx].isActive) {
+          newAccounts[childAcctIdx] = { ...newAccounts[childAcctIdx], isActive: true, updatedAt: new Date().toISOString() }
+          accountsChanged = true
+        }
+      } else {
+        // Create a new child account
+        targetLedgerAccountId = `acct-${Date.now()}-${Math.random().toString(36).substring(2,6)}`
+        newAccounts.push({
+          id: targetLedgerAccountId,
+          code: getNextChildCode(bankParent.code),
+          name: bank.institution,
+          type: bankParent.type,
+          normalBalance: bankParent.normalBalance,
+          classification: bankParent.classification,
+          currency: bank.currency || 'AED',
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          createdBy: 'system',
+          parentId: bankParent.id,
+          description: 'Bank Account',
+          module: 'property',
+        } as any)
+        accountsChanged = true
+      }
+
+      // Update mapping
+      if (mappingIdx >= 0) {
+        if (newMappings[mappingIdx].accountId !== targetLedgerAccountId) {
+          newMappings[mappingIdx] = {
+            ...newMappings[mappingIdx],
+            accountId: targetLedgerAccountId,
+            accountCode: newAccounts.find(a => a.id === targetLedgerAccountId)?.code || '',
+            accountName: bank.institution
+          }
+          mappingsChanged = true
+        }
+      } else {
+        newMappings.push({
+          bankAccountId: bank.id,
+          accountId: targetLedgerAccountId,
+          accountCode: newAccounts.find(a => a.id === targetLedgerAccountId)?.code || '',
+          accountName: bank.institution
+        })
+        mappingsChanged = true
+      }
+
+      // Repair vouchers pointing to the parent (1120) or any other invalid account
+      // that have referenceId === bank.id
+      for (let i = 0; i < newVouchers.length; i++) {
+        let voucherChanged = false
+        const updatedLines = newVouchers[i].lines.map(line => {
+          if (line.referenceId === bank.id && line.accountId !== targetLedgerAccountId) {
+            voucherChanged = true
+            return { ...line, accountId: targetLedgerAccountId }
+          }
+          return line
+        })
+        if (voucherChanged) {
+          newVouchers[i] = { ...newVouchers[i], lines: updatedLines }
+          vouchersChanged = true
+        }
+      }
+    }
+
+    // Also update propAccounts chartAccountId to point to the correct child
+    let propAccountsChanged = false
+    const newPropAccounts = propAccounts.map(bank => {
+      const mapping = newMappings.find(m => m.bankAccountId === bank.id)
+      if (mapping && bank.chartAccountId !== mapping.accountId) {
+        propAccountsChanged = true
+        return { ...bank, chartAccountId: mapping.accountId }
+      }
+      return bank
+    })
+
+    if (accountsChanged) setPropChartAccounts(newAccounts)
+    if (mappingsChanged) setPropBankMappings(newMappings)
+    if (vouchersChanged) setPropVouchers(newVouchers)
+    if (propAccountsChanged) setPropAccounts(newPropAccounts)
+
+    if (accountsChanged || mappingsChanged || vouchersChanged || propAccountsChanged) {
+      invalidateBalanceCache()
+    }
+    
+    localStorage.setItem(repairMigrationKey, 'true')
+  }, [propAccounts, propChartAccounts, propBankMappings, propVouchers, setPropChartAccounts, setPropBankMappings, setPropVouchers, setPropAccounts])
+
+  useEffect(() => {
     const fabSeedKey = 'insacc_prop_fab_seed_v1'
     if (localStorage.getItem(fabSeedKey)) return
     if (propAccounts.length === 0) {

@@ -53,18 +53,6 @@ export function getBankDashboardProjection(
     const mapping = bankMappings.find(m => m.bankAccountId === acct.id)
     let bankCoaId = acct.chartAccountId || mapping?.accountId || ''
     
-    // Auto-heal if missing or pointing to a parent account (like 1120)
-    if (!bankCoaId || bankCoaId === '1120' || accounts.some(a => a.id === bankCoaId && accounts.some(child => child.parentId === a.id))) {
-      const parent1120 = accounts.find(a => a.code === '1120')
-      if (parent1120) {
-        const matchingLedgerAcct = accounts.find(a => a.parentId === parent1120.id && a.isActive && (a.name.toLowerCase().includes(acct.institution.toLowerCase()) || acct.institution.toLowerCase().includes(a.name.toLowerCase())))
-        if (matchingLedgerAcct) {
-          bankCoaId = matchingLedgerAcct.id
-        }
-      }
-    }
-
-    
     // Bank balance must come ONLY from the ledger — same single source of truth
     // as Trial Balance / Balance Sheet. Uses getAccountBalance directly to avoid
     // getAllAccountBalances which skips inactive accounts.
@@ -141,19 +129,7 @@ export function getAccountStatementProjection(
   if (!account) return { account: undefined, statement: [], stats: { deposits: 0, withdrawals: 0, transfers: 0 } }
 
   const mapping = bankMappings.find(m => m.bankAccountId === accountId)
-  let bankCoaId = (account as any).chartAccountId || mapping?.accountId || ''
-
-  // Auto-heal if missing or pointing to a parent account (like 1120)
-  if (!bankCoaId || bankCoaId === '1120' || accounts.some(a => a.id === bankCoaId && accounts.some(child => child.parentId === a.id))) {
-    const parent1120 = accounts.find(a => a.code === '1120')
-    if (parent1120) {
-      const matchingLedgerAcct = accounts.find(a => a.parentId === parent1120.id && a.isActive && (a.name.toLowerCase().includes(account.institution.toLowerCase()) || account.institution.toLowerCase().includes(a.name.toLowerCase())))
-      if (matchingLedgerAcct) {
-        bankCoaId = matchingLedgerAcct.id
-      }
-    }
-  }
-
+  let bankCoaId = account.chartAccountId || mapping?.accountId || ''
   console.log('[BankStatement] accountId=', accountId, 'chartAccountId=', (account as any).chartAccountId, 'mapping=', mapping?.accountId, 'resolved bankCoaId=', bankCoaId)
   console.log('[BankStatement] accounts count=', accounts.length, 'coaFound=', accounts.some(a => a.id === bankCoaId), 'vouchers count=', vouchers.length)
   const matchingLines = vouchers.flatMap(v => v.lines).filter(l => l.accountId === bankCoaId)
