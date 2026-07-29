@@ -93,8 +93,8 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
       }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', color: accentColor }}>{icon}</span>
         <span style={{ fontWeight: 700, fontSize: 16, color: accentColor }}>{title}</span>
-        <span style={{ fontSize: 14, fontWeight: 600, color: accentColor, marginLeft: 'auto' }}>
-          <CurrencyText value={total} currency={currency} />
+        <span style={{ fontSize: 12, color: '#9CA3AF', marginLeft: 'auto' }}>
+          {rows.filter(r => r.depth === 0).length} sections
         </span>
       </div>
       <div style={{ overflow: 'auto', flex: 1 }}>
