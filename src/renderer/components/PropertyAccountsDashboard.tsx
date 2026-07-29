@@ -4,7 +4,7 @@ import type { LeaseEntry, TenantEntry, PropertyEntry } from '../data/propertyTyp
 import type { PropAccount } from '../data/propertyTypes'
 import { getPropertyFinancialSummary } from '../services/propertyFinancialAggregationService'
 import { getAccountBalance } from '../accounting/ledgerService'
-import { Modal, ChartCard } from './design/DesignSystem'
+import { Modal } from './design/DesignSystem'
 import AccountDrillDown from './AccountDrillDown'
 import { formatDate } from '../utils'
 import {
@@ -20,7 +20,8 @@ import {
   Legend,
 } from 'recharts'
 import { ChartColors, ChartConfig } from '../styles/ChartTheme'
-import { formatCurrency } from '../utils/currencyHelpers'
+import { CurrencyText } from './design/CurrencyText'
+import { UaeDirhamIcon } from './design/UaeDirhamIcon'
 
 interface BankAccountLike {
   id: string
@@ -39,49 +40,66 @@ interface Props {
   tenants: TenantEntry[]
 }
 
-function CashIcon() {
+const PAGE_BG = '#FFFFFF'
+const CHART_BG = '#FFFFFF'
+
+const KPI_VALUE_STYLE: React.CSSProperties = {
+  fontFamily: "'Montserrat', sans-serif",
+  fontWeight: 600,
+  fontSize: 32,
+  letterSpacing: '-0.03em',
+  lineHeight: 1.15,
+  color: '#1F2937',
+}
+
+const KPI_LABEL_STYLE: React.CSSProperties = {
+  fontFamily: "'Inter', sans-serif",
+  fontWeight: 500,
+  fontSize: 12,
+  color: '#6B7280',
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+}
+
+function fmtFull(n: number, sym: string) {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-    </svg>
+    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+      {sym === 'AED' ? <UaeDirhamIcon /> : sym} {Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+    </span>
   )
 }
 
-function BankIcon() {
+function fmtCompact(n: number, sym: string) {
+  const abs = Math.abs(n)
+  let valStr = '0'
+  if (abs >= 1_000_000_000) valStr = `${(abs / 1_000_000_000).toFixed(2)}B`
+  else if (abs >= 1_000_000) valStr = `${(abs / 1_000_000).toFixed(2)}M`
+  else if (abs >= 1_000) valStr = `${Math.round(abs / 1_000)}K`
+  else if (abs > 0) valStr = `${Math.round(abs)}`
+  
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="12 2 2 7 2 9 22 9 22 7 12 2" /><rect x="4" y="9" width="16" height="11" /><line x1="9" y1="14" x2="9" y2="18" /><line x1="15" y1="14" x2="15" y2="18" />
-    </svg>
+    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+      {n < 0 ? '-' : ''}{sym === 'AED' ? <UaeDirhamIcon /> : sym} {valStr}
+    </span>
   )
 }
 
-function RevenueIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-    </svg>
-  )
+function FormatCompact({ value, currency }: { value: number; currency: string }) {
+  return <>{fmtCompact(value, currency)}</>
 }
 
-function ShieldIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-  )
+function getVoucherBadge(type: string) {
+  switch (type) {
+    case 'Receipt':
+      return { bg: '#DCFCE7', color: '#166534' }
+    case 'Payment':
+      return { bg: '#FEE2E2', color: '#991B1B' }
+    case 'Purchase':
+      return { bg: '#EDE9FE', color: '#5B21B6' }
+    default:
+      return { bg: '#FEF3C7', color: '#92400E' }
+  }
 }
-
-function IconWrapper({ children, color }: { children: React.ReactNode; color: string }) {
-  return <div className="kpi-card-icon" style={{ background: `${color}18`, color }}>{children}</div>
-}
-
-import { UaeDirhamIcon } from './design/UaeDirhamIcon';
-
-const fmt = (n: number, sym: string) => (
-  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-    {sym === 'AED' ? <UaeDirhamIcon /> : sym} {Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-  </span>
-);
 
 export default function PropertyAccountsDashboard({ currency = 'AED', accounts, vouchers, bankAccounts, bankMappings, properties, leases = [], tenants = [] }: Props) {
   const [drillAccountId, setDrillAccountId] = useState<string | null>(null)
@@ -165,6 +183,23 @@ export default function PropertyAccountsDashboard({ currency = 'AED', accounts, 
     monthlyData.some(d => d.income !== 0 || d.expense !== 0 || d.net !== 0),
   [monthlyData])
 
+  const allRecentActivity = useMemo(() => {
+    const activeVouchers = vouchers.filter(v => (v.status === 'Posted' || v.status === 'Approved') && !v.isDeleted)
+    return activeVouchers.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20).map(v => {
+      let amount = 0
+      v.lines.forEach(l => {
+        if (l.type === 'Credit') amount += l.baseAmount
+      })
+      return {
+        date: v.date,
+        number: v.number,
+        type: v.type,
+        description: v.narration || '',
+        amount
+      }
+    })
+  }, [vouchers])
+
   const getDrillAccountId = (label: string): { id: string; name: string } | null => {
     switch (label) {
       case 'Cash': return { id: accounts.find(a => a.code === '1110')?.id || '', name: 'Cash' }
@@ -199,11 +234,11 @@ export default function PropertyAccountsDashboard({ currency = 'AED', accounts, 
   }
 
   const kpiCards = useMemo(() => [
-    { label: 'Cash', value: metrics.cash, icon: <CashIcon />, color: 'var(--success)' },
-    { label: 'Bank Balance', value: metrics.bankBalance, icon: <BankIcon />, color: 'var(--primary)' },
-    { label: 'Rental Income', value: metrics.rentalIncome, icon: <RevenueIcon />, color: 'var(--success)' },
-    { label: 'Deposits Held', value: metrics.depositsHeld, icon: <ShieldIcon />, color: '#6B5B95' },
-    { label: 'Total Revenue', value: metrics.totalRevenue, icon: <RevenueIcon />, color: '#22C55E' },
+    { label: 'Cash', value: metrics.cash, kpiLabel: 'Cash' },
+    { label: 'Bank Balance', value: metrics.bankBalance, kpiLabel: 'Bank Balance' },
+    { label: 'Rental Income', value: metrics.rentalIncome, kpiLabel: 'Rental Income' },
+    { label: 'Deposits Held', value: metrics.depositsHeld, kpiLabel: 'Deposits Held' },
+    { label: 'Total Revenue', value: metrics.totalRevenue, kpiLabel: 'Total Revenue' },
   ], [metrics])
 
   const CustomTooltip = ({ active, payload, label: tooltipLabel }: any) => {
@@ -220,8 +255,12 @@ export default function PropertyAccountsDashboard({ currency = 'AED', accounts, 
     )
   }
 
+  const sectionGap = 28
+  const cardBorder = '1px solid #E5E7EB'
+  const cardShadow = '0 1px 3px rgba(0,0,0,0.05)'
+
   return (
-    <>
+    <div style={{ background: PAGE_BG, minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
       <Modal open={drillAccountId !== null} title={`Account Drill Down — ${drillAccountName}`} onClose={() => setDrillAccountId(null)}>
         {drillAccountId && (
           <AccountDrillDown
@@ -265,8 +304,8 @@ export default function PropertyAccountsDashboard({ currency = 'AED', accounts, 
                       <td className="text-xs">{prop?.name || 'Unknown'}</td>
                       <td className="text-xs">{formatDate(l.startDate, 'DD/MM/YYYY')}</td>
                       <td className="text-xs">{formatDate(l.endDate, 'DD/MM/YYYY')}</td>
-                      <td className="text-xs text-mono">{fmt(l.monthlyRent, currency)}</td>
-                      <td className="text-xs text-mono">{fmt(l.annualRent || l.monthlyRent * getLeaseMonths(l.startDate, l.endDate), currency)}</td>
+                      <td className="text-xs text-mono">{fmtFull(l.monthlyRent, currency)}</td>
+                      <td className="text-xs text-mono">{fmtFull(l.annualRent || l.monthlyRent * getLeaseMonths(l.startDate, l.endDate), currency)}</td>
                       <td className="text-xs">{l.status}</td>
                     </tr>
                   )
@@ -277,163 +316,236 @@ export default function PropertyAccountsDashboard({ currency = 'AED', accounts, 
         </div>
       </Modal>
 
-      <div className="page-header">
+      <div className="page-header" style={{ background: PAGE_BG, borderBottom: '1px solid #E5E7EB' }}>
         <div className="page-header-left">
-          <div>
-            <div className="page-title">Financial Overview</div>
-            <div className="page-subtitle">{accounts.filter(a => a.isActive).length} active accounts</div>
-          </div>
+          <div className="page-title">Financial Overview</div>
+          <div className="page-subtitle">Real-time financial position derived from the accounting book.</div>
         </div>
       </div>
 
-      <div className="page-body">
-        <div className="kpi-grid">
-          {kpiCards.map((k, i) => (
+      <div className="page-body" style={{ background: PAGE_BG, padding: '28px 32px' }}>
+        <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)', gap: 24, marginBottom: sectionGap }}>
+          {kpiCards.map(k => (
             <div
               key={k.label}
-              className="kpi-card hover-lift"
-              style={{ borderTop: `2px solid ${k.color}`, cursor: 'pointer' }}
+              style={{
+                border: cardBorder, borderRadius: 16, boxShadow: cardShadow,
+                background: '#fff', cursor: 'pointer',
+                padding: '20px 20px', height: 120,
+                display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                gap: 8, transition: 'box-shadow 0.15s',
+              }}
               onClick={() => handleDrill(k.label)}
             >
-              <IconWrapper color={k.color}>{k.icon}</IconWrapper>
-              <div className="kpi-label">{k.label}</div>
-              <div className="kpi-value" style={{ fontSize: 22 }}>
-                {fmt(k.value, currency)}
+              <div style={KPI_LABEL_STYLE}>{k.kpiLabel}</div>
+              <div style={KPI_VALUE_STYLE}>
+                <FormatCompact value={k.value} currency={currency} />
               </div>
             </div>
           ))}
         </div>
 
-        <div className="financial-charts-row">
-          <div className="financial-chart-main">
-            <ChartCard
-              title="Cash Flow Trend"
-              subtitle="Last 12 months — income, expenses, and net cash flow"
-              isEmpty={!hasChartData}
-              emptyMessage="No cash flow data available."
-            >
-              <div className="chart-container" style={{ height: 350 }}>
-                <ResponsiveContainer width="100%" height={340}>
-                  <AreaChart data={monthlyData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
-                    <defs>
-                      <linearGradient id="flowIncome" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={ChartColors.green} stopOpacity={0.25} />
-                        <stop offset="95%" stopColor={ChartColors.green} stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="flowExpense" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={ChartColors.red} stopOpacity={0.25} />
-                        <stop offset="95%" stopColor={ChartColors.red} stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="flowNet" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={ChartColors.blue} stopOpacity={0.2} />
-                        <stop offset="95%" stopColor={ChartColors.blue} stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={ChartConfig.grid} vertical={false} />
-                    <XAxis
-                      dataKey="month"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 10, fill: ChartConfig.axis }}
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 11, fill: ChartConfig.axis }}
-                      tickFormatter={(val) => `${(val / 1000).toFixed(0)}K`}
-                    />
-                    <Tooltip content={<CustomTooltip />} cursor={ChartConfig.tooltip.cursor} />
-                    <Legend
-                      wrapperStyle={{ fontSize: '12px', color: ChartConfig.labels, paddingTop: 8 }}
-                      iconType="circle"
-                      iconSize={8}
-                      verticalAlign="bottom"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="income"
-                      name="Income"
-                      stroke={ChartColors.green}
-                      strokeWidth={2}
-                      fill="url(#flowIncome)"
-                      activeDot={{ r: 5, fill: ChartColors.green, stroke: '#FFFFFF', strokeWidth: 2 }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="expense"
-                      name="Expenses"
-                      stroke={ChartColors.red}
-                      strokeWidth={2}
-                      fill="url(#flowExpense)"
-                      activeDot={{ r: 5, fill: ChartColors.red, stroke: '#FFFFFF', strokeWidth: 2 }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="net"
-                      name="Net Cash Flow"
-                      stroke={ChartColors.blue}
-                      strokeWidth={2}
-                      strokeDasharray="4 3"
-                      fill="url(#flowNet)"
-                      activeDot={{ r: 5, fill: ChartColors.blue, stroke: '#FFFFFF', strokeWidth: 2 }}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+        <div className="financial-charts-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, marginBottom: sectionGap }}>
+          <div style={{
+            background: CHART_BG, borderRadius: 16, border: cardBorder,
+            boxShadow: cardShadow, overflow: 'hidden',
+          }}>
+            <div className="card-header" style={{ padding: '20px 24px 0' }}>
+              <div className="card-title" style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 16, fontWeight: 600, color: '#1F2937' }}>
+                Cash Flow Trend
               </div>
-            </ChartCard>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: '#6B7280', marginTop: 4 }}>Last 12 months — income, expenses, and net cash flow</div>
+            </div>
+            <div style={{ padding: '16px 24px' }}>
+              {!hasChartData ? (
+                <div style={{ padding: '40px 0', textAlign: 'center', fontFamily: "'Inter', sans-serif", fontSize: 13, color: '#9CA3AF' }}>
+                  No cash flow data available.
+                </div>
+              ) : (
+                <div className="chart-container" style={{ height: 350 }}>
+                  <ResponsiveContainer width="100%" height={340}>
+                    <AreaChart data={monthlyData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
+                      <defs>
+                        <linearGradient id="flowIncome" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={ChartColors.green} stopOpacity={0.25} />
+                          <stop offset="95%" stopColor={ChartColors.green} stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="flowExpense" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={ChartColors.red} stopOpacity={0.25} />
+                          <stop offset="95%" stopColor={ChartColors.red} stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="flowNet" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={ChartColors.blue} stopOpacity={0.2} />
+                          <stop offset="95%" stopColor={ChartColors.blue} stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke={ChartConfig.grid} vertical={false} />
+                      <XAxis
+                        dataKey="month"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 10, fill: ChartConfig.axis }}
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 11, fill: ChartConfig.axis }}
+                        tickFormatter={(val) => `${(val / 1000).toFixed(0)}K`}
+                      />
+                      <Tooltip content={<CustomTooltip />} cursor={ChartConfig.tooltip.cursor} />
+                      <Legend
+                        wrapperStyle={{ fontSize: '12px', color: ChartConfig.labels, paddingTop: 8 }}
+                        iconType="circle"
+                        iconSize={8}
+                        verticalAlign="bottom"
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="income"
+                        name="Income"
+                        stroke={ChartColors.green}
+                        strokeWidth={2}
+                        fill="url(#flowIncome)"
+                        activeDot={{ r: 5, fill: ChartColors.green, stroke: '#FFFFFF', strokeWidth: 2 }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="expense"
+                        name="Expenses"
+                        stroke={ChartColors.red}
+                        strokeWidth={2}
+                        fill="url(#flowExpense)"
+                        activeDot={{ r: 5, fill: ChartColors.red, stroke: '#FFFFFF', strokeWidth: 2 }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="net"
+                        name="Net Cash Flow"
+                        stroke={ChartColors.blue}
+                        strokeWidth={2}
+                        strokeDasharray="4 3"
+                        fill="url(#flowNet)"
+                        activeDot={{ r: 5, fill: ChartColors.blue, stroke: '#FFFFFF', strokeWidth: 2 }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="financial-chart-side">
-            <ChartCard
-              title="Income vs Expenses"
-              subtitle="Last 12 months"
-              isEmpty={!hasChartData}
-              emptyMessage="No income/expense data available."
-            >
-              <div className="chart-container" style={{ height: 350 }}>
-                <ResponsiveContainer width="100%" height={340}>
-                  <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }} barCategoryGap="25%">
-                    <CartesianGrid strokeDasharray="3 3" stroke={ChartConfig.grid} vertical={false} />
-                    <XAxis
-                      dataKey="month"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 10, fill: ChartConfig.axis }}
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 11, fill: ChartConfig.axis }}
-                      tickFormatter={(val) => `${(val / 1000).toFixed(0)}K`}
-                    />
-                    <Tooltip content={<CustomTooltip />} cursor={ChartConfig.tooltip.cursor} />
-                    <Legend
-                      wrapperStyle={{ fontSize: '12px', color: ChartConfig.labels, paddingTop: 8 }}
-                      iconType="circle"
-                      iconSize={8}
-                      verticalAlign="bottom"
-                    />
-                    <Bar
-                      dataKey="income"
-                      name="Income"
-                      fill={ChartColors.green}
-                      radius={[3, 3, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="expense"
-                      name="Expenses"
-                      fill={ChartColors.red}
-                      radius={[3, 3, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
+          <div style={{
+            background: CHART_BG, borderRadius: 16, border: cardBorder,
+            boxShadow: cardShadow, overflow: 'hidden',
+          }}>
+            <div className="card-header" style={{ padding: '20px 24px 0' }}>
+              <div className="card-title" style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 16, fontWeight: 600, color: '#1F2937' }}>
+                Income vs Expenses
               </div>
-            </ChartCard>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: '#6B7280', marginTop: 4 }}>Last 12 months</div>
+            </div>
+            <div style={{ padding: '16px 24px' }}>
+              {!hasChartData ? (
+                <div style={{ padding: '40px 0', textAlign: 'center', fontFamily: "'Inter', sans-serif", fontSize: 13, color: '#9CA3AF' }}>
+                  No income/expense data available.
+                </div>
+              ) : (
+                <div className="chart-container" style={{ height: 350 }}>
+                  <ResponsiveContainer width="100%" height={340}>
+                    <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }} barCategoryGap="25%">
+                      <CartesianGrid strokeDasharray="3 3" stroke={ChartConfig.grid} vertical={false} />
+                      <XAxis
+                        dataKey="month"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 10, fill: ChartConfig.axis }}
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 11, fill: ChartConfig.axis }}
+                        tickFormatter={(val) => `${(val / 1000).toFixed(0)}K`}
+                      />
+                      <Tooltip content={<CustomTooltip />} cursor={ChartConfig.tooltip.cursor} />
+                      <Legend
+                        wrapperStyle={{ fontSize: '12px', color: ChartConfig.labels, paddingTop: 8 }}
+                        iconType="circle"
+                        iconSize={8}
+                        verticalAlign="bottom"
+                      />
+                      <Bar
+                        dataKey="income"
+                        name="Income"
+                        fill={ChartColors.green}
+                        radius={[3, 3, 0, 0]}
+                      />
+                      <Bar
+                        dataKey="expense"
+                        name="Expenses"
+                        fill={ChartColors.red}
+                        radius={[3, 3, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div style={{
+          background: CHART_BG, borderRadius: 16, border: cardBorder,
+          boxShadow: cardShadow, overflow: 'hidden',
+        }}>
+          <div className="card-header" style={{ padding: '20px 24px 0' }}>
+            <div className="card-title" style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 16, fontWeight: 600, color: '#1F2937' }}>
+              Recent Accounting Activity
+            </div>
+          </div>
+          <div style={{ padding: '16px 24px 20px' }}>
+            {allRecentActivity.length === 0 ? (
+              <div style={{ padding: '24px 0', textAlign: 'center', fontFamily: "'Inter', sans-serif", fontSize: 13, color: '#9CA3AF' }}>
+                No recent accounting activity recorded.
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'Inter', sans-serif" }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #F3F4F6' }}>
+                    <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Date</th>
+                    <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em' }}>#</th>
+                    <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Type</th>
+                    <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Description</th>
+                    <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: 11, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allRecentActivity.map((row, i) => {
+                    const badge = getVoucherBadge(row.type)
+                    return (
+                      <tr key={`${row.type}-${row.number}-${i}`} style={{ borderBottom: '1px solid #F3F4F6' }}>
+                        <td style={{ padding: '12px 10px', fontSize: 12, color: '#6B7280', whiteSpace: 'nowrap', height: 52 }}>{row.date}</td>
+                        <td style={{ padding: '12px 10px', fontSize: 12, color: '#374151', fontWeight: 500, whiteSpace: 'nowrap' }}>{row.number}</td>
+                        <td style={{ padding: '12px 10px' }}>
+                          <span style={{
+                            display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 500,
+                            background: badge.bg, color: badge.color,
+                          }}>
+                            {row.type}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 10px', fontSize: 12, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.description}</td>
+                        <td style={{ padding: '12px 10px', fontSize: 12, color: '#1F2937', fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{fmtCompact(row.amount, currency)}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>
-    </>
+    </div>
   )
 }
