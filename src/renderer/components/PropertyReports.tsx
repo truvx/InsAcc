@@ -277,7 +277,9 @@ export default function PropertyReports({
       await exportTableData({
         format,
         title,
-        subtitle: `Period: ${filterStart} - ${filterEnd}`,
+        subtitle: `Properties Management`,
+        periodLabel: `${filterStart} - ${filterEnd}`,
+        currency: currency,
         filename: `Property_${title.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}`,
         columns,
         rows

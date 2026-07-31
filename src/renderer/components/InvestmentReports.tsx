@@ -295,7 +295,9 @@ export default function InvestmentReports({
       await exportTableData({
         format,
         title,
-        subtitle: `Period: ${filterStart} - ${filterEnd}`,
+        subtitle: `Investment Portfolio`,
+        periodLabel: `${filterStart} - ${filterEnd}`,
+        currency: currency,
         filename: `Investment_${title.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}`,
         columns,
         rows
