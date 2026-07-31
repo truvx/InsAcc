@@ -99,7 +99,7 @@ export default function SupabaseSyncManager() {
                 record.key !== 'insacc_supabase_enabled'
               ) {
                 // Do not overwrite if local state is dirty (user refreshed before push completed)
-                if (localStorage.getItem(`insacc_dirty_${record.key}`) === 'true') {
+                if (localStorage.getItem(`insacc_dirty_${record.key}`)) {
                   hasDirtyKeys = true
                   continue
                 }
@@ -142,6 +142,9 @@ export default function SupabaseSyncManager() {
                   record.key !== 'insacc_supabase_key' &&
                   record.key !== 'insacc_supabase_enabled'
                 ) {
+                  if (localStorage.getItem(`insacc_dirty_${record.key}`)) {
+                    return // Skip remote update because local has unpushed changes
+                  }
                   const stateStr = JSON.stringify(record.value)
                   if (localStorage.getItem(record.key) !== stateStr) {
                     localStorage.setItem(record.key, stateStr)

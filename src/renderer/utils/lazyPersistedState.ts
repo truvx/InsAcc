@@ -55,7 +55,8 @@ export function useLazyPersistedState<T>(key: string, defaultValue: T): [T, Reac
         localStorage.setItem(key, stateStr)
         cache.set(key, stateStr)
         if (!isRemoteUpdate.current) {
-          localStorage.setItem(`insacc_dirty_${key}`, 'true')
+          const currentDirty = parseInt(localStorage.getItem(`insacc_dirty_${key}`) || '0', 10)
+          localStorage.setItem(`insacc_dirty_${key}`, (currentDirty + 1).toString())
         }
       } catch (err) {
         console.error(`Error saving ${key} to localStorage:`, err)
@@ -94,7 +95,12 @@ export function useLazyPersistedState<T>(key: string, defaultValue: T): [T, Reac
               .then((res) => {
                 window.dispatchEvent(new CustomEvent('insacc-sync-end', { detail: { key, success: res.success } }))
                 if (res.success) {
-                  localStorage.removeItem(`insacc_dirty_${key}`)
+                  const currentDirty = parseInt(localStorage.getItem(`insacc_dirty_${key}`) || '0', 10)
+                  if (currentDirty <= 1) {
+                    localStorage.removeItem(`insacc_dirty_${key}`)
+                  } else {
+                    localStorage.setItem(`insacc_dirty_${key}`, (currentDirty - 1).toString())
+                  }
                 }
               })
               .catch(err => {
