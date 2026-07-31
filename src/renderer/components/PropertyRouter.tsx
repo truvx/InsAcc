@@ -353,6 +353,8 @@ export default function PropertyRouter(props: Props) {
         currency={currency} dateFormat={dateFormat} language={language}
         accounts={propertyAccounts} vouchers={vouchers} setVouchers={setVouchers}
         accountingEngine={accountingEngine}
+        setPropTransactions={setPropTransactions}
+        setPropExpenses={setPropExpenses}
         onAuditEvent={setPropAuditEvents ? (e => setPropAuditEvents(prev => [e, ...prev])) : undefined}
         auditEvents={propAuditEvents}
       />

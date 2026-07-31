@@ -26,6 +26,8 @@ interface Props {
   accountingEngine: AccountingEngine
   onAuditEvent?: (event: AuditEvent) => void
   auditEvents?: AuditEvent[]
+  setPropTransactions?: React.Dispatch<React.SetStateAction<any[]>>
+  setPropExpenses?: React.Dispatch<React.SetStateAction<any[]>>
 }
 
 export default function PropertyJournalVoucher({
@@ -33,6 +35,8 @@ export default function PropertyJournalVoucher({
   accounts, vouchers, setVouchers, accountingEngine,
   onAuditEvent,
   auditEvents = [],
+  setPropTransactions,
+  setPropExpenses,
 }: Props) {
   const {
     detailVoucher, setDetailVoucher,
@@ -125,6 +129,16 @@ export default function PropertyJournalVoucher({
     if (window.confirm(`Are you sure you want to delete journal voucher ${v.number}?`)) {
       const updatedVoucher = { ...v, isDeleted: true }
       setVouchers(prev => prev.map(item => item.id === v.id ? updatedVoucher : item))
+      
+      // Delete connected transaction if it exists
+      if (v.id.startsWith('vch-exp-') && setPropExpenses) {
+        const expId = v.id.replace('vch-exp-', '')
+        setPropExpenses(prev => prev.filter(e => e.id !== expId))
+      } else if (v.id.startsWith('vch-') && setPropTransactions) {
+        const txnId = v.id.replace('vch-', '')
+        setPropTransactions(prev => prev.filter(t => t.id !== txnId))
+      }
+      
       invalidateBalanceCache()
       showToast(`Voucher ${v.number} deleted successfully`, 'success')
 

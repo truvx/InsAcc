@@ -200,6 +200,7 @@ export default function InvestmentRouter(props: Props) {
           currency={currency} dateFormat={dateFormat}
           accounts={investmentAccounts} vouchers={vouchers} setVouchers={setVouchers}
           accountingEngine={accountingEngine}
+          setTransactions={props.setTransactions}
           onAuditEvent={recordAuditEvent}
           auditEvents={auditEvents}
         />

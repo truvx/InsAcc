@@ -25,12 +25,14 @@ interface Props {
   accountingEngine: AccountingEngine
   onAuditEvent?: (event: AuditEvent) => void
   auditEvents?: AuditEvent[]
+  setTransactions?: React.Dispatch<React.SetStateAction<any[]>>
 }
 
 export default function InvestmentJournalVoucher({
   currency = 'AED', dateFormat = 'DD/MM/YYYY',
   accounts, vouchers, setVouchers, accountingEngine, onAuditEvent,
   auditEvents = [],
+  setTransactions,
 }: Props) {
   const {
     detailVoucher, setDetailVoucher,
@@ -102,6 +104,13 @@ export default function InvestmentJournalVoucher({
     if (window.confirm(`Are you sure you want to delete journal voucher ${v.number}?`)) {
       const updatedVoucher = { ...v, isDeleted: true }
       setVouchers(prev => prev.map(item => item.id === v.id ? updatedVoucher : item))
+      
+      // Delete connected transaction if it exists
+      if (v.id.startsWith('vch-') && setTransactions) {
+        const txnId = v.id.replace('vch-', '')
+        setTransactions(prev => prev.filter(t => t.id !== txnId))
+      }
+      
       invalidateBalanceCache()
       showToast(`Voucher ${v.number} deleted successfully`, 'success')
 
