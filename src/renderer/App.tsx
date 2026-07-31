@@ -35,7 +35,7 @@ import { useLazyPersistedState, clearPersistedCache } from './utils/lazyPersiste
 import { MasterDataProvider } from './contexts/MasterDataContext'
 import SupabaseSyncManager from './components/SupabaseSyncManager'
 import SyncIndicator from './components/SyncIndicator'
-import { getSupabaseClient, pushState } from './services/supabaseSyncService'
+import { getSupabaseClient, pushState, pushAllLocalData } from './services/supabaseSyncService'
 import { initHistory, undo, redo, canUndo, canRedo, subscribeToHistory } from './services/historyService'
 import { Undo2, Redo2 } from 'lucide-react'
 
@@ -1022,6 +1022,15 @@ export default function App() {
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Initiate a full background push to ensure any last-millisecond dirty state is synced before closing
+      const url = localStorage.getItem('insacc_supabase_url')
+      const anonKey = localStorage.getItem('insacc_supabase_key')
+      const enabled = localStorage.getItem('insacc_supabase_enabled') === 'true'
+      
+      if (enabled && url && anonKey) {
+        pushAllLocalData(url, anonKey).catch(console.error)
+      }
+
       e.preventDefault()
       e.returnValue = ''
     }
