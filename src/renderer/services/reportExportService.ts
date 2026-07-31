@@ -762,9 +762,8 @@ function sheetNotes(p: ExcelExportParams, count: number): any {
 // ENTRY POINT
 // ════════════════════════════════════════════════════════════════════
 
-export async function exportAccountingExcel(p: ExcelExportParams): Promise<string | null> {
-  // 1. Filter vouchers
-  const fv = p.vouchers.filter(v => {
+export function getFilteredVouchers(p: ExcelExportParams) {
+  return p.vouchers.filter(v => {
     if (p.filters?.dateRange) {
       if (v.date < p.filters.dateRange.start || v.date > p.filters.dateRange.end) return false
     }
@@ -796,6 +795,11 @@ export async function exportAccountingExcel(p: ExcelExportParams): Promise<strin
     }
     return true
   })
+}
+
+export async function exportAccountingExcel(p: ExcelExportParams): Promise<string | null> {
+  // 1. Filter vouchers
+  const fv = getFilteredVouchers(p)
 
   // 2. Totals
   let totDr = 0, totCr = 0
@@ -819,6 +823,74 @@ export async function exportAccountingExcel(p: ExcelExportParams): Promise<strin
   const filename = `InsAcc_${p.module === 'Property' ? 'Properties_Management' : 'Investment_Portfolio'}_Report_${today}.xlsx`
   const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
   return saveWithDialog(filename, [{ name: 'Excel Workbook', extensions: ['xlsx'] }], buf)
+}
+
+export async function exportAccountingCsv(p: ExcelExportParams): Promise<string | null> {
+  const fv = getFilteredVouchers(p)
+  let csv = 'Date,Voucher No,Type,Account,Debit,Credit,Description\n'
+  
+  fv.forEach(v => {
+    v.lines.forEach(l => {
+      const acc = p.accounts.find(a => a.id === l.accountId)?.name || l.accountId
+      const desc = (l.narration || v.description || '').replace(/"/g, '""')
+      csv += `${v.date},${v.voucherNumber},${v.type},"${acc}",${l.type === 'Debit' ? l.amount : ''},${l.type === 'Credit' ? l.amount : ''},"${desc}"\n`
+    })
+  })
+  
+  const today = new Date().toISOString().slice(0, 10)
+  const filename = `InsAcc_${p.module === 'Property' ? 'Properties_Management' : 'Investment_Portfolio'}_Report_${today}.csv`
+  return saveWithDialog(filename, [{ name: 'CSV', extensions: ['csv'] }], csv)
+}
+
+export async function exportAccountingPdf(p: ExcelExportParams): Promise<string | null> {
+  const doc = new jsPDF()
+  const fv = getFilteredVouchers(p)
+  
+  let totDr = 0, totCr = 0
+  fv.forEach(v => v.lines.forEach(l => { if (l.type === 'Debit') totDr += l.amount; else totCr += l.amount }))
+
+  let y = 15
+  doc.setFontSize(18)
+  doc.setTextColor(41, 98, 255)
+  doc.text(`InsAcc ${p.module} Portfolio Report`, 14, y)
+  
+  y += 10
+  doc.setFontSize(10)
+  doc.setTextColor(100, 116, 139)
+  doc.text(`Generated: ${new Date().toLocaleDateString()} | Period: ${p.periodLabel}`, 14, y)
+
+  y += 8
+  doc.text(`Total Debits: ${p.currency} ${totDr.toLocaleString(undefined, {minimumFractionDigits: 2})} | Total Credits: ${p.currency} ${totCr.toLocaleString(undefined, {minimumFractionDigits: 2})}`, 14, y)
+
+  const tableData: any[][] = []
+  fv.forEach(v => {
+    v.lines.forEach(l => {
+      const acc = p.accounts.find(a => a.id === l.accountId)?.name || l.accountId
+      const desc = l.narration || v.description || ''
+      tableData.push([
+        v.date,
+        v.voucherNumber,
+        acc,
+        desc.length > 30 ? desc.substring(0, 30) + '...' : desc,
+        l.type === 'Debit' ? l.amount.toLocaleString() : '',
+        l.type === 'Credit' ? l.amount.toLocaleString() : ''
+      ])
+    })
+  })
+
+  autoTable(doc, {
+    startY: y + 5,
+    head: [['Date', 'Voucher', 'Account', 'Description', 'Debit', 'Credit']],
+    body: tableData,
+    theme: 'grid',
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [248, 250, 252], textColor: [41, 98, 255] },
+  })
+
+  const today = new Date().toISOString().slice(0, 10)
+  const filename = `InsAcc_${p.module === 'Property' ? 'Properties_Management' : 'Investment_Portfolio'}_Report_${today}.pdf`
+  const buf = doc.output('arraybuffer')
+  return saveWithDialog(filename, [{ name: 'PDF', extensions: ['pdf'] }], buf)
 }
 
 export { generatePdf, generateExcel, generateCsv }

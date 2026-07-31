@@ -34,7 +34,7 @@ interface AdvancedOptions {
 export interface ExportReportModalProps {
   isOpen: boolean
   onClose: () => void
-  onExport: () => void
+  onExport: (format: 'xlsx' | 'csv' | 'pdf') => void
   module: 'Investment' | 'Property'
   accounts: Account[]
   filters: ExportReportFilters
@@ -183,7 +183,7 @@ export default function ExportReportModal({
   holdings = [], properties = [], tenants = [],
 }: ExportReportModalProps) {
   const [advancedOpen, setAdvancedOpen] = useState(true)
-  const [exportFormat, setExportFormat] = useState<'xlsx' | 'csv'>('xlsx')
+  const [exportFormat, setExportFormat] = useState<'xlsx' | 'csv' | 'pdf'>('xlsx')
   const [advanced, setAdvanced] = useState<AdvancedOptions>({
     includeJournal: true,
     includeAuditTrail: true,
@@ -461,7 +461,7 @@ export default function ExportReportModal({
           <div>
             <SectionLabel><span style={{ marginRight: 6, display: 'inline-flex', alignItems: 'center', verticalAlign: 'middle' }}><FolderOpen size={13} strokeWidth={1.75} /></span>Export Format</SectionLabel>
             <div style={{ display: 'flex', gap: 12 }}>
-              {([['xlsx', 'Excel (.xlsx)', <FileSpreadsheet size={15} strokeWidth={1.75} />], ['csv', 'CSV (.csv)', <FileText size={15} strokeWidth={1.75} />]] as const).map(([val, lbl, icon]) => (
+              {([['xlsx', 'Excel (.xlsx)', <FileSpreadsheet size={15} strokeWidth={1.75} />], ['csv', 'CSV (.csv)', <FileText size={15} strokeWidth={1.75} />], ['pdf', 'PDF (.pdf)', <FileText size={15} strokeWidth={1.75} />]] as const).map(([val, lbl, icon]) => (
                 <label
                   key={val}
                   style={{
@@ -479,7 +479,7 @@ export default function ExportReportModal({
                     name="export-format"
                     value={val}
                     checked={exportFormat === val}
-                    onChange={() => setExportFormat(val as 'xlsx' | 'csv')}
+                    onChange={() => setExportFormat(val as 'xlsx' | 'csv' | 'pdf')}
                     style={{ accentColor: '#22A45D' }}
                   />
                   <span style={{ display: 'inline-flex', alignItems: 'center' }}>{icon}</span>
@@ -586,10 +586,10 @@ export default function ExportReportModal({
             </div>
             <div>
               <div style={{ fontSize: 12, fontWeight: 600, color: '#1A2230', lineHeight: 1.2 }}>
-                Professional Excel
+                {exportFormat === 'xlsx' ? 'Professional Excel' : exportFormat === 'csv' ? 'Raw Data CSV' : 'Professional PDF'}
               </div>
               <div style={{ fontSize: 11, color: '#7B8A99' }}>
-                Compatible with Microsoft Excel &amp; LibreOffice
+                {exportFormat === 'xlsx' ? 'Compatible with Microsoft Excel & LibreOffice' : exportFormat === 'csv' ? 'Universal spreadsheet format' : 'Ready for printing and sharing'}
               </div>
             </div>
           </div>
@@ -608,7 +608,7 @@ export default function ExportReportModal({
               Cancel
             </button>
             <button
-              onClick={onExport}
+              onClick={() => onExport(exportFormat)}
               style={{
                 padding: '10px 22px', borderRadius: 9,
                 background: 'linear-gradient(135deg, #22A45D 0%, #179E54 100%)',
@@ -625,7 +625,7 @@ export default function ExportReportModal({
                 <polyline points="7 10 12 15 17 10"/>
                 <line x1="12" y1="15" x2="12" y2="3"/>
               </svg>
-              Export Excel
+              Export {exportFormat === 'xlsx' ? 'Excel' : exportFormat === 'csv' ? 'CSV' : 'PDF'}
             </button>
           </div>
         </div>

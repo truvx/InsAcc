@@ -13,7 +13,7 @@ import { t } from '../utils'
 import { getPropertyFinancialSummary } from '../services/propertyFinancialAggregationService'
 import { getBalanceSheetTree, getProfitLossTree, flattenStatementRows } from '../services/propertyFinancialStatements'
 import { formatDate } from '../utils'
-import { exportAccountingExcel } from '../services/reportExportService'
+import { exportAccountingExcel, exportAccountingCsv, exportAccountingPdf } from '../services/reportExportService'
 import ExportReportModal from './design/ExportReportModal'
 
 function BuildingIcon() {
@@ -76,13 +76,13 @@ export default function PropertyReports({
   const [filterBuilding, setFilterBuilding] = useState('All')
   const [filterTenant, setFilterTenant] = useState('All')
 
-  const handleExcelGeneration = async () => {
+  const handleReportExport = async (format: 'xlsx' | 'csv' | 'pdf') => {
     setIsExportModalOpen(false)
     try {
-      await exportAccountingExcel({
+      const p = {
         companyName: 'INSACC',
         reportTitle: 'GENERAL LEDGER REPORT',
-        module: 'Property',
+        module: 'Property' as const,
         periodLabel: `${filterStart} - ${filterEnd}`,
         generatedBy: 'User',
         currency,
@@ -101,7 +101,11 @@ export default function PropertyReports({
         units,
         tenants,
         leases
-      })
+      }
+      
+      if (format === 'xlsx') await exportAccountingExcel(p)
+      else if (format === 'csv') await exportAccountingCsv(p)
+      else if (format === 'pdf') await exportAccountingPdf(p)
     } catch (e) {
       console.error(e)
     }
@@ -661,7 +665,7 @@ export default function PropertyReports({
       <ExportReportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
-        onExport={handleExcelGeneration}
+        onExport={handleReportExport}
         module="Property"
         accounts={accounts}
         filters={{

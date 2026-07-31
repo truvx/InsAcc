@@ -8,7 +8,7 @@ import type { BankAccount, BankTransaction } from '../data/banking'
 import { UaeDirhamIcon } from './design/UaeDirhamIcon'
 import BankAccountAvatar from './BankAccountAvatar'
 import { formatAssetType } from '../data/investmentMasterData'
-import { exportAccountingExcel } from '../services/reportExportService'
+import { exportAccountingExcel, exportAccountingCsv, exportAccountingPdf } from '../services/reportExportService'
 import ExportReportModal from './design/ExportReportModal'
 import { validateLedgerBalance } from '../accounting/ledgerService'
 
@@ -138,13 +138,13 @@ export default function InvestmentReports({
   const [filterAccount, setFilterAccount] = React.useState('All')
   const [filterAsset, setFilterAsset] = React.useState('All')
 
-  const handleExcelGeneration = async () => {
+  const handleReportExport = async (format: 'xlsx' | 'csv' | 'pdf') => {
     setIsExportModalOpen(false)
     try {
-      await exportAccountingExcel({
+      const p = {
         companyName: 'INSACC',
         reportTitle: 'GENERAL LEDGER REPORT',
-        module: 'Investment',
+        module: 'Investment' as const,
         periodLabel: `${filterStart} - ${filterEnd}`,
         generatedBy: 'User',
         currency,
@@ -166,7 +166,11 @@ export default function InvestmentReports({
           purchaseValue: h.purchaseValue,
           currentValue: h.currentValue
         }))
-      })
+      }
+      
+      if (format === 'xlsx') await exportAccountingExcel(p)
+      else if (format === 'csv') await exportAccountingCsv(p)
+      else if (format === 'pdf') await exportAccountingPdf(p)
     } catch (e) {
       console.error(e)
     }
@@ -976,7 +980,7 @@ export default function InvestmentReports({
       <ExportReportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
-        onExport={handleExcelGeneration}
+        onExport={handleReportExport}
         module="Investment"
         accounts={accounts}
         filters={{
