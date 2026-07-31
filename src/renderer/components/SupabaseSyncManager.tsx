@@ -96,7 +96,6 @@ export default function SupabaseSyncManager() {
           } else if (active && records && records.length > 0) {
             // DB has records — populate local storage & React state
             clearPersistedCache()
-            let hasDirtyKeys = false
             for (const record of records) {
               if (
                 record.key &&
@@ -104,20 +103,15 @@ export default function SupabaseSyncManager() {
                 record.key !== 'insacc_supabase_key' &&
                 record.key !== 'insacc_supabase_enabled'
               ) {
-                // Do not overwrite if local state is dirty (user refreshed before push completed)
-                if (localStorage.getItem(`insacc_dirty_${record.key}`)) {
-                  hasDirtyKeys = true
-                  continue
-                }
+                // We ALWAYS overwrite local state with DB state on boot.
+                // Reset any dirty flags since DB is source of truth on startup.
+                localStorage.removeItem(`insacc_dirty_${record.key}`)
+                
                 const stateStr = JSON.stringify(record.value)
                 localStorage.setItem(record.key, stateStr)
                 window.dispatchEvent(new CustomEvent('insacc-remote-sync', { detail: { key: record.key, value: record.value } }))
                 invalidateBalanceCache()
               }
-            }
-            if (hasDirtyKeys) {
-               // Push the dirty local data so it isn't lost
-               pushAllLocalData(url, anonKey).catch(err => console.error('Background push error:', err))
             }
           }
         }
