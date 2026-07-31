@@ -223,11 +223,13 @@ export default function PropertyReports({
         ])
       } else if (activeTab === 'trial-balance') {
         title = 'Trial Balance'
-        columns = ['Account', 'Debit', 'Credit']
+        columns = ['Code', 'Account', 'Debit', 'Credit', 'Balance']
         rows = tbEntries.map(r => [
+          r.accountCode,
           r.accountName,
-          r.debit > 0 ? r.debit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '',
-          r.credit > 0 ? r.credit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : ''
+          r.totalDebit > 0 ? r.totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '',
+          r.totalCredit > 0 ? r.totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '',
+          r.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })
         ])
       } else if (activeTab === 'rent-collection') {
         title = 'Rent Collection'
