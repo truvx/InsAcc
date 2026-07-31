@@ -849,6 +849,21 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
   let totDr = 0, totCr = 0
   fv.forEach(v => v.lines.forEach(l => { if (l.type === 'Debit') totDr += l.amount; else totCr += l.amount }))
 
+  // Cover Page
+  doc.setFontSize(36)
+  doc.setTextColor(15, 76, 53) // primaryDark
+  doc.text('InsAcc', 105, 120, { align: 'center' })
+  
+  doc.setFontSize(18)
+  doc.setTextColor(100, 116, 139)
+  doc.text(`${p.module} Portfolio Report`, 105, 135, { align: 'center' })
+  
+  doc.setFontSize(12)
+  doc.text(`Period: ${p.periodLabel}`, 105, 145, { align: 'center' })
+  
+  doc.addPage()
+
+  // Report Page
   let y = 15
   doc.setFontSize(18)
   doc.setTextColor(15, 76, 53) // primaryDark
@@ -914,6 +929,24 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
 
   if (p.format === 'pdf') {
     const doc = new jsPDF()
+    
+    // Cover Page
+    doc.setFontSize(36)
+    doc.setTextColor(15, 76, 53) // primaryDark
+    doc.text('InsAcc', 105, 120, { align: 'center' })
+    
+    doc.setFontSize(18)
+    doc.setTextColor(100, 116, 139)
+    doc.text(p.title, 105, 135, { align: 'center' })
+    
+    if (p.subtitle) {
+      doc.setFontSize(12)
+      doc.text(p.subtitle, 105, 145, { align: 'center' })
+    }
+    
+    doc.addPage()
+
+    // Report Page
     let y = 15
     doc.setFontSize(18)
     doc.setTextColor(15, 76, 53) // primaryDark
