@@ -605,7 +605,21 @@ export default function PropertyTransactions({
       }
     })
 
-    const voucherTxns = (vouchers || []).map(v => {
+    const knownRefs = new Set([
+      ...manualTxns.map(t => t.id),
+      ...pdcTxns.map(t => t.id),
+      ...depositTxns.map(t => t.id),
+      ...expenseTxns.map(t => t.id)
+    ])
+
+    const voucherTxns = (vouchers || [])
+      .filter(v => {
+        if (v.reference && knownRefs.has(v.reference)) return false
+        if (v.id.startsWith('vch-exp-') && knownRefs.has(v.id.replace('vch-exp-', ''))) return false
+        if (v.id.startsWith('vch-') && knownRefs.has(v.id.replace('vch-', ''))) return false
+        return true
+      })
+      .map(v => {
       const typeStr = v.type === 'Receipt' ? 'credit' : 'debit'
       const amount = v.lines.reduce((sum, l) => sum + (l.type === 'Debit' ? l.amount : 0), 0)
       return {
@@ -949,7 +963,7 @@ export default function PropertyTransactions({
           <KpiCard label="Total Expenses" value={fmt(totalExpense)} accentColor="var(--danger)" />
           <KpiCard
             label="Net Income"
-            value={fmt(Math.abs(netIncome))}
+            value={fmt(netIncome)}
             accentColor={netIncome >= 0 ? 'var(--success)' : 'var(--danger)'}
           />
         </div>
