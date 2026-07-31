@@ -1478,8 +1478,25 @@ export default function App() {
       }
       return a
     })
+
+    // Deduplicate accounts with the exact same ID (e.g. '50001')
+    const idCounts = new Map<string, number>()
+    const deduplicatedAccounts: Account[] = []
+    for (const a of migratedPropAccounts) {
+      const count = idCounts.get(a.id) || 0
+      if (count > 0) {
+        // Assign a new unique ID for the duplicate
+        const newId = `acct-migrated-${Date.now()}-${Math.floor(Math.random() * 10000)}`
+        deduplicatedAccounts.push({ ...a, id: newId })
+        changed = true
+      } else {
+        deduplicatedAccounts.push(a)
+      }
+      idCounts.set(a.id, count + 1)
+    }
+
     if (changed) {
-      setPropChartAccounts(migratedPropAccounts)
+      setPropChartAccounts(deduplicatedAccounts)
     }
   }, [propChartAccounts, setPropChartAccounts, currency])
 

@@ -170,20 +170,15 @@ export default function PropertyExpenses({
 
     const prefix = parentCode
     const children = accounts
-      .filter(a => a.code.startsWith(prefix) && a.code.length > prefix.length)
-      .map(a => a.code)
-      .sort()
+      .filter(a => a.parentId === parent.id && a.code.startsWith(prefix))
+      .map(a => parseInt(a.code.replace(prefix, ''), 10))
+      .filter(num => !isNaN(num))
 
-    let nextCode = `${parentCode}01`
-    if (children.length > 0) {
-      const lastCode = children[children.length - 1]
-      const lastSeq = lastCode.slice(prefix.length)
-      const nextSeq = String(Number(lastSeq) + 1).padStart(lastSeq.length, '0')
-      nextCode = `${prefix}${nextSeq}`
-    }
+    const nextNum = children.length > 0 ? Math.max(...children) + 1 : 1
+    const nextCode = `${prefix}${nextNum.toString().padStart(2, '0')}`
 
     const newAccount: Account = {
-      id: nextCode,
+      id: `acct-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       code: nextCode,
       name: categoryName,
       type: accountType,
