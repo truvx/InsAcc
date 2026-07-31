@@ -46,9 +46,9 @@ const FONT_SIZE_BODY = 9
 const PAGE_MARGIN = 20
 const PAGE_WIDTH = 210
 const COLORS = {
-  primary: [41, 98, 255] as [number, number, number],
+  primary: [15, 76, 53] as [number, number, number], // primaryDark (0F4C35)
   secondary: [100, 116, 139] as [number, number, number],
-  header: [248, 250, 252] as [number, number, number],
+  header: [248, 251, 249] as [number, number, number], // rowAlt (F8FBF9)
   border: [226, 232, 240] as [number, number, number],
 }
 
@@ -851,7 +851,7 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
 
   let y = 15
   doc.setFontSize(18)
-  doc.setTextColor(41, 98, 255)
+  doc.setTextColor(15, 76, 53) // primaryDark
   doc.text(`InsAcc ${p.module} Portfolio Report`, 14, y)
   
   y += 10
@@ -884,13 +884,97 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
     body: tableData,
     theme: 'grid',
     styles: { fontSize: 8 },
-    headStyles: { fillColor: [248, 250, 252], textColor: [41, 98, 255] },
+    headStyles: { fillColor: [15, 76, 53], textColor: [255, 255, 255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [248, 251, 249] },
   })
 
   const today = new Date().toISOString().slice(0, 10)
   const filename = `InsAcc_${p.module === 'Property' ? 'Properties_Management' : 'Investment_Portfolio'}_Report_${today}.pdf`
   const buf = doc.output('arraybuffer')
   return saveWithDialog(filename, [{ name: 'PDF', extensions: ['pdf'] }], buf)
+}
+
+export interface TableExportParams {
+  format: 'xlsx' | 'csv' | 'pdf'
+  title: string
+  subtitle?: string
+  filename: string
+  columns: string[]
+  rows: (string | number)[][]
+}
+
+export async function exportTableData(p: TableExportParams): Promise<string | null> {
+  if (p.format === 'csv') {
+    let csv = p.columns.map(c => `"${c.replace(/"/g, '""')}"`).join(',') + '\n'
+    p.rows.forEach(r => {
+      csv += r.map(c => typeof c === 'string' ? `"${c.replace(/"/g, '""')}"` : c).join(',') + '\n'
+    })
+    return saveWithDialog(`${p.filename}.csv`, [{ name: 'CSV', extensions: ['csv'] }], csv)
+  }
+
+  if (p.format === 'pdf') {
+    const doc = new jsPDF()
+    let y = 15
+    doc.setFontSize(18)
+    doc.setTextColor(15, 76, 53) // primaryDark
+    doc.text(p.title, 14, y)
+    
+    if (p.subtitle) {
+      y += 8
+      doc.setFontSize(10)
+      doc.setTextColor(100, 116, 139)
+      doc.text(p.subtitle, 14, y)
+    }
+
+    autoTable(doc, {
+      startY: y + 8,
+      head: [p.columns],
+      body: p.rows,
+      theme: 'grid',
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [15, 76, 53], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 251, 249] },
+    })
+
+    const buf = doc.output('arraybuffer')
+    return saveWithDialog(`${p.filename}.pdf`, [{ name: 'PDF', extensions: ['pdf'] }], buf)
+  }
+
+  if (p.format === 'xlsx') {
+    const wb = XLSX.utils.book_new()
+    const wsData = [
+      [p.title],
+      ...(p.subtitle ? [[p.subtitle]] : []),
+      [],
+      p.columns,
+      ...p.rows
+    ]
+    const ws = XLSX.utils.aoa_to_sheet(wsData)
+    
+    // Style title
+    if (ws['A1']) {
+      ws['A1'].s = { font: { sz: 14, bold: true, color: { rgb: '0F4C35' } } }
+    }
+    
+    // Style headers
+    const headerRow = p.subtitle ? 3 : 2
+    for (let c = 0; c < p.columns.length; c++) {
+      const cellRef = XLSX.utils.encode_cell({ r: headerRow, c })
+      if (ws[cellRef]) {
+        ws[cellRef].s = { 
+          font: { bold: true, color: { rgb: 'FFFFFF' } },
+          fill: { fgColor: { rgb: '0F4C35' } },
+          border: { bottom: { style: 'thin', color: { rgb: 'E2E8F0' } } }
+        }
+      }
+    }
+    
+    XLSX.utils.book_append_sheet(wb, ws, 'Report')
+    const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
+    return saveWithDialog(`${p.filename}.xlsx`, [{ name: 'Excel', extensions: ['xlsx'] }], buf)
+  }
+
+  return null
 }
 
 export { generatePdf, generateExcel, generateCsv }

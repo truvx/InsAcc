@@ -13,7 +13,7 @@ import { t } from '../utils'
 import { getPropertyFinancialSummary } from '../services/propertyFinancialAggregationService'
 import { getBalanceSheetTree, getProfitLossTree, flattenStatementRows } from '../services/propertyFinancialStatements'
 import { formatDate } from '../utils'
-import { exportAccountingExcel, exportAccountingCsv, exportAccountingPdf } from '../services/reportExportService'
+import { exportAccountingExcel, exportAccountingCsv, exportAccountingPdf, exportTableData } from '../services/reportExportService'
 import ExportReportModal from './design/ExportReportModal'
 
 function BuildingIcon() {
@@ -76,40 +76,7 @@ export default function PropertyReports({
   const [filterBuilding, setFilterBuilding] = useState('All')
   const [filterTenant, setFilterTenant] = useState('All')
 
-  const handleReportExport = async (format: 'xlsx' | 'csv' | 'pdf') => {
-    setIsExportModalOpen(false)
-    try {
-      const p = {
-        companyName: 'INSACC',
-        reportTitle: 'GENERAL LEDGER REPORT',
-        module: 'Property' as const,
-        periodLabel: `${filterStart} - ${filterEnd}`,
-        generatedBy: 'User',
-        currency,
-        accounts,
-        vouchers,
-        filters: {
-          dateRange: { start: filterStart, end: filterEnd },
-          bankAccountId: filterBank,
-          accountId: filterAccount,
-          buildingName: filterBuilding,
-          tenantName: filterTenant,
-          voucherType: filterVType,
-          status: filterStatus
-        },
-        properties,
-        units,
-        tenants,
-        leases
-      }
-      
-      if (format === 'xlsx') await exportAccountingExcel(p)
-      else if (format === 'csv') await exportAccountingCsv(p)
-      else if (format === 'pdf') await exportAccountingPdf(p)
-    } catch (e) {
-      console.error(e)
-    }
-  }
+  // handleReportExport is now moved below to access all tab data.
 
   const periodDates = useMemo(() => getPeriodDates(period, customStart, customEnd), [period, customStart, customEnd])
 
@@ -201,6 +168,122 @@ export default function PropertyReports({
       return end >= now && end <= sixMonths
     }).sort((a, b) => a.endDate.localeCompare(b.endDate))
   }, [leases])
+
+  const handleReportExport = async (format: 'xlsx' | 'csv' | 'pdf') => {
+    setIsExportModalOpen(false)
+    try {
+      if (activeTab === 'overview') {
+        const p = {
+          companyName: 'INSACC',
+          reportTitle: 'GENERAL LEDGER REPORT',
+          module: 'Property' as const,
+          periodLabel: `${filterStart} - ${filterEnd}`,
+          generatedBy: 'User',
+          currency,
+          accounts,
+          vouchers,
+          filters: {
+            dateRange: { start: filterStart, end: filterEnd },
+            bankAccountId: filterBank,
+            accountId: filterAccount,
+            buildingName: filterBuilding,
+            tenantName: filterTenant,
+            voucherType: filterVType,
+            status: filterStatus
+          },
+          properties,
+          units,
+          tenants,
+          leases
+        }
+        
+        if (format === 'xlsx') await exportAccountingExcel(p)
+        else if (format === 'csv') await exportAccountingCsv(p)
+        else if (format === 'pdf') await exportAccountingPdf(p)
+        return
+      }
+
+      let title = ''
+      let columns: string[] = []
+      let rows: (string | number)[][] = []
+
+      if (activeTab === 'balance-sheet') {
+        title = 'Balance Sheet'
+        columns = ['Account', 'Balance']
+        rows = bsRows.map(r => [
+          r.accountName,
+          r.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })
+        ])
+      } else if (activeTab === 'profit-loss') {
+        title = 'Profit & Loss'
+        columns = ['Account', 'Amount']
+        rows = plRows.map(r => [
+          r.accountName,
+          r.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })
+        ])
+      } else if (activeTab === 'trial-balance') {
+        title = 'Trial Balance'
+        columns = ['Account', 'Debit', 'Credit']
+        rows = tbEntries.map(r => [
+          r.accountName,
+          r.debit > 0 ? r.debit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '',
+          r.credit > 0 ? r.credit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : ''
+        ])
+      } else if (activeTab === 'rent-collection') {
+        title = 'Rent Collection'
+        columns = ['Tenant', 'Property', 'Unit', 'Annual Rent', 'Collected', 'Outstanding']
+        rows = rentCollection.map(r => [
+          r.tenant,
+          r.property,
+          r.unit,
+          r.annualRent.toLocaleString(undefined, { minimumFractionDigits: 2 }),
+          r.collected.toLocaleString(undefined, { minimumFractionDigits: 2 }),
+          r.outstanding.toLocaleString(undefined, { minimumFractionDigits: 2 })
+        ])
+      } else if (activeTab === 'pdc-summary') {
+        title = 'PDC Summary'
+        columns = ['Metric', 'Value']
+        rows = [
+          ['Total PDC Value', pdcSummary.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })],
+          ['Rental Income (Ledger)', pdcSummary.rentalIncome.toLocaleString(undefined, { minimumFractionDigits: 2 })]
+        ]
+      } else if (activeTab === 'lease-expiry') {
+        title = 'Lease Expiry (Next 6 Months)'
+        columns = ['Lease #', 'Tenant', 'End Date', 'Monthly Rent']
+        rows = leaseExpiry.map(l => {
+          const tenant = tenants.find(t => t.id === l.tenantId)?.name || 'Unknown'
+          return [l.leaseNumber, tenant, formatDate(l.endDate, dateFormat), l.monthlyRent.toLocaleString(undefined, { minimumFractionDigits: 2 })]
+        })
+      } else if (activeTab === 'expense-report') {
+        title = 'Property Expenses'
+        columns = ['Expense No.', 'Date', 'Property', 'Category', 'Paid To', 'Method', 'Amount']
+        const periodExpenses = expenses.filter(e => e.date >= periodDates.start && e.date <= periodDates.end)
+        rows = periodExpenses.map(e => {
+          const propName = properties.find(p => p.id === e.propertyId)?.name || 'Unknown'
+          return [
+            e.expenseNo,
+            formatDate(e.date, dateFormat),
+            propName,
+            e.category,
+            e.paidTo,
+            e.paymentMethod,
+            e.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })
+          ]
+        })
+      }
+
+      await exportTableData({
+        format,
+        title,
+        subtitle: `Period: ${filterStart} - ${filterEnd}`,
+        filename: `Property_${title.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}`,
+        columns,
+        rows
+      })
+    } catch (e) {
+      console.error(e)
+    }
+  }
 
   const renderTabContent = () => {
     // Accounting Integrity Check - show error if ledger is unbalanced
@@ -642,7 +725,7 @@ export default function PropertyReports({
               height: 38
             }}
           >
-            Export Excel (Professional)
+            Export
           </button>
         </div>
       </div>

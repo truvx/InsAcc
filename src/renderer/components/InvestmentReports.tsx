@@ -8,7 +8,7 @@ import type { BankAccount, BankTransaction } from '../data/banking'
 import { UaeDirhamIcon } from './design/UaeDirhamIcon'
 import BankAccountAvatar from './BankAccountAvatar'
 import { formatAssetType } from '../data/investmentMasterData'
-import { exportAccountingExcel, exportAccountingCsv, exportAccountingPdf } from '../services/reportExportService'
+import { exportAccountingExcel, exportAccountingCsv, exportAccountingPdf, exportTableData } from '../services/reportExportService'
 import ExportReportModal from './design/ExportReportModal'
 import { validateLedgerBalance } from '../accounting/ledgerService'
 
@@ -138,43 +138,7 @@ export default function InvestmentReports({
   const [filterAccount, setFilterAccount] = React.useState('All')
   const [filterAsset, setFilterAsset] = React.useState('All')
 
-  const handleReportExport = async (format: 'xlsx' | 'csv' | 'pdf') => {
-    setIsExportModalOpen(false)
-    try {
-      const p = {
-        companyName: 'INSACC',
-        reportTitle: 'GENERAL LEDGER REPORT',
-        module: 'Investment' as const,
-        periodLabel: `${filterStart} - ${filterEnd}`,
-        generatedBy: 'User',
-        currency,
-        accounts,
-        vouchers,
-        filters: {
-          dateRange: { start: filterStart, end: filterEnd },
-          bankAccountId: filterBank,
-          accountId: filterAccount,
-          assetName: filterAsset,
-          voucherType: filterVType,
-          status: filterStatus
-        },
-        investments: holdings.map(h => ({
-          name: h.assetName,
-          type: formatAssetType(h.assetCode),
-          quantity: 1,
-          unitPrice: h.purchaseValue,
-          purchaseValue: h.purchaseValue,
-          currentValue: h.currentValue
-        }))
-      }
-      
-      if (format === 'xlsx') await exportAccountingExcel(p)
-      else if (format === 'csv') await exportAccountingCsv(p)
-      else if (format === 'pdf') await exportAccountingPdf(p)
-    } catch (e) {
-      console.error(e)
-    }
-  }
+  // handleReportExport moved down to access projection data
 
   const fmt = (n: number) => (
     <span style={{ display: 'inline-flex', alignItems: 'center' }}>
@@ -217,6 +181,130 @@ export default function InvestmentReports({
     { id: 'general-journal', label: 'General Journal' },
     { id: 'general-ledger', label: 'General Ledger' },
   ]
+  const handleReportExport = async (format: 'xlsx' | 'csv' | 'pdf') => {
+    setIsExportModalOpen(false)
+    try {
+      if (activeTab === 'overview' || activeTab === 'general-journal' || activeTab === 'general-ledger') {
+        const p = {
+          companyName: 'INSACC',
+          reportTitle: 'GENERAL LEDGER REPORT',
+          module: 'Investment' as const,
+          periodLabel: `${filterStart} - ${filterEnd}`,
+          generatedBy: 'User',
+          currency,
+          accounts,
+          vouchers,
+          filters: {
+            dateRange: { start: filterStart, end: filterEnd },
+            bankAccountId: filterBank,
+            accountId: filterAccount,
+            assetName: filterAsset,
+            voucherType: filterVType,
+            status: filterStatus
+          },
+          investments: holdings.map(h => ({
+            name: h.assetName,
+            type: formatAssetType(h.assetCode),
+            quantity: 1,
+            unitPrice: h.purchaseValue,
+            purchaseValue: h.purchaseValue,
+            currentValue: h.currentValue
+          }))
+        }
+        
+        if (format === 'xlsx') await exportAccountingExcel(p)
+        else if (format === 'csv') await exportAccountingCsv(p)
+        else if (format === 'pdf') await exportAccountingPdf(p)
+        return
+      }
+
+      let title = ''
+      let columns: string[] = []
+      let rows: (string | number)[][] = []
+
+      switch (activeTab) {
+        case 'balance-sheet': {
+          title = 'Balance Sheet'
+          columns = ['Type', 'Code', 'Account', 'Balance']
+          rows = [
+            ...projection.balanceSheet.assets.map(a => ['Asset', a.accountCode, a.accountName, a.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })]),
+            ['', 'Total Assets', '', projection.balanceSheet.totalAssets.toLocaleString(undefined, { minimumFractionDigits: 2 })],
+            ...projection.balanceSheet.liabilities.map(a => ['Liability', a.accountCode, a.accountName, a.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })]),
+            ['', 'Total Liabilities', '', projection.balanceSheet.totalLiabilities.toLocaleString(undefined, { minimumFractionDigits: 2 })],
+          ]
+          break
+        }
+        case 'profit-loss': {
+          title = 'Profit & Loss'
+          columns = ['Type', 'Code', 'Account', 'Amount']
+          rows = [
+            ...projection.profitLoss.revenue.map(e => ['Revenue', e.accountCode, e.accountName, e.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })]),
+            ['', 'Total Revenue', '', projection.profitLoss.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })],
+            ...projection.profitLoss.expenses.map(e => ['Expense', e.accountCode, e.accountName, e.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })]),
+            ['', 'Total Expenses', '', projection.profitLoss.totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })],
+            ['', 'Net Income', '', projection.profitLoss.netIncome.toLocaleString(undefined, { minimumFractionDigits: 2 })],
+          ]
+          break
+        }
+        case 'trial-balance': {
+          title = 'Trial Balance'
+          columns = ['Code', 'Account', 'Debit', 'Credit', 'Balance']
+          rows = tbEntries.map(e => [e.accountCode, e.accountName, e.totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 }), e.totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2 }), e.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })])
+          break
+        }
+        case 'holdings': {
+          title = 'Investment Holdings'
+          columns = ['Code', 'Asset', 'Purchase Value', 'Current Value', 'Unrealized Gain', 'Growth']
+          rows = holdings.map(h => [h.assetCode, h.assetName, h.purchaseValue.toLocaleString(undefined, { minimumFractionDigits: 2 }), h.currentValue.toLocaleString(undefined, { minimumFractionDigits: 2 }), h.unrealizedGain.toLocaleString(undefined, { minimumFractionDigits: 2 }), `${h.growthPercent.toFixed(1)}%`])
+          break
+        }
+        case 'investment-position': {
+          title = 'Investment Position'
+          columns = ['Type', 'Asset', 'Code', 'Cost Basis', 'Current Value', 'Unrealized Gain', 'Growth']
+          rows = projection.investmentPosition.map(r => [formatAssetType(r.assetType), r.assetName, r.accountCode, r.costBasis.toLocaleString(undefined, { minimumFractionDigits: 2 }), r.currentValue.toLocaleString(undefined, { minimumFractionDigits: 2 }), r.unrealizedGain.toLocaleString(undefined, { minimumFractionDigits: 2 }), `${r.growthPercent.toFixed(1)}%`])
+          break
+        }
+        case 'purchase-report': {
+          title = 'Purchase Report'
+          columns = ['Date', 'Type', 'Asset', 'Qty', 'Unit Price', 'Total', 'Account', 'Voucher']
+          rows = projection.purchaseReport.map(r => [r.date, formatAssetType(r.assetType), r.assetName, r.quantity, r.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 }), r.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 }), r.accountCode, r.voucherNumber])
+          break
+        }
+        case 'bank-position': {
+          title = 'Bank Position'
+          columns = ['Bank', 'Ledger', 'Statement', 'Diff']
+          rows = projection.bankPosition.map(r => [r.bankName, r.ledgerBalance.toLocaleString(undefined, { minimumFractionDigits: 2 }), r.bankBalance.toLocaleString(undefined, { minimumFractionDigits: 2 }), r.difference.toLocaleString(undefined, { minimumFractionDigits: 2 })])
+          break
+        }
+        case 'cash-flow': {
+          title = 'Cash Flow'
+          columns = ['Type', 'Category', 'Amount']
+          rows = [
+            ...projection.cashFlow.operating.map(c => ['Operating', c.category, c.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })]),
+            ['', 'Total Operating', projection.cashFlow.totalOperating.toLocaleString(undefined, { minimumFractionDigits: 2 })],
+            ...projection.cashFlow.investing.map(c => ['Investing', c.category, c.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })]),
+            ['', 'Total Investing', projection.cashFlow.totalInvesting.toLocaleString(undefined, { minimumFractionDigits: 2 })],
+            ...projection.cashFlow.financing.map(c => ['Financing', c.category, c.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })]),
+            ['', 'Total Financing', projection.cashFlow.totalFinancing.toLocaleString(undefined, { minimumFractionDigits: 2 })],
+            ['', 'Net Cash Flow', projection.cashFlow.netCashFlow.toLocaleString(undefined, { minimumFractionDigits: 2 })],
+          ]
+          break
+        }
+      }
+
+      await exportTableData({
+        format,
+        title,
+        subtitle: `Period: ${filterStart} - ${filterEnd}`,
+        filename: `Investment_${title.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}`,
+        columns,
+        rows
+      })
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
 
   const handleExport = useCallback((tabId: string) => {
     switch (tabId) {
@@ -957,7 +1045,7 @@ export default function InvestmentReports({
               boxShadow: 'var(--shadow-sm)'
             }}
           >
-            Export Excel (Professional)
+            Export
           </button>
         </div>
       </div>
