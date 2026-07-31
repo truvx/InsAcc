@@ -715,6 +715,13 @@ export default function PropertyTransactions({
         if (isLiability) {
           return <Badge variant="neutral">Liability</Badge>
         }
+        if (txn.category === 'Journal Voucher') {
+          return (
+            <Badge variant={txn.status === 'cleared' ? 'success' : (txn.status === 'pending' ? 'warning' : 'neutral')}>
+              JV
+            </Badge>
+          )
+        }
         return (
           <Badge variant={txn.status === 'cleared' ? 'success' : (txn.status === 'pending' ? 'warning' : 'neutral')}>
             {txn.type === 'credit' ? 'Income' : 'Expense'}
