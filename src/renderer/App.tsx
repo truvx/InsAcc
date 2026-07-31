@@ -36,6 +36,8 @@ import { MasterDataProvider } from './contexts/MasterDataContext'
 import SupabaseSyncManager from './components/SupabaseSyncManager'
 import SyncIndicator from './components/SyncIndicator'
 import { getSupabaseClient, pushState } from './services/supabaseSyncService'
+import { initHistory, undo, redo, canUndo, canRedo, subscribeToHistory } from './services/historyService'
+import { Undo2, Redo2 } from 'lucide-react'
 
 export interface LoginEntry {
   email: string
@@ -1006,7 +1008,19 @@ type Screen = 'profiles' | 'login' | 'module' | 'dashboard'
 type Module = 'investment' | 'property'
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>('login')
+  const [undoAvailable, setUndoAvailable] = useState(false)
+  const [redoAvailable, setRedoAvailable] = useState(false)
+
+  useEffect(() => {
+    initHistory()
+    const unsub = subscribeToHistory(() => {
+      setUndoAvailable(canUndo())
+      setRedoAvailable(canRedo())
+    })
+    return unsub
+  }, [])
+
+  const [screen, setScreen] = useState<'login' | 'profiles' | 'module' | 'dashboard'>('login')
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null)
   const storedLoginProfiles: Profile[] = useMemo(() => [
     { id: 1, name: 'Sameer Ishaq Harmoudi', role: 'Admin' as const, avatar: '', initials: 'SH', locked: false },
@@ -3039,40 +3053,110 @@ export default function App() {
               </svg>
               {activePage === 'dashboard' ? 'Back to Portfolios' : 'Back to Dashboard'}
             </button>
-            <button
-              onClick={handleChangeProfile}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 12px',
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                borderRadius: 6,
-                fontSize: 14,
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 500,
-                color: '#5C6A86',
-                transition: 'all 150ms',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = '#EDF9F0'
-                e.currentTarget.style.color = '#3BA549'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.color = '#5C6A86'
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-              Change Profile
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button
+                onClick={undo}
+                disabled={!undoAvailable}
+                title="Undo last action"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 12px',
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: undoAvailable ? 'pointer' : 'not-allowed',
+                  borderRadius: 6,
+                  fontSize: 14,
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 500,
+                  color: undoAvailable ? '#5C6A86' : '#CBD5E1',
+                  transition: 'all 150ms',
+                }}
+                onMouseEnter={e => {
+                  if (undoAvailable) {
+                    e.currentTarget.style.background = '#EDF9F0'
+                    e.currentTarget.style.color = '#3BA549'
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (undoAvailable) {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = '#5C6A86'
+                  }
+                }}
+              >
+                <Undo2 size={16} /> Undo
+              </button>
+              <button
+                onClick={redo}
+                disabled={!redoAvailable}
+                title="Redo action"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 12px',
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: redoAvailable ? 'pointer' : 'not-allowed',
+                  borderRadius: 6,
+                  fontSize: 14,
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 500,
+                  color: redoAvailable ? '#5C6A86' : '#CBD5E1',
+                  transition: 'all 150ms',
+                }}
+                onMouseEnter={e => {
+                  if (redoAvailable) {
+                    e.currentTarget.style.background = '#EDF9F0'
+                    e.currentTarget.style.color = '#3BA549'
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (redoAvailable) {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = '#5C6A86'
+                  }
+                }}
+              >
+                <Redo2 size={16} /> Redo
+              </button>
+              <button
+                onClick={handleChangeProfile}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 12px',
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  borderRadius: 6,
+                  fontSize: 14,
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 500,
+                  color: '#5C6A86',
+                  transition: 'all 150ms',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = '#EDF9F0'
+                  e.currentTarget.style.color = '#3BA549'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = '#5C6A86'
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                Change Profile
+              </button>
+            </div>
           </div>
           <Suspense fallback={<LoadingFallback />}>
             <AnimatePresence mode="wait">

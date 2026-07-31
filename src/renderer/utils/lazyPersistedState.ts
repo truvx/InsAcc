@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getSupabaseClient, pushState } from '../services/supabaseSyncService'
+import { scheduleSnapshot } from '../services/historyService'
 
 const cache = new Map<string, string | null>()
 let cacheLoaded = false
@@ -73,6 +74,8 @@ export function useLazyPersistedState<T>(key: string, defaultValue: T): [T, Reac
       if ((window as any).isSupabasePulling) {
         return
       }
+      
+      scheduleSnapshot();
 
       // Sync to Supabase if enabled and initialized
       if (key !== 'insacc_supabase_url' && key !== 'insacc_supabase_key' && key !== 'insacc_supabase_enabled') {
