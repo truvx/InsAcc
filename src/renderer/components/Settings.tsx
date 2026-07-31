@@ -497,6 +497,80 @@ export default function Settings({
               ))}
             </div>
             <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
+              <div className="chart-title" style={{ marginBottom: 8 }}>Data Backup & Restore</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
+                Save a local copy of all your data to a file, or restore data from a previously saved file.
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  className="btn btn-secondary"
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                  onClick={() => {
+                    const data: Record<string, string> = {}
+                    for (let i = 0; i < localStorage.length; i++) {
+                      const key = localStorage.key(i)
+                      if (key && key.startsWith('insacc_')) {
+                        data[key] = localStorage.getItem(key) || ''
+                      }
+                    }
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = `insacc_backup_${new Date().toISOString().split('T')[0]}.json`
+                    a.click()
+                    URL.revokeObjectURL(url)
+                    setToast({ visible: true, message: 'Backup downloaded successfully', type: 'success' })
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Save Backup
+                </button>
+                <label className="btn btn-secondary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', margin: 0 }}>
+                  <input 
+                    type="file" 
+                    accept=".json" 
+                    style={{ display: 'none' }} 
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      const reader = new FileReader()
+                      reader.onload = (event) => {
+                        try {
+                          const data = JSON.parse(event.target?.result as string)
+                          if (typeof data !== 'object') throw new Error('Invalid format')
+                          
+                          if (!confirm('This will OVERWRITE all your current data with the backup. Are you sure you want to proceed?')) return
+                          
+                          const keysToRemove = []
+                          for (let i = 0; i < localStorage.length; i++) {
+                            const key = localStorage.key(i)
+                            if (key && key.startsWith('insacc_')) keysToRemove.push(key)
+                          }
+                          keysToRemove.forEach(k => localStorage.removeItem(k))
+
+                          for (const key in data) {
+                            if (key.startsWith('insacc_')) {
+                              localStorage.setItem(key, data[key])
+                            }
+                          }
+                          alert('Backup restored successfully. The application will now reload.')
+                          window.location.reload()
+                        } catch (err) {
+                          alert('Failed to parse backup file. Please ensure it is a valid InsAcc JSON backup.')
+                        }
+                      }
+                      reader.readAsText(file)
+                      e.target.value = ''
+                    }} 
+                  />
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Upload Backup
+                </label>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
               <div className="chart-title" style={{ marginBottom: 8, color: 'var(--danger)' }}>Danger Zone</div>
               
               <div style={{ marginBottom: 20 }}>
