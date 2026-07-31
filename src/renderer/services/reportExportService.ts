@@ -920,20 +920,21 @@ function generatePdfCoverPage(doc: any, title: string, subtitle: string, periodL
 }
 
 export async function exportAccountingPdf(p: ExcelExportParams): Promise<string | null> {
-  const doc = new jsPDF()
+  const doc = new jsPDF('landscape')
   const fv = getFilteredVouchers(p)
   
   let totDr = 0, totCr = 0
   fv.forEach(v => v.lines.forEach(l => { if (l.type === 'Debit') totDr += l.amount; else totCr += l.amount }))
 
-  generatePdfCoverPage(doc, 'GENERAL LEDGER REPORT', `${p.module} Portfolio`, p.periodLabel, p.currency, fv.length)
+  const moduleName = p.module === 'Property' ? 'Properties Management' : 'Investment Portfolio'
+  generatePdfCoverPage(doc, 'GENERAL LEDGER REPORT', moduleName, p.periodLabel, p.currency, fv.length)
   doc.addPage()
 
   // Report Page
   let y = 15
   doc.setFontSize(18)
   doc.setTextColor(15, 76, 53) // primaryDark
-  doc.text(`InsAcc ${p.module} Portfolio Report`, 14, y)
+  doc.text(`InsAcc ${moduleName} Report`, 14, y)
   
   y += 10
   doc.setFontSize(10)
@@ -951,17 +952,20 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
       tableData.push([
         v.date,
         v.voucherNumber,
+        v.reference || '-',
+        v.type,
         acc,
-        desc.length > 30 ? desc.substring(0, 30) + '...' : desc,
-        l.type === 'Debit' ? l.amount.toLocaleString() : '',
-        l.type === 'Credit' ? l.amount.toLocaleString() : ''
+        desc.length > 40 ? desc.substring(0, 40) + '...' : desc,
+        l.type === 'Debit' ? l.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : '',
+        l.type === 'Credit' ? l.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : '',
+        v.status
       ])
     })
   })
 
   autoTable(doc, {
     startY: y + 5,
-    head: [['Date', 'Voucher', 'Account', 'Description', 'Debit', 'Credit']],
+    head: [['Date', 'Voucher', 'Reference', 'Type', 'Account', 'Description', 'Debit', 'Credit', 'Status']],
     body: tableData,
     theme: 'grid',
     styles: { fontSize: 8 },
