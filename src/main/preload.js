@@ -12,4 +12,7 @@ contextBridge.exposeInMainWorld('api', {
   openFileInOs: (filePath) => ipcRenderer.invoke('open-file-in-os', filePath),
   renameFileInStorage: (data) => ipcRenderer.invoke('rename-file-in-storage', data),
   generateStoragePath: (data) => ipcRenderer.invoke('generate-storage-path', data),
+
+  onAppCloseRequested: (callback) => ipcRenderer.on('app-close-requested', callback),
+  notifySyncCompleted: () => ipcRenderer.send('sync-completed'),
 })

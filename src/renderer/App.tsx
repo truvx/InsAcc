@@ -1022,7 +1022,8 @@ export default function App() {
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // Initiate a full background push to ensure any last-millisecond dirty state is synced before closing
+      if ((window as any).isManualUnload) return
+
       setIsUnloading(true)
       const url = localStorage.getItem('insacc_supabase_url')
       const anonKey = localStorage.getItem('insacc_supabase_key')
@@ -1039,8 +1040,49 @@ export default function App() {
       e.preventDefault()
       e.returnValue = ''
     }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'r' || e.key === 'F5') {
+        e.preventDefault()
+        setIsUnloading(true)
+        ;(window as any).isManualUnload = true
+        
+        const url = localStorage.getItem('insacc_supabase_url')
+        const anonKey = localStorage.getItem('insacc_supabase_key')
+        const enabled = localStorage.getItem('insacc_supabase_enabled') === 'true'
+        
+        if (enabled && url && anonKey) {
+          pushAllLocalData(url, anonKey).finally(() => window.location.reload())
+        } else {
+          window.location.reload()
+        }
+      }
+    }
+
     window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener('keydown', handleKeyDown)
+
+    if ((window as any).api && (window as any).api.onAppCloseRequested) {
+      ;(window as any).api.onAppCloseRequested(() => {
+        setIsUnloading(true)
+        ;(window as any).isManualUnload = true
+        
+        const url = localStorage.getItem('insacc_supabase_url')
+        const anonKey = localStorage.getItem('insacc_supabase_key')
+        const enabled = localStorage.getItem('insacc_supabase_enabled') === 'true'
+        
+        if (enabled && url && anonKey) {
+          pushAllLocalData(url, anonKey).finally(() => (window as any).api.notifySyncCompleted())
+        } else {
+          ;(window as any).api.notifySyncCompleted()
+        }
+      })
+    }
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
   }, [])
 
   const [isUnloading, setIsUnloading] = useState(false)

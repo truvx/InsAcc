@@ -77,9 +77,23 @@ function createWindow() {
       mainWindow.webContents.closeDevTools()
     })
   }
+
+  mainWindow.on('close', (e) => {
+    if (!isQuitting) {
+      e.preventDefault()
+      mainWindow.webContents.send('app-close-requested')
+    }
+  })
 }
 
+let isQuitting = false
+
 function registerIpcHandlers() {
+  ipcMain.on('sync-completed', () => {
+    isQuitting = true
+    if (mainWindow) mainWindow.close()
+  })
+
   ipcMain.handle('save-file', async (_event, filename, content) => {
     const downloadsPath = app.getPath('downloads')
     const safeName = filename.replace(/\.pdf$/i, '.txt').replace(/[<>:"/\\|?*]/g, '_')
