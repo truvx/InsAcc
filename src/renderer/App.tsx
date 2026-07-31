@@ -1020,6 +1020,15 @@ export default function App() {
     return unsub
   }, [])
 
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [])
+
   const [screen, setScreen] = useState<'login' | 'profiles' | 'module' | 'dashboard'>('login')
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null)
   const storedLoginProfiles: Profile[] = useMemo(() => [
