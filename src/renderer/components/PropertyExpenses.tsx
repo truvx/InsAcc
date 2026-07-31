@@ -653,8 +653,8 @@ export default function PropertyExpenses({
 
   // KPIs
   const totalExpensesLedger = useMemo(() => {
-    return getAccountTypeBalance('expense', vouchers, accounts)
-  }, [vouchers, accounts])
+    return expenses.reduce((sum, e) => sum + e.totalAmount, 0)
+  }, [expenses])
 
   const thisMonthExpensesLedger = useMemo(() => {
     const now = new Date()
@@ -662,18 +662,10 @@ export default function PropertyExpenses({
     const month = String(now.getMonth() + 1).padStart(2, '0')
     const currentMonthPrefix = `${year}-${month}`
     
-    let sum = 0
-    const posted = vouchers.filter(v => v.status === 'Posted' && v.date.startsWith(currentMonthPrefix))
-    for (const v of posted) {
-      for (const l of v.lines) {
-        const acct = accounts.find(a => a.id === l.accountId)
-        if (acct && acct.type === 'expense' && l.type === 'Debit') {
-          sum += l.baseAmount
-        }
-      }
-    }
-    return sum
-  }, [vouchers, accounts])
+    return expenses
+      .filter(e => e.date.startsWith(currentMonthPrefix))
+      .reduce((sum, e) => sum + e.totalAmount, 0)
+  }, [expenses])
 
   const pendingApprovalExpenses = useMemo(() => {
     return expenses
