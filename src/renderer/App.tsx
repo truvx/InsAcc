@@ -1023,12 +1023,17 @@ export default function App() {
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       // Initiate a full background push to ensure any last-millisecond dirty state is synced before closing
+      setIsUnloading(true)
       const url = localStorage.getItem('insacc_supabase_url')
       const anonKey = localStorage.getItem('insacc_supabase_key')
       const enabled = localStorage.getItem('insacc_supabase_enabled') === 'true'
       
       if (enabled && url && anonKey) {
-        pushAllLocalData(url, anonKey).catch(console.error)
+        pushAllLocalData(url, anonKey)
+          .finally(() => setIsUnloading(false))
+          .catch(console.error)
+      } else {
+        setTimeout(() => setIsUnloading(false), 100)
       }
 
       e.preventDefault()
@@ -1038,6 +1043,7 @@ export default function App() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [])
 
+  const [isUnloading, setIsUnloading] = useState(false)
   const [screen, setScreen] = useState<'login' | 'profiles' | 'module' | 'dashboard'>('login')
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null)
   const storedLoginProfiles: Profile[] = useMemo(() => [
@@ -3184,6 +3190,40 @@ export default function App() {
             </AnimatePresence>
           </Suspense>
         </div>
+        {isUnloading && (
+          <div style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 99999,
+            color: '#fff',
+            fontFamily: "'Inter', sans-serif"
+          }}>
+            <div style={{
+              width: 50,
+              height: 50,
+              border: '4px solid rgba(255, 255, 255, 0.3)',
+              borderTop: '4px solid #fff',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              marginBottom: 20
+            }}></div>
+            <style>
+              {`
+                @keyframes spin {
+                  0% { transform: rotate(0deg); }
+                  100% { transform: rotate(360deg); }
+                }
+              `}
+            </style>
+            <h2 style={{ margin: 0, fontWeight: 600, fontSize: 24, letterSpacing: '-0.02em' }}>Syncing with Cloud</h2>
+            <p style={{ marginTop: 8, color: 'rgba(255, 255, 255, 0.7)' }}>Please wait while your data is securely saved...</p>
+          </div>
+        )}
       </div>
     )
   }
