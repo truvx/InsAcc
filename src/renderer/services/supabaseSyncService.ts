@@ -18,7 +18,10 @@ export function getSupabaseClient(url: string, anonKey: string): SupabaseClient 
   }
   try {
     supabaseInstance = createClient(cleanUrl, anonKey, {
-      auth: { persistSession: false }
+      auth: { persistSession: false },
+      global: {
+        fetch: (url, options) => fetch(url, { ...options, keepalive: true })
+      }
     })
     currentUrl = cleanUrl
     currentKey = anonKey
