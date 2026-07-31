@@ -614,6 +614,7 @@ export default function PropertyTransactions({
 
     const voucherTxns = (vouchers || [])
       .filter(v => {
+        if (v.isDeleted) return false
         if (v.reference && knownRefs.has(v.reference)) return false
         if (v.id.startsWith('vch-exp-') && knownRefs.has(v.id.replace('vch-exp-', ''))) return false
         if (v.id.startsWith('vch-') && knownRefs.has(v.id.replace('vch-', ''))) return false
