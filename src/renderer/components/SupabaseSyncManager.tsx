@@ -85,8 +85,11 @@ export default function SupabaseSyncManager() {
             window.dispatchEvent(new CustomEvent('insacc-sync-end', { detail: { key: 'booting', success: false } }))
             return
           } else if (active && records && records.length === 0) {
-            // DB successfully queried and is EMPTY. Safe to push local data.
-            pushAllLocalData(url, anonKey).catch(err => console.error('Background push error:', err))
+            // DB successfully queried and is EMPTY. We DO NOT push local data automatically.
+            // If the user wants to push their local database to the cloud, they must click
+            // the 'Push Local Data' button in Settings. This prevents empty phones from wiping 
+            // a newly created (but seemingly empty due to latency or bugs) database.
+            console.log('Supabase DB is empty. Awaiting manual push or future local changes.');
           } else if (active && records && records.length > 0) {
             // DB has records — populate local storage & React state
             clearPersistedCache()
