@@ -47,21 +47,24 @@ export default function SupabaseSyncManager() {
       }, 3000)
 
       // Ultimate failsafe: hide the loader after 15 seconds no matter what.
-      setTimeout(() => {
-        if (active) {
+      const failsafeTimer = setTimeout(() => {
+        if (active && !(window as any).supabaseSyncInitialized) {
           setLoading(false)
-          ;(window as any).supabaseSyncInitialized = true
+          // DO NOT set supabaseSyncInitialized to true on timeout!
+          // We must not allow components to push data if we failed to pull.
+          setStatus('error')
+          localStorage.setItem('insacc_supabase_status', 'error')
         }
       }, 15000)
 
       const client = getSupabaseClient(url, anonKey)
       if (!client) {
-        ;(window as any).supabaseSyncInitialized = true
         ;(window as any).isSupabasePulling = false
         setStatus('error')
         localStorage.setItem('insacc_supabase_status', 'error')
         setLoading(false)
         if (skipTimer) clearTimeout(skipTimer)
+        clearTimeout(failsafeTimer)
         return
       }
 
@@ -77,7 +80,7 @@ export default function SupabaseSyncManager() {
           if (active && records === null) {
             // ERROR OCCURRED (e.g. table does not exist, RLS blocked, network error). DO NOT PUSH!
             ;(window as any).isSupabasePulling = false
-            ;(window as any).supabaseSyncInitialized = true
+            ;(window as any).supabaseSyncInitialized = false
             setStatus('error')
             localStorage.setItem('insacc_supabase_status', 'error')
             setLoading(false)

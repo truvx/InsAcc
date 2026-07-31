@@ -43,6 +43,8 @@ export function useLazyPersistedState<T>(key: string, defaultValue: T): [T, Reac
       const stored = localStorage.getItem(key)
       const stateStr = JSON.stringify(state)
 
+      const wasFirstRender = isFirstRender.current
+
       if (isFirstRender.current) {
         isFirstRender.current = false
         if (stored !== null && stored !== stateStr) {
@@ -53,12 +55,17 @@ export function useLazyPersistedState<T>(key: string, defaultValue: T): [T, Reac
       }
 
       try {
+        if (!isRemoteUpdate.current) {
+          // Only mark as dirty if it actually differs from what was in local storage BEFORE this mount,
+          // or if it's a subsequent render. We don't want the default initialization of a new device
+          // to instantly mark everything as 'dirty' and overwrite the cloud.
+          if (!wasFirstRender || (stored !== null && stored !== stateStr)) {
+            const currentDirty = parseInt(localStorage.getItem(`insacc_dirty_${key}`) || '0', 10)
+            localStorage.setItem(`insacc_dirty_${key}`, (currentDirty + 1).toString())
+          }
+        }
         localStorage.setItem(key, stateStr)
         cache.set(key, stateStr)
-        if (!isRemoteUpdate.current) {
-          const currentDirty = parseInt(localStorage.getItem(`insacc_dirty_${key}`) || '0', 10)
-          localStorage.setItem(`insacc_dirty_${key}`, (currentDirty + 1).toString())
-        }
       } catch (err) {
         console.error(`Error saving ${key} to localStorage:`, err)
       }
