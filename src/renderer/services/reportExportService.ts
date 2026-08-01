@@ -758,6 +758,48 @@ function sheetNotes(p: ExcelExportParams, count: number): any {
   return buildWS(rows, { freeze: { r: 1, c: 0 }, colW: [{ wch: 30 }, { wch: 52 }, { wch: 10 }], landscape: false })
 }
 
+function getGroupedData(p: ExcelExportParams, fv: Voucher[]): { groupName: string, lines: any[] }[] {
+  const map = new Map<string, any[]>()
+  
+  fv.forEach(v => {
+    v.lines.forEach(l => {
+      let key = 'Uncategorized'
+      
+      if (p.reportType === 'LedgerBreakup') {
+        key = p.accounts.find(a => a.id === l.accountId)?.name || 'Unknown Account'
+      } else if (p.reportType === 'PropertyBreakup') {
+        const lease = p.leases?.find(lx => lx.leaseNumber === v.reference || (l.referenceType === 'Lease' && l.referenceId === lx.id))
+        const prop = p.properties?.find(px => px.id === (lease?.propertyId || (l.referenceType === 'Property' ? l.referenceId : null)))
+        key = prop?.name || 'Unassigned Property'
+      } else if (p.reportType === 'SupplierBreakup') {
+        key = v.tenantName || v.reference || 'Unknown Supplier'
+      } else if (p.reportType === 'TenantBreakup') {
+        const lease = p.leases?.find(lx => lx.leaseNumber === v.reference || (l.referenceType === 'Lease' && l.referenceId === lx.id))
+        const tenant = p.tenants?.find(tx => tx.id === lease?.tenantId)
+        key = tenant?.name || v.tenantName || 'Unknown Tenant'
+      }
+      
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push({
+        v, l,
+        accName: p.accounts.find(a => a.id === l.accountId)?.name || l.accountId,
+        desc: l.narration || v.description || ''
+      })
+    })
+  })
+  
+  const grouped: { groupName: string, lines: any[] }[] = []
+  Array.from(map.entries()).forEach(([key, items]) => {
+    grouped.push({
+      groupName: key,
+      lines: items
+    })
+  })
+  
+  // Sort alphabetically by groupName
+  return grouped.sort((a, b) => a.groupName.localeCompare(b.groupName))
+}
+
 function sheetBreakup(p: ExcelExportParams, fv: Voucher[]): any {
   const rows: XCell[][] = []
   const groupedData = getGroupedData(p, fv)
