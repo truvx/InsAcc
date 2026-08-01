@@ -795,7 +795,8 @@ export function getFilteredVouchers(p: ExcelExportParams) {
       if (!tenant || tenant.name.toLowerCase() !== p.filters.tenantName.toLowerCase()) return false
     }
     if (p.filters?.tag) {
-      if (!v.lines.some(l => l.tags?.includes(p.filters!.tag!))) return false
+      const lowerTag = p.filters.tag.toLowerCase()
+      if (!v.lines.some(l => l.tags?.some(t => t.toLowerCase().includes(lowerTag)))) return false
     }
     return true
   })

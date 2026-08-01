@@ -43,9 +43,10 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
 
   const filteredVouchers = useMemo(() => {
     if (!filterTag) return vouchers
+    const lowerTag = filterTag.toLowerCase()
     return vouchers.map(v => ({
       ...v,
-      lines: v.lines.filter(l => l.tags?.includes(filterTag))
+      lines: v.lines.filter(l => l.tags?.some(t => t.toLowerCase().includes(lowerTag)))
     })).filter(v => v.lines.length > 0)
   }, [vouchers, filterTag])
 
@@ -65,8 +66,15 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
 
   const tree = useMemo(() => buildAccountTree(accounts) as unknown as TreeNode[], [accounts])
 
-  const revenueRows = useMemo(() => flatRowsFromTree(tree, balances, ['revenue']).filter(r => r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 })), [tree, balances])
-  const expenseRows = useMemo(() => flatRowsFromTree(tree, balances, ['expense']).filter(r => r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 })), [tree, balances])
+  const revenueRows = useMemo(() => {
+    const rows = flatRowsFromTree(tree, balances, ['revenue']).filter(r => r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 }))
+    return filterTag ? rows.filter(r => r.balance !== 0) : rows
+  }, [tree, balances, filterTag])
+  
+  const expenseRows = useMemo(() => {
+    const rows = flatRowsFromTree(tree, balances, ['expense']).filter(r => r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 }))
+    return filterTag ? rows.filter(r => r.balance !== 0) : rows
+  }, [tree, balances, filterTag])
 
   const totalRevenue = plModel.totalRevenue
   const totalExpenses = plModel.totalExpenses
@@ -158,10 +166,10 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
       <div className="page-header">
         <div className="page-header-left">
           <div>
-            <div className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              Profit & Loss
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div className="page-title">Profit & Loss</div>
               {filterTag && (
-                <span style={{ fontSize: 11, fontWeight: 500, padding: '2px 8px', background: 'var(--primary)', color: 'white', borderRadius: 12 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', background: 'var(--primary)', color: 'white', borderRadius: 12, lineHeight: 1, marginTop: 6 }}>
                   Filtered: {filterTag}
                 </span>
               )}

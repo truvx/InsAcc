@@ -43,9 +43,10 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
 
   const filteredVouchers = useMemo(() => {
     if (!filterTag) return vouchers
+    const lowerTag = filterTag.toLowerCase()
     return vouchers.map(v => ({
       ...v,
-      lines: v.lines.filter(l => l.tags?.includes(filterTag))
+      lines: v.lines.filter(l => l.tags?.some(t => t.toLowerCase().includes(lowerTag)))
     })).filter(v => v.lines.length > 0)
   }, [vouchers, filterTag])
 
@@ -66,9 +67,20 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
 
   const tree = useMemo(() => buildAccountTree(accounts) as unknown as TreeNode[], [accounts])
 
-  const assetRows = useMemo(() => flatRowsFromTree(tree, balances, ['asset']).filter(r => r.account.code !== '1130' && r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 })), [tree, balances])
-  const liabilityRows = useMemo(() => flatRowsFromTree(tree, balances, ['liability']).filter(r => r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 })), [tree, balances])
-  const rawEquityRows = useMemo(() => flatRowsFromTree(tree, balances, ['equity']).filter(r => r.account.code !== '3200' && r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 })), [tree, balances])
+  const assetRows = useMemo(() => {
+    const rows = flatRowsFromTree(tree, balances, ['asset']).filter(r => r.account.code !== '1130' && r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 }))
+    return filterTag ? rows.filter(r => r.balance !== 0) : rows
+  }, [tree, balances, filterTag])
+  
+  const liabilityRows = useMemo(() => {
+    const rows = flatRowsFromTree(tree, balances, ['liability']).filter(r => r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 }))
+    return filterTag ? rows.filter(r => r.balance !== 0) : rows
+  }, [tree, balances, filterTag])
+  
+  const rawEquityRows = useMemo(() => {
+    const rows = flatRowsFromTree(tree, balances, ['equity']).filter(r => r.account.code !== '3200' && r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 }))
+    return filterTag ? rows.filter(r => r.balance !== 0) : rows
+  }, [tree, balances, filterTag])
 
   const equityRows = useMemo(() => {
     if (bsModel.currentYearProfit === 0) return rawEquityRows
@@ -193,10 +205,10 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
       <div className="page-header">
         <div className="page-header-left">
           <div>
-            <div className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              Balance Sheet
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div className="page-title">Balance Sheet</div>
               {filterTag && (
-                <span style={{ fontSize: 11, fontWeight: 500, padding: '2px 8px', background: 'var(--primary)', color: 'white', borderRadius: 12 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', background: 'var(--primary)', color: 'white', borderRadius: 12, lineHeight: 1, marginTop: 6 }}>
                   Filtered: {filterTag}
                 </span>
               )}
