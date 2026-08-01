@@ -169,7 +169,7 @@ export default function PropertyReports({
     }).sort((a, b) => a.endDate.localeCompare(b.endDate))
   }, [leases])
 
-  const handleReportExport = async (format: 'xlsx' | 'csv' | 'pdf') => {
+  const handleReportExport = async (format: 'xlsx' | 'csv' | 'pdf', reportType: string = 'Standard', advanced: any = {}) => {
     setIsExportModalOpen(false)
     try {
       if (activeTab === 'overview') {
@@ -194,7 +194,9 @@ export default function PropertyReports({
           properties,
           units,
           tenants,
-          leases
+          leases,
+          reportType,
+          advancedOptions: advanced
         }
         
         if (format === 'xlsx') await exportAccountingExcel(p)

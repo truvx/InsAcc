@@ -758,6 +758,44 @@ function sheetNotes(p: ExcelExportParams, count: number): any {
   return buildWS(rows, { freeze: { r: 1, c: 0 }, colW: [{ wch: 30 }, { wch: 52 }, { wch: 10 }], landscape: false })
 }
 
+function sheetBreakup(p: ExcelExportParams, fv: Voucher[]): any {
+  const rows: XCell[][] = []
+  const groupedData = getGroupedData(p, fv)
+  
+  groupedData.forEach(group => {
+    let totDr = 0, totCr = 0
+    group.lines.forEach((x: any) => {
+      if (x.l.type === 'Debit') totDr += x.l.amount
+      else totCr += x.l.amount
+    })
+    
+    rows.push(sectionRow(`  ${group.groupName.toUpperCase()} - (Debits: ${p.currency} ${totDr.toFixed(2)} | Credits: ${p.currency} ${totCr.toFixed(2)})`, 9, C.primaryDark))
+    const hdrs = ['Date', 'Voucher', 'Reference', 'Type', 'Account', 'Description', 'Debit', 'Credit', 'Status']
+    rows.push(hdrs.map(h => hCell(h, { bg: C.primary })))
+    
+    group.lines.forEach((x: any) => {
+      const lb = C.grayLight
+      rows.push([
+        dCell(x.v.date, { bg: lb, center: true }),
+        dCell(x.v.voucherNumber, { bg: lb, center: true }),
+        dCell(x.v.reference || '-', { bg: lb, center: true }),
+        dCell(x.v.type, { bg: lb, center: true }),
+        dCell(x.accName, { bg: lb }),
+        dCell(x.desc, { bg: lb }),
+        x.l.type === 'Debit' ? cCell(x.l.amount, lb) : eCell(lb),
+        x.l.type === 'Credit' ? cCell(x.l.amount, lb) : eCell(lb),
+        dCell(x.v.status, { bg: lb, center: true })
+      ])
+    })
+    rows.push([]) // Spacer
+  })
+  
+  return buildWS(rows, {
+    freeze: { r: 1, c: 0 }, filterRow: 0,
+    colW: [{ wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 25 }, { wch: 40 }, { wch: 14 }, { wch: 14 }, { wch: 14 }]
+  })
+}
+
 // ════════════════════════════════════════════════════════════════════
 // ENTRY POINT
 // ════════════════════════════════════════════════════════════════════
@@ -817,13 +855,18 @@ export async function exportAccountingExcel(p: ExcelExportParams): Promise<strin
   wb.Props = { Title: p.reportTitle, Subject: 'InsAcc Professional Accounting Report', Author: p.generatedBy, Company: p.companyName, CreatedDate: new Date() }
 
   XLSX.utils.book_append_sheet(wb, sheetCover(p, fv.length),          '1. Cover')
-  XLSX.utils.book_append_sheet(wb, sheetSummary(p, fv, totDr, totCr), '2. Executive Summary')
-  XLSX.utils.book_append_sheet(wb, sheetTransactions(p, fv),          '3. Transactions')
-  XLSX.utils.book_append_sheet(wb, sheetVoucherDetails(p, fv),        '4. Voucher Details')
-  XLSX.utils.book_append_sheet(wb, sheetBankActivity(p, fv),          '5. Bank Activity')
-  XLSX.utils.book_append_sheet(wb, sheetLedger(p, fv),                '6. General Ledger')
-  XLSX.utils.book_append_sheet(wb, sheetAudit(p),                     '7. Audit Trail')
-  XLSX.utils.book_append_sheet(wb, sheetNotes(p, fv.length),          '8. Notes')
+  
+  if (p.reportType && p.reportType !== 'Standard') {
+    XLSX.utils.book_append_sheet(wb, sheetBreakup(p, fv), '2. Breakup Report')
+  } else {
+    XLSX.utils.book_append_sheet(wb, sheetSummary(p, fv, totDr, totCr), '2. Executive Summary')
+    XLSX.utils.book_append_sheet(wb, sheetTransactions(p, fv),          '3. Transactions')
+    XLSX.utils.book_append_sheet(wb, sheetVoucherDetails(p, fv),        '4. Voucher Details')
+    XLSX.utils.book_append_sheet(wb, sheetBankActivity(p, fv),          '5. Bank Activity')
+    XLSX.utils.book_append_sheet(wb, sheetLedger(p, fv),                '6. General Ledger')
+    XLSX.utils.book_append_sheet(wb, sheetAudit(p),                     '7. Audit Trail')
+    XLSX.utils.book_append_sheet(wb, sheetNotes(p, fv.length),          '8. Notes')
+  }
 
   // 4. Save
   const today = new Date().toISOString().slice(0, 10)
@@ -951,34 +994,83 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
   y += 8
   doc.text(`Total Debits: ${p.currency} ${totDr.toLocaleString(undefined, {minimumFractionDigits: 2})} | Total Credits: ${p.currency} ${totCr.toLocaleString(undefined, {minimumFractionDigits: 2})}`, 14, y)
 
-  const tableData: any[][] = []
-  fv.forEach(v => {
-    v.lines.forEach(l => {
-      const acc = p.accounts.find(a => a.id === l.accountId)?.name || l.accountId
-      const desc = l.narration || v.description || ''
-      tableData.push([
-        v.date,
-        v.voucherNumber,
-        v.reference || '-',
-        v.type,
-        acc,
-        desc.length > 40 ? desc.substring(0, 40) + '...' : desc,
-        l.type === 'Debit' ? l.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : '',
-        l.type === 'Credit' ? l.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : '',
-        v.status
+  const isBreakup = p.reportType && p.reportType !== 'Standard'
+  
+  if (isBreakup) {
+    const groupedData = getGroupedData(p, fv)
+    groupedData.forEach((group) => {
+      let totGrDr = 0, totGrCr = 0
+      group.lines.forEach((x: any) => {
+        if (x.l.type === 'Debit') totGrDr += x.l.amount
+        else totGrCr += x.l.amount
+      })
+      
+      autoTable(doc, {
+        startY: y + 5,
+        head: [[`${group.groupName} - Debits: ${p.currency} ${totGrDr.toLocaleString()} | Credits: ${p.currency} ${totGrCr.toLocaleString()}`]],
+        body: [],
+        theme: 'grid',
+        headStyles: { fillColor: [15, 76, 53], textColor: [255, 255, 255], fontStyle: 'bold' }
+      })
+      
+      const tableData: any[][] = group.lines.map((x: any) => [
+        x.v.date,
+        x.v.voucherNumber,
+        x.v.reference || '-',
+        x.v.type,
+        x.accName,
+        x.desc.length > 40 ? x.desc.substring(0, 40) + '...' : x.desc,
+        x.l.type === 'Debit' ? x.l.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : '',
+        x.l.type === 'Credit' ? x.l.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : '',
+        x.v.status
       ])
+      
+      autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY,
+        head: [['Date', 'Voucher', 'Reference', 'Type', 'Account', 'Description', 'Debit', 'Credit', 'Status']],
+        body: tableData,
+        theme: 'grid',
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [248, 251, 249], textColor: [15, 76, 53], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [248, 251, 249] },
+      })
+      
+      y = (doc as any).lastAutoTable.finalY + 10
+      if (y > 180) {
+        doc.addPage()
+        y = 15
+      }
     })
-  })
+  } else {
+    const tableData: any[][] = []
+    fv.forEach(v => {
+      v.lines.forEach(l => {
+        const acc = p.accounts.find(a => a.id === l.accountId)?.name || l.accountId
+        const desc = l.narration || v.description || ''
+        tableData.push([
+          v.date,
+          v.voucherNumber,
+          v.reference || '-',
+          v.type,
+          acc,
+          desc.length > 40 ? desc.substring(0, 40) + '...' : desc,
+          l.type === 'Debit' ? l.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : '',
+          l.type === 'Credit' ? l.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : '',
+          v.status
+        ])
+      })
+    })
 
-  autoTable(doc, {
-    startY: y + 5,
-    head: [['Date', 'Voucher', 'Reference', 'Type', 'Account', 'Description', 'Debit', 'Credit', 'Status']],
-    body: tableData,
-    theme: 'grid',
-    styles: { fontSize: 8 },
-    headStyles: { fillColor: [15, 76, 53], textColor: [255, 255, 255], fontStyle: 'bold' },
-    alternateRowStyles: { fillColor: [248, 251, 249] },
-  })
+    autoTable(doc, {
+      startY: y + 5,
+      head: [['Date', 'Voucher', 'Reference', 'Type', 'Account', 'Description', 'Debit', 'Credit', 'Status']],
+      body: tableData,
+      theme: 'grid',
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [15, 76, 53], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 251, 249] },
+    })
+  }
 
   const today = new Date().toISOString().slice(0, 10)
   const filename = `InsAcc_${p.module === 'Property' ? 'Properties_Management' : 'Investment_Portfolio'}_Report_${today}.pdf`

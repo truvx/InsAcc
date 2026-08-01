@@ -34,7 +34,7 @@ interface AdvancedOptions {
 export interface ExportReportModalProps {
   isOpen: boolean
   onClose: () => void
-  onExport: (format: 'xlsx' | 'csv' | 'pdf') => void
+  onExport: (format: 'xlsx' | 'csv' | 'pdf', reportType: string, advanced: AdvancedOptions) => void
   module: 'Investment' | 'Property'
   accounts: Account[]
   filters: ExportReportFilters
@@ -184,6 +184,7 @@ export default function ExportReportModal({
 }: ExportReportModalProps) {
   const [advancedOpen, setAdvancedOpen] = useState(true)
   const [exportFormat, setExportFormat] = useState<'xlsx' | 'csv' | 'pdf'>('xlsx')
+  const [reportType, setReportType] = useState('Standard')
   const [advanced, setAdvanced] = useState<AdvancedOptions>({
     includeJournal: true,
     includeAuditTrail: true,
@@ -311,6 +312,26 @@ export default function ExportReportModal({
 
         {/* ── SCROLLABLE BODY ── */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+          {/* REPORT TYPE */}
+          <div>
+            <SectionLabel><span style={{ marginRight: 6 }}>📑</span>Report Type</SectionLabel>
+            <div style={{ width: '100%', maxWidth: 300 }}>
+              <Select
+                value={reportType}
+                onChange={e => setReportType(e.target.value)}
+                options={[
+                  { value: 'Standard', label: 'Standard Transaction Dump' },
+                  { value: 'LedgerBreakup', label: 'Ledger-wise Breakup' },
+                  ...(module === 'Property' ? [
+                    { value: 'PropertyBreakup', label: 'Property-wise Breakup' },
+                    { value: 'SupplierBreakup', label: 'Supplier-wise Breakup' },
+                    { value: 'TenantBreakup', label: 'Tenant-wise Breakup' },
+                  ] : [])
+                ]}
+              />
+            </div>
+          </div>
 
           {/* DATE RANGE */}
           <div>
@@ -608,7 +629,7 @@ export default function ExportReportModal({
               Cancel
             </button>
             <button
-              onClick={() => onExport(exportFormat)}
+              onClick={() => onExport(exportFormat, reportType, advanced)}
               style={{
                 padding: '10px 22px', borderRadius: 9,
                 background: 'linear-gradient(135deg, #22A45D 0%, #179E54 100%)',

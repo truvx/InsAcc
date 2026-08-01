@@ -181,7 +181,7 @@ export default function InvestmentReports({
     { id: 'general-journal', label: 'General Journal' },
     { id: 'general-ledger', label: 'General Ledger' },
   ]
-  const handleReportExport = async (format: 'xlsx' | 'csv' | 'pdf') => {
+  const handleReportExport = async (format: 'xlsx' | 'csv' | 'pdf', reportType: string = 'Standard', advanced: any = {}) => {
     setIsExportModalOpen(false)
     try {
       if (activeTab === 'overview' || activeTab === 'general-journal' || activeTab === 'general-ledger') {
@@ -209,7 +209,9 @@ export default function InvestmentReports({
             unitPrice: h.purchaseValue,
             purchaseValue: h.purchaseValue,
             currentValue: h.currentValue
-          }))
+          })),
+          reportType,
+          advancedOptions: advanced
         }
         
         if (format === 'xlsx') await exportAccountingExcel(p)
