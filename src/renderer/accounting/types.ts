@@ -122,6 +122,7 @@ export interface VoucherLine {
   narration?: string;
   referenceType?: ReferenceType;
   referenceId?: string;
+  tags?: string[];
 }
 
 export interface CreateVoucherInput {
@@ -144,6 +145,7 @@ export interface CreateVoucherLineInput {
   narration?: string;
   referenceType?: ReferenceType;
   referenceId?: string;
+  tags?: string[];
 }
 
 export interface PostingRuleEntry {
@@ -177,6 +179,7 @@ export interface RuleContext {
   baseCurrency: string;
   referenceType?: ReferenceType;
   referenceId?: string;
+  tags?: string[];
   createdBy?: string;
 }
 

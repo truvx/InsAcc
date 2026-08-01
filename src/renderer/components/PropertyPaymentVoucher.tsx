@@ -3,6 +3,7 @@ import type { Account, Voucher, BankMapping, PostingResult } from '../accounting
 import type { PropAccount, PropertyEntry, UnitEntry, VendorEntry } from '../data/propertyTypes'
 import type { PurchaseRecord } from '../data/purchaseLedger'
 import { Button, Input, Select, Badge, EmptyState, SearchIcon, CloseIcon } from './design/DesignSystem'
+import { TagsInput } from './design/TagsInput'
 import { useMasterData } from '../contexts/MasterDataContext'
 import { PartyLookupService, type Party } from '../services/partyLookupService'
 import { SearchablePartySelect } from './design/SearchablePartySelect'
@@ -154,6 +155,8 @@ export default function PropertyPaymentVoucher({
     ...properties.map(p => ({ value: p.name, label: p.name })),
   ], [properties])
 
+  const [formTags, setFormTags] = useState<string[]>([])
+
   const resetForm = () => {
     setFormDate(new Date().toISOString().split('T')[0])
     setFormAmount('')
@@ -164,6 +167,7 @@ export default function PropertyPaymentVoucher({
     setFormPaidTo('')
     setFormPaymentMode('Bank Transfer')
     setFormPaymentReference('')
+    setFormTags([])
     setEditingId(null)
   }
 
@@ -186,6 +190,7 @@ export default function PropertyPaymentVoucher({
 
     setFormPaymentMode(v.paymentMode || 'Bank Transfer')
     setFormPaymentReference(v.paymentReference || '')
+    setFormTags(debitLine?.tags || [])
 
     setEditingId(v.id)
     setShowForm(true)
@@ -285,6 +290,7 @@ export default function PropertyPaymentVoucher({
               amount: amt,
               baseAmount: amt,
               narration: formDescription,
+              tags: formTags.length > 0 ? formTags : undefined,
             }
           } else {
             return {
@@ -293,6 +299,7 @@ export default function PropertyPaymentVoucher({
               amount: amt,
               baseAmount: amt,
               narration: formDescription,
+              tags: formTags.length > 0 ? formTags : undefined,
             }
           }
         })
@@ -334,6 +341,7 @@ export default function PropertyPaymentVoucher({
           debitAccount: formExpenseAccount,
           referenceType: 'Property',
           referenceId: ref,
+          tags: formTags.length > 0 ? formTags : undefined,
           createdBy: 'user',
         },
         accounts,
@@ -527,6 +535,14 @@ export default function PropertyPaymentVoucher({
             value={formPaymentReference} 
             onChange={e => setFormPaymentReference(e.target.value)} 
             placeholder="e.g. TXN-12345" 
+          />
+        </div>
+        <div className="form-row">
+          <TagsInput
+            label="Tags (Villa, Building, Apartment, etc.)"
+            tags={formTags}
+            onChange={setFormTags}
+            placeholder="e.g. Tilal Villa"
           />
         </div>
       </EntityForm>

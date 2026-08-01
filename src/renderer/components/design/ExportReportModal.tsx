@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import type { Account } from '../../accounting/types'
-import { Select } from './DesignSystem'
+import { Select, Input } from './DesignSystem'
 
 import { Landmark, TrendingUp, Building2, FolderOpen, FileSpreadsheet, FileText, SlidersHorizontal, Settings } from 'lucide-react'
 
@@ -17,6 +17,7 @@ export interface ExportReportFilters {
   filterAsset?: string
   filterBuilding?: string
   filterTenant?: string
+  filterTag?: string
 }
 
 interface AdvancedOptions {
@@ -451,6 +452,16 @@ export default function ExportReportModal({
                     { value: 'All', label: 'All Tenants' },
                     ...tenants.map(t => ({ value: t.name, label: t.name }))
                   ]}
+                  style={{ margin: 0 }}
+                />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14 }}>
+                <Input
+                  id="export-tag"
+                  label="Tag Filter (e.g. Villa A)"
+                  value={filters.filterTag ?? ''}
+                  onChange={e => onFiltersChange({ filterTag: e.target.value })}
+                  placeholder="Enter exact tag"
                   style={{ margin: 0 }}
                 />
               </div>

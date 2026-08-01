@@ -116,6 +116,7 @@ export function createAccountingEngine() {
         narration: d.narration,
         referenceType: refType as any,
         referenceId: context.referenceId,
+        tags: context.tags,
       })),
       ...resolved.credit.map(c => ({
         accountId: c.accountId,
@@ -124,6 +125,7 @@ export function createAccountingEngine() {
         narration: c.narration,
         referenceType: refType as any,
         referenceId: context.referenceId,
+        tags: context.tags,
       })),
     ]
 

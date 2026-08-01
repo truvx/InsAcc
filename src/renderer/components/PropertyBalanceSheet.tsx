@@ -2,10 +2,10 @@ import React, { useMemo, useState } from 'react'
 import type { Account, Voucher } from '../accounting/types'
 import { buildAccountTree } from '../accounting/chartOfAccountsService'
 import { generateChartOfAccountsReadModel, generateTrialBalanceReadModel, generateProfitAndLossReadModel, generateBalanceSheetReadModel } from '../readModels/accountingReadModels'
-import { EmptyState, Modal } from './design/DesignSystem'
+import { EmptyState, Modal, Input } from './design/DesignSystem'
 import AccountDrillDown from './AccountDrillDown'
 
-import { Landmark, ListChecks } from 'lucide-react'
+import { Landmark, ListChecks, Filter } from 'lucide-react'
 import { CurrencyText } from './design/CurrencyText'
 
 interface Props {
@@ -39,8 +39,17 @@ function flatRowsFromTree(
 export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouchers }: Props) {
   const [drillAccountId, setDrillAccountId] = useState<string | null>(null)
   const [drillAccountName, setDrillAccountName] = useState<string>('')
+  const [filterTag, setFilterTag] = useState('')
 
-  const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, vouchers), [accounts, vouchers])
+  const filteredVouchers = useMemo(() => {
+    if (!filterTag) return vouchers
+    return vouchers.map(v => ({
+      ...v,
+      lines: v.lines.filter(l => l.tags?.includes(filterTag))
+    })).filter(v => v.lines.length > 0)
+  }, [vouchers, filterTag])
+
+  const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, filteredVouchers), [accounts, filteredVouchers])
   const tbEntries = useMemo(() => generateTrialBalanceReadModel(coaEntries), [coaEntries])
   const plModel = useMemo(() => generateProfitAndLossReadModel(tbEntries, accounts), [tbEntries, accounts])
   const bsModel = useMemo(() => generateBalanceSheetReadModel(tbEntries, plModel.netProfit, accounts), [tbEntries, plModel.netProfit, accounts])
@@ -175,7 +184,7 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
             accountId={drillAccountId}
             accountName={drillAccountName}
             accounts={accounts}
-            vouchers={vouchers}
+            vouchers={filteredVouchers}
             currency={currency}
           />
         )}
@@ -184,8 +193,26 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
       <div className="page-header">
         <div className="page-header-left">
           <div>
-            <div className="page-title">Balance Sheet</div>
+            <div className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              Balance Sheet
+              {filterTag && (
+                <span style={{ fontSize: 11, fontWeight: 500, padding: '2px 8px', background: 'var(--primary)', color: 'white', borderRadius: 12 }}>
+                  Filtered: {filterTag}
+                </span>
+              )}
+            </div>
             <div className="page-subtitle">Financial position at a glance</div>
+          </div>
+        </div>
+        <div className="page-header-right">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Filter size={16} color="var(--text-secondary)" />
+            <Input
+              value={filterTag}
+              onChange={e => setFilterTag(e.target.value)}
+              placeholder="Filter by Tag (e.g. Villa A)"
+              style={{ minWidth: 200 }}
+            />
           </div>
         </div>
       </div>
