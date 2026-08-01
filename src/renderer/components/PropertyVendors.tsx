@@ -13,6 +13,7 @@ import type { AuditEvent } from '../data/auditTypes'
 import { recordModuleEvent } from '../services/auditService'
 import * as XLSX from 'xlsx-js-style'
 import { Download, Eye, Printer, Trash2 } from 'lucide-react'
+import { exportTableData } from '../services/reportExportService'
 
 interface Props {
   currency?: string
@@ -72,6 +73,7 @@ export default function PropertyVendors({
   const [drawerVendor, setDrawerVendor] = useState<VendorEntry | null>(null)
   const [filterCategory, setFilterCategory] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [showExportMenu, setShowExportMenu] = useState(false)
 
   // ── Computed data ──
   const vendorPaymentTotals = useMemo(() => {
@@ -219,24 +221,41 @@ export default function PropertyVendors({
     setDeleteTarget(null)
   }, [deleteTarget, setVendors, onAuditEvent, vendorExpenseCounts])
 
-  const handleExportExcel = useCallback(() => {
-    const rows = filtered.map(v => ({
-      'Name': v?.name || '',
-      'Category': v?.category || '',
-      'Contact Person': v?.contactPerson || '',
-      'Phone': v.phone || '',
-      'Email': v.email || '',
-      'TRN': v.trn || '',
-      'Status': v.status,
-      'Total Paid': vendorPaymentTotals[v.id] || 0,
-      'Payments': vendorExpenseCounts[v.id] || 0,
-    }))
-    const ws = XLSX.utils.json_to_sheet(rows)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Vendors')
-    XLSX.writeFile(wb, 'vendors.xlsx')
-    setToast({ message: 'Exported to vendors.xlsx', type: 'success' })
-  }, [filtered, vendorPaymentTotals, vendorExpenseCounts])
+  const handleExport = useCallback((format: 'pdf' | 'xlsx') => {
+    if (filtered.length === 0) {
+      setToast({ message: 'No vendors to export', type: 'error' })
+      return
+    }
+    
+    const columns = [
+      'Name', 'Category', 'Contact Person', 'Phone', 'Email', 'TRN', 'Total Paid', 'Payments', 'Status'
+    ]
+
+    const rows = filtered.map(v => [
+      v.name,
+      v.category,
+      v.contactPerson || '',
+      v.phone || '',
+      v.email || '',
+      v.trn || '',
+      vendorPaymentTotals[v.id] || 0,
+      vendorExpenseCounts[v.id] || 0,
+      v.status
+    ])
+
+    exportTableData({
+      format,
+      title: 'Vendors & Suppliers',
+      subtitle: 'List of all registered property vendors',
+      filename: `Vendors_${new Date().toISOString().split('T')[0]}`,
+      columns,
+      rows,
+      currency
+    })
+
+    setToast({ message: `Exported successfully`, type: 'success' })
+    setShowExportMenu(false)
+  }, [filtered, vendorPaymentTotals, vendorExpenseCounts, currency])
 
   const handlePrintLedger = useCallback(() => {
     if (!drawerVendor) return
@@ -399,7 +418,29 @@ export default function PropertyVendors({
           ]}
         />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-          <Button variant="secondary" onClick={handleExportExcel} icon={<Download size={15} />}>Export</Button>
+          <div style={{ position: 'relative' }}>
+            <Button variant="secondary" onClick={() => setShowExportMenu(!showExportMenu)} icon={<Download size={15} />}>
+              Export
+            </Button>
+            {showExportMenu && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'white', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 100, minWidth: 160, overflow: 'hidden' }}>
+                <button
+                  onClick={() => handleExport('pdf')}
+                  style={{ width: '100%', padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', fontSize: 13, cursor: 'pointer' }}
+                  className="hover-bg-secondary"
+                >
+                  Export as PDF
+                </button>
+                <button
+                  onClick={() => handleExport('xlsx')}
+                  style={{ width: '100%', padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', fontSize: 13, cursor: 'pointer' }}
+                  className="hover-bg-secondary"
+                >
+                  Export as Excel
+                </button>
+              </div>
+            )}
+          </div>
           <Button variant="primary" onClick={openAddModal} icon={<PlusIcon />}>Add Vendor</Button>
         </div>
       </div>

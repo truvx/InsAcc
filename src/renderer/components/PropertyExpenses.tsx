@@ -17,6 +17,7 @@ import { CurrencyText } from './design/CurrencyText'
 import { formatCurrency } from '../utils/currencyHelpers'
 import { getPropertyBankAccountId } from '../services/propertyAccountingService'
 import { usePersistedState } from '../usePersistedState'
+import { exportTableData } from '../services/reportExportService'
 
 interface Props {
   currency?: string
@@ -79,7 +80,9 @@ export default function PropertyExpenses({
   const fmt = (n: number) => <CurrencyText value={n} currency={currency} />
   const [searchQuery, setSearchQuery] = useState('')
   const [propertyFilter, setPropertyFilter] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState('')
+  const [selectedVendorFilter, setSelectedVendorFilter] = useState('All')
+
+  const [showExportMenu, setShowExportMenu] = useState(false)
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [dateStart, setDateStart] = useState('')
@@ -679,14 +682,19 @@ export default function PropertyExpenses({
       .reduce((sum, e) => sum + e.totalAmount, 0)
   }, [expenses])
 
-  // Export to Excel handler
-  const handleExport = () => {
+  // Export handler
+  const handleExport = (format: 'pdf' | 'xlsx') => {
     if (filteredExpenses.length === 0) {
       setToast({ visible: true, message: 'No records to export.', type: 'error' })
       return
     }
 
-    const wsData = filteredExpenses.map(e => {
+    const columns = [
+      'Expense No.', 'Date', 'Property', 'Unit', 'Category', 
+      'Vendor / Paid To', 'Payment Mode', 'Bank Account', 'Amount', 'Status'
+    ]
+
+    const rows = filteredExpenses.map(e => {
       const propName = properties.find(p => p.id === e.propertyId)?.name || 'Unknown'
       const unitNumber = units.find(u => u.id === e.unitId)?.unitNumber || '—'
       const bankName = e.paymentChannel === 'Cash In Hand' 
@@ -696,37 +704,29 @@ export default function PropertyExpenses({
             return targetBa ? targetBa.institution : 'Bank Account'
           })()
       
-      return {
-        'Expense No.': e.expenseNo,
-        'Date': e.date,
-        'Property': propName,
-        'Unit': unitNumber,
-        'Category': e.category,
-        'Vendor / Paid To': e.paidTo,
-        'Payment Mode': e.paymentMode || e.paymentMethod || 'Unknown',
-        'Channel': e.paymentChannel || 'Unknown',
-        'Payment Reference': e.paymentReference || e.referenceNumber || '—',
-        'Bank Account / Cash In Hand': bankName,
-        'Amount': e.totalAmount,
-        'Status': e.status,
-        'Notes': e.notes || ''
-      }
+      return [
+        e.expenseNo,
+        formatDate(e.date, dateFormat),
+        propName,
+        unitNumber,
+        e.category,
+        e.paidTo,
+        e.paymentMode || e.paymentMethod || 'Unknown',
+        bankName,
+        e.totalAmount,
+        e.status
+      ]
     })
 
-    const ws = XLSX.utils.json_to_sheet(wsData)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Property Expenses')
-    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-    const blob = new Blob([wbout], { type: 'application/octet-stream' })
-    
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `property_expenses_${new Date().toISOString().split('T')[0]}.xlsx`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    exportTableData({
+      format,
+      title: 'Property Expenses',
+      subtitle: 'List of all operating expenses',
+      filename: `Property_Expenses_${new Date().toISOString().split('T')[0]}`,
+      columns,
+      rows,
+      currency
+    })
 
     onAuditEvent?.(
       recordModuleEvent(
@@ -734,11 +734,12 @@ export default function PropertyExpenses({
         'Export',
         'Expenses List',
         'bulk',
-        `Exported ${filteredExpenses.length} property expenses to Excel`
+        `Exported ${filteredExpenses.length} property expenses to ${format.toUpperCase()}`
       )
     )
 
-    setToast({ visible: true, message: 'Excel export completed successfully.', type: 'success' })
+    setToast({ visible: true, message: 'Export completed successfully.', type: 'success' })
+    setShowExportMenu(false)
   }
 
   return (
@@ -810,9 +811,29 @@ export default function PropertyExpenses({
             style={{ margin: 0, minWidth: 160 }}
           />
 
-          <Button variant="secondary" onClick={handleExport} icon={<Download size={14} />}>
-            Export
-          </Button>
+          <div style={{ position: 'relative' }}>
+            <Button variant="secondary" onClick={() => setShowExportMenu(!showExportMenu)} icon={<Download size={14} />}>
+              Export
+            </Button>
+            {showExportMenu && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'white', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 100, minWidth: 160, overflow: 'hidden' }}>
+                <button
+                  onClick={() => handleExport('pdf')}
+                  style={{ width: '100%', padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', fontSize: 13, cursor: 'pointer' }}
+                  className="hover-bg-secondary"
+                >
+                  Export as PDF
+                </button>
+                <button
+                  onClick={() => handleExport('xlsx')}
+                  style={{ width: '100%', padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', fontSize: 13, cursor: 'pointer' }}
+                  className="hover-bg-secondary"
+                >
+                  Export as Excel
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Expenses List */}
