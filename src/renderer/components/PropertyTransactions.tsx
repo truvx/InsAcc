@@ -714,7 +714,7 @@ export default function PropertyTransactions({
     },
     {
       key: 'paymentChannel',
-      header: 'Channel',
+      header: 'Payment Voucher',
       render: txn => {
         if (txn.paymentChannel === 'Cash In Hand') return <span className="text-xs text-secondary">Cash In Hand</span>
         if (txn.paymentChannel === 'Bank Account') return <span className="text-xs text-secondary">{getTransactionBankName(txn)}</span>
