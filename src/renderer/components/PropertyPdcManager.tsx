@@ -843,14 +843,7 @@ export default function PropertyPdcManager({
 
   const statusOptions = ['All', 'Pending', 'Deposited', 'Cleared', 'Bounced', 'Replaced', 'Cancelled']
 
-  const propertyOptions = useMemo(() => {
-    const used = new Set<string>()
-    for (const chq of pdcCheques) {
-      const lease = leases.find(l => l.id === chq.leaseId)
-      if (lease?.propertyId) used.add(lease.propertyId)
-    }
-    return properties.filter(p => used.has(p.id))
-  }, [pdcCheques, leases, properties])
+
 
   const quickDateFilterOptions = ['All', 'Today', 'Tomorrow', 'Overdue', 'ThisWeek'] as const
 
@@ -921,18 +914,16 @@ export default function PropertyPdcManager({
             ))}
           </div>
 
-          {propertyOptions.length > 0 && (
-            <select
-              className="pdc-filter-select"
+          <div style={{ width: 220 }}>
+            <Select
               value={propertyFilter}
               onChange={e => setPropertyFilter(e.target.value)}
-            >
-              <option value="All">All Properties</option>
-              {propertyOptions.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          )}
+              options={[
+                { value: 'All', label: 'All Properties' },
+                ...properties.map(p => ({ value: p.id, label: p.name }))
+              ]}
+            />
+          </div>
 
           {hasActiveFilters && (
             <button className="pdc-reset-btn" onClick={resetFilters}>
