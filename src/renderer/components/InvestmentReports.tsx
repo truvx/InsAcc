@@ -184,7 +184,7 @@ export default function InvestmentReports({
   const handleReportExport = async (format: 'xlsx' | 'csv' | 'pdf', reportType: string = 'Standard', advanced: any = {}) => {
     setIsExportModalOpen(false)
     try {
-      if (activeTab === 'overview' || activeTab === 'general-journal' || activeTab === 'general-ledger') {
+      if (activeTab === 'overview' || activeTab === 'general-journal' || activeTab === 'general-ledger' || reportType !== 'Standard') {
         const p = {
           companyName: 'INSACC',
           reportTitle: 'GENERAL LEDGER REPORT',

@@ -172,7 +172,7 @@ export default function PropertyReports({
   const handleReportExport = async (format: 'xlsx' | 'csv' | 'pdf', reportType: string = 'Standard', advanced: any = {}) => {
     setIsExportModalOpen(false)
     try {
-      if (activeTab === 'overview') {
+      if (activeTab === 'overview' || reportType !== 'Standard') {
         const p = {
           companyName: 'INSACC',
           reportTitle: 'GENERAL LEDGER REPORT',
