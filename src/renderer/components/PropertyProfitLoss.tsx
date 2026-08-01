@@ -2,16 +2,20 @@ import React, { useMemo, useState } from 'react'
 import type { Account, Voucher } from '../accounting/types'
 import { buildAccountTree } from '../accounting/chartOfAccountsService'
 import { generateChartOfAccountsReadModel, generateTrialBalanceReadModel, generateProfitAndLossReadModel } from '../readModels/accountingReadModels'
-import { EmptyState, Modal, Input } from './design/DesignSystem'
+import { EmptyState, Modal, Input, Select } from './design/DesignSystem'
 import AccountDrillDown from './AccountDrillDown'
 
 import { TrendingUp, TrendingDown, Filter } from 'lucide-react'
 import { CurrencyText } from './design/CurrencyText'
 
+import type { PropertyEntry, LeaseEntry } from '../data/propertyTypes'
+
 interface Props {
   currency?: string
   accounts: Account[]
   vouchers: Voucher[]
+  properties?: PropertyEntry[]
+  leases?: LeaseEntry[]
 }
 
 interface TreeNode {
@@ -36,10 +40,33 @@ function flatRowsFromTree(
   return rows
 }
 
-export default function PropertyProfitLoss({ currency = 'AED', accounts, vouchers }: Props) {
+export default function PropertyProfitLoss({ currency = 'AED', accounts, vouchers, properties = [], leases = [] }: Props) {
   const [drillAccountId, setDrillAccountId] = useState<string | null>(null)
   const [drillAccountName, setDrillAccountName] = useState<string>('')
-  const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, vouchers), [accounts, vouchers])
+  const [filterPropertyId, setFilterPropertyId] = useState('')
+
+  const filteredVouchers = useMemo(() => {
+    if (!filterPropertyId) return vouchers
+    
+    return vouchers.map(v => {
+      const leaseByVoucherRef = leases.find(l => l.leaseNumber === v.reference)
+      const isVoucherLinkedToProp = leaseByVoucherRef?.propertyId === filterPropertyId
+
+      const filteredLines = v.lines.filter(l => {
+        if (isVoucherLinkedToProp) return true
+        if (l.referenceType === 'Property' && l.referenceId === filterPropertyId) return true
+        if (l.referenceType === 'Lease' && l.referenceId) {
+          const lease = leases.find(lease => lease.id === l.referenceId)
+          if (lease?.propertyId === filterPropertyId) return true
+        }
+        return false
+      })
+      
+      return { ...v, lines: filteredLines }
+    }).filter(v => v.lines.length > 0)
+  }, [vouchers, filterPropertyId, leases])
+
+  const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, filteredVouchers), [accounts, filteredVouchers])
   
   const balances = useMemo(() => {
     const map: Record<string, number> = {}
@@ -56,12 +83,14 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
   const tree = useMemo(() => buildAccountTree(accounts) as unknown as TreeNode[], [accounts])
 
   const revenueRows = useMemo(() => {
-    return flatRowsFromTree(tree, balances, ['revenue']).filter(r => r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 }))
-  }, [tree, balances])
+    const rows = flatRowsFromTree(tree, balances, ['revenue']).filter(r => r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 }))
+    return filterPropertyId ? rows.filter(r => r.balance !== 0) : rows
+  }, [tree, balances, filterPropertyId])
   
   const expenseRows = useMemo(() => {
-    return flatRowsFromTree(tree, balances, ['expense']).filter(r => r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 }))
-  }, [tree, balances])
+    const rows = flatRowsFromTree(tree, balances, ['expense']).filter(r => r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 }))
+    return filterPropertyId ? rows.filter(r => r.balance !== 0) : rows
+  }, [tree, balances, filterPropertyId])
 
   const totalRevenue = plModel.totalRevenue
   const totalExpenses = plModel.totalExpenses
@@ -155,11 +184,29 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div className="page-title">Profit & Loss</div>
+              {filterPropertyId && (
+                <span style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', background: 'var(--primary)', color: 'white', borderRadius: 12, lineHeight: 1, marginTop: 6 }}>
+                  Filtered: {properties.find(p => p.id === filterPropertyId)?.name}
+                </span>
+              )}
             </div>
             <div className="page-subtitle">Revenue — Expenses = Net Income</div>
           </div>
         </div>
         <div className="page-header-right">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Filter size={16} color="var(--text-secondary)" />
+            <div style={{ width: 220 }}>
+              <Select
+                value={filterPropertyId}
+                onChange={e => setFilterPropertyId(e.target.value)}
+                options={[
+                  { value: '', label: 'All Properties' },
+                  ...properties.map(p => ({ value: p.id, label: p.name }))
+                ]}
+              />
+            </div>
+          </div>
         </div>
       </div>
 

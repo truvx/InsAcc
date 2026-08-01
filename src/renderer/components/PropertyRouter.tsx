@@ -381,10 +381,12 @@ export default function PropertyRouter(props: Props) {
     case 'balance-sheet':
       return <PropertyBalanceSheet
         currency={currency} accounts={propertyAccounts} vouchers={vouchers}
+        properties={mappedProperties} leases={propLeases}
       />
     case 'profit-loss':
       return <PropertyProfitLoss
         currency={currency} accounts={propertyAccounts} vouchers={vouchers}
+        properties={mappedProperties} leases={propLeases}
       />
     case 'pdc-manager':
       return <PropertyPdcManager
