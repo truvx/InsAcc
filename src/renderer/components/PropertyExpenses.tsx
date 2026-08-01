@@ -796,7 +796,11 @@ export default function PropertyExpenses({
           <Select
             value={categoryFilter}
             onChange={e => setCategoryFilter(e.target.value)}
-            options={[{ value: '', label: 'All Categories' }, ...categories.map(c => ({ value: c, label: c }))]}
+            options={[{ value: '', label: 'All Categories' }, ...categories.map(c => ({ value: c, label: c, deletable: customCategories.includes(c) }))]}
+            onDeleteOption={(val) => {
+              setCustomCategories(prev => prev.filter(c => c !== val))
+              if (categoryFilter === val) setCategoryFilter('')
+            }}
             style={{ margin: 0, minWidth: 160 }}
           />
           <Select
@@ -1057,9 +1061,13 @@ export default function PropertyExpenses({
             }}
             options={[
               { value: '', label: 'Select Category' },
-              ...categories.map(c => ({ value: c, label: c })),
+              ...categories.map(c => ({ value: c, label: c, deletable: customCategories.includes(c) })),
               { value: '__custom__', label: '+ Add Custom Category' }
             ]}
+            onDeleteOption={(val) => {
+              setCustomCategories(prev => prev.filter(c => c !== val))
+              if (formCategory === val) setFormCategory('')
+            }}
           />
           {vendors.length > 0 && (
             <Select
