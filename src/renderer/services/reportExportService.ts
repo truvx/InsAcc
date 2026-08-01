@@ -1005,29 +1005,27 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
         else totGrCr += x.l.amount
       })
       
-      autoTable(doc, {
-        startY: y + 5,
-        head: [[`${group.groupName} - Debits: ${p.currency} ${totGrDr.toLocaleString()} | Credits: ${p.currency} ${totGrCr.toLocaleString()}`]],
-        body: [],
-        theme: 'grid',
-        headStyles: { fillColor: [15, 76, 53], textColor: [255, 255, 255], fontStyle: 'bold' }
+      const tableData: any[][] = group.lines.map((x: any) => {
+        const dStr = String(x.desc || '')
+        return [
+          x.v.date,
+          x.v.voucherNumber,
+          x.v.reference || '-',
+          x.v.type,
+          x.accName,
+          dStr.length > 40 ? dStr.substring(0, 40) + '...' : dStr,
+          x.l.type === 'Debit' ? x.l.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : '',
+          x.l.type === 'Credit' ? x.l.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : '',
+          x.v.status
+        ]
       })
       
-      const tableData: any[][] = group.lines.map((x: any) => [
-        x.v.date,
-        x.v.voucherNumber,
-        x.v.reference || '-',
-        x.v.type,
-        x.accName,
-        x.desc.length > 40 ? x.desc.substring(0, 40) + '...' : x.desc,
-        x.l.type === 'Debit' ? x.l.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : '',
-        x.l.type === 'Credit' ? x.l.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : '',
-        x.v.status
-      ])
-      
       autoTable(doc, {
-        startY: (doc as any).lastAutoTable.finalY,
-        head: [['Date', 'Voucher', 'Reference', 'Type', 'Account', 'Description', 'Debit', 'Credit', 'Status']],
+        startY: y + 5,
+        head: [
+          [{ content: `${group.groupName} - Debits: ${p.currency} ${totGrDr.toLocaleString(undefined, {minimumFractionDigits: 2})} | Credits: ${p.currency} ${totGrCr.toLocaleString(undefined, {minimumFractionDigits: 2})}`, colSpan: 9, styles: { halign: 'left', fillColor: [15, 76, 53], textColor: [255, 255, 255] } }],
+          ['Date', 'Voucher', 'Reference', 'Type', 'Account', 'Description', 'Debit', 'Credit', 'Status']
+        ],
         body: tableData,
         theme: 'grid',
         styles: { fontSize: 8 },
