@@ -3,7 +3,6 @@ import type { Account, Voucher, BankMapping, PostingResult } from '../accounting
 import type { PropAccount, LeaseEntry, TenantEntry, PropertyEntry, UnitEntry, VendorEntry } from '../data/propertyTypes'
 import type { PurchaseRecord } from '../data/purchaseLedger'
 import { Button, Input, Select, Badge, EmptyState, SearchIcon, CloseIcon } from './design/DesignSystem'
-import { TagsInput } from './design/TagsInput'
 import { useMasterData } from '../contexts/MasterDataContext'
 import { PartyLookupService } from '../services/partyLookupService'
 import { SearchablePartySelect } from './design/SearchablePartySelect'
@@ -91,7 +90,6 @@ export default function PropertyReceiptVoucher({
   const [formBankAccount, setFormBankAccount] = useState(defaultBank ? defaultBank.id : '')
   const [formReceivedFrom, setFormReceivedFrom] = useState('')
   const [formPaymentMode, setFormPaymentMode] = useState('Bank Transfer')
-  const [formTags, setFormTags] = useState<string[]>([])
   const [formCreditAccount, setFormCreditAccount] = useState('')
 
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -141,7 +139,6 @@ export default function PropertyReceiptVoucher({
     setFormBankAccount(defaultBank ? defaultBank.id : '')
     setFormReceivedFrom('')
     setFormPaymentMode('Bank Transfer')
-    setFormTags([])
     const defaultCredit = accounts.find(a => a.code === '4120')?.id || ''
     setFormCreditAccount(defaultCredit)
     setEditingId(null)
@@ -164,8 +161,6 @@ export default function PropertyReceiptVoucher({
     setFormReceivedFrom(payerMatch ? payerMatch[1] : v.reference || '')
 
     setFormPaymentMode(v.paymentMode || 'Bank Transfer')
-    setFormTags(debitLine?.tags || [])
-
     setEditingId(v.id)
     setShowForm(true)
   }
@@ -291,7 +286,6 @@ export default function PropertyReceiptVoucher({
               amount: amt,
               baseAmount: amt,
               narration: formDescription,
-              tags: formTags.length > 0 ? formTags : undefined,
             }
           } else {
             return {
@@ -300,7 +294,6 @@ export default function PropertyReceiptVoucher({
               amount: amt,
               baseAmount: amt,
               narration: formDescription,
-              tags: formTags.length > 0 ? formTags : undefined,
             }
           }
         })
@@ -342,7 +335,6 @@ export default function PropertyReceiptVoucher({
           creditAccount: targetCreditAccount,
           referenceType: 'Property',
           referenceId: ref,
-          tags: formTags.length > 0 ? formTags : undefined,
           createdBy: 'user',
         },
         accounts,
@@ -572,14 +564,6 @@ export default function PropertyReceiptVoucher({
           {formPaymentMode !== 'Cash' && (
             <Select label="Bank Account" value={formBankAccount} onChange={e => setFormBankAccount(e.target.value)} options={bankOptions} />
           )}
-        </div>
-        <div className="form-row">
-          <TagsInput
-            label="Tags (Villa, Building, Apartment, etc.)"
-            tags={formTags}
-            onChange={setFormTags}
-            placeholder="e.g. Tilal Villa"
-          />
         </div>
       </EntityForm>
 

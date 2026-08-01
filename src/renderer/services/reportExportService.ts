@@ -195,7 +195,6 @@ export interface ExcelExportParams {
     tenantName?: string
     voucherType?: string
     status?: string
-    tag?: string
     buyerName?: string
     vendorName?: string
   }
@@ -800,10 +799,6 @@ export function getFilteredVouchers(p: ExcelExportParams) {
       const isLinkedToLeaseTenant = lease?.tenantId === tenantId
       
       if (!isLinkedToLeaseTenant) return false
-    }
-    if (p.filters?.tag) {
-      const lowerTag = p.filters.tag.toLowerCase()
-      if (!v.lines.some(l => l.tags?.some(t => t.toLowerCase().includes(lowerTag)))) return false
     }
     return true
   })

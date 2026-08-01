@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import type { Account, Voucher, PostingResult } from '../accounting/types'
 import { Button, Input, Select, EmptyState, SearchIcon, CloseIcon, KpiCard } from './design/DesignSystem'
-import { TagsInput } from './design/TagsInput'
 import { DataTable, type Column } from './design/Table'
 import EntityForm from './design/EntityForm'
 import Toast from './Toast'
@@ -53,7 +52,6 @@ export default function PropertyJournalVoucher({
   const [formCreditAccount, setFormCreditAccount] = useState('')
   const [formAmount, setFormAmount] = useState('')
   const [formReference, setFormReference] = useState('')
-  const [formTags, setFormTags] = useState<string[]>([])
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showAuditModal, setShowAuditModal] = useState(false)
@@ -94,7 +92,6 @@ export default function PropertyJournalVoucher({
     setFormCreditAccount('')
     setFormAmount('')
     setFormReference('')
-    setFormTags([])
     setEditingId(null)
   }
 
@@ -108,8 +105,6 @@ export default function PropertyJournalVoucher({
     setFormDebitAccount(debitLine?.accountId || '')
     setFormCreditAccount(creditLine?.accountId || '')
     setFormReference(v.reference)
-    setFormTags(debitLine?.tags || [])
-
     setEditingId(v.id)
     setShowForm(true)
   }
@@ -200,7 +195,6 @@ export default function PropertyJournalVoucher({
               amount: amt,
               baseAmount: amt,
               narration: formDescription,
-              tags: formTags.length > 0 ? formTags : undefined,
             }
           } else {
             return {
@@ -209,7 +203,6 @@ export default function PropertyJournalVoucher({
               amount: amt,
               baseAmount: amt,
               narration: formDescription,
-              tags: formTags.length > 0 ? formTags : undefined,
             }
           }
         })
@@ -251,7 +244,6 @@ export default function PropertyJournalVoucher({
           creditAccount: formCreditAccount,
           referenceType: 'Property',
           referenceId: formReference || undefined,
-          tags: formTags.length > 0 ? formTags : undefined,
           createdBy: 'user',
         },
         accounts,
@@ -361,14 +353,6 @@ export default function PropertyJournalVoucher({
         <div className="form-row">
           <Select label="Debit Account" value={formDebitAccount} onChange={e => setFormDebitAccount(e.target.value)} options={accountOptions} />
           <Select label="Credit Account" value={formCreditAccount} onChange={e => setFormCreditAccount(e.target.value)} options={accountOptions} />
-        </div>
-        <div className="form-row">
-          <TagsInput
-            label="Tags (Villa, Building, Apartment, etc.)"
-            tags={formTags}
-            onChange={setFormTags}
-            placeholder="e.g. Tilal Villa"
-          />
         </div>
       </EntityForm>
 

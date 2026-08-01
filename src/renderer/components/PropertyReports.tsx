@@ -76,8 +76,6 @@ export default function PropertyReports({
   const [filterBuilding, setFilterBuilding] = useState('All')
   const [filterTenant, setFilterTenant] = useState('All')
 
-  const [filterTag, setFilterTag] = useState('')
-
   // handleReportExport is now moved below to access all tab data.
 
   const periodDates = useMemo(() => getPeriodDates(period, customStart, customEnd), [period, customStart, customEnd])
@@ -192,7 +190,6 @@ export default function PropertyReports({
             tenantName: filterTenant,
             voucherType: filterVType,
             status: filterStatus,
-            tag: filterTag
           },
           properties,
           units,
@@ -767,7 +764,6 @@ export default function PropertyReports({
           filterAccount,
           filterBuilding,
           filterTenant,
-          filterTag,
         }}
         onFiltersChange={(partial) => {
           if (partial.filterStart !== undefined) setFilterStart(partial.filterStart)
@@ -778,7 +774,6 @@ export default function PropertyReports({
           if (partial.filterAccount !== undefined) setFilterAccount(partial.filterAccount)
           if (partial.filterBuilding !== undefined) setFilterBuilding(partial.filterBuilding)
           if (partial.filterTenant !== undefined) setFilterTenant(partial.filterTenant)
-          if (partial.filterTag !== undefined) setFilterTag(partial.filterTag)
         }}
         properties={properties}
         tenants={tenants}
