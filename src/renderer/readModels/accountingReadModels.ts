@@ -54,11 +54,12 @@ export interface ChartOfAccountsReadModelEntry {
 
 export function generateChartOfAccountsReadModel(
   accounts: Account[],
-  vouchers: Voucher[]
+  vouchers: Voucher[],
+  ignoreCache: boolean = false
 ): ChartOfAccountsReadModelEntry[] {
   const result = accounts.map(a => {
     const isParent = accounts.some(child => child.parentId === a.id && child.isActive)
-    const currentBalance = Math.round(getAccountBalance(a.id, vouchers, accounts) * 100) / 100
+    const currentBalance = Math.round(getAccountBalance(a.id, vouchers, accounts, ignoreCache) * 100) / 100
     let totalDebit = 0
     let totalCredit = 0
 

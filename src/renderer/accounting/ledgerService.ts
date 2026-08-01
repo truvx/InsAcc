@@ -160,14 +160,17 @@ export function getAccountBalance(
   accountId: string,
   vouchers: Voucher[],
   accounts: Account[],
+  ignoreCache: boolean = false
 ): number {
   const account = getAccountById(accountId, accounts)
   if (!account) return 0
 
   const cacheKey = getCacheKey(accountId, accounts)
 
-  const cached = getCachedBalance(cacheKey, _cacheVersion)
-  if (cached !== undefined) return cached
+  if (!ignoreCache) {
+    const cached = getCachedBalance(cacheKey, _cacheVersion)
+    if (cached !== undefined) return cached
+  }
 
   // Recursive check for active direct children
   const children = accounts.filter(a => a.parentId === account.id && a.isActive)
@@ -178,7 +181,7 @@ export function getAccountBalance(
   } else {
     let total = 0
     for (const child of children) {
-      const childBal = getAccountBalance(child.id, vouchers, accounts)
+      const childBal = getAccountBalance(child.id, vouchers, accounts, ignoreCache)
       if (child.normalBalance === account.normalBalance) {
         total += childBal
       } else {
@@ -188,7 +191,9 @@ export function getAccountBalance(
     balance = Math.round(total * 100) / 100
   }
 
-  setCachedBalance(cacheKey, balance, _cacheVersion)
+  if (!ignoreCache) {
+    setCachedBalance(cacheKey, balance, _cacheVersion)
+  }
   return balance
 }
 

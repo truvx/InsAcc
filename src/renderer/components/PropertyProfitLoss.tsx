@@ -49,8 +49,8 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
     if (!filterPropertyId) return vouchers
     
     return vouchers.map(v => {
-      const leaseByVoucherRef = leases.find(l => l.leaseNumber === v.reference)
-      const isVoucherLinkedToProp = leaseByVoucherRef?.propertyId === filterPropertyId
+      const leaseByVoucherRef = v.reference ? leases.find(l => l.leaseNumber === v.reference) : undefined
+      const isVoucherLinkedToProp = !!leaseByVoucherRef && leaseByVoucherRef.propertyId === filterPropertyId
 
       const filteredLines = v.lines.filter(l => {
         if (isVoucherLinkedToProp) return true
@@ -66,7 +66,7 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
     }).filter(v => v.lines.length > 0)
   }, [vouchers, filterPropertyId, leases])
 
-  const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, filteredVouchers), [accounts, filteredVouchers])
+  const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, filteredVouchers, !!filterPropertyId), [accounts, filteredVouchers, filterPropertyId])
   
   const balances = useMemo(() => {
     const map: Record<string, number> = {}
