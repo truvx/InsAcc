@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react'
 import type { Voucher } from '../accounting/types'
 import type { AuditEvent } from '../data/auditTypes'
 import { getHistoryProjection, filterHistory, type HistoryFilter } from '../readModels/InvestmentHistoryReadModel'
-import { TrashIcon } from './design/DesignSystem'
+import { TrashIcon, Button } from './design/DesignSystem'
 
 interface Props {
   vouchers: Voucher[]
@@ -63,23 +63,23 @@ export default function InvestmentHistory({
       <div className="page-header">
         <div className="page-header-left">
           <div>
-            <div className="page-title">History</div>
-            <div className="page-subtitle">All accounting actions, vouchers, and audit events</div>
+            <div className="page-title">Activity Log</div>
+            <div className="page-subtitle">{filtered.length} total event{filtered.length !== 1 ? 's' : ''}</div>
           </div>
         </div>
         {onClearHistory && (
           <div className="page-header-right">
-            <button
-              className="btn btn-secondary"
-              style={{ padding: '8px 16px', borderRadius: 6, cursor: 'pointer', borderColor: 'var(--warning)', color: 'var(--warning)', background: 'transparent' }}
+            <Button
+              variant="secondary"
+              style={{ borderColor: 'var(--warning)', color: 'var(--warning)' }}
               onClick={() => {
                 if (confirm('Are you sure you want to clear all transaction history? This will reset the Trial Balance.')) {
                   onClearHistory()
                 }
               }}
             >
-              Clear History
-            </button>
+              Clear Activity Log
+            </Button>
           </div>
         )}
       </div>

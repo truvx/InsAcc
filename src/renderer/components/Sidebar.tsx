@@ -18,7 +18,7 @@ const INV_NAV: NavItem[] = [
   { id: 'bank-accounts', label: 'Bank Accounts' },
   { id: 'reports', label: 'Reports' },
   { id: 'documents', label: 'Documents' },
-  { id: 'history', label: 'History' },
+  { id: 'history', label: 'Activity Log' },
   { id: 'purchase-ledger', label: 'Purchase Ledger' },
   { id: 'settings', label: 'Settings' },
 ]
@@ -34,7 +34,7 @@ const PROP_NAV: NavItem[] = [
   { id: 'bank-accounts', label: 'Bank Accounts' },
   { id: 'reports', label: 'Reports' },
   { id: 'documents', label: 'Documents' },
-  { id: 'history', label: 'History' },
+  { id: 'history', label: 'Activity Log' },
   { id: 'settings', label: 'Settings' },
 ]
 

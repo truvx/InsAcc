@@ -188,7 +188,7 @@ export default function History({ auditEvents, language = 'English', onClearHist
       <div className="page-header">
         <div className="page-header-left">
           <div>
-            <div className="page-title">{t('history', language)}</div>
+            <div className="page-title">Activity Log</div>
             <div className="page-subtitle">{auditEvents.length} total event{auditEvents.length !== 1 ? 's' : ''}</div>
           </div>
         </div>
@@ -203,7 +203,7 @@ export default function History({ auditEvents, language = 'English', onClearHist
                 }
               }}
             >
-              Clear History
+              Clear Activity Log
             </Button>
           </div>
         )}
