@@ -785,14 +785,21 @@ export function getFilteredVouchers(p: ExcelExportParams) {
       if (!v.lines.some(l => l.narration && l.narration.toLowerCase().includes(q)) && !v.description.toLowerCase().includes(q)) return false
     }
     if (p.filters?.buildingName && p.filters.buildingName !== 'All') {
-      const lease = p.leases?.find(l => l.leaseNumber === v.reference)
-      const prop = lease ? p.properties?.find(x => x.id === lease.propertyId) : null
-      if (!prop || prop.name.toLowerCase() !== p.filters.buildingName.toLowerCase()) return false
+      const bName = p.filters.buildingName.toLowerCase()
+      const propId = p.properties?.find(x => x.name.toLowerCase() === bName)?.id
+      const isLinkedToProp = v.lines.some(l => l.referenceType === 'Property' && l.referenceId === propId)
+      const lease = p.leases?.find(l => l.leaseNumber === v.reference || v.lines.some(line => line.referenceType === 'Lease' && line.referenceId === l.id))
+      const isLinkedToLeaseProp = lease?.propertyId === propId
+      
+      if (!isLinkedToProp && !isLinkedToLeaseProp) return false
     }
     if (p.filters?.tenantName && p.filters.tenantName !== 'All') {
-      const lease = p.leases?.find(l => l.leaseNumber === v.reference)
-      const tenant = lease ? p.tenants?.find(t => t.id === lease.tenantId) : null
-      if (!tenant || tenant.name.toLowerCase() !== p.filters.tenantName.toLowerCase()) return false
+      const tName = p.filters.tenantName.toLowerCase()
+      const tenantId = p.tenants?.find(x => x.name.toLowerCase() === tName)?.id
+      const lease = p.leases?.find(l => l.leaseNumber === v.reference || v.lines.some(line => line.referenceType === 'Lease' && line.referenceId === l.id))
+      const isLinkedToLeaseTenant = lease?.tenantId === tenantId
+      
+      if (!isLinkedToLeaseTenant) return false
     }
     if (p.filters?.tag) {
       const lowerTag = p.filters.tag.toLowerCase()
