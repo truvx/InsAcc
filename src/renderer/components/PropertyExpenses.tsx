@@ -831,7 +831,7 @@ export default function PropertyExpenses({
                       <th>Category</th>
                       <th>Vendor / Paid To</th>
                       <th>Payment Mode</th>
-                      <th>Channel</th>
+                      <th>Payment Voucher</th>
                       <th style={{ textAlign: 'right' }}>Amount</th>
                       <th>Status</th>
                       <th style={{ width: 80 }}>Actions</th>
