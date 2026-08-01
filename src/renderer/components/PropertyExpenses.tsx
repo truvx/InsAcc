@@ -16,6 +16,7 @@ import * as XLSX from 'xlsx-js-style'
 import { CurrencyText } from './design/CurrencyText'
 import { formatCurrency } from '../utils/currencyHelpers'
 import { getPropertyBankAccountId } from '../services/propertyAccountingService'
+import { usePersistedState } from '../usePersistedState'
 
 interface Props {
   currency?: string
@@ -91,7 +92,7 @@ export default function PropertyExpenses({
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' })
 
   // Custom Categories
-  const [customCategories, setCustomCategories] = useState<string[]>([])
+  const [customCategories, setCustomCategories] = usePersistedState<string[]>('insacc_property_custom_categories', [])
   const [showCustomModal, setShowCustomModal] = useState(false)
   const [newCustomCategory, setNewCustomCategory] = useState('')
 
