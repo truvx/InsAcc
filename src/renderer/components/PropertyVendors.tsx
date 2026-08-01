@@ -28,6 +28,7 @@ interface Props {
 interface VendorForm {
   name: string
   category: string
+  customCategory?: string
   contactPerson: string
   phone: string
   email: string
@@ -41,6 +42,7 @@ interface VendorForm {
 const emptyForm: VendorForm = {
   name: '',
   category: '',
+  customCategory: '',
   contactPerson: '',
   phone: '',
   email: '',
@@ -132,6 +134,7 @@ export default function PropertyVendors({
     setForm({
       name: v.name,
       category: v.category,
+      customCategory: '',
       contactPerson: v.contactPerson || '',
       phone: v.phone || '',
       email: v.email || '',
@@ -149,7 +152,15 @@ export default function PropertyVendors({
       setToast({ message: 'Vendor name is required', type: 'error' })
       return
     }
-    if (!form.category.trim()) {
+    
+    let finalCategory = form.category
+    if (finalCategory === 'custom') {
+      if (!form.customCategory?.trim()) {
+        setToast({ message: 'Custom category is required', type: 'error' })
+        return
+      }
+      finalCategory = form.customCategory.trim()
+    } else if (!finalCategory.trim()) {
       setToast({ message: 'Category is required', type: 'error' })
       return
     }
@@ -157,7 +168,7 @@ export default function PropertyVendors({
     if (editingVendor) {
       updateVendor(setVendors, editingVendor.id, {
         name: form.name.trim(),
-        category: form.category,
+        category: finalCategory,
         contactPerson: form.contactPerson.trim() || undefined,
         phone: form.phone.trim() || undefined,
         email: form.email.trim() || undefined,
@@ -174,7 +185,7 @@ export default function PropertyVendors({
     } else {
       const newVendor = createVendor(setVendors, {
         name: form.name.trim(),
-        category: form.category,
+        category: finalCategory,
         contactPerson: form.contactPerson.trim() || undefined,
         phone: form.phone.trim() || undefined,
         email: form.email.trim() || undefined,
@@ -426,10 +437,17 @@ export default function PropertyVendors({
                 style={{ width: '100%' }}
                 options={[
                   { value: '', label: 'Select category...' },
-                  ...usedCategories.map(c => ({ value: c, label: c }))
+                  ...usedCategories.map(c => ({ value: c, label: c })),
+                  { value: 'custom', label: '+ Custom Category' }
                 ]}
               />
             </div>
+            {form.category === 'custom' && (
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Custom Category Name *</label>
+                <Input placeholder="Enter category" value={form.customCategory || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, customCategory: e.target.value }))} style={{ width: '100%' }} />
+              </div>
+            )}
             <div>
               <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Contact Person</label>
               <Input placeholder="Contact name" value={form.contactPerson} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, contactPerson: e.target.value }))} style={{ width: '100%' }} />
