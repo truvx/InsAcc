@@ -78,7 +78,7 @@ export function getBalanceSheetTree(
 ): FinancialStatementRow[] {
   const balances = getStatementBalances(accounts, vouchers)
   const tree = buildAccountTree(accounts)
-  const roots = tree.filter(n => n.account.isActive)
+  const roots = tree.filter(n => n.account.isActive && ['asset', 'liability', 'equity'].includes(n.account.type))
 
   const plTree = getProfitLossTree(accounts, vouchers)
   const revenueTree = plTree.find(r => r.accountCode === '4000')
