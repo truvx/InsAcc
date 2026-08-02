@@ -12,6 +12,7 @@ import type { Account, Voucher, VoucherLine, VoucherType, BankMapping } from '..
 import { VoucherNumberService } from '../services/voucherNumberService'
 import { invalidateBalanceCache } from '../accounting/ledgerService'
 import { CurrencyText } from './design/CurrencyText'
+import { exportTableData } from '../services/reportExportService'
 
 interface Props {
   currency?: string
@@ -90,6 +91,7 @@ export default function PropertyTransactions({
   }
 
   const [showCustomCategoryModal, setShowCustomCategoryModal] = useState(false)
+  const [showExportMenu, setShowExportMenu] = useState(false)
   const [customCategoryName, setCustomCategoryName] = useState('')
   const [customCategoryType, setCustomCategoryType] = useState<'credit' | 'debit'>('credit')
   const [customCategoryError, setCustomCategoryError] = useState('')
@@ -800,6 +802,48 @@ export default function PropertyTransactions({
     />
   )
 
+  const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+    if (filtered.length === 0) {
+      setToast({ visible: true, message: 'No records to export.', type: 'error' })
+      setShowExportMenu(false)
+      return
+    }
+
+    const columns = ['Date', 'Description', 'Category', 'Payment Mode', 'Payment Voucher', 'Type', 'Amount']
+    const rows = filtered.map(t => [
+      formatDate(t.date, dateFormat),
+      t.description || '—',
+      t.category || '—',
+      t.paymentMode || '—',
+      t.paymentReference || '—',
+      t.type === 'credit' ? 'Income' : 'Expense',
+      t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })
+    ])
+
+    exportTableData({
+      format,
+      title: 'Property Transactions',
+      subtitle: 'Track income and expenses for your property investments',
+      filename: `Property_Transactions_${new Date().toISOString().split('T')[0]}`,
+      columns,
+      rows,
+      currency
+    })
+
+    onAuditEvent?.(
+      recordModuleEvent(
+        'Property Transactions',
+        'Export',
+        'Transactions List',
+        'bulk',
+        `Exported ${filtered.length} transactions to ${format.toUpperCase()}`
+      )
+    )
+
+    setToast({ visible: true, message: 'Export completed successfully.', type: 'success' })
+    setShowExportMenu(false)
+  }
+
   return (
     <>
       <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={() => setToast(prev => ({ ...prev, visible: false }))} />
@@ -949,12 +993,29 @@ export default function PropertyTransactions({
         </div>
       </Modal>
 
-      <div className="page-header">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div className="page-header-left">
           <div>
             <div className="page-title">Property Transactions</div>
             <div className="page-subtitle">Track income and expenses for your property investments</div>
           </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ position: 'relative' }}>
+            <Button variant="secondary" size="sm" onClick={() => setShowExportMenu(!showExportMenu)}>
+              Export <span style={{ marginLeft: 6 }}>▼</span>
+            </Button>
+            {showExportMenu && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', border: '1px solid var(--border-color)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, width: 140, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <button className="export-menu-item" onClick={() => handleExport('pdf')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>PDF (.pdf)</button>
+                <button className="export-menu-item" onClick={() => handleExport('xlsx')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>Excel (.xlsx)</button>
+                <button className="export-menu-item" onClick={() => handleExport('csv')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>CSV (.csv)</button>
+              </div>
+            )}
+          </div>
+          <Button variant="primary" size="sm" onClick={() => setNewTxnOpen(true)}>
+            Add Transaction
+          </Button>
         </div>
       </div>
 

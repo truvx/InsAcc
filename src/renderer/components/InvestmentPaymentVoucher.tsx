@@ -463,7 +463,11 @@ export default function InvestmentPaymentVoucher({
       key: 'paidTo',
       header: 'Paid To',
       sortable: true,
-      render: v => <span className="fw-500 text-sm">{v.reference || '—'}</span>,
+      render: v => {
+        const match = v.description.match(/\(paid to\s+(.*?)\)$/i)
+        const val = match ? match[1] : (v.reference && !v.reference.startsWith('exp-') ? v.reference : '—')
+        return <span className="fw-500 text-sm">{val}</span>
+      }
     },
     {
       key: 'debitAccount',

@@ -2,10 +2,12 @@ import React, { useMemo, useState } from 'react'
 import type { Account, Voucher } from '../accounting/types'
 import { buildAccountTree } from '../accounting/chartOfAccountsService'
 import { generateChartOfAccountsReadModel, generateTrialBalanceReadModel, generateProfitAndLossReadModel, generateBalanceSheetReadModel } from '../readModels/accountingReadModels'
-import { EmptyState, Modal, Input, Select } from './design/DesignSystem'
+import { EmptyState, Modal, Input, Select, Button } from './design/DesignSystem'
 import AccountDrillDown from './AccountDrillDown'
+import { exportSideBySidePdf } from '../services/reportExportService'
+import Toast from './Toast'
 
-import { Landmark, ListChecks, Filter } from 'lucide-react'
+import { Landmark, ListChecks, Filter, Download } from 'lucide-react'
 import { CurrencyText } from './design/CurrencyText'
 
 import type { PropertyEntry, LeaseEntry } from '../data/propertyTypes'
@@ -44,6 +46,7 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
   const [drillAccountId, setDrillAccountId] = useState<string | null>(null)
   const [drillAccountName, setDrillAccountName] = useState<string>('')
   const [filterPropertyId, setFilterPropertyId] = useState('')
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' })
 
   const filteredVouchers = useMemo(() => {
     if (!filterPropertyId) return vouchers
@@ -204,8 +207,60 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
     </div>
   )
 
+
+  const handleExportPdf = () => {
+    const leftRows = assetRows.map(r => [
+      `${' '.repeat(r.depth * 2)}${r.account.name}`,
+      r.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })
+    ])
+    const liabilityRowsMapped = liabilityRows.map(r => [
+      `${' '.repeat(r.depth * 2)}${r.account.name}`,
+      r.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })
+    ])
+    const equityRowsMapped = equityRows.map(r => [
+      `${' '.repeat(r.depth * 2)}${r.account.name}`,
+      r.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })
+    ])
+    
+    // Merge Liabilities and Equity for the right column
+    const rightRows = [
+      ['--- LIABILITIES ---', ''],
+      ...liabilityRowsMapped,
+      ['--- EQUITY ---', ''],
+      ...equityRowsMapped
+    ]
+
+    exportSideBySidePdf({
+      title: 'Balance Sheet',
+      subtitle: filterPropertyId ? `Property: ${properties.find(p => p.id === filterPropertyId)?.name}` : 'All Properties',
+      currency,
+      filename: `Balance_Sheet_${new Date().toISOString().split('T')[0]}`,
+      leftCol: {
+        title: 'Assets',
+        accentColor: [49, 46, 129], // indigo-900 equivalent
+        rows: leftRows,
+        total: totalAssets
+      },
+      rightCol: {
+        title: 'Liabilities & Equity',
+        accentColor: [124, 45, 18], // orange-900 equivalent
+        rows: rightRows,
+        total: totalLiabilities + totalEquity
+      },
+      footer: {
+        label: isBalanced ? 'Balanced (Assets = Liabilities + Equity)' : 'Unbalanced',
+        value: totalAssets // they should match
+      }
+    }).then(() => {
+      setToast({ visible: true, message: 'PDF Exported successfully', type: 'success' })
+    }).catch(e => {
+      setToast({ visible: true, message: 'Export failed: ' + e.message, type: 'error' })
+    })
+  }
+
   return (
     <>
+      <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={() => setToast(prev => ({ ...prev, visible: false }))} />
       <Modal open={drillAccountId !== null} title={`Account Drill Down — ${drillAccountName}`} onClose={() => setDrillAccountId(null)}>
         {drillAccountId && (
           <AccountDrillDown
@@ -234,6 +289,10 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
         </div>
         <div className="page-header-right">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Button variant="secondary" size="sm" icon={<Download size={14} />} onClick={handleExportPdf}>
+              Export PDF
+            </Button>
+            <div style={{ width: 16 }} />
             <Filter size={16} color="var(--text-secondary)" />
             <div style={{ width: 220 }}>
               <Select

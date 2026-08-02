@@ -2,10 +2,12 @@ import React, { useMemo, useState } from 'react'
 import type { Account, Voucher } from '../accounting/types'
 import { buildAccountTree } from '../accounting/chartOfAccountsService'
 import { generateChartOfAccountsReadModel, generateTrialBalanceReadModel, generateProfitAndLossReadModel } from '../readModels/accountingReadModels'
-import { EmptyState, Modal, Input, Select } from './design/DesignSystem'
+import { EmptyState, Modal, Input, Select, Button } from './design/DesignSystem'
 import AccountDrillDown from './AccountDrillDown'
+import { exportSideBySidePdf } from '../services/reportExportService'
+import Toast from './Toast'
 
-import { TrendingUp, TrendingDown, Filter } from 'lucide-react'
+import { TrendingUp, TrendingDown, Filter, Download } from 'lucide-react'
 import { CurrencyText } from './design/CurrencyText'
 
 import type { PropertyEntry, LeaseEntry } from '../data/propertyTypes'
@@ -44,6 +46,7 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
   const [drillAccountId, setDrillAccountId] = useState<string | null>(null)
   const [drillAccountName, setDrillAccountName] = useState<string>('')
   const [filterPropertyId, setFilterPropertyId] = useState('')
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' })
 
   const filteredVouchers = useMemo(() => {
     if (!filterPropertyId) return vouchers
@@ -165,8 +168,50 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
     </div>
   )
 
+
+
+  const handleExportPdf = () => {
+    const leftRows = revenueRows.map(r => [
+      `${' '.repeat(r.depth * 2)}${r.account.name}`,
+      r.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })
+    ])
+    
+    const rightRows = expenseRows.map(r => [
+      `${' '.repeat(r.depth * 2)}${r.account.name}`,
+      r.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })
+    ])
+
+    exportSideBySidePdf({
+      title: 'Profit & Loss Statement',
+      subtitle: filterPropertyId ? `Property: ${properties.find(p => p.id === filterPropertyId)?.name}` : 'All Properties',
+      currency,
+      filename: `Profit_Loss_${new Date().toISOString().split('T')[0]}`,
+      leftCol: {
+        title: 'Revenue',
+        accentColor: [5, 150, 105], // emerald-600
+        rows: leftRows,
+        total: totalRevenue
+      },
+      rightCol: {
+        title: 'Expenses',
+        accentColor: [220, 38, 38], // red-600
+        rows: rightRows,
+        total: totalExpenses
+      },
+      footer: {
+        label: 'Net Income',
+        value: netIncome
+      }
+    }).then(() => {
+      setToast({ visible: true, message: 'PDF Exported successfully', type: 'success' })
+    }).catch(e => {
+      setToast({ visible: true, message: 'Export failed: ' + e.message, type: 'error' })
+    })
+  }
+
   return (
     <>
+      <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={() => setToast(prev => ({ ...prev, visible: false }))} />
       <Modal open={drillAccountId !== null} title={`Account Drill Down — ${drillAccountName}`} onClose={() => setDrillAccountId(null)}>
         {drillAccountId && (
           <AccountDrillDown
@@ -195,6 +240,10 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
         </div>
         <div className="page-header-right">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Button variant="secondary" size="sm" icon={<Download size={14} />} onClick={handleExportPdf}>
+              Export PDF
+            </Button>
+            <div style={{ width: 16 }} />
             <Filter size={16} color="var(--text-secondary)" />
             <div style={{ width: 220 }}>
               <Select

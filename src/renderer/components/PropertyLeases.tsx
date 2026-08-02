@@ -21,6 +21,7 @@ import AccountDrillDown from './AccountDrillDown'
 import Toast from './Toast'
 import ConfirmDialog from './design/ConfirmDialog'
 import { CurrencyText } from './design/CurrencyText'
+import { exportTableData } from '../services/reportExportService'
 
 import type { AuditEvent } from '../data/auditTypes'
 import { recordModuleEvent } from '../services/auditService'
@@ -440,6 +441,11 @@ export default function PropertyLeases({
   const [depositBankId, setDepositBankId] = useState(defaultBank ? defaultBank.id : '')
   const [depositPaymentMode, setDepositPaymentMode] = useState<'Cash' | 'Security Cheque' | 'Bank Transfer'>('Bank Transfer')
   const [depositDateReceived, setDepositDateReceived] = useState<string>('')
+
+  const [isDepositManagerOpen, setIsDepositManagerOpen] = useState(false)
+  const [showExportMenu, setShowExportMenu] = useState(false)
+
+  // Sub-tabs in the detail view
 
   React.useEffect(() => {
     if (formStartDate) {
@@ -1059,6 +1065,54 @@ export default function PropertyLeases({
     setToast({ visible: true, message: `Lease status changed to ${status}`, type: 'success' })
   }
 
+  const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+    if (filteredLeases.length === 0) {
+      setToast({ visible: true, message: 'No records to export.', type: 'error' })
+      setShowExportMenu(false)
+      return
+    }
+
+    const columns = ['Lease No', 'Property', 'Unit', 'Tenant', 'Start Date', 'End Date', 'Rental Value', 'Status']
+    const rows = filteredLeases.map(l => {
+      const u = units.find(u => u.id === l.unitId)
+      const p = properties.find(p => p.id === u?.propertyId)
+      const t = tenants.find(t => t.id === l.tenantId)
+      return [
+        l.leaseNumber,
+        p?.name || '—',
+        u?.unitNumber || '—',
+        t?.name || '—',
+        formatDate(l.startDate, dateFormat),
+        formatDate(l.endDate, dateFormat),
+        l.rentalValue.toLocaleString(undefined, { minimumFractionDigits: 2 }),
+        l.status || 'Active'
+      ]
+    })
+
+    exportTableData({
+      format,
+      title: 'Lease Management',
+      subtitle: 'List of all property leases',
+      filename: `Property_Leases_${new Date().toISOString().split('T')[0]}`,
+      columns,
+      rows,
+      currency
+    })
+
+    onAuditEvent?.(
+      recordModuleEvent(
+        'Lease Management',
+        'Export',
+        'Leases List',
+        'bulk',
+        `Exported ${filteredLeases.length} leases to ${format.toUpperCase()}`
+      )
+    )
+
+    setToast({ visible: true, message: 'Export completed successfully.', type: 'success' })
+    setShowExportMenu(false)
+  }
+
   return (
     <>
       <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={() => setToast(prev => ({ ...prev, visible: false }))} />
@@ -1073,12 +1127,24 @@ export default function PropertyLeases({
         onCancel={() => setDeleteTarget(null)}
       />
 
-      <div className="page-header">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div className="page-title">Lease Management</div>
           <div className="page-subtitle">Unified workspace for Leases, Tenant details, and Post-Dated Cheques</div>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ position: 'relative' }}>
+            <Button variant="secondary" size="sm" onClick={() => setShowExportMenu(!showExportMenu)}>
+              Export <span style={{ marginLeft: 6 }}>▼</span>
+            </Button>
+            {showExportMenu && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', border: '1px solid var(--border-color)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, width: 140, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <button className="export-menu-item" onClick={() => handleExport('pdf')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>PDF (.pdf)</button>
+                <button className="export-menu-item" onClick={() => handleExport('xlsx')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>Excel (.xlsx)</button>
+                <button className="export-menu-item" onClick={() => handleExport('csv')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>CSV (.csv)</button>
+              </div>
+            )}
+          </div>
           <Button variant="primary" size="sm" icon={<PlusIcon />} onClick={openAdd}>
             Create Lease
           </Button>

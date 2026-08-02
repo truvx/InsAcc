@@ -4,6 +4,7 @@ import { Badge, Button, PlusIcon, Input, Select, Modal, SearchIcon, CloseIcon, E
 import { DataTable, type Column } from './design/Table'
 import { formatDate } from '../utils'
 import { createTenant, updateTenant, deleteTenant, searchTenants } from '../services/tenantService'
+import { exportTableData } from '../services/reportExportService'
 import ConfirmDialog from './design/ConfirmDialog'
 import Toast from './Toast'
 
@@ -93,6 +94,7 @@ export default function PropertyTenants({ currency: _currency, dateFormat = 'DD/
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({ visible: false, message: '', type: 'success' })
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null)
   const [showMoreDetails, setShowMoreDetails] = useState(false)
+  const [showExportMenu, setShowExportMenu] = useState(false)
 
   const activeTenants = useMemo(() => tenants.filter(t => (t.status ?? 'Active') === 'Active'), [tenants])
 
@@ -200,6 +202,61 @@ export default function PropertyTenants({ currency: _currency, dateFormat = 'DD/
     setForm(prev => ({ ...prev, [key]: value }))
   }
 
+  const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+    const filteredTenants = tenants.filter(t => {
+      const matchSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (t.email && t.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                          (t.phone && t.phone.toLowerCase().includes(searchQuery.toLowerCase()))
+      if (!matchSearch) return false
+      if (statusFilter !== 'All') {
+        const tStatus = t.status ?? 'Active'
+        if (statusFilter === 'Active' && tStatus !== 'Active') return false
+        if (statusFilter === 'Inactive' && tStatus !== 'Inactive') return false
+      }
+      return true
+    })
+
+    if (filteredTenants.length === 0) {
+      setToast({ visible: true, message: 'No records to export.', type: 'error' })
+      setShowExportMenu(false)
+      return
+    }
+
+    const columns = ['Name', 'Phone', 'Email', 'Nationality', 'Status', 'Leases', 'Created']
+    const rows = filteredTenants.map(t => [
+      t.name,
+      t.phone || '—',
+      t.email || '—',
+      t.nationality || '—',
+      t.status || 'Active',
+      `${getTotalLeaseCount(t.id)}`,
+      formatDate(t.createdAt, dateFormat)
+    ])
+
+    exportTableData({
+      format,
+      title: 'Tenant Management',
+      subtitle: 'List of all property tenants',
+      filename: `Property_Tenants_${new Date().toISOString().split('T')[0]}`,
+      columns,
+      rows,
+      currency: _currency
+    })
+
+    onAuditEvent?.(
+      recordModuleEvent(
+        'Tenant Management',
+        'Export',
+        'Tenants List',
+        'bulk',
+        `Exported ${filteredTenants.length} tenants to ${format.toUpperCase()}`
+      )
+    )
+
+    setToast({ visible: true, message: 'Export completed successfully.', type: 'success' })
+    setShowExportMenu(false)
+  }
+
   const columns: Column<TenantEntry>[] = [
     {
       key: 'name',
@@ -283,14 +340,28 @@ export default function PropertyTenants({ currency: _currency, dateFormat = 'DD/
 
   return (
     <>
-      <div className="page-header">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div className="page-title">Tenant Management</div>
           <div className="page-subtitle">Manage property tenants and their details</div>
         </div>
-        <Button variant="primary" size="sm" onClick={openAdd}>
-          <PlusIcon /> Add Tenant
-        </Button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ position: 'relative' }}>
+            <Button variant="secondary" size="sm" onClick={() => setShowExportMenu(!showExportMenu)}>
+              Export <ChevronDown />
+            </Button>
+            {showExportMenu && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', border: '1px solid var(--border-color)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, width: 140, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <button className="export-menu-item" onClick={() => handleExport('pdf')}>PDF (.pdf)</button>
+                <button className="export-menu-item" onClick={() => handleExport('xlsx')}>Excel (.xlsx)</button>
+                <button className="export-menu-item" onClick={() => handleExport('csv')}>CSV (.csv)</button>
+              </div>
+            )}
+          </div>
+          <Button variant="primary" size="sm" onClick={openAdd}>
+            <PlusIcon /> Add Tenant
+          </Button>
+        </div>
       </div>
 
       <div className="page-body">

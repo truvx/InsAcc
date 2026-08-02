@@ -24,6 +24,7 @@ import { invalidateBalanceCache, getAccountBalance } from '../accounting/ledgerS
 import { generateChildCode } from '../accounting/chartOfAccountsService'
 import { CurrencyText } from './design/CurrencyText'
 import { formatCurrency } from '../utils/currencyHelpers'
+import { exportTableData } from '../services/reportExportService'
 
 export interface StatementEntry {
   date: string
@@ -93,6 +94,9 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
   const [importOpen, setImportOpen] = useState(false)
   const [selectedHistoryRec, setSelectedHistoryRec] = useState<BankReconciliationRecord | null>(null)
   const [selectedReconRec, setSelectedReconRec] = useState<BankReconciliationRecord | null>(null)
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [exportFormat, setExportFormat] = useState<'pdf' | 'csv' | 'xlsx'>('pdf')
+  const [exportAccountId, setExportAccountId] = useState('')
 
   const handleImportStatement = (lines: Omit<BankStatementLine, 'matchedVoucherLineId' | 'matchConfidence' | 'status'>[]) => {
     if (lines.length === 0) return
@@ -991,6 +995,86 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
         )}
       </EntityForm>
 
+      <Modal open={showExportModal} onClose={() => setShowExportModal(false)} title="Export Bank Ledger">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Select
+            label="Bank Account"
+            value={exportAccountId}
+            onChange={e => setExportAccountId(e.target.value)}
+            options={propAccounts.map(a => ({ value: a.id, label: a.institution + ' (' + a.accountNumber + ')' }))}
+          />
+          <Select
+            label="Export Format"
+            value={exportFormat}
+            onChange={e => setExportFormat(e.target.value as any)}
+            options={[
+              { value: 'pdf', label: 'PDF (.pdf)' },
+              { value: 'xlsx', label: 'Excel (.xlsx)' },
+              { value: 'csv', label: 'CSV (.csv)' }
+            ]}
+          />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
+            <Button variant="secondary" onClick={() => setShowExportModal(false)}>Cancel</Button>
+            <Button variant="primary" onClick={() => {
+              if (!exportAccountId) {
+                setToast({ visible: true, message: 'Please select a bank account', type: 'error' })
+                return
+              }
+              const acc = propAccounts.find(a => a.id === exportAccountId)
+              if (!acc) return
+
+              const txns = propTransactions.filter(t => t.bankAccountId === exportAccountId)
+              if (txns.length === 0) {
+                setToast({ visible: true, message: 'No transactions for this account.', type: 'error' })
+                return
+              }
+
+              const columns = ['Date', 'Description', 'Type', 'Debit', 'Credit', 'Balance']
+              let runningBalance = acc.initialBalance || 0
+              const rows = txns.map(t => {
+                const isInc = t.type === 'income' || t.type === 'transfer_in' || t.type === 'deposit'
+                if (isInc) runningBalance += t.amount
+                else runningBalance -= t.amount
+                
+                return [
+                  formatDate(t.date, dateFormat),
+                  t.description || t.type,
+                  t.type,
+                  isInc ? '' : t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }),
+                  isInc ? t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '',
+                  runningBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })
+                ]
+              })
+
+              exportTableData({
+                format: exportFormat,
+                title: `${acc.institution} Ledger`,
+                subtitle: `Account: ${acc.accountNumber} - Current Balance: ${formatCurrency(runningBalance, currency)}`,
+                filename: `Bank_Ledger_${acc.institution.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`,
+                columns,
+                rows,
+                currency
+              })
+
+              onAuditEvent?.(
+                recordModuleEvent(
+                  'Bank Accounts',
+                  'Export',
+                  'Bank Ledger',
+                  acc.id,
+                  `Exported ledger for ${acc.institution} to ${exportFormat.toUpperCase()}`
+                )
+              )
+
+              setToast({ visible: true, message: 'Export completed successfully.', type: 'success' })
+              setShowExportModal(false)
+            }}>
+              Export
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       <div className="page-header">
         <div className="page-header-left">
           <div>
@@ -1002,7 +1086,15 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
             </div>
           </div>
         </div>
-        <div className="page-header-right">
+        <div className="page-header-right" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Button variant="secondary" size="sm" onClick={() => {
+            if (propAccounts.length > 0 && !exportAccountId) {
+              setExportAccountId(propAccounts[0].id)
+            }
+            setShowExportModal(true)
+          }}>
+            Export Ledger
+          </Button>
           <Button variant="primary" size="sm" onClick={() => openDialog('addAccount')}><PlusIcon /> Add Account</Button>
         </div>
       </div>

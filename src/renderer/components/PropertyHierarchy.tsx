@@ -5,6 +5,8 @@ import { FolderTree, ChevronRight, ChevronDown, Plus, Pencil, Trash2, Eye, EyeOf
 
 import type { AuditEvent } from '../data/auditTypes'
 import { recordModuleEvent } from '../services/auditService'
+import { exportTableData } from '../services/reportExportService'
+import Toast from './Toast'
 
 interface Props {
   currency?: string
@@ -143,6 +145,8 @@ export default function PropertyHierarchy({
   onAuditEvent,
 }: Props) {
   const [search, setSearch] = useState('')
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({ visible: false, message: '', type: 'success' })
+  const [showExportMenu, setShowExportMenu] = useState(false)
 
   // Persist expanded states across page navigation
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(() => {
@@ -188,6 +192,48 @@ export default function PropertyHierarchy({
   }
 
   const nextId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+
+  const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+    if (filteredTreeNodes.length === 0) {
+      setToast({ visible: true, message: 'No records to export.', type: 'error' })
+      setShowExportMenu(false)
+      return
+    }
+
+    const rows: string[][] = []
+    const flatten = (nodes: TreeNode[], depth = 0) => {
+      nodes.forEach(n => {
+        const typeStr = n.type === 'main-category' ? 'Main Category' : n.type === 'property' ? 'Property' : n.type === 'income-category' ? 'Income Category' : 'Unit/Customer'
+        const prefix = '  '.repeat(depth)
+        rows.push([typeStr, prefix + n.name])
+        flatten(n.children, depth + 1)
+      })
+    }
+    flatten(filteredTreeNodes)
+
+    exportTableData({
+      format,
+      title: 'Property Portfolio Hierarchy',
+      subtitle: 'Structural layout of categories and properties',
+      filename: `Property_Hierarchy_${new Date().toISOString().split('T')[0]}`,
+      columns: ['Type', 'Name'],
+      rows,
+      currency
+    })
+
+    onAuditEvent?.(
+      recordModuleEvent(
+        'Property Hierarchy',
+        'Export',
+        'Hierarchy Tree',
+        'bulk',
+        `Exported hierarchy to ${format.toUpperCase()}`
+      )
+    )
+
+    setToast({ visible: true, message: 'Export completed successfully.', type: 'success' })
+    setShowExportMenu(false)
+  }
 
   const toggle = (set: Set<string>, key: string) => {
     const next = new Set(set)
@@ -645,6 +691,8 @@ export default function PropertyHierarchy({
         }
       `}</style>
 
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} onClose={() => setToast(t => ({ ...t, visible: false }))} />
+
       {/* Page Header */}
       <div className="page-header">
         <div className="page-header-left">
@@ -660,6 +708,18 @@ export default function PropertyHierarchy({
           <button className="btn btn-secondary" onClick={collapseAll} style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
             <EyeOff size={14} /> Collapse All
           </button>
+          <div style={{ position: 'relative' }}>
+            <button className="btn btn-secondary" onClick={() => setShowExportMenu(!showExportMenu)} style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
+              Export <ChevronDown size={14} />
+            </button>
+            {showExportMenu && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', border: '1px solid var(--border-color)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, width: 140, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <button className="export-menu-item" onClick={() => handleExport('pdf')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>PDF (.pdf)</button>
+                <button className="export-menu-item" onClick={() => handleExport('xlsx')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>Excel (.xlsx)</button>
+                <button className="export-menu-item" onClick={() => handleExport('csv')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>CSV (.csv)</button>
+              </div>
+            )}
+          </div>
           <button className="btn btn-primary" onClick={() => openAddEdit('Add Main Category', '', handleAddCategory)} style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
             <PlusIcon /> Add Category
           </button>

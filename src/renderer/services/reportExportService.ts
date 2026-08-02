@@ -1199,7 +1199,7 @@ export async function exportSideBySidePdf(p: SideBySideExportParams): Promise<st
     alternateRowStyles: { fillColor: [255, 255, 255] },
   })
 
-  const leftY = (doc as any).lastAutoTable.finalY
+  const leftY = (doc as any).lastAutoTable?.finalY || y + 50
 
   // Right column
   autoTable(doc, {
@@ -1217,7 +1217,7 @@ export async function exportSideBySidePdf(p: SideBySideExportParams): Promise<st
     alternateRowStyles: { fillColor: [255, 255, 255] },
   })
 
-  y = Math.max((doc as any).lastAutoTable.finalY, leftY) + 15
+  y = Math.max((doc as any).lastAutoTable?.finalY || (y + 50), leftY) + 15
 
   // Footer (Net Income)
   doc.setFontSize(12)

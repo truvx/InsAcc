@@ -25,6 +25,7 @@ import {
 
 import type { AuditEvent } from '../data/auditTypes'
 import { recordModuleEvent } from '../services/auditService'
+import { exportTableData } from '../services/reportExportService'
 
 interface Props {
   pdcCheques: PdcCheque[]
@@ -178,7 +179,8 @@ export default function PropertyPdcManager({
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
   const [dateQuickFilter, setDateQuickFilter] = useState<'All' | 'Today' | 'Tomorrow' | 'Overdue' | 'ThisWeek'>('All')
-  const [propertyFilter, setPropertyFilter] = useState('All')
+  const [propertyFilter, setPropertyFilter] = useState<string>('All')
+  const [showExportMenu, setShowExportMenu] = useState(false)
   const [groupPage, setGroupPage] = useState(0)
   const groupsPerPage = 5
 
@@ -847,6 +849,52 @@ export default function PropertyPdcManager({
 
   const quickDateFilterOptions = ['All', 'Today', 'Tomorrow', 'Overdue', 'ThisWeek'] as const
 
+  const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+    if (filtered.length === 0) {
+      setToast({ visible: true, message: 'No cheques to export.', type: 'error' })
+      setShowExportMenu(false)
+      return
+    }
+
+    const columns = ['Lease No.', 'Tenant', 'Property', 'Cheque No.', 'Bank', 'Date', 'Amount', 'Status']
+    const rows = filtered.map(chq => {
+      const meta = chequeMeta[chq.id]
+      return [
+        meta?.lease?.leaseNumber || chq.leaseId,
+        meta?.tenant?.name || 'Unknown',
+        meta?.property?.name || '—',
+        chq.chequeNumber,
+        chq.bankName || '—',
+        formatDate(chq.dueDate, dateFormat),
+        chq.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }),
+        chq.status
+      ]
+    })
+
+    exportTableData({
+      format,
+      title: 'Post-Dated Cheques (PDC) Schedule',
+      subtitle: `Exported on ${formatDate(new Date().toISOString(), dateFormat)}`,
+      filename: `PDC_Schedule_${new Date().toISOString().split('T')[0]}`,
+      columns,
+      rows,
+      currency
+    })
+
+    onAuditEvent?.(
+      recordModuleEvent(
+        'PDC Manager',
+        'Export',
+        'PDC Schedule',
+        'bulk',
+        `Exported ${filtered.length} cheques to ${format.toUpperCase()}`
+      )
+    )
+
+    setToast({ visible: true, message: 'Export completed successfully.', type: 'success' })
+    setShowExportMenu(false)
+  }
+
   return (
     <>
       {/* ─── HEADER ─── */}
@@ -859,7 +907,16 @@ export default function PropertyPdcManager({
         </div>
         <div className="page-header-right" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setToast({ visible: true, message: 'PDC cheques check complete: all lease payment schedules are fully generated.', type: 'success' })}>Generate PDC</Button>
-          <Button variant="secondary" size="sm" icon={<Download size={14} />} onClick={() => setToast({ visible: true, message: 'Exporting PDC schedule...', type: 'success' })}>Export</Button>
+          <div style={{ position: 'relative' }}>
+            <Button variant="secondary" size="sm" icon={<Download size={14} />} onClick={() => setShowExportMenu(!showExportMenu)}>Export <ChevronLeftIcon style={{ transform: showExportMenu ? 'rotate(90deg)' : 'rotate(-90deg)', width: 12, height: 12, marginLeft: 4 }} /></Button>
+            {showExportMenu && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', border: '1px solid var(--border-color)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, width: 140, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <button className="export-menu-item" onClick={() => handleExport('pdf')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>PDF (.pdf)</button>
+                <button className="export-menu-item" onClick={() => handleExport('xlsx')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>Excel (.xlsx)</button>
+                <button className="export-menu-item" onClick={() => handleExport('csv')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>CSV (.csv)</button>
+              </div>
+            )}
+          </div>
           <Button variant="secondary" size="sm" icon={<RefreshCw size={14} />} onClick={() => setToast({ visible: true, message: 'Refreshed.', type: 'success' })}>Refresh</Button>
         </div>
       </div>
