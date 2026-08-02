@@ -491,17 +491,26 @@ export default function PropertyPaymentVoucher({
       subtitle: `Total Vouchers: ${filtered.length}`,
       filename: `Payment_Vouchers_${new Date().toISOString().split('T')[0]}`,
       columns: ['Voucher #', 'Date', 'Paid To', 'Paid From', 'Expense Type', 'Description', 'Amount', 'Payment Mode', 'Status'],
-      rows: filtered.map(v => [
-        v.voucherNumber,
-        formatDate(v.date, dateFormat),
-        v.metadata?.tenantName || v.metadata?.vendorName || v.metadata?.paidTo || v.metadata?.receivedFrom || v.payee || v.payeeId || '-',
-        propAccounts.find(a => a.id === v.bankAccountId)?.institution || v.bankAccountId || '-',
-        EXPENSE_ACCOUNTS.find(a => a.code === v.metadata?.categoryId)?.name || v.metadata?.categoryId || '-',
-        v.description || '-',
-        formatCurrency(v.amount, currency),
-        v.metadata?.paymentMode || 'Bank Transfer',
-        v.status || 'Draft'
-      ]),
+      rows: filtered.map(v => {
+        let paidToMatch = v.description.match(/\(paid to\s+(.*?)\)$/i)
+        if (!paidToMatch && v.description.includes('Expense:')) {
+          paidToMatch = v.description.match(/for\s+(.*)$/i)
+        }
+        const paidTo = paidToMatch ? paidToMatch[1] : '—'
+        const totalAmount = v.lines.reduce((s: number, l: any) => s + (l.type === 'Credit' ? (l.baseAmount ?? l.amount) : 0), 0)
+
+        return [
+          v.number,
+          formatDate(v.date, dateFormat),
+          paidTo,
+          getBankName(v),
+          getExpenseName(v),
+          v.description || '-',
+          formatCurrency(totalAmount, currency),
+          v.paymentMode || 'Unknown',
+          v.status || 'Draft'
+        ]
+      }),
       currency
     })
 

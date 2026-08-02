@@ -525,16 +525,22 @@ export default function PropertyReceiptVoucher({
       subtitle: `Total Vouchers: ${filtered.length}`,
       filename: `Receipt_Vouchers_${new Date().toISOString().split('T')[0]}`,
       columns: ['Voucher #', 'Date', 'Received From', 'Credited To', 'Description', 'Amount', 'Payment Mode', 'Status'],
-      rows: filtered.map(v => [
-        v.voucherNumber,
-        formatDate(v.date, dateFormat),
-        v.metadata?.tenantName || v.metadata?.vendorName || v.metadata?.paidTo || v.metadata?.receivedFrom || v.payee || v.payeeId || '-',
-        propAccounts.find(a => a.id === v.bankAccountId)?.institution || v.bankAccountId || '-',
-        v.description || '-',
-        formatCurrency(v.amount, currency),
-        v.metadata?.paymentMode || 'Bank Transfer',
-        v.status || 'Draft'
-      ]),
+      rows: filtered.map(v => {
+        const refInfo = getReferenceInfo(v.reference)
+        const receivedFrom = refInfo?.tenant || v.reference || '—'
+        const totalAmount = v.lines.reduce((s: number, l: any) => s + (l.type === 'Debit' ? (l.baseAmount ?? l.amount) : 0), 0)
+
+        return [
+          v.number,
+          formatDate(v.date, dateFormat),
+          receivedFrom,
+          getBankName(v),
+          v.description || '-',
+          formatCurrency(totalAmount, currency),
+          v.paymentMode || 'Unknown',
+          v.status || 'Draft'
+        ]
+      }),
       currency
     })
 

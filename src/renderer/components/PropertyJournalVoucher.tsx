@@ -342,14 +342,18 @@ export default function PropertyJournalVoucher({
       subtitle: `Total Journals: ${filtered.length}`,
       filename: `Journal_Vouchers_${new Date().toISOString().split('T')[0]}`,
       columns: ['Voucher #', 'Date', 'Description', 'Reference', 'Total Amount', 'Status'],
-      rows: filtered.map(v => [
-        v.voucherNumber,
-        formatDate(v.date, dateFormat),
-        v.description || '-',
-        v.reference || '-',
-        v.amount ? formatCurrency(v.amount, currency) : '-',
-        v.status || 'Draft'
-      ]),
+      rows: filtered.map(v => {
+        const totalAmount = v.lines.reduce((s: number, l: any) => s + (l.type === 'Debit' ? (l.baseAmount ?? l.amount) : 0), 0)
+
+        return [
+          v.number,
+          formatDate(v.date, dateFormat),
+          v.description || '-',
+          v.reference || '-',
+          totalAmount ? formatCurrency(totalAmount, currency) : '-',
+          v.status || 'Draft'
+        ]
+      }),
       currency
     })
 
