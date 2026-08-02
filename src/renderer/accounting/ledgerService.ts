@@ -358,7 +358,7 @@ export function getRunningBalance(
     result.push({
       date: voucher.date,
       voucherNumber: voucher.number,
-      description: voucher.description || line.narration,
+      description: voucher.description || line.narration || '',
       debit,
       credit,
       balance: Math.round(runningBalance * 100) / 100,
@@ -396,7 +396,7 @@ export function getAccountStatement(
       date: voucher.date,
       voucherNumber: voucher.number,
       voucherType: voucher.type,
-      description: voucher.description || line.narration,
+      description: voucher.description || line.narration || '',
       reference: voucher.reference,
       debit,
       credit,

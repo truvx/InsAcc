@@ -189,13 +189,13 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
         filename: `Profit_Loss_${new Date().toISOString().split('T')[0]}`,
         leftCol: {
           title: 'Revenue',
-          accentColor: [5, 150, 105], // emerald-600
+          accentColor: '#059669', // emerald-600
           rows: leftRows,
           total: totalRevenue
         },
         rightCol: {
           title: 'Expenses',
-          accentColor: [220, 38, 38], // red-600
+          accentColor: '#dc2626', // red-600
           rows: rightRows,
           total: totalExpenses
         },

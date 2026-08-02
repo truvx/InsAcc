@@ -1080,7 +1080,7 @@ export default function PropertyLeases({
         t?.name || '—',
         formatDate(l.startDate, dateFormat),
         formatDate(l.endDate, dateFormat),
-        l.rentalValue.toLocaleString(undefined, { minimumFractionDigits: 2 }),
+        l.annualRent.toLocaleString(undefined, { minimumFractionDigits: 2 }),
         l.status || 'Active'
       ]
     })

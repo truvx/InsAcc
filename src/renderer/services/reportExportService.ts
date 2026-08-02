@@ -186,6 +186,7 @@ export interface ExcelExportParams {
   accounts: Account[]
   vouchers: Voucher[]
   auditLogs?: any[]
+  reportType?: 'Standard' | 'LedgerBreakup' | 'PropertyBreakup' | 'SupplierBreakup' | 'TenantBreakup'
   filters?: {
     dateRange?: { start: string; end: string }
     bankAccountId?: string
@@ -203,6 +204,7 @@ export interface ExcelExportParams {
   tenants?: any[]
   leases?: any[]
   investments?: any[]
+  advancedOptions?: any
 }
 
 // ── Colour palette (ARGB hex for xlsx-js-style) ───────────────────
@@ -772,11 +774,11 @@ function getGroupedData(p: ExcelExportParams, fv: Voucher[]): { groupName: strin
         const prop = p.properties?.find(px => px.id === (lease?.propertyId || (l.referenceType === 'Property' ? l.referenceId : null)))
         key = prop?.name || 'Unassigned Property'
       } else if (p.reportType === 'SupplierBreakup') {
-        key = v.tenantName || v.reference || 'Unknown Supplier'
+        key = v.reference || v.description || 'Unknown Supplier'
       } else if (p.reportType === 'TenantBreakup') {
         const lease = p.leases?.find(lx => lx.leaseNumber === v.reference || (l.referenceType === 'Lease' && l.referenceId === lx.id))
         const tenant = p.tenants?.find(tx => tx.id === lease?.tenantId)
-        key = tenant?.name || v.tenantName || 'Unknown Tenant'
+        key = tenant?.name || v.reference || 'Unknown Tenant'
       }
       
       if (!map.has(key)) map.set(key, [])
@@ -925,7 +927,7 @@ export async function exportAccountingCsv(p: ExcelExportParams): Promise<string 
     v.lines.forEach(l => {
       const acc = p.accounts.find(a => a.id === l.accountId)?.name || l.accountId
       const desc = (l.narration || v.description || '').replace(/"/g, '""')
-      csv += `${v.date},${v.voucherNumber},${v.type},"${acc}",${l.type === 'Debit' ? l.amount : ''},${l.type === 'Credit' ? l.amount : ''},"${desc}"\n`
+      csv += `${v.date},${v.number},${v.type},"${acc}",${l.type === 'Debit' ? l.amount : ''},${l.type === 'Credit' ? l.amount : ''},"${desc}"\n`
     })
   })
   
@@ -1051,7 +1053,7 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
         const dStr = String(x.desc || '')
         return [
           x.v.date,
-          x.v.voucherNumber,
+          x.v.number,
           x.v.reference || '-',
           x.v.type,
           x.accName,
@@ -1089,7 +1091,7 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
         const desc = l.narration || v.description || ''
         tableData.push([
           v.date,
-          v.voucherNumber,
+          v.number,
           v.reference || '-',
           v.type,
           acc,

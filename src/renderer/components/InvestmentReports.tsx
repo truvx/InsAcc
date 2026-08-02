@@ -210,7 +210,7 @@ export default function InvestmentReports({
             purchaseValue: h.purchaseValue,
             currentValue: h.currentValue
           })),
-          reportType,
+          reportType: reportType as 'Standard' | 'LedgerBreakup' | 'PropertyBreakup' | 'SupplierBreakup' | 'TenantBreakup',
           advancedOptions: advanced
         }
         

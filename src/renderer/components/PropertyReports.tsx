@@ -195,7 +195,7 @@ export default function PropertyReports({
           units,
           tenants,
           leases,
-          reportType,
+          reportType: reportType as 'Standard' | 'LedgerBreakup' | 'PropertyBreakup' | 'SupplierBreakup' | 'TenantBreakup',
           advancedOptions: advanced
         }
         
@@ -219,7 +219,7 @@ export default function PropertyReports({
       } else if (activeTab === 'profit-loss') {
         const revTree = plTree.filter(n => {
           const acc = accounts.find(a => a.id === n.accountId)
-          return acc?.type === 'revenue' || acc?.type === 'other_income'
+          return acc?.type === 'revenue'
         })
         const expTree = plTree.filter(n => {
           const acc = accounts.find(a => a.id === n.accountId)

@@ -856,11 +856,11 @@ export default function PropertyPdcManager({
     const rows = filtered.map(chq => {
       const meta = chequeMeta[chq.id]
       return [
-        meta?.lease?.leaseNumber || chq.leaseId,
-        meta?.tenant?.name || 'Unknown',
-        meta?.property?.name || '—',
+        meta?.tenantName ? `${chq.leaseId}` : chq.leaseId,
+        meta?.tenantName || 'Unknown',
+        meta?.propertyName || '—',
         chq.chequeNumber,
-        chq.bankName || '—',
+        meta?.bankName || '—',
         formatDate(chq.dueDate, dateFormat),
         chq.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }),
         chq.status
@@ -904,7 +904,7 @@ export default function PropertyPdcManager({
         <div className="page-header-right" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setToast({ visible: true, message: 'PDC cheques check complete: all lease payment schedules are fully generated.', type: 'success' })}>Generate PDC</Button>
           <div style={{ position: 'relative' }}>
-            <Button variant="secondary" size="sm" icon={<Download size={14} />} onClick={() => setShowExportMenu(!showExportMenu)}>Export <ChevronLeftIcon style={{ transform: showExportMenu ? 'rotate(90deg)' : 'rotate(-90deg)', width: 12, height: 12, marginLeft: 4 }} /></Button>
+            <Button variant="secondary" size="sm" icon={<Download size={14} />} onClick={() => setShowExportMenu(!showExportMenu)}>Export <span style={{ display: 'inline-block', transform: showExportMenu ? 'rotate(90deg)' : 'rotate(-90deg)', width: 12, height: 12, marginLeft: 4 }}><ChevronLeftIcon /></span></Button>
             {showExportMenu && (
               <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', border: '1px solid var(--border-color)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, width: 140, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 <button className="export-menu-item" onClick={() => handleExport('pdf')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>PDF (.pdf)</button>

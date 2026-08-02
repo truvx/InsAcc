@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react'
 import type { VendorEntry, PropertyExpense, PropertyEntry } from '../data/propertyTypes'
+import type { Voucher } from '../accounting/types'
 import { DEFAULT_VENDOR_CATEGORIES } from '../data/propertyTypes'
 import { Badge, Button, PlusIcon, Input, Select, Modal, SearchIcon, CloseIcon, EditIcon, TrashIcon, EmptyState, KpiCard } from './design/DesignSystem'
 import { DataTable, type Column } from './design/Table'
@@ -179,7 +180,7 @@ export default function PropertyVendors({
       })
       .map(v => {
         const totalAmount = v.lines.reduce((s: number, l: any) => s + (l.type === 'Credit' ? (l.baseAmount ?? l.amount) : 0), 0)
-        const debitLine = v.lines.find(l => l.type === 'Debit')
+        const debitLine = v.lines.find((l: { type: string; accountId?: string }) => l.type === 'Debit')
         
         return {
           id: v.id,
@@ -354,7 +355,6 @@ export default function PropertyVendors({
               <td>${e.expenseNo}</td>
               <td>${prop?.name || '–'}</td>
               <td>${e.category}</td>
-              <td>${e.paymentMethod}</td>
               <td style="text-align:right">$<CurrencyText value={e.totalAmount} currency={currency} /></td>
             </tr>`
           }).join('')}

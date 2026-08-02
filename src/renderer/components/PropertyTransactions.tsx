@@ -34,6 +34,7 @@ interface Props {
   pdcCheques?: PdcCheque[]
   securityDeposits?: SecurityDeposit[]
   propExpenses?: PropertyExpense[]
+  setPropExpenses?: React.Dispatch<React.SetStateAction<PropertyExpense[]>>
   leases?: LeaseEntry[]
 }
 
@@ -59,6 +60,7 @@ export default function PropertyTransactions({
   pdcCheques = [],
   securityDeposits = [],
   propExpenses = [],
+  setPropExpenses,
   leases = []
 }: Props) {
   const [typeFilter, setTypeFilter] = useState<'All' | 'Income' | 'Expense'>('All')
@@ -1011,7 +1013,7 @@ export default function PropertyTransactions({
               </div>
             )}
           </div>
-          <Button variant="primary" size="sm" onClick={() => setNewTxnOpen(true)}>
+          <Button variant="primary" size="sm" onClick={() => setShowForm(true)}>
             Add Transaction
           </Button>
         </div>

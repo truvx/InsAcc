@@ -1042,7 +1042,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
                 ]
               })
 
-              const currentBalance = exportStatement.length > 0 ? exportStatement[exportStatement.length - 1].balance : (acc.initialBalance || 0)
+              const currentBalance = exportStatement.length > 0 ? exportStatement[exportStatement.length - 1].balance : (acc.openingBalance || 0)
 
               exportTableData({
                 format: exportFormat,

@@ -64,7 +64,7 @@ export default function InvestmentHistory({
         <div className="page-header-left">
           <div>
             <div className="page-title">Activity Log</div>
-            <div className="page-subtitle">{filtered.length} total event{filtered.length !== 1 ? 's' : ''}</div>
+            <div className="page-subtitle">{grouped.reduce((s, g) => s + g.entries.length, 0)} total event{grouped.reduce((s, g) => s + g.entries.length, 0) !== 1 ? 's' : ''}</div>
           </div>
         </div>
         {onClearHistory && (

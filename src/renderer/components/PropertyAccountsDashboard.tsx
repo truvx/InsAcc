@@ -194,7 +194,7 @@ export default function PropertyAccountsDashboard({ currency = 'AED', accounts, 
         date: v.date,
         number: v.number,
         type: v.type,
-        description: v.narration || '',
+        description: v.description || '',
         amount
       }
     })

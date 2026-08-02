@@ -238,13 +238,13 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
         filename: `Balance_Sheet_${new Date().toISOString().split('T')[0]}`,
         leftCol: {
           title: 'Assets',
-          accentColor: [49, 46, 129],
+          accentColor: '#312e81',
           rows: leftRows,
           total: totalAssets
         },
         rightCol: {
           title: 'Liabilities & Equity',
-          accentColor: [124, 45, 18],
+          accentColor: '#7c2d12',
           rows: rightRows,
           total: totalLiabilities + totalEquity
         },
