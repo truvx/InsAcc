@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf'
-import { autoTable } from 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx-js-style'
 import { saveWithDialog } from './exportService'
 import type { MonthlyTrend, AssetAllocation, CategoryBreakdown } from '../data/reports'
