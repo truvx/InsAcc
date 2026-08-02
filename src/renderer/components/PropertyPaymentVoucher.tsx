@@ -2,7 +2,9 @@ import React, { useState, useMemo } from 'react'
 import type { Account, Voucher, BankMapping, PostingResult } from '../accounting/types'
 import type { PropAccount, PropertyEntry, UnitEntry, VendorEntry } from '../data/propertyTypes'
 import type { PurchaseRecord } from '../data/purchaseLedger'
-import { Button, Input, Select, Badge, EmptyState, SearchIcon, CloseIcon } from './design/DesignSystem'
+import { Button, Input, Select, Badge, EmptyState, SearchIcon, CloseIcon, ChevronDownIcon } from './design/DesignSystem'
+import { exportTableData } from '../services/reportExportService'
+import { formatCurrency } from '../utils/currencyHelpers'
 import { useMasterData } from '../contexts/MasterDataContext'
 import { PartyLookupService, type Party } from '../services/partyLookupService'
 import { SearchablePartySelect } from './design/SearchablePartySelect'
@@ -480,6 +482,43 @@ export default function PropertyPaymentVoucher({
     [filtered]
   )
 
+  const [showExportMenu, setShowExportMenu] = useState(false)
+
+  const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+    exportTableData({
+      format,
+      title: 'Payment Vouchers',
+      subtitle: `Total Vouchers: ${filtered.length}`,
+      filename: `Payment_Vouchers_${new Date().toISOString().split('T')[0]}`,
+      columns: ['Voucher #', 'Date', 'Paid To', 'Paid From', 'Expense Type', 'Description', 'Amount', 'Payment Mode', 'Status'],
+      rows: filtered.map(v => [
+        v.voucherNumber,
+        formatDate(v.date, dateFormat),
+        v.metadata?.tenantName || v.metadata?.vendorName || v.metadata?.paidTo || v.metadata?.receivedFrom || v.payee || v.payeeId || '-',
+        propAccounts.find(a => a.id === v.bankAccountId)?.institution || v.bankAccountId || '-',
+        EXPENSE_ACCOUNTS.find(a => a.code === v.metadata?.categoryId)?.name || v.metadata?.categoryId || '-',
+        v.description || '-',
+        formatCurrency(v.amount, currency),
+        v.metadata?.paymentMode || 'Bank Transfer',
+        v.status || 'Draft'
+      ]),
+      currency
+    })
+
+    onAuditEvent?.(
+      recordModuleEvent(
+        'Payment Vouchers',
+        'Export',
+        'Export Vouchers',
+        'System',
+        `Exported ${filtered.length} payment vouchers to ${format.toUpperCase()}`
+      )
+    )
+
+    setToast?.({ visible: true, message: 'Export completed successfully.', type: 'success' })
+    setShowExportMenu(false)
+  }
+
   return (
     <>
       <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={hideToast} />
@@ -568,7 +607,19 @@ export default function PropertyPaymentVoucher({
             <div className="page-subtitle">Record expenses paid from bank accounts</div>
           </div>
         </div>
-        <div className="page-header-right">
+        <div className="page-header-right" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ position: 'relative' }}>
+            <Button variant="secondary" size="sm" onClick={() => setShowExportMenu(!showExportMenu)}>
+              Export <ChevronDownIcon />
+            </Button>
+            {showExportMenu && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', border: '1px solid var(--border-color)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, width: 140, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <button className="export-menu-item" onClick={() => handleExport('pdf')}>PDF (.pdf)</button>
+                <button className="export-menu-item" onClick={() => handleExport('xlsx')}>Excel (.xlsx)</button>
+                <button className="export-menu-item" onClick={() => handleExport('csv')}>CSV (.csv)</button>
+              </div>
+            )}
+          </div>
           <Button variant="primary" size="sm" onClick={() => { setShowForm(true); resetForm() }}>+ New Payment</Button>
         </div>
       </div>

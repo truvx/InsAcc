@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react'
 import type { Account, Voucher, PostingResult } from '../accounting/types'
-import { Button, Input, Select, EmptyState, SearchIcon, CloseIcon, KpiCard } from './design/DesignSystem'
+import { Button, Input, Select, EmptyState, SearchIcon, CloseIcon, KpiCard, ChevronDownIcon } from './design/DesignSystem'
+import { exportTableData } from '../services/reportExportService'
+import { formatCurrency } from '../utils/currencyHelpers'
 import { DataTable, type Column } from './design/Table'
 import EntityForm from './design/EntityForm'
 import Toast from './Toast'
@@ -331,6 +333,40 @@ export default function PropertyJournalVoucher({
     },
   ], [dateFormat, accounts, currency])
 
+  const [showExportMenu, setShowExportMenu] = useState(false)
+
+  const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+    exportTableData({
+      format,
+      title: 'Journal Vouchers',
+      subtitle: `Total Journals: ${filtered.length}`,
+      filename: `Journal_Vouchers_${new Date().toISOString().split('T')[0]}`,
+      columns: ['Voucher #', 'Date', 'Description', 'Reference', 'Total Amount', 'Status'],
+      rows: filtered.map(v => [
+        v.voucherNumber,
+        formatDate(v.date, dateFormat),
+        v.description || '-',
+        v.reference || '-',
+        v.amount ? formatCurrency(v.amount, currency) : '-',
+        v.status || 'Draft'
+      ]),
+      currency
+    })
+
+    onAuditEvent?.(
+      recordModuleEvent(
+        'Journal Vouchers',
+        'Export',
+        'Export Vouchers',
+        'System',
+        `Exported ${filtered.length} journal vouchers to ${format.toUpperCase()}`
+      )
+    )
+
+    setToast?.({ visible: true, message: 'Export completed successfully.', type: 'success' })
+    setShowExportMenu(false)
+  }
+
   return (
     <>
       <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={hideToast} />
@@ -385,7 +421,19 @@ export default function PropertyJournalVoucher({
             <div className="page-subtitle">Adjusting entries and transfers between accounts</div>
           </div>
         </div>
-        <div className="page-header-right">
+        <div className="page-header-right" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ position: 'relative' }}>
+            <Button variant="secondary" size="sm" onClick={() => setShowExportMenu(!showExportMenu)}>
+              Export <ChevronDownIcon />
+            </Button>
+            {showExportMenu && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', border: '1px solid var(--border-color)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, width: 140, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <button className="export-menu-item" onClick={() => handleExport('pdf')}>PDF (.pdf)</button>
+                <button className="export-menu-item" onClick={() => handleExport('xlsx')}>Excel (.xlsx)</button>
+                <button className="export-menu-item" onClick={() => handleExport('csv')}>CSV (.csv)</button>
+              </div>
+            )}
+          </div>
           <Button variant="primary" size="sm" onClick={() => { setShowForm(true); resetForm() }}>+ New Journal</Button>
         </div>
       </div>
