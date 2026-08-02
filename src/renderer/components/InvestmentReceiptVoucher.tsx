@@ -4,7 +4,8 @@ import type { BankAccount } from '../data/banking'
 import type { PurchaseRecord } from '../data/purchaseLedger'
 import { Button, Input, Select, Badge, EmptyState, SearchIcon, CloseIcon, ChevronDownIcon } from './design/DesignSystem'
 import { exportTableData } from '../services/reportExportService'
-import { recordModuleEvent } from '../utils/auditTrail'
+import { recordModuleEvent } from '../services/auditService'
+import { useMasterData } from '../contexts/MasterDataContext'
 import { PartyLookupService } from '../services/partyLookupService'
 import { SearchablePartySelect } from './design/SearchablePartySelect'
 import { DataTable, type Column } from './design/Table'
@@ -117,18 +118,19 @@ export default function InvestmentReceiptVoucher({
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     try {
-      const columns = ['Voucher #', 'Date', 'Received From', 'Received To', 'Revenue Account', 'Description', 'Amount', 'Payment Mode', 'Status']
-      const rows = filtered.map(v => [
-        v.number,
-        formatDate(v.date, dateFormat),
-        v.partyName || '—',
-        v.bankAccountId ? bankAccounts.find(b => b.id === v.bankAccountId)?.institution || '—' : '—',
-        accounts.find(a => a.id === v.lines[0]?.accountId)?.name || '—',
-        v.description,
-        `${currency} ${v.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        v.paymentMode || '—',
-        v.status
-      ])
+      const columns = ['Voucher #', 'Date', 'Revenue Account', 'Description', 'Amount', 'Payment Mode', 'Status']
+      const rows = filtered.map(v => {
+        const totalAmount = v.lines.reduce((sum, l) => l.type === 'Credit' ? sum + l.amount : sum, 0)
+        return [
+          v.number,
+          formatDate(v.date, dateFormat),
+          accounts.find(a => a.id === v.lines[0]?.accountId)?.name || '—',
+          v.description,
+          `${currency} ${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          v.paymentMode || '—',
+          v.status
+        ]
+      })
       
       exportTableData({
         title: 'Investment Receipt Vouchers',
@@ -141,9 +143,10 @@ export default function InvestmentReceiptVoucher({
 
       onAuditEvent?.(
         recordModuleEvent(
-          'Investment Receipt Vouchers',
+          'Investments',
           'Export',
-          'Export Vouchers',
+          'Receipt Vouchers',
+          'export',
           `Exported ${filtered.length} receipt vouchers to ${format.toUpperCase()}`
         )
       )
@@ -155,6 +158,7 @@ export default function InvestmentReceiptVoucher({
       showToast?.('Export failed. Please try again.', 'error')
     }
   }
+
 
   const bankOptions = useMemo(() => [
     { value: '', label: 'Select bank account' },

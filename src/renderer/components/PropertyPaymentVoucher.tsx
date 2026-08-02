@@ -4,6 +4,7 @@ import type { PropAccount, PropertyEntry, UnitEntry, VendorEntry } from '../data
 import type { PurchaseRecord } from '../data/purchaseLedger'
 import { Button, Input, Select, Badge, EmptyState, SearchIcon, CloseIcon, ChevronDownIcon } from './design/DesignSystem'
 import { exportTableData } from '../services/reportExportService'
+import { recordModuleEvent } from '../services/auditService'
 import { formatCurrency } from '../utils/currencyHelpers'
 import { useMasterData } from '../contexts/MasterDataContext'
 import { PartyLookupService, type Party } from '../services/partyLookupService'
@@ -522,15 +523,15 @@ export default function PropertyPaymentVoucher({
 
     onAuditEvent?.(
       recordModuleEvent(
-        'Payment Vouchers',
+        'Property',
         'Export',
-        'Export Vouchers',
-        'System',
+        'Payment Vouchers',
+        'export',
         `Exported ${filtered.length} payment vouchers to ${format.toUpperCase()}`
       )
     )
 
-    setToast?.({ visible: true, message: 'Export completed successfully.', type: 'success' })
+    showToast('Export completed successfully.', 'success')
     setShowExportMenu(false)
   }
 

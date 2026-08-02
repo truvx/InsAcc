@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react'
 import type { Account, Voucher, PostingResult } from '../accounting/types'
 import { Button, Input, Select, EmptyState, SearchIcon, CloseIcon, KpiCard, ChevronDownIcon } from './design/DesignSystem'
 import { exportTableData } from '../services/reportExportService'
+import { recordModuleEvent } from '../services/auditService'
 import { formatCurrency } from '../utils/currencyHelpers'
 import { DataTable, type Column } from './design/Table'
 import EntityForm from './design/EntityForm'
@@ -366,15 +367,15 @@ export default function PropertyJournalVoucher({
 
     onAuditEvent?.(
       recordModuleEvent(
-        'Journal Vouchers',
+        'Property',
         'Export',
-        'Export Vouchers',
-        'System',
+        'Journal Vouchers',
+        'export',
         `Exported ${filtered.length} journal vouchers to ${format.toUpperCase()}`
       )
     )
 
-    setToast?.({ visible: true, message: 'Export completed successfully.', type: 'success' })
+    showToast('Export completed successfully.', 'success')
     setShowExportMenu(false)
   }
 

@@ -3,7 +3,7 @@ import type { Account, Voucher, PostingResult } from '../accounting/types'
 import { Button, Input, Select, EmptyState, SearchIcon, CloseIcon, KpiCard, ChevronDownIcon } from './design/DesignSystem'
 import { DataTable, type Column } from './design/Table'
 import { exportTableData } from '../services/reportExportService'
-import { recordModuleEvent } from '../utils/auditTrail'
+import { recordModuleEvent } from '../services/auditService'
 import EntityForm from './design/EntityForm'
 import Toast from './Toast'
 import { formatDate, formatModifiedDateTime } from '../utils'
@@ -83,13 +83,14 @@ export default function InvestmentJournalVoucher({
     try {
       const columns = ['Voucher #', 'Date', 'Description', 'Amount', 'Debit Account', 'Credit Account', 'Status']
       const rows = filtered.map(v => {
-        const debitLine = v.lines.find(l => l.type === 'debit')
-        const creditLine = v.lines.find(l => l.type === 'credit')
+        const debitLine = v.lines.find(l => l.type === 'Debit')
+        const creditLine = v.lines.find(l => l.type === 'Credit')
+        const totalAmount = v.lines.reduce((sum, l) => l.type === 'Debit' ? sum + l.amount : sum, 0)
         return [
           v.number,
           formatDate(v.date, dateFormat),
           v.description,
-          `${currency} ${v.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          `${currency} ${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
           debitLine ? accounts.find(a => a.id === debitLine.accountId)?.name || '—' : '—',
           creditLine ? accounts.find(a => a.id === creditLine.accountId)?.name || '—' : '—',
           v.status
@@ -107,9 +108,10 @@ export default function InvestmentJournalVoucher({
 
       onAuditEvent?.(
         recordModuleEvent(
-          'Investment Journal Vouchers',
+          'Investments',
           'Export',
-          'Export Vouchers',
+          'Journal Vouchers',
+          'export',
           `Exported ${filtered.length} journal vouchers to ${format.toUpperCase()}`
         )
       )
@@ -121,6 +123,7 @@ export default function InvestmentJournalVoucher({
       showToast?.('Export failed. Please try again.', 'error')
     }
   }
+
 
   const leafAccounts = useMemo(() =>
     accounts.filter(a => a.isActive && !accounts.some(c => c.parentId === a.id && c.isActive))
