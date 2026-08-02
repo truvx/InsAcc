@@ -47,6 +47,8 @@ export default function PropertyJournalVoucher({
   } = useVoucherLifecycle(accountingEngine, accounts, setVouchers)
 
   const [searchQuery, setSearchQuery] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0])
   const [formDescription, setFormDescription] = useState('')
@@ -65,13 +67,18 @@ export default function PropertyJournalVoucher({
   )
 
   const filtered = useMemo(() => {
-    if (!searchQuery) return journalVouchers
+    let list = journalVouchers
+    if (dateFrom) list = list.filter(v => v.date >= dateFrom)
+    if (dateTo) list = list.filter(v => v.date <= dateTo)
+
+    if (!searchQuery) return list
     const q = searchQuery.toLowerCase()
-    return journalVouchers.filter(v =>
+    return list.filter(v =>
       v.number.toLowerCase().includes(q) ||
-      v.description.toLowerCase().includes(q)
+      v.description.toLowerCase().includes(q) ||
+      v.reference.toLowerCase().includes(q)
     )
-  }, [journalVouchers, searchQuery])
+  }, [journalVouchers, searchQuery, dateFrom, dateTo])
 
   const leafAccounts = useMemo(() =>
     accounts.filter(a => a.isActive && !accounts.some(c => c.parentId === a.id && c.isActive))
@@ -449,7 +456,12 @@ export default function PropertyJournalVoucher({
         </div>
 
         <div className="data-table-toolbar">
-          <div className="data-table-filters" />
+          <div className="data-table-filters" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>From:</span>
+            <input type="date" className="design-input" style={{ padding: '6px 10px', height: 32 }} value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>To:</span>
+            <input type="date" className="design-input" style={{ padding: '6px 10px', height: 32 }} value={dateTo} onChange={e => setDateTo(e.target.value)} />
+          </div>
           <div className="data-table-search">
             <SearchIcon />
             <input

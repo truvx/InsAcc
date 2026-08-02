@@ -84,6 +84,8 @@ export default function PropertyReceiptVoucher({
   const receiptParties = useMemo(() => lookupService.getReceiptParties('property'), [lookupService])
 
   const [searchQuery, setSearchQuery] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0])
   const [formAmount, setFormAmount] = useState('')
@@ -104,14 +106,18 @@ export default function PropertyReceiptVoucher({
   )
 
   const filtered = useMemo(() => {
-    if (!searchQuery) return receiptVouchers
+    let list = receiptVouchers
+    if (dateFrom) list = list.filter(v => v.date >= dateFrom)
+    if (dateTo) list = list.filter(v => v.date <= dateTo)
+
+    if (!searchQuery) return list
     const q = searchQuery.toLowerCase()
-    return receiptVouchers.filter(v =>
+    return list.filter(v =>
       v.number.toLowerCase().includes(q) ||
       v.description.toLowerCase().includes(q) ||
       v.reference.toLowerCase().includes(q)
     )
-  }, [receiptVouchers, searchQuery])
+  }, [receiptVouchers, searchQuery, dateFrom, dateTo])
 
   const bankOptions = useMemo(() => [
     { value: '', label: 'Select bank account' },
@@ -670,7 +676,12 @@ export default function PropertyReceiptVoucher({
         </div>
 
         <div className="data-table-toolbar">
-          <div className="data-table-filters" />
+          <div className="data-table-filters" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>From:</span>
+            <input type="date" className="design-input" style={{ padding: '6px 10px', height: 32 }} value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>To:</span>
+            <input type="date" className="design-input" style={{ padding: '6px 10px', height: 32 }} value={dateTo} onChange={e => setDateTo(e.target.value)} />
+          </div>
           <div className="data-table-search">
             <SearchIcon />
             <input

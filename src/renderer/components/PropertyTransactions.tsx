@@ -61,8 +61,10 @@ export default function PropertyTransactions({
   propExpenses = [],
   leases = []
 }: Props) {
-  const [typeFilter, setTypeFilter] = useState<string>('All')
+  const [typeFilter, setTypeFilter] = useState<'All' | 'Income' | 'Expense'>('All')
   const [searchQuery, setSearchQuery] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
@@ -669,26 +671,26 @@ export default function PropertyTransactions({
   const netIncome = totalIncome - totalExpense
 
   const filtered = useMemo(() => {
-    let result = allTransactions
-    if (typeFilter !== 'All') {
-      const mappedType = typeFilter === 'Income' ? 'credit' : 'debit'
-      result = result.filter(t => t.type === mappedType)
-      if (typeFilter === 'Income') {
-        result = result.filter(t => t.category !== 'Security Deposit')
-      } else if (typeFilter === 'Expense') {
-        result = result.filter(t => t.category !== 'Security Deposit Refund')
-      }
-    }
+    let list = allTransactions
+    if (typeFilter === 'Income') list = list.filter(t => t.type === 'credit')
+    if (typeFilter === 'Expense') list = list.filter(t => t.type === 'debit')
+    
+    if (dateFrom) list = list.filter(t => t.date >= dateFrom)
+    if (dateTo) list = list.filter(t => t.date <= dateTo)
+
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
-      result = result.filter(t =>
-        t.category.toLowerCase().includes(q) ||
+      list = list.filter(t =>
         t.description.toLowerCase().includes(q) ||
-        t.id.toLowerCase().includes(q)
+        (t.category && t.category.toLowerCase().includes(q)) ||
+        (t.paymentMode && t.paymentMode.toLowerCase().includes(q)) ||
+        (t.reference && t.reference.toLowerCase().includes(q)) ||
+        (t.paymentReference && t.paymentReference.toLowerCase().includes(q))
       )
     }
-    return result
-  }, [allTransactions, typeFilter, searchQuery])
+
+    return list
+  }, [allTransactions, typeFilter, searchQuery, dateFrom, dateTo])
 
   const columns: Column<PropTransaction>[] = useMemo(() => [
     {
@@ -1027,13 +1029,19 @@ export default function PropertyTransactions({
         </div>
 
         <div className="data-table-toolbar">
-          <div className="data-table-filters">
+          <div className="data-table-filters" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <div className="filter-bar" style={{ padding: 0 }}>
               {typeFilterOptions.map(f => (
                 <Button key={f} variant={typeFilter === f ? 'primary' : 'secondary'} size="sm" onClick={() => setTypeFilter(f)}>
                   {f}
                 </Button>
               ))}
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginLeft: '12px' }}>
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>From:</span>
+              <input type="date" className="design-input" style={{ padding: '6px 10px', height: 32 }} value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>To:</span>
+              <input type="date" className="design-input" style={{ padding: '6px 10px', height: 32 }} value={dateTo} onChange={e => setDateTo(e.target.value)} />
             </div>
           </div>
           <div className="data-table-search">
