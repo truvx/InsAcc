@@ -222,10 +222,7 @@ export default function PropertyVendors({
   }, [deleteTarget, setVendors, onAuditEvent, vendorExpenseCounts])
 
   const handleExport = useCallback((format: 'pdf' | 'xlsx') => {
-    if (filtered.length === 0) {
-      setToast({ message: 'No vendors to export', type: 'error' })
-      return
-    }
+    // Allow exporting empty list to generate a template/blank report
     
     const columns = [
       'Name', 'Category', 'Contact Person', 'Phone', 'Email', 'TRN', 'Total Paid', 'Payments', 'Status'

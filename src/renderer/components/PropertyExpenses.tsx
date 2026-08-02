@@ -685,10 +685,7 @@ export default function PropertyExpenses({
 
   // Export handler
   const handleExport = (format: 'pdf' | 'xlsx') => {
-    if (filteredExpenses.length === 0) {
-      setToast({ visible: true, message: 'No records to export.', type: 'error' })
-      return
-    }
+    // Allow exporting empty list to generate a template/blank report
 
     const columns = [
       'Expense No.', 'Date', 'Property', 'Unit', 'Category', 

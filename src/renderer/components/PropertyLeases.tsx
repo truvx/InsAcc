@@ -1066,11 +1066,7 @@ export default function PropertyLeases({
   }
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
-    if (filteredLeases.length === 0) {
-      setToast({ visible: true, message: 'No records to export.', type: 'error' })
-      setShowExportMenu(false)
-      return
-    }
+    // Allow exporting empty list to generate a template/blank report
 
     const columns = ['Lease No', 'Property', 'Unit', 'Tenant', 'Start Date', 'End Date', 'Rental Value', 'Status']
     const rows = filteredLeases.map(l => {

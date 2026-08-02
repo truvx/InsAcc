@@ -216,11 +216,7 @@ export default function PropertyTenants({ currency: _currency, dateFormat = 'DD/
       return true
     })
 
-    if (filteredTenants.length === 0) {
-      setToast({ visible: true, message: 'No records to export.', type: 'error' })
-      setShowExportMenu(false)
-      return
-    }
+    // Allow exporting empty list to generate a template/blank report
 
     const columns = ['Name', 'Phone', 'Email', 'Nationality', 'Status', 'Leases', 'Created']
     const rows = filteredTenants.map(t => [

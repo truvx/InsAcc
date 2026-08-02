@@ -850,11 +850,7 @@ export default function PropertyPdcManager({
   const quickDateFilterOptions = ['All', 'Today', 'Tomorrow', 'Overdue', 'ThisWeek'] as const
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
-    if (filtered.length === 0) {
-      setToast({ visible: true, message: 'No cheques to export.', type: 'error' })
-      setShowExportMenu(false)
-      return
-    }
+    // Allow exporting empty list to generate a template/blank report
 
     const columns = ['Lease No.', 'Tenant', 'Property', 'Cheque No.', 'Bank', 'Date', 'Amount', 'Status']
     const rows = filtered.map(chq => {

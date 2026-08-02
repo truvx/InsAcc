@@ -195,11 +195,7 @@ export default function PropertyHierarchy({
   const nextId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
-    if (filteredTreeNodes.length === 0) {
-      setToast({ visible: true, message: 'No records to export.', type: 'error' })
-      setShowExportMenu(false)
-      return
-    }
+    // Allow exporting empty list to generate a template/blank report
 
     const rows: string[][] = []
     const flatten = (nodes: TreeNode[], depth = 0) => {

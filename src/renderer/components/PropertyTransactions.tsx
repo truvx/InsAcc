@@ -803,11 +803,7 @@ export default function PropertyTransactions({
   )
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
-    if (filtered.length === 0) {
-      setToast({ visible: true, message: 'No records to export.', type: 'error' })
-      setShowExportMenu(false)
-      return
-    }
+    // Allow exporting empty list to generate a template/blank report
 
     const columns = ['Date', 'Description', 'Category', 'Payment Mode', 'Payment Voucher', 'Type', 'Amount']
     const rows = filtered.map(t => [
