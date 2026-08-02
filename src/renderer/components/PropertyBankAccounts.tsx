@@ -1036,9 +1036,9 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
                   formatDate(t.date, dateFormat),
                   t.description,
                   isInc ? 'Deposit' : 'Withdrawal',
-                  isInc ? formatAmountNum(t.debit, currency) : '-',
-                  !isInc ? formatAmountNum(t.credit, currency) : '-',
-                  formatAmountNum(t.balance, currency)
+                  isInc ? formatCurrency(t.debit, currency) : '-',
+                  !isInc ? formatCurrency(t.credit, currency) : '-',
+                  formatCurrency(t.balance, currency)
                 ]
               })
 
