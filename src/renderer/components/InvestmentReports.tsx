@@ -8,7 +8,7 @@ import type { BankAccount, BankTransaction } from '../data/banking'
 import { UaeDirhamIcon } from './design/UaeDirhamIcon'
 import BankAccountAvatar from './BankAccountAvatar'
 import { formatAssetType } from '../data/investmentMasterData'
-import { exportAccountingExcel, exportAccountingCsv, exportAccountingPdf, exportTableData } from '../services/reportExportService'
+import { exportAccountingExcel, exportAccountingCsv, exportAccountingPdf, exportTableData, exportSideBySidePdf } from '../services/reportExportService'
 import ExportReportModal from './design/ExportReportModal'
 import { validateLedgerBalance } from '../accounting/ledgerService'
 
@@ -237,6 +237,39 @@ export default function InvestmentReports({
           break
         }
         case 'profit-loss': {
+          if (format === 'pdf') {
+            await exportSideBySidePdf({
+              title: 'Profit & Loss',
+              subtitle: 'Revenue - Expenses = Net Income',
+              filename: `Investment_Profit_Loss_${new Date().toISOString().slice(0, 10)}`,
+              periodLabel: `${filterStart} - ${filterEnd}`,
+              currency: currency,
+              leftCol: {
+                title: 'Revenue',
+                accentColor: '#22A45D',
+                total: projection.profitLoss.totalRevenue,
+                rows: projection.profitLoss.revenue.map(r => [
+                  { content: r.accountName, styles: { paddingLeft: 4, fontStyle: 'normal' } },
+                  { content: Math.abs(r.balance).toLocaleString(undefined, { minimumFractionDigits: 2 }), styles: { halign: 'right', fontStyle: 'normal' } }
+                ])
+              },
+              rightCol: {
+                title: 'Expenses',
+                accentColor: '#EF4444',
+                total: projection.profitLoss.totalExpenses,
+                rows: projection.profitLoss.expenses.map(r => [
+                  { content: r.accountName, styles: { paddingLeft: 4, fontStyle: 'normal' } },
+                  { content: Math.abs(r.balance).toLocaleString(undefined, { minimumFractionDigits: 2 }), styles: { halign: 'right', fontStyle: 'normal' } }
+                ])
+              },
+              footer: {
+                label: 'Net Income',
+                value: projection.profitLoss.netIncome
+              }
+            })
+            return
+          }
+
           title = 'Profit & Loss'
           columns = ['Type', 'Code', 'Account', 'Amount']
           rows = [

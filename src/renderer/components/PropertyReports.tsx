@@ -13,7 +13,7 @@ import { t } from '../utils'
 import { getPropertyFinancialSummary } from '../services/propertyFinancialAggregationService'
 import { getBalanceSheetTree, getProfitLossTree, flattenStatementRows } from '../services/propertyFinancialStatements'
 import { formatDate } from '../utils'
-import { exportAccountingExcel, exportAccountingCsv, exportAccountingPdf, exportTableData } from '../services/reportExportService'
+import { exportAccountingExcel, exportAccountingCsv, exportAccountingPdf, exportTableData, exportSideBySidePdf } from '../services/reportExportService'
 import ExportReportModal from './design/ExportReportModal'
 
 function BuildingIcon() {
@@ -217,6 +217,49 @@ export default function PropertyReports({
           r.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })
         ])
       } else if (activeTab === 'profit-loss') {
+        const revTree = plTree.filter(n => n.account.type === 'revenue' || n.account.type === 'other_income')
+        const expTree = plTree.filter(n => n.account.type === 'expense')
+        
+        const revRows = flattenStatementRows(revTree)
+        const expRows = flattenStatementRows(expTree)
+
+        const totRev = revRows.filter(r => r.depth === 0).reduce((sum, r) => sum + Math.abs(r.balance), 0)
+        const totExp = expRows.filter(r => r.depth === 0).reduce((sum, r) => sum + Math.abs(r.balance), 0)
+        const netInc = totRev - totExp
+
+        if (format === 'pdf') {
+          await exportSideBySidePdf({
+            title: 'Profit & Loss',
+            subtitle: 'Revenue - Expenses = Net Income',
+            filename: `Property_Profit_Loss_${new Date().toISOString().slice(0, 10)}`,
+            periodLabel: `${filterStart} - ${filterEnd}`,
+            currency: currency,
+            leftCol: {
+              title: 'Revenue',
+              accentColor: '#22A45D',
+              total: totRev,
+              rows: revRows.map(r => [
+                { content: r.accountName, styles: { paddingLeft: r.depth * 10 + 4, fontStyle: r.depth === 0 ? 'bold' : 'normal' } },
+                { content: Math.abs(r.balance).toLocaleString(undefined, { minimumFractionDigits: 2 }), styles: { halign: 'right', fontStyle: r.depth === 0 ? 'bold' : 'normal' } }
+              ])
+            },
+            rightCol: {
+              title: 'Expenses',
+              accentColor: '#EF4444',
+              total: totExp,
+              rows: expRows.map(r => [
+                { content: r.accountName, styles: { paddingLeft: r.depth * 10 + 4, fontStyle: r.depth === 0 ? 'bold' : 'normal' } },
+                { content: Math.abs(r.balance).toLocaleString(undefined, { minimumFractionDigits: 2 }), styles: { halign: 'right', fontStyle: r.depth === 0 ? 'bold' : 'normal' } }
+              ])
+            },
+            footer: {
+              label: 'Net Income',
+              value: netInc
+            }
+          })
+          return
+        }
+
         title = 'Profit & Loss'
         columns = ['Account', 'Amount']
         rows = plRows.map(r => [

@@ -1129,6 +1129,106 @@ export interface TableExportParams {
   currency?: string
 }
 
+export interface SideBySideExportParams {
+  title: string
+  subtitle?: string
+  filename: string
+  periodLabel?: string
+  currency?: string
+  leftCol: {
+    title: string
+    rows: any[][]
+    total: number
+    accentColor: string
+  }
+  rightCol: {
+    title: string
+    rows: any[][]
+    total: number
+    accentColor: string
+  }
+  footer: {
+    label: string
+    value: number
+  }
+}
+
+export async function exportSideBySidePdf(p: SideBySideExportParams): Promise<string | null> {
+  const doc = new jsPDF()
+  
+  generatePdfCoverPage(
+    doc, 
+    p.title, 
+    p.subtitle || '', 
+    p.periodLabel || 'All Time', 
+    p.currency || 'AED',
+    p.leftCol.rows.length + p.rightCol.rows.length
+  )
+  
+  doc.addPage()
+  let y = 15
+  
+  doc.setFontSize(16)
+  doc.setTextColor(15, 76, 53)
+  doc.text(p.title, 14, y)
+  
+  y += 6
+  doc.setFontSize(10)
+  doc.setTextColor(100, 116, 139)
+  doc.text(p.subtitle || '', 14, y)
+
+  y += 10
+  
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const margin = 14
+  const colWidth = (pageWidth - margin * 2 - 10) / 2
+  
+  // Left column
+  autoTable(doc, {
+    startY: y,
+    margin: { left: margin, right: pageWidth - margin - colWidth },
+    head: [[
+      { content: p.leftCol.title, colSpan: 2, styles: { halign: 'left', fillColor: [255, 255, 255], textColor: p.leftCol.accentColor, fontStyle: 'bold', fontSize: 12 } }
+    ], ['Account', 'Amount']],
+    body: p.leftCol.rows,
+    foot: [['Total', p.leftCol.total.toLocaleString(undefined, {minimumFractionDigits: 2})]],
+    theme: 'grid',
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [248, 251, 249], textColor: [100, 116, 139], fontStyle: 'bold' },
+    footStyles: { fillColor: [255, 255, 255], textColor: p.leftCol.accentColor, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [255, 255, 255] },
+  })
+
+  const leftY = (doc as any).lastAutoTable.finalY
+
+  // Right column
+  autoTable(doc, {
+    startY: y,
+    margin: { left: margin + colWidth + 10, right: margin },
+    head: [[
+      { content: p.rightCol.title, colSpan: 2, styles: { halign: 'left', fillColor: [255, 255, 255], textColor: p.rightCol.accentColor, fontStyle: 'bold', fontSize: 12 } }
+    ], ['Account', 'Amount']],
+    body: p.rightCol.rows,
+    foot: [['Total', p.rightCol.total.toLocaleString(undefined, {minimumFractionDigits: 2})]],
+    theme: 'grid',
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [248, 251, 249], textColor: [100, 116, 139], fontStyle: 'bold' },
+    footStyles: { fillColor: [255, 255, 255], textColor: p.rightCol.accentColor, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [255, 255, 255] },
+  })
+
+  y = Math.max((doc as any).lastAutoTable.finalY, leftY) + 15
+
+  // Footer (Net Income)
+  doc.setFontSize(12)
+  doc.setTextColor(15, 76, 53)
+  doc.setFont('helvetica', 'bold')
+  doc.text(`${p.footer.label}: ${p.currency} ${p.footer.value.toLocaleString(undefined, {minimumFractionDigits: 2})}`, 14, y)
+
+  const buf = doc.output('arraybuffer')
+  return saveWithDialog(`${p.filename}.pdf`, [{ name: 'PDF', extensions: ['pdf'] }], buf)
+}
+
 export async function exportTableData(p: TableExportParams): Promise<string | null> {
   if (p.format === 'csv') {
     let csv = p.columns.map(c => `"${c.replace(/"/g, '""')}"`).join(',') + '\n'
