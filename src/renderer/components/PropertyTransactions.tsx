@@ -1038,10 +1038,14 @@ export default function PropertyTransactions({
               ))}
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginLeft: '12px' }}>
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>From:</span>
-              <input type="date" className="design-input" style={{ padding: '6px 10px', height: 32 }} value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>To:</span>
-              <input type="date" className="design-input" style={{ padding: '6px 10px', height: 32 }} value={dateTo} onChange={e => setDateTo(e.target.value)} />
+              <div className="data-table-search" style={{ maxWidth: 'none', width: 'auto', flex: '0 0 auto', padding: '0 12px' }}>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginRight: 8 }}>From</span>
+                <input type="date" className="data-table-search-input" style={{ width: 110 }} value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+              </div>
+              <div className="data-table-search" style={{ maxWidth: 'none', width: 'auto', flex: '0 0 auto', padding: '0 12px' }}>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginRight: 8 }}>To</span>
+                <input type="date" className="data-table-search-input" style={{ width: 110 }} value={dateTo} onChange={e => setDateTo(e.target.value)} />
+              </div>
             </div>
           </div>
           <div className="data-table-search">
