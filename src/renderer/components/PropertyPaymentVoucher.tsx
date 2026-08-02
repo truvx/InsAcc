@@ -469,8 +469,8 @@ export default function PropertyPaymentVoucher({
             onView={() => setDetailVoucher(v)}
             onEdit={() => openEditForm(v)}
             onDuplicate={() => handleDuplicate(v)}
-            onPrint={() => printVoucher(v, accounts, currency)}
-            onExportPDF={() => exportVoucherToPDF(v, accounts, currency)}
+            onPrint={() => printVoucher(v, accounts, currency, 'Property Accounting Module')}
+            onExportPDF={() => exportVoucherToPDF(v, accounts, currency, 'Property Accounting Module')}
             onDelete={() => handleDelete(v)}
             onAuditTrail={() => {
               setAuditVoucher(v)

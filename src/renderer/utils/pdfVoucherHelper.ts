@@ -2,7 +2,7 @@ import { jsPDF } from 'jspdf'
 import type { Voucher, Account } from '../accounting/types'
 
 
-export function exportVoucherToPDF(voucher: Voucher, accounts: Account[], currency: string = 'AED') {
+export function exportVoucherToPDF(voucher: Voucher, accounts: Account[], currency: string = 'AED', moduleName: string = 'Investment Accounting Module') {
   const doc = new jsPDF()
 
   // Title
@@ -15,7 +15,7 @@ export function exportVoucherToPDF(voucher: Voucher, accounts: Account[], curren
   doc.setFont('Helvetica', 'normal')
   doc.setFontSize(9)
   doc.setTextColor(107, 114, 128)
-  doc.text('INVESTMENT / PROPERTY ACCOUNTING SYSTEM', 20, 31)
+  doc.text(moduleName.toUpperCase(), 20, 31)
 
   // Voucher Number & Date
   doc.setFont('Helvetica', 'bold')

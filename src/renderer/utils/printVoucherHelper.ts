@@ -1,7 +1,7 @@
 import type { Voucher, Account } from '../accounting/types'
 
 
-export function printVoucher(voucher: Voucher, accounts: Account[], currency: string = 'AED') {
+export function printVoucher(voucher: Voucher, accounts: Account[], currency: string = 'AED', moduleName: string = 'Investment Accounting Module') {
   const printWindow = window.open('', '_blank')
   if (!printWindow) return
 
@@ -52,7 +52,7 @@ export function printVoucher(voucher: Voucher, accounts: Account[], currency: st
         <div class="header">
           <div>
             <h1 class="title">INSACC VOUCHER</h1>
-            <div class="subtitle">Investment Accounting Module</div>
+            <div class="subtitle">${moduleName}</div>
           </div>
           <div class="vch-info">
             <h1 class="vch-number">${voucher.number}</h1>
