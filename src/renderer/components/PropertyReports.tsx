@@ -217,8 +217,14 @@ export default function PropertyReports({
           r.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })
         ])
       } else if (activeTab === 'profit-loss') {
-        const revTree = plTree.filter(n => n.account.type === 'revenue' || n.account.type === 'other_income')
-        const expTree = plTree.filter(n => n.account.type === 'expense')
+        const revTree = plTree.filter(n => {
+          const acc = accounts.find(a => a.id === n.accountId)
+          return acc?.type === 'revenue' || acc?.type === 'other_income'
+        })
+        const expTree = plTree.filter(n => {
+          const acc = accounts.find(a => a.id === n.accountId)
+          return acc?.type === 'expense'
+        })
         
         const revRows = flattenStatementRows(revTree)
         const expRows = flattenStatementRows(expTree)
