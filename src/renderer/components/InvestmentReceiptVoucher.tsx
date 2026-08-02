@@ -2,8 +2,9 @@ import React, { useState, useMemo } from 'react'
 import type { Account, Voucher, BankMapping, PostingResult } from '../accounting/types'
 import type { BankAccount } from '../data/banking'
 import type { PurchaseRecord } from '../data/purchaseLedger'
-import { Button, Input, Select, Badge, EmptyState, SearchIcon, CloseIcon } from './design/DesignSystem'
-import { useMasterData } from '../contexts/MasterDataContext'
+import { Button, Input, Select, Badge, EmptyState, SearchIcon, CloseIcon, ChevronDownIcon } from './design/DesignSystem'
+import { exportTableData } from '../services/reportExportService'
+import { recordModuleEvent } from '../utils/auditTrail'
 import { PartyLookupService } from '../services/partyLookupService'
 import { SearchablePartySelect } from './design/SearchablePartySelect'
 import { DataTable, type Column } from './design/Table'
@@ -87,6 +88,10 @@ export default function InvestmentReceiptVoucher({
   const [formPaymentMode, setFormPaymentMode] = useState<string>('Bank Transfer')
   const [formPaymentReference, setFormPaymentReference] = useState('')
 
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [showExportMenu, setShowExportMenu] = useState(false)
+
   const [showAuditModal, setShowAuditModal] = useState(false)
   const [auditVoucher, setAuditVoucher] = useState<Voucher | null>(null)
 
@@ -96,14 +101,60 @@ export default function InvestmentReceiptVoucher({
   )
 
   const filtered = useMemo(() => {
-    if (!searchQuery) return receiptVouchers
-    const q = searchQuery.toLowerCase()
-    return receiptVouchers.filter(v =>
-      v.number.toLowerCase().includes(q) ||
-      v.description.toLowerCase().includes(q) ||
-      v.reference.toLowerCase().includes(q)
-    )
-  }, [receiptVouchers, searchQuery])
+    let result = receiptVouchers
+    if (dateFrom) result = result.filter(v => v.date >= dateFrom)
+    if (dateTo) result = result.filter(v => v.date <= dateTo)
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      result = result.filter(v =>
+        v.number.toLowerCase().includes(q) ||
+        v.description.toLowerCase().includes(q) ||
+        v.reference.toLowerCase().includes(q)
+      )
+    }
+    return result
+  }, [receiptVouchers, searchQuery, dateFrom, dateTo])
+
+  const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+    try {
+      const columns = ['Voucher #', 'Date', 'Received From', 'Received To', 'Revenue Account', 'Description', 'Amount', 'Payment Mode', 'Status']
+      const rows = filtered.map(v => [
+        v.number,
+        formatDate(v.date, dateFormat),
+        v.partyName || '—',
+        v.bankAccountId ? bankAccounts.find(b => b.id === v.bankAccountId)?.institution || '—' : '—',
+        accounts.find(a => a.id === v.lines[0]?.accountId)?.name || '—',
+        v.description,
+        `${currency} ${v.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        v.paymentMode || '—',
+        v.status
+      ])
+      
+      exportTableData({
+        title: 'Investment Receipt Vouchers',
+        subtitle: `Report generated on ${new Date().toLocaleDateString()}${dateFrom || dateTo ? ` | Period: ${dateFrom || 'Start'} to ${dateTo || 'End'}` : ''}`,
+        columns,
+        rows,
+        format,
+        filename: `Investment_Receipt_Vouchers_${new Date().toISOString().split('T')[0]}`
+      })
+
+      onAuditEvent?.(
+        recordModuleEvent(
+          'Investment Receipt Vouchers',
+          'Export',
+          'Export Vouchers',
+          `Exported ${filtered.length} receipt vouchers to ${format.toUpperCase()}`
+        )
+      )
+      
+      showToast?.('Export completed successfully.', 'success')
+      setShowExportMenu(false)
+    } catch (error) {
+      console.error('Export failed:', error)
+      showToast?.('Export failed. Please try again.', 'error')
+    }
+  }
 
   const bankOptions = useMemo(() => [
     { value: '', label: 'Select bank account' },
@@ -517,7 +568,19 @@ export default function InvestmentReceiptVoucher({
             <div className="page-subtitle">Record investment income: dividends, interest, sale proceeds, and sukuk profits</div>
           </div>
         </div>
-        <div className="page-header-right">
+        <div className="page-header-right" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ position: 'relative' }}>
+            <Button variant="secondary" size="sm" onClick={() => setShowExportMenu(!showExportMenu)}>
+              Export <ChevronDownIcon />
+            </Button>
+            {showExportMenu && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', border: '1px solid var(--border-color)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, width: 140, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <button className="export-menu-item" onClick={() => handleExport('pdf')}>PDF (.pdf)</button>
+                <button className="export-menu-item" onClick={() => handleExport('xlsx')}>Excel (.xlsx)</button>
+                <button className="export-menu-item" onClick={() => handleExport('csv')}>CSV (.csv)</button>
+              </div>
+            )}
+          </div>
           <Button variant="primary" size="sm" onClick={() => { setShowForm(true); resetForm() }}>+ New Receipt</Button>
         </div>
       </div>
@@ -535,7 +598,16 @@ export default function InvestmentReceiptVoucher({
         </div>
 
         <div className="data-table-toolbar">
-          <div className="data-table-filters" />
+          <div className="data-table-filters" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div className="data-table-search" style={{ maxWidth: 'none', width: 'auto', flex: '0 0 auto', padding: '0 12px' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginRight: 8 }}>From</span>
+              <input type="date" className="data-table-search-input" style={{ width: 110 }} value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+            </div>
+            <div className="data-table-search" style={{ maxWidth: 'none', width: 'auto', flex: '0 0 auto', padding: '0 12px' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginRight: 8 }}>To</span>
+              <input type="date" className="data-table-search-input" style={{ width: 110 }} value={dateTo} onChange={e => setDateTo(e.target.value)} />
+            </div>
+          </div>
           <div className="data-table-search">
             <SearchIcon />
             <input
