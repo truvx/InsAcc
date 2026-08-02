@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Download } from 'lucide-react'
 import type { Account, Voucher, BankMapping } from '../accounting/types'
 import type { AccountingEngine } from '../accounting/accountingEngine'
 import type { BankAccount } from '../data/banking'
@@ -44,7 +44,7 @@ import { CurrencyText } from './design/CurrencyText'
 import {
   KpiCard, Button, Badge, Select, Input, EmptyState, Modal,
   PortfolioIcon, TrendingUpIcon, ActivityIcon, CalendarIcon, PlusIcon,
-  EditIcon, TrashIcon, CloseIcon,
+  EditIcon, TrashIcon, CloseIcon, ChevronLeftIcon,
 } from './design/DesignSystem'
 import Toast from './Toast'
 import { formatDate, formatModifiedDateTime } from '../utils'
@@ -52,6 +52,7 @@ import { TransactionLifecycleService } from '../services/transactionLifecycleSer
 import { formatCurrency } from '../utils/reportFormatters'
 import ActionsMenu from './design/ActionsMenu'
 import { printVoucher } from '../utils/printVoucherHelper'
+import { exportTableData } from '../services/reportExportService'
 
 interface Props {
   currency?: string
@@ -139,6 +140,7 @@ export default function PurchaseLedger({
 
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' })
   const [showForm, setShowForm] = useState(false)
+  const [showExportMenu, setShowExportMenu] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState<FormState>(emptyForm)
   const [formErrors, setFormErrors] = useState<ValidationError[]>([])
@@ -644,6 +646,32 @@ export default function PurchaseLedger({
     }))
   }
 
+  const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+    const exportColumns = ['Lot ID', 'Date', 'Type', 'Asset', 'Status', 'Qty', 'Unit Price', 'Total Cost', 'Buyer']
+    const rows = filtered.map(r => [
+      r.lotId,
+      formatDate(r.purchaseDate, dateFormat),
+      formatAssetType(r.assetType),
+      r.assetName,
+      r.status,
+      r.quantity,
+      r.unitPrice,
+      r.totalValue,
+      r.buyer || ''
+    ])
+
+    exportTableData({
+      format,
+      title: 'Purchase Ledger',
+      subtitle: `Exported on ${formatDate(new Date().toISOString(), dateFormat)}`,
+      filename: `Purchase_Ledger_${new Date().toISOString().split('T')[0]}`,
+      columns: exportColumns,
+      rows,
+      currency
+    })
+    setShowExportMenu(false)
+  }
+
   const handleDuplicate = (r: PurchaseRecord) => {
     setFormData({
       assetType: r.assetType,
@@ -1080,7 +1108,19 @@ export default function PurchaseLedger({
           <div className="page-title">Purchase Ledger</div>
           <div className="page-subtitle">Record purchases and track investment costs</div>
         </div>
-        <div className="page-header-right">
+        <div className="page-header-right" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ position: 'relative' }}>
+            <Button variant="secondary" onClick={() => setShowExportMenu(!showExportMenu)}>
+              <Download size={16} style={{ marginRight: 6 }} /> Export <span style={{ display: 'inline-block', transform: showExportMenu ? 'rotate(90deg)' : 'rotate(-90deg)', width: 12, height: 12, marginLeft: 4 }}><ChevronLeftIcon /></span>
+            </Button>
+            {showExportMenu && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', border: '1px solid var(--border-color)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, width: 140, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <button className="export-menu-item" onClick={() => handleExport('pdf')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>PDF (.pdf)</button>
+                <button className="export-menu-item" onClick={() => handleExport('xlsx')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>Excel (.xlsx)</button>
+                <button className="export-menu-item" onClick={() => handleExport('csv')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>CSV (.csv)</button>
+              </div>
+            )}
+          </div>
           <Button variant="primary" onClick={openAddForm}>
             <PlusIcon /> Add Purchase
           </Button>

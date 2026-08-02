@@ -9,9 +9,11 @@ import { getAssetWeightMultiplier } from '../services/purchaseLedgerService'
 import { getLinesForAccount } from '../accounting/ledgerService'
 import { formatCurrency } from '../utils/reportFormatters'
 import { DataTable, type Column } from './design/Table'
-import { Badge, EmptyState, Modal } from './design/DesignSystem'
+import { exportTableData } from '../services/reportExportService'
+import { Badge, EmptyState, Modal, ChevronLeftIcon, Button } from './design/DesignSystem'
 import VoucherTimeline from './VoucherTimeline'
 import BankAccountAvatar from './BankAccountAvatar'
+import { Download } from 'lucide-react'
 
 interface Props {
   currency?: string
@@ -29,6 +31,7 @@ export default function InvestmentHoldings({
   onNavigate = () => {},
 }: Props) {
   const [detailHolding, setDetailHolding] = useState<AssetHolding | null>(null)
+  const [showExportMenu, setShowExportMenu] = useState(false)
 
   const holdings = useMemo(
     () => getInvestmentHoldingsProjection(purchaseRecords, vouchers, accounts),
@@ -51,6 +54,36 @@ export default function InvestmentHoldings({
   )
 
   const totalHoldings = holdings.length
+
+  const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+    const exportColumns = ['Asset', 'Type', 'Paid From', 'Qty', 'Invested Amount', 'Avg Price', 'Market Price', 'Market Value']
+    const rows = holdings.map(h => {
+      const record = purchaseRecords.find(p => h.purchaseRecordIds.includes(p.id))
+      const bank = record && record.fundingBankAccountId ? bankByIdMap.get(record.fundingBankAccountId) : null
+      
+      return [
+        h.assetName,
+        h.assetType,
+        bank?.institution || '—',
+        h.totalQuantity,
+        h.totalInvested,
+        h.avgPurchaseValue,
+        h.totalQuantity > 0 ? h.marketValue / h.totalQuantity : 0,
+        h.marketValue
+      ]
+    })
+
+    exportTableData({
+      format,
+      title: 'Investment Holdings',
+      subtitle: `Exported on ${new Date().toISOString().split('T')[0]}`,
+      filename: `Investment_Holdings_${new Date().toISOString().split('T')[0]}`,
+      columns: exportColumns,
+      rows,
+      currency
+    })
+    setShowExportMenu(false)
+  }
 
   const columns: Column<AssetHolding>[] = [
     {
@@ -292,6 +325,20 @@ export default function InvestmentHoldings({
           <div>
             <div className="page-title">Investment Holdings</div>
             <div className="page-subtitle">{totalHoldings} holdings • <CurrencyText value={totalInvested} currency={currency} /> invested</div>
+          </div>
+        </div>
+        <div className="page-header-right">
+          <div style={{ position: 'relative' }}>
+            <Button variant="secondary" size="sm" onClick={() => setShowExportMenu(!showExportMenu)}>
+              <Download size={14} style={{ marginRight: 6 }} /> Export <span style={{ display: 'inline-block', transform: showExportMenu ? 'rotate(90deg)' : 'rotate(-90deg)', width: 12, height: 12, marginLeft: 4 }}><ChevronLeftIcon /></span>
+            </Button>
+            {showExportMenu && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', border: '1px solid var(--border-color)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, width: 140, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <button className="export-menu-item" onClick={() => handleExport('pdf')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>PDF (.pdf)</button>
+                <button className="export-menu-item" onClick={() => handleExport('xlsx')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>Excel (.xlsx)</button>
+                <button className="export-menu-item" onClick={() => handleExport('csv')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>CSV (.csv)</button>
+              </div>
+            )}
           </div>
         </div>
       </div>

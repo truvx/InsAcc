@@ -6,7 +6,7 @@ import type { AuditEvent } from '../data/auditTypes'
 import type { AccountingEngine } from '../accounting/accountingEngine'
 import { recordModuleEvent } from '../services/auditService'
 import {
-  Badge, Button, KpiCard, EmptyState, PlusIcon, TrashIcon,
+  Badge, Button, KpiCard, EmptyState, PlusIcon, TrashIcon, ChevronLeftIcon,
   Input, Select, Modal
 } from './design/DesignSystem'
 import { DataTable, type Column } from './design/Table'
@@ -24,7 +24,9 @@ import BankReconciliationDashboard from './BankReconciliationDashboard'
 import { getBankDashboardProjection, getAccountStatementProjection } from '../readModels/InvestmentBankReadModel'
 import BankAccountAvatar from './BankAccountAvatar'
 import { deleteBankTransaction } from '../services/bankTransactionService'
+import { exportTableData } from '../services/reportExportService'
 import { TransactionLifecycleService } from '../services/transactionLifecycleService'
+import { Download } from 'lucide-react'
 
 interface Props {
   currency?: string
@@ -71,6 +73,7 @@ export default function InvestmentBankAccounts({
   const [searchQuery, setSearchQuery] = useState('')
   const [txnFilter, setTxnFilter] = useState<'all' | 'deposits' | 'transfers'>('all')
   const [importOpen, setImportOpen] = useState(false)
+  const [showExportMenu, setShowExportMenu] = useState(false)
   const [selectedHistoryRec, setSelectedHistoryRec] = useState<BankReconciliationRecord | null>(null)
   const [selectedReconRec, setSelectedReconRec] = useState<BankReconciliationRecord | null>(null)
 
@@ -123,16 +126,46 @@ export default function InvestmentBankAccounts({
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0])
   const [formToAccount, setFormToAccount] = useState('')
 
-  const selectedBankAccount = useMemo(() => bankAccounts.find(a => a.id === selectedId) || null, [bankAccounts, selectedId])
-
   const selectedAccountReconciliations = useMemo(() => {
     return bankReconciliations.filter(r => r.bankAccountId === selectedId)
   }, [bankReconciliations, selectedId])
 
-  const bankProjection = useMemo(
-    () => getBankDashboardProjection(bankAccounts, bankMappings, accounts, vouchers),
-    [bankAccounts, bankMappings, accounts, vouchers],
-  )
+  const bankProjection = useMemo(() => getBankDashboardProjection(
+    bankAccounts, bankMappings, accounts, vouchers
+  ), [bankAccounts, bankMappings, accounts, vouchers])
+
+  const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+    const exportColumns = ['Bank', 'Ledger Balance', 'Statement Balance', 'Difference', 'Last Reconciled', 'Status']
+    const rows = bankProjection.accounts.map(({ account: acct, transactionBalance: bal, ledgerBalance }) => {
+      const diff = ledgerBalance - bal
+      const lastReconciled = bankReconciliations
+          .filter(r => r.bankAccountId === acct.id)
+          .sort((a, b) => b.statementEndDate.localeCompare(a.statementEndDate))[0]?.statementEndDate || 'Never'
+      const statusLabel = Math.abs(diff) < 0.01 ? 'Reconciled' : 'Unreconciled'
+      
+      return [
+        acct.institution,
+        ledgerBalance,
+        bal,
+        Math.abs(diff) < 0.01 ? 0 : diff,
+        lastReconciled === 'Never' ? 'Never' : formatDate(lastReconciled, dateFormat),
+        statusLabel
+      ]
+    })
+
+    exportTableData({
+      format,
+      title: 'Bank Accounts Summary',
+      subtitle: `Exported on ${formatDate(new Date().toISOString(), dateFormat)}`,
+      filename: `Bank_Accounts_${new Date().toISOString().split('T')[0]}`,
+      columns: exportColumns,
+      rows,
+      currency
+    })
+    setShowExportMenu(false)
+  }
+
+  const selectedBankAccount = useMemo(() => bankAccounts.find(a => a.id === selectedId) || null, [bankAccounts, selectedId])
 
   const accountStatement = useMemo(() => {
     if (!selectedId) return { statement: [], stats: { deposits: 0, withdrawals: 0, transfers: 0 } }
@@ -866,7 +899,19 @@ export default function InvestmentBankAccounts({
             </div>
           </div>
         </div>
-        <div className="page-header-right">
+        <div className="page-header-right" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ position: 'relative' }}>
+            <Button variant="secondary" size="sm" onClick={() => setShowExportMenu(!showExportMenu)}>
+              <Download size={14} style={{ marginRight: 6 }} /> Export <span style={{ display: 'inline-block', transform: showExportMenu ? 'rotate(90deg)' : 'rotate(-90deg)', width: 12, height: 12, marginLeft: 4 }}><ChevronLeftIcon /></span>
+            </Button>
+            {showExportMenu && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', border: '1px solid var(--border-color)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, width: 140, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <button className="export-menu-item" onClick={() => handleExport('pdf')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>PDF (.pdf)</button>
+                <button className="export-menu-item" onClick={() => handleExport('xlsx')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>Excel (.xlsx)</button>
+                <button className="export-menu-item" onClick={() => handleExport('csv')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>CSV (.csv)</button>
+              </div>
+            )}
+          </div>
           <Button variant="primary" size="sm" onClick={() => openDialog('addAccount')}><PlusIcon /> Add Account</Button>
         </div>
       </div>

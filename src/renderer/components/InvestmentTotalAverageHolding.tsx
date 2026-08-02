@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import { CurrencyText } from './design/CurrencyText'
 import type { Account, Voucher, BankMapping } from '../accounting/types'
 import type { BankAccount } from '../data/banking'
@@ -6,7 +6,9 @@ import type { PurchaseRecord } from '../data/purchaseLedger'
 import { getInvestmentHoldingsProjection } from '../readModels/InvestmentHoldingsReadModel'
 import { getAssetWeightMultiplier } from '../services/purchaseLedgerService'
 import { DataTable, type Column } from './design/Table'
-import { KpiCard } from './design/DesignSystem'
+import { KpiCard, Button, ChevronLeftIcon } from './design/DesignSystem'
+import { exportTableData } from '../services/reportExportService'
+import { Download } from 'lucide-react'
 
 interface Props {
   currency?: string
@@ -43,6 +45,7 @@ export default function InvestmentTotalAverageHolding({
   purchaseRecords,
   onNavigate = () => {},
 }: Props) {
+  const [showExportMenu, setShowExportMenu] = useState(false)
   // Filter active purchases
   const activePurchases = useMemo(
     () => purchaseRecords.filter((p) => p.status === 'active'),
@@ -118,6 +121,30 @@ export default function InvestmentTotalAverageHolding({
     }
     return { goldQty: gold, silverQty: silver }
   }, [purityWiseData])
+
+  const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+    // Only exporting purity averages as a summary
+    const exportColumns = ['Purity/Type', 'Purchases', 'Total Qty', 'Total Invested', 'Weighted Avg Price', 'Purity Avg Price']
+    const rows = purityWiseData.map(p => [
+      p.purity,
+      p.purchaseCount,
+      p.totalQuantity,
+      p.totalInvested,
+      p.weightedAveragePrice,
+      p.purityAveragePrice
+    ])
+
+    exportTableData({
+      format,
+      title: 'Total Average Holding - Purity Summary',
+      subtitle: `Exported on ${new Date().toISOString().split('T')[0]}`,
+      filename: `Average_Holding_${new Date().toISOString().split('T')[0]}`,
+      columns: exportColumns,
+      rows,
+      currency
+    })
+    setShowExportMenu(false)
+  }
 
   const totalInvested = useMemo(
     () => purityWiseData.reduce((s, p) => s + p.totalInvested, 0),
@@ -230,9 +257,23 @@ export default function InvestmentTotalAverageHolding({
   return (
     <>
       <div className="page-header">
-        <div>
+        <div className="page-header-left">
           <div className="page-title">Total Average Holding</div>
           <div className="page-subtitle">Purity-wise and asset-wise weighted average and purity average price overview</div>
+        </div>
+        <div className="page-header-right">
+          <div style={{ position: 'relative' }}>
+            <Button variant="secondary" size="sm" onClick={() => setShowExportMenu(!showExportMenu)}>
+              <Download size={14} style={{ marginRight: 6 }} /> Export <span style={{ display: 'inline-block', transform: showExportMenu ? 'rotate(90deg)' : 'rotate(-90deg)', width: 12, height: 12, marginLeft: 4 }}><ChevronLeftIcon /></span>
+            </Button>
+            {showExportMenu && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', border: '1px solid var(--border-color)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, width: 140, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <button className="export-menu-item" onClick={() => handleExport('pdf')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>PDF (.pdf)</button>
+                <button className="export-menu-item" onClick={() => handleExport('xlsx')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>Excel (.xlsx)</button>
+                <button className="export-menu-item" onClick={() => handleExport('csv')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>CSV (.csv)</button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
