@@ -811,7 +811,7 @@ export default function PropertyTransactions({
       t.description || '—',
       t.category || '—',
       t.paymentMode || '—',
-      t.paymentReference || '—',
+      t.reference || t.paymentReference || '—',
       t.type === 'credit' ? 'Income' : 'Expense',
       t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })
     ])
