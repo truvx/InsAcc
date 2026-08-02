@@ -464,8 +464,11 @@ export default function InvestmentPaymentVoucher({
       header: 'Paid To',
       sortable: true,
       render: v => {
-        const match = v.description.match(/\(paid to\s+(.*?)\)$/i)
-        const val = match ? match[1] : (v.reference && !v.reference.startsWith('exp-') ? v.reference : '—')
+        let match = v.description.match(/\(paid to\s+(.*?)\)$/i)
+        if (!match && v.description.includes('Expense:')) {
+          match = v.description.match(/for\s+(.*)$/i)
+        }
+        const val = match ? match[1] : '—'
         return <span className="fw-500 text-sm">{val}</span>
       }
     },
