@@ -80,6 +80,7 @@ export default function PropertyExpenses({
   const fmt = (n: number) => <CurrencyText value={n} currency={currency} />
   const [searchQuery, setSearchQuery] = useState('')
   const [propertyFilter, setPropertyFilter] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
   const [selectedVendorFilter, setSelectedVendorFilter] = useState('All')
 
   const [showExportMenu, setShowExportMenu] = useState(false)
