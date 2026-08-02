@@ -1069,7 +1069,7 @@ export default function PropertyLeases({
     // Allow exporting empty list to generate a template/blank report
 
     const columns = ['Lease No', 'Property', 'Unit', 'Tenant', 'Start Date', 'End Date', 'Rental Value', 'Status']
-    const rows = filteredLeases.map(l => {
+    const rows = filtered.map(l => {
       const u = units.find(u => u.id === l.unitId)
       const p = properties.find(p => p.id === u?.propertyId)
       const t = tenants.find(t => t.id === l.tenantId)
@@ -1103,7 +1103,7 @@ export default function PropertyLeases({
         'Export',
         'Leases List',
         'bulk',
-        `Exported ${filteredLeases.length} leases to ${format.toUpperCase()}`
+        `Exported ${filtered.length} leases to ${format.toUpperCase()}`
       )
     )
 
