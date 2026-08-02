@@ -1042,10 +1042,12 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
                 ]
               })
 
+              const currentBalance = exportStatement.length > 0 ? exportStatement[exportStatement.length - 1].balance : (acc.initialBalance || 0)
+
               exportTableData({
                 format: exportFormat,
                 title: `${acc.institution} Ledger`,
-                subtitle: `Account: ${acc.accountNumber} - Current Balance: ${formatCurrency(runningBalance, currency)}`,
+                subtitle: `Account: ${acc.accountNumber} - Current Balance: ${formatCurrency(currentBalance, currency)}`,
                 filename: `Bank_Ledger_${acc.institution.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`,
                 columns,
                 rows,
