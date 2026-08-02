@@ -138,6 +138,7 @@ function buildHierarchyTree(
 }
 
 export default function PropertyHierarchy({
+  currency = 'AED',
   mainCategories, setMainCategories,
   propProperties, setPropProperties,
   incomeCategories, setIncomeCategories,
