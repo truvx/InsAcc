@@ -1022,27 +1022,23 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
               }
               const acc = propAccounts.find(a => a.id === exportAccountId)
               if (!acc) return
+              const exportStatement = getAccountStatementProjection(exportAccountId, propAccounts, bankMappings, accounts, vouchers).statement
 
-              const txns = propTransactions.filter(t => t.bankAccountId === exportAccountId)
-              if (txns.length === 0) {
+              if (exportStatement.length === 0) {
                 setToast({ visible: true, message: 'No transactions for this account.', type: 'error' })
                 return
               }
 
               const columns = ['Date', 'Description', 'Type', 'Debit', 'Credit', 'Balance']
-              let runningBalance = acc.initialBalance || 0
-              const rows = txns.map(t => {
-                const isInc = t.type === 'income' || t.type === 'transfer_in' || t.type === 'deposit'
-                if (isInc) runningBalance += t.amount
-                else runningBalance -= t.amount
-                
+              const rows = exportStatement.map(t => {
+                const isInc = t.debit > 0
                 return [
                   formatDate(t.date, dateFormat),
-                  t.description || t.type,
-                  t.type,
-                  isInc ? '' : t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }),
-                  isInc ? t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '',
-                  runningBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })
+                  t.description,
+                  isInc ? 'Deposit' : 'Withdrawal',
+                  isInc ? formatAmountNum(t.debit, currency) : '-',
+                  !isInc ? formatAmountNum(t.credit, currency) : '-',
+                  formatAmountNum(t.balance, currency)
                 ]
               })
 
