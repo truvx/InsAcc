@@ -211,28 +211,35 @@ export default function PropertyHierarchy({
     }
     flatten(filteredTreeNodes)
 
-    exportTableData({
-      format,
-      title: 'Property Portfolio Hierarchy',
-      subtitle: 'Structural layout of categories and properties',
-      filename: `Property_Hierarchy_${new Date().toISOString().split('T')[0]}`,
-      columns: ['Type', 'Name'],
-      rows,
-      currency
-    })
-
-    onAuditEvent?.(
-      recordModuleEvent(
-        'Property Hierarchy',
-        'Export',
-        'Hierarchy Tree',
-        'bulk',
-        `Exported hierarchy to ${format.toUpperCase()}`
-      )
-    )
-
-    setToast({ visible: true, message: 'Export completed successfully.', type: 'success' })
-    setShowExportMenu(false)
+    try {
+      exportTableData({
+        format,
+        title: 'Property Portfolio Hierarchy',
+        subtitle: 'Structural layout of categories and properties',
+        filename: `Property_Hierarchy_${new Date().toISOString().split('T')[0]}`,
+        columns: ['Type', 'Name'],
+        rows,
+        currency
+      }).then(() => {
+        onAuditEvent?.(
+          recordModuleEvent(
+            'Property Hierarchy',
+            'Export',
+            'Hierarchy Tree',
+            'bulk',
+            `Exported hierarchy to ${format.toUpperCase()}`
+          )
+        )
+        setToast({ visible: true, message: 'Export completed successfully.', type: 'success' })
+      }).catch(err => {
+        setToast({ visible: true, message: `Export failed: ${err.message || err}`, type: 'error' })
+      }).finally(() => {
+        setShowExportMenu(false)
+      })
+    } catch (err: any) {
+      setToast({ visible: true, message: `Export error: ${err.message || err}`, type: 'error' })
+      setShowExportMenu(false)
+    }
   }
 
   const toggle = (set: Set<string>, key: string) => {
