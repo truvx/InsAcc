@@ -1093,6 +1093,8 @@ export default function PropertyLeases({
       columns,
       rows,
       currency
+    }).catch(e => {
+      setToast({ visible: true, message: 'Export failed: ' + (e.message || e), type: 'error' })
     })
 
     onAuditEvent?.(
