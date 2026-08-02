@@ -230,32 +230,36 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
       ...equityRowsMapped
     ]
 
-    exportSideBySidePdf({
-      title: 'Balance Sheet',
-      subtitle: filterPropertyId ? `Property: ${properties.find(p => p.id === filterPropertyId)?.name}` : 'All Properties',
-      currency,
-      filename: `Balance_Sheet_${new Date().toISOString().split('T')[0]}`,
-      leftCol: {
-        title: 'Assets',
-        accentColor: [49, 46, 129], // indigo-900 equivalent
-        rows: leftRows,
-        total: totalAssets
-      },
-      rightCol: {
-        title: 'Liabilities & Equity',
-        accentColor: [124, 45, 18], // orange-900 equivalent
-        rows: rightRows,
-        total: totalLiabilities + totalEquity
-      },
-      footer: {
-        label: isBalanced ? 'Balanced (Assets = Liabilities + Equity)' : 'Unbalanced',
-        value: totalAssets // they should match
-      }
-    }).then(() => {
-      setToast({ visible: true, message: 'PDF Exported successfully', type: 'success' })
-    }).catch(e => {
-      setToast({ visible: true, message: 'Export failed: ' + e.message, type: 'error' })
-    })
+    try {
+      exportSideBySidePdf({
+        title: 'Balance Sheet',
+        subtitle: filterPropertyId ? `Property: ${properties.find(p => p.id === filterPropertyId)?.name}` : 'All Properties',
+        currency,
+        filename: `Balance_Sheet_${new Date().toISOString().split('T')[0]}`,
+        leftCol: {
+          title: 'Assets',
+          accentColor: [49, 46, 129],
+          rows: leftRows,
+          total: totalAssets
+        },
+        rightCol: {
+          title: 'Liabilities & Equity',
+          accentColor: [124, 45, 18],
+          rows: rightRows,
+          total: totalLiabilities + totalEquity
+        },
+        footer: {
+          label: isBalanced ? 'Balanced (Assets = Liabilities + Equity)' : 'Unbalanced',
+          value: totalAssets
+        }
+      }).then(() => {
+        setToast({ visible: true, message: 'PDF Exported successfully', type: 'success' })
+      }).catch(e => {
+        setToast({ visible: true, message: 'Export failed: ' + (e.message || e), type: 'error' })
+      })
+    } catch (err: any) {
+      setToast({ visible: true, message: 'Export error: ' + (err.message || err), type: 'error' })
+    }
   }
 
   return (

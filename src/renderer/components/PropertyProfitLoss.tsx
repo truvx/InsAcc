@@ -181,32 +181,36 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
       r.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })
     ])
 
-    exportSideBySidePdf({
-      title: 'Profit & Loss Statement',
-      subtitle: filterPropertyId ? `Property: ${properties.find(p => p.id === filterPropertyId)?.name}` : 'All Properties',
-      currency,
-      filename: `Profit_Loss_${new Date().toISOString().split('T')[0]}`,
-      leftCol: {
-        title: 'Revenue',
-        accentColor: [5, 150, 105], // emerald-600
-        rows: leftRows,
-        total: totalRevenue
-      },
-      rightCol: {
-        title: 'Expenses',
-        accentColor: [220, 38, 38], // red-600
-        rows: rightRows,
-        total: totalExpenses
-      },
-      footer: {
-        label: 'Net Income',
-        value: netIncome
-      }
-    }).then(() => {
-      setToast({ visible: true, message: 'PDF Exported successfully', type: 'success' })
-    }).catch(e => {
-      setToast({ visible: true, message: 'Export failed: ' + e.message, type: 'error' })
-    })
+    try {
+      exportSideBySidePdf({
+        title: 'Profit & Loss Statement',
+        subtitle: filterPropertyId ? `Property: ${properties.find(p => p.id === filterPropertyId)?.name}` : 'All Properties',
+        currency,
+        filename: `Profit_Loss_${new Date().toISOString().split('T')[0]}`,
+        leftCol: {
+          title: 'Revenue',
+          accentColor: [5, 150, 105], // emerald-600
+          rows: leftRows,
+          total: totalRevenue
+        },
+        rightCol: {
+          title: 'Expenses',
+          accentColor: [220, 38, 38], // red-600
+          rows: rightRows,
+          total: totalExpenses
+        },
+        footer: {
+          label: 'Net Income',
+          value: netIncome
+        }
+      }).then(() => {
+        setToast({ visible: true, message: 'PDF Exported successfully', type: 'success' })
+      }).catch(e => {
+        setToast({ visible: true, message: 'Export failed: ' + e.message, type: 'error' })
+      })
+    } catch (err: any) {
+      setToast({ visible: true, message: 'Export error: ' + (err.message || err), type: 'error' })
+    }
   }
 
   return (
