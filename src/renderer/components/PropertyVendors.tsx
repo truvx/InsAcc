@@ -22,6 +22,7 @@ interface Props {
   vendors: VendorEntry[]
   setVendors: React.Dispatch<React.SetStateAction<VendorEntry[]>>
   expenses: PropertyExpense[]
+  vouchers: Voucher[]
   properties: PropertyEntry[]
   onAuditEvent?: (event: AuditEvent) => void
 }
@@ -61,6 +62,7 @@ export default function PropertyVendors({
   vendors = [],
   setVendors,
   expenses = [],
+  vouchers = [],
   properties = [],
   onAuditEvent,
 }: Props) {
@@ -78,23 +80,60 @@ export default function PropertyVendors({
   // ── Computed data ──
   const vendorPaymentTotals = useMemo(() => {
     const map: Record<string, number> = {}
+    
+    // First include any legacy expenses (if any)
     expenses.forEach(e => {
       if (e.vendorId) {
         map[e.vendorId] = (map[e.vendorId] || 0) + e.totalAmount
       }
     })
+
+    // Then add amounts from payment vouchers
+    vouchers.filter(v => v.type === 'Payment').forEach(v => {
+      let paidToMatch = v.description.match(/\(paid to\s+(.*?)\)$/i)
+      if (!paidToMatch && v.description.includes('Expense:')) {
+        paidToMatch = v.description.match(/for\s+(.*)$/i)
+      }
+      const vendorName = paidToMatch ? paidToMatch[1].trim() : null
+      
+      if (vendorName) {
+        const vendor = vendors.find(ven => ven.name.trim().toLowerCase() === vendorName.toLowerCase())
+        if (vendor) {
+          const totalAmount = v.lines.reduce((s: number, l: any) => s + (l.type === 'Credit' ? (l.baseAmount ?? l.amount) : 0), 0)
+          map[vendor.id] = (map[vendor.id] || 0) + totalAmount
+        }
+      }
+    })
     return map
-  }, [expenses])
+  }, [expenses, vouchers, vendors])
 
   const vendorExpenseCounts = useMemo(() => {
     const map: Record<string, number> = {}
+    
+    // Legacy expenses count
     expenses.forEach(e => {
       if (e.vendorId) {
         map[e.vendorId] = (map[e.vendorId] || 0) + 1
       }
     })
+
+    // Payment vouchers count
+    vouchers.filter(v => v.type === 'Payment').forEach(v => {
+      let paidToMatch = v.description.match(/\(paid to\s+(.*?)\)$/i)
+      if (!paidToMatch && v.description.includes('Expense:')) {
+        paidToMatch = v.description.match(/for\s+(.*)$/i)
+      }
+      const vendorName = paidToMatch ? paidToMatch[1].trim() : null
+      
+      if (vendorName) {
+        const vendor = vendors.find(ven => ven.name.trim().toLowerCase() === vendorName.toLowerCase())
+        if (vendor) {
+          map[vendor.id] = (map[vendor.id] || 0) + 1
+        }
+      }
+    })
     return map
-  }, [expenses])
+  }, [expenses, vouchers, vendors])
 
   const totalPaidAllVendors = useMemo(() =>
     Object.values(vendorPaymentTotals).reduce((s, v) => s + v, 0),
@@ -114,10 +153,46 @@ export default function PropertyVendors({
   // ── Vendor ledger (expenses for drawer vendor) ──
   const vendorLedger = useMemo(() => {
     if (!drawerVendor) return []
-    return expenses
+    
+    // Legacy expenses
+    const expList = expenses
       .filter(e => e.vendorId === drawerVendor.id)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  }, [expenses, drawerVendor])
+      .map(e => ({
+        id: e.id,
+        date: e.date,
+        expenseNo: e.expenseNo,
+        propertyId: e.propertyId,
+        category: e.category,
+        totalAmount: e.totalAmount,
+      }))
+      
+    // Payment vouchers
+    const vchList = vouchers
+      .filter(v => v.type === 'Payment')
+      .filter(v => {
+        let paidToMatch = v.description.match(/\(paid to\s+(.*?)\)$/i)
+        if (!paidToMatch && v.description.includes('Expense:')) {
+          paidToMatch = v.description.match(/for\s+(.*)$/i)
+        }
+        const vendorName = paidToMatch ? paidToMatch[1].trim().toLowerCase() : null
+        return vendorName === drawerVendor.name.trim().toLowerCase()
+      })
+      .map(v => {
+        const totalAmount = v.lines.reduce((s: number, l: any) => s + (l.type === 'Credit' ? (l.baseAmount ?? l.amount) : 0), 0)
+        const debitLine = v.lines.find(l => l.type === 'Debit')
+        
+        return {
+          id: v.id,
+          date: v.date,
+          expenseNo: v.number,
+          propertyId: '', // Vouchers don't strictly have propertyId
+          category: debitLine?.accountId ? 'Voucher Payment' : 'Payment',
+          totalAmount: totalAmount,
+        }
+      })
+      
+    return [...expList, ...vchList].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  }, [expenses, vouchers, drawerVendor])
 
   const vendorLedgerTotal = useMemo(() =>
     vendorLedger.reduce((s, e) => s + e.totalAmount, 0),
