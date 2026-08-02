@@ -5707,3 +5707,26 @@ span.account-link:hover {
   font-weight: 500;
   letter-spacing: 0.02em;
 }
+
+/* Export Menu Dropdown Items */
+.export-menu-item {
+  padding: 10px 14px !important;
+  text-align: left !important;
+  background: transparent !important;
+  border: none !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  width: 100% !important;
+  color: var(--text-primary) !important;
+  transition: background-color 0.15s ease, color 0.15s ease !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+.export-menu-item:hover {
+  background-color: var(--bg-secondary) !important;
+}
+
+.export-menu-item:active {
+  background-color: var(--bg-tertiary) !important;
+}
