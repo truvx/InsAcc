@@ -1041,7 +1041,7 @@ export default function PropertyDepositManager({
     if (collTx && collTx.voucherId) {
       const vch = vouchers.find(v => v.id === collTx.voucherId)
       if (vch) {
-        printVoucher(vch, accounts, currency, 'Property Accounting Module')
+        printVoucher(vch, accounts, currency, 'Properties Management')
       } else {
         setToast({ visible: true, message: 'Voucher not found in system records.', type: 'error' })
       }
