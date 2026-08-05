@@ -202,4 +202,29 @@ export class PartyLookupService {
       }))
     }
   }
+
+  getAllPropertyParties(): Party[] {
+    const tenants = this.getTenants()
+    const vendors = this.getPaymentParties('property')
+    const properties: Party[] = this.properties.map(p => ({
+      id: p.id,
+      name: p.name,
+      type: 'Property',
+      secondaryText: p.type || 'Property',
+      propertyName: p.name,
+    }))
+
+    // Deduplicate by name just in case
+    const seen = new Set<string>()
+    const allParties: Party[] = []
+    
+    for (const p of [...properties, ...tenants, ...vendors]) {
+      if (!seen.has(p.name.toLowerCase())) {
+        seen.add(p.name.toLowerCase())
+        allParties.push(p)
+      }
+    }
+    
+    return allParties
+  }
 }

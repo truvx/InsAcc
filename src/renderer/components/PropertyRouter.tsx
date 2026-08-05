@@ -358,6 +358,11 @@ export default function PropertyRouter(props: Props) {
         setPropExpenses={setPropExpenses}
         onAuditEvent={setPropAuditEvents ? (e => setPropAuditEvents(prev => [e, ...prev])) : undefined}
         auditEvents={propAuditEvents}
+        vendors={propVendors}
+        tenants={propTenants}
+        properties={mappedProperties}
+        units={mappedUnits}
+        leases={propLeases}
       />
     case 'chart-of-accounts':
       return <PropertyChartOfAccounts

@@ -85,8 +85,10 @@ export default function PropertyPaymentVoucher({
   }), [properties, units, vendors, customers, purchaseRecords])
 
   const paymentParties = useMemo(() => lookupService.getPaymentParties('property'), [lookupService])
+  const allParties = useMemo(() => lookupService.getAllPropertyParties(), [lookupService])
 
   const [searchQuery, setSearchQuery] = useState('')
+  const [filterParty, setFilterParty] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -120,6 +122,19 @@ export default function PropertyPaymentVoucher({
     if (dateFrom) list = list.filter(v => v.date >= dateFrom)
     if (dateTo) list = list.filter(v => v.date <= dateTo)
 
+    if (filterParty) {
+      const party = allParties.find(p => p.name === filterParty)
+      list = list.filter(v => {
+        if (v.reference === filterParty || v.description.includes(filterParty)) return true
+        if (party) {
+          // Note: Payment vouchers might not link directly to a lease in the same way,
+          // but we can check if it mentions the property name
+          if (party.type === 'Property' && (v.description.includes(party.name) || v.reference.includes(party.name))) return true
+        }
+        return false
+      })
+    }
+
     if (!searchQuery) return list
     const q = searchQuery.toLowerCase()
     return list.filter(v =>
@@ -127,7 +142,7 @@ export default function PropertyPaymentVoucher({
       v.description.toLowerCase().includes(q) ||
       v.reference.toLowerCase().includes(q)
     )
-  }, [paymentVouchers, searchQuery, dateFrom, dateTo])
+  }, [paymentVouchers, searchQuery, dateFrom, dateTo, filterParty, allParties])
 
   const bankOptions = useMemo(() => [
     { value: '', label: 'Select bank account' },
@@ -653,7 +668,7 @@ export default function PropertyPaymentVoucher({
         </div>
 
         <div className="data-table-toolbar">
-          <div className="data-table-filters" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div className="data-table-filters" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div className="data-table-search" style={{ maxWidth: 'none', width: 'auto', flex: '0 0 auto', padding: '0 12px' }}>
               <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginRight: 8 }}>From</span>
               <input type="date" className="data-table-search-input" style={{ width: 110 }} value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
@@ -661,6 +676,15 @@ export default function PropertyPaymentVoucher({
             <div className="data-table-search" style={{ maxWidth: 'none', width: 'auto', flex: '0 0 auto', padding: '0 12px' }}>
               <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginRight: 8 }}>To</span>
               <input type="date" className="data-table-search-input" style={{ width: 110 }} value={dateTo} onChange={e => setDateTo(e.target.value)} />
+            </div>
+            <div style={{ width: 220 }}>
+              <SearchablePartySelect
+                label=""
+                value={filterParty}
+                onChange={setFilterParty}
+                parties={allParties}
+                placeholder="Filter by Vendor, Tenant, Property..."
+              />
             </div>
           </div>
           <div className="data-table-search">
