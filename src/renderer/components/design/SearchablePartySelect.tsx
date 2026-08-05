@@ -243,16 +243,52 @@ export function SearchablePartySelect({
   return (
     <div ref={containerRef} className="form-group" style={{ position: 'relative' }}>
       <label className="form-label">{label}</label>
-      <input
-        ref={inputRef}
-        className={`input${error ? ' input-error' : ''}`}
-        value={searchTerm}
-        onChange={handleInputChange}
-        onFocus={() => setIsOpen(true)}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        autoComplete="off"
-      />
+      <div style={{ position: 'relative' }}>
+        <input
+          ref={inputRef}
+          className={`input${error ? ' input-error' : ''}`}
+          style={{ paddingRight: searchTerm ? '32px' : undefined }}
+          value={searchTerm}
+          onChange={handleInputChange}
+          onFocus={() => setIsOpen(true)}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          autoComplete="off"
+        />
+        {searchTerm && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setSearchTerm('');
+              onChange('');
+              setIsOpen(true);
+              inputRef.current?.focus();
+            }}
+            style={{
+              position: 'absolute',
+              right: '8px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--text-muted)',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 2,
+            }}
+            aria-label="Clear"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        )}
+      </div>
       {error && <span className="form-error">{error}</span>}
 
       {isOpen && (
