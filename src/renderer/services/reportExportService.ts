@@ -1343,57 +1343,63 @@ export interface FinancialOverviewExportParams {
 }
 
 export async function exportFinancialOverviewPdf(p: FinancialOverviewExportParams): Promise<string | null> {
-  const doc = new jsPDF('landscape')
-  const yStart = 15
-  let y = yStart
+  const doc = new jsPDF('portrait')
+  
+  // 1. Cover Page
+  generatePdfCoverPage(doc, p.title.toUpperCase(), p.subtitle, 'YTD', p.currency, p.recentActivity.length)
+  doc.addPage()
 
+  let y = 15
+  
+  // 2. Report Header
   doc.setFontSize(18)
-  doc.setTextColor(15, 76, 53)
-  doc.text(p.title, 14, y)
-
-  y += 6
+  doc.setTextColor(15, 76, 53) // primaryDark
+  doc.text(`InsAcc ${p.title}`, 14, y)
+  
+  y += 10
   doc.setFontSize(10)
   doc.setTextColor(100, 116, 139)
-  doc.text(p.subtitle, 14, y)
+  doc.text(`Generated: ${new Date().toLocaleDateString()} | Period: YTD`, 14, y)
 
   y += 15
 
-  // 4 KPI Cards
-  const cardWidth = 63
-  const cardHeight = 25
+  // 3. KPI Cards (4 in a row, fits in 210mm portrait)
+  const cardWidth = 42
+  const cardHeight = 22
   let x = 14
   
-  doc.setFontSize(9)
-  p.kpis.forEach((kpi, i) => {
+  p.kpis.forEach((kpi) => {
     // Draw box
-    doc.setDrawColor(229, 231, 235) // #E5E7EB
+    doc.setDrawColor(226, 232, 240) // light border
     doc.setFillColor(255, 255, 255)
     doc.roundedRect(x, y, cardWidth, cardHeight, 2, 2, 'FD')
 
     // Label
-    doc.setTextColor(107, 114, 128) // #6B7280
-    doc.text(kpi.label.toUpperCase(), x + 5, y + 8)
+    doc.setFontSize(8)
+    doc.setTextColor(100, 116, 139)
+    doc.text(kpi.label.toUpperCase(), x + 3, y + 7)
 
     // Value
-    doc.setFontSize(16)
-    doc.setTextColor(17, 24, 39) // #111827
-    doc.text(`${p.currency} ${kpi.value.toLocaleString(undefined, {minimumFractionDigits: 2})}`, x + 5, y + 18)
+    doc.setFontSize(12)
+    doc.setTextColor(15, 76, 53) // standard dark green for values
+    doc.setFont('helvetica', 'bold')
+    doc.text(`${p.currency} ${kpi.value.toLocaleString(undefined, {minimumFractionDigits: 2})}`, x + 3, y + 16)
+    doc.setFont('helvetica', 'normal')
     
-    doc.setFontSize(9) // reset for next
-    x += cardWidth + 5
+    x += cardWidth + 4 // 4mm spacing
   })
 
-  y += cardHeight + 10
+  y += cardHeight + 8
 
-  // Quick Financial Summary Box
-  doc.setDrawColor(229, 231, 235)
-  doc.setFillColor(255, 255, 255)
-  doc.roundedRect(14, y, 267, 30, 2, 2, 'FD')
+  // 4. Quick Financial Summary Box
+  doc.setDrawColor(226, 232, 240)
+  doc.setFillColor(248, 251, 249) // light green background for summary
+  doc.roundedRect(14, y, 180, 25, 2, 2, 'FD')
 
-  doc.setFontSize(10)
-  doc.setTextColor(17, 24, 39)
+  doc.setFontSize(9)
+  doc.setTextColor(15, 76, 53)
   doc.setFont('helvetica', 'bold')
-  doc.text('Quick Financial Summary', 19, y + 8)
+  doc.text('Quick Financial Summary', 18, y + 7)
   doc.setFont('helvetica', 'normal')
 
   const summaryLabels = ['INITIAL CAPITAL', 'CURRENT ASSETS', 'REVENUE', 'EXPENSES', 'GROWTH']
@@ -1404,54 +1410,53 @@ export async function exportFinancialOverviewPdf(p: FinancialOverviewExportParam
     `${p.currency} ${p.summary.expenses.toLocaleString(undefined, {minimumFractionDigits: 2})}`,
     `${p.summary.growth > 0 ? '+' : ''}${p.summary.growth.toFixed(1)}%`
   ]
-  const summaryColors = [
-    [107, 114, 128], // gray
-    [15, 76, 53], // primary
-    [59, 165, 73], // green
-    [239, 68, 68], // red
-    p.summary.growth >= 0 ? [59, 165, 73] : [239, 68, 68]
-  ]
 
-  let sx = 19
-  const sWidth = 50
+  let sx = 18
+  const sWidth = 35
   for (let i = 0; i < 5; i++) {
-    doc.setFontSize(8)
-    doc.setTextColor(107, 114, 128)
-    doc.text(summaryLabels[i], sx, y + 18)
+    doc.setFontSize(7)
+    doc.setTextColor(100, 116, 139)
+    doc.text(summaryLabels[i], sx, y + 15)
     
-    doc.setFontSize(11)
-    doc.setTextColor(summaryColors[i][0], summaryColors[i][1], summaryColors[i][2])
-    doc.text(summaryValues[i], sx, y + 25)
+    doc.setFontSize(9)
+    doc.setTextColor(17, 24, 39)
+    doc.text(summaryValues[i], sx, y + 21)
     sx += sWidth
   }
 
-  y += 30 + 10
+  y += 25 + 10
 
-  // Recent Accounting Activity Table
+  // 5. Recent Accounting Activity Table
   doc.setFontSize(12)
-  doc.setTextColor(17, 24, 39)
+  doc.setTextColor(15, 76, 53)
   doc.setFont('helvetica', 'bold')
   doc.text('Recent Accounting Activity', 14, y + 5)
   doc.setFont('helvetica', 'normal')
 
   autoTable(doc, {
     startY: y + 8,
-    head: [['DATE', '#', 'TYPE', 'DESCRIPTION', 'AMOUNT']],
+    head: [['Date', 'Voucher', 'Type', 'Description', 'Amount']],
     body: p.recentActivity,
-    theme: 'plain',
-    headStyles: { textColor: [107, 114, 128], fontSize: 8, fontStyle: 'bold' },
-    bodyStyles: { textColor: [55, 65, 81], fontSize: 9 },
-    alternateRowStyles: { fillColor: [249, 250, 251] },
+    theme: 'grid',
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [15, 76, 53], textColor: [255, 255, 255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [248, 251, 249] },
     columnStyles: {
-      4: { halign: 'right', textColor: [17, 24, 39] }
-    },
-    didParseCell: (data) => {
-      // Small highlight styling for type column (index 2)
-      if (data.section === 'body' && data.column.index === 2) {
-        data.cell.styles.fontStyle = 'bold'
-      }
+      4: { halign: 'right' }
     }
   })
+
+  // 6. Draw footers on all pages (excluding cover)
+  const totalPages = (doc as any).internal.pages.length - 1
+  for (let i = 2; i <= totalPages; i++) { 
+    doc.setPage(i)
+    
+    // Manual footer since drawFooter is not exported
+    doc.setFontSize(8)
+    doc.setTextColor(100, 116, 139)
+    doc.text('Generated by InsAcc — Intelligent Asset & Investment Accounting', 14, 290)
+    doc.text(`Page ${i - 1} of ${totalPages - 1}`, 196, 290, { align: 'right' })
+  }
 
   const buf = doc.output('arraybuffer')
   return saveWithDialog(`${p.filename}.pdf`, [{ name: 'PDF', extensions: ['pdf'] }], buf)
