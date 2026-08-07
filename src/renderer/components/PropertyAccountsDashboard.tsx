@@ -70,18 +70,7 @@ function fmtFull(n: number, sym: string) {
 }
 
 function fmtCompact(n: number, sym: string) {
-  const abs = Math.abs(n)
-  let valStr = '0'
-  if (abs >= 1_000_000_000) valStr = `${(abs / 1_000_000_000).toFixed(2)}B`
-  else if (abs >= 1_000_000) valStr = `${(abs / 1_000_000).toFixed(2)}M`
-  else if (abs >= 1_000) valStr = `${Math.round(abs / 1_000)}K`
-  else if (abs > 0) valStr = `${Math.round(abs)}`
-  
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-      {n < 0 ? '-' : ''}{sym === 'AED' ? <UaeDirhamIcon /> : sym} {valStr}
-    </span>
-  )
+  return fmtFull(n, sym)
 }
 
 function FormatCompact({ value, currency }: { value: number; currency: string }) {
