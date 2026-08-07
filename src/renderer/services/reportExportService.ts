@@ -1127,6 +1127,7 @@ export interface TableExportParams {
   filename: string
   columns: string[]
   rows: (string | number)[][]
+  foot?: (string | number)[][]
   periodLabel?: string
   currency?: string
   orientation?: 'portrait' | 'landscape'
@@ -1234,11 +1235,16 @@ export async function exportSideBySidePdf(p: SideBySideExportParams): Promise<st
 
 export async function exportTableData(p: TableExportParams): Promise<string | null> {
   if (p.format === 'csv') {
-    let csv = p.columns.map(c => `"${c.replace(/"/g, '""')}"`).join(',') + '\n'
-    p.rows.forEach(r => {
-      csv += r.map(c => typeof c === 'string' ? `"${c.replace(/"/g, '""')}"` : c).join(',') + '\n'
-    })
-    return saveWithDialog(`${p.filename}.csv`, [{ name: 'CSV', extensions: ['csv'] }], csv)
+    const lines = [
+      p.title,
+      ...(p.subtitle ? [p.subtitle] : []),
+      '',
+      p.columns.join(','),
+      ...p.rows.map(r => r.map(c => typeof c === 'string' && c.includes(',') ? `"${c}"` : c).join(',')),
+      ...(p.foot ? p.foot.map(r => r.map(c => typeof c === 'string' && c.includes(',') ? `"${c}"` : c).join(',')) : [])
+    ]
+    const buf = new Blob([lines.join('\n')], { type: 'text/csv' })
+    return saveWithDialog(`${p.filename}.csv`, [{ name: 'CSV', extensions: ['csv'] }], buf)
   }
 
   if (p.format === 'pdf') {
@@ -1271,9 +1277,11 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
       startY: y + 8,
       head: [p.columns],
       body: p.rows,
+      foot: p.foot,
       theme: 'grid',
       styles: { fontSize: 9 },
       headStyles: { fillColor: [15, 76, 53], textColor: [255, 255, 255], fontStyle: 'bold' },
+      footStyles: { fillColor: [248, 251, 249], textColor: [15, 76, 53], fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [248, 251, 249] },
     })
 

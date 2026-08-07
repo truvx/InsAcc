@@ -39,19 +39,21 @@ const KPI_LABEL_STYLE: React.CSSProperties = {
 import { UaeDirhamIcon } from './design/UaeDirhamIcon'
 
 function fmtFull(n: number, sym: string) {
+  const isNegative = n < 0;
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-      {sym === 'AED' ? <UaeDirhamIcon /> : sym} {Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      {isNegative ? '-' : ''}{sym === 'AED' ? <UaeDirhamIcon /> : sym} {Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
     </span>
   )
 }
 
-function fmtCompact(n: number, sym: string) {
-  return fmtFull(n, sym)
+function fmtCompact(n: number, sym: string): string {
+  const isNegative = n < 0;
+  return `${isNegative ? '-' : ''}${sym} ${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function FormatCompact({ value, currency }: { value: number; currency: string }) {
-  return <>{fmtCompact(value, currency)}</>
+  return <>{fmtFull(value, currency)}</>
 }
 
 function getVoucherBadge(type: string) {

@@ -657,6 +657,11 @@ export default function PurchaseLedger({
       ]
     })
 
+    const totalInvested = calculateTotalInvested(filtered)
+    const foot = [
+      ['', '', '', '', 'Total Invested:', formatCurrency(totalInvested, currency), '', '', '', '', '', '', '', '', '']
+    ]
+
     exportTableData({
       format,
       title: 'Purchase Ledger',
@@ -664,6 +669,7 @@ export default function PurchaseLedger({
       filename: `Purchase_Ledger_${new Date().toISOString().split('T')[0]}`,
       columns: exportColumns,
       rows,
+      foot,
       currency,
       orientation: 'landscape'
     })

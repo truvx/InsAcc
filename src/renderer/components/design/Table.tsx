@@ -23,6 +23,7 @@ interface DataTableProps<T> {
   searchQuery?: string
   onSearchChange?: (query: string) => void
   filterBar?: React.ReactNode
+  footer?: React.ReactNode
 }
 
 function SortIcon({ direction }: { direction: 'asc' | 'desc' | null }) {
@@ -63,6 +64,7 @@ function SearchInput({ value, onChange, placeholder }: { value: string; onChange
 export function DataTable<T>({
   columns, data, keyExtractor, emptyState, loading, pageSize = 10,
   searchable, searchPlaceholder, searchQuery, onSearchChange, filterBar,
+  footer,
 }: DataTableProps<T>) {
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc' | null>(null)
@@ -204,6 +206,11 @@ export function DataTable<T>({
               ))
             )}
           </tbody>
+          {footer && (
+            <tfoot>
+              {footer}
+            </tfoot>
+          )}
         </table>
       </div>
 
