@@ -443,18 +443,10 @@ export default function InvestmentReports({
       case 'overview':
         return (
           <>
-            <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 24 }}>
-              <div className="kpi-card" style={{ borderTop: '2px solid #8B5CF6', padding: '12px 14px' }}>
-                <div className="kpi-label" style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', textTransform: 'capitalize', letterSpacing: 'normal' }}>Net Worth</div>
-                <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(financialOverview.netWorth)}</div>
-              </div>
+            <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
               <div className="kpi-card" style={{ borderTop: '2px solid #3B82F6', padding: '12px 14px' }}>
                 <div className="kpi-label" style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', textTransform: 'capitalize', letterSpacing: 'normal' }}>Cash</div>
                 <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(financialOverview.cash)}</div>
-              </div>
-              <div className="kpi-card" style={{ borderTop: '2px solid #10B981', padding: '12px 14px' }}>
-                <div className="kpi-label" style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', textTransform: 'capitalize', letterSpacing: 'normal' }}>Investments</div>
-                <div className="kpi-value" style={{ fontSize: 16, fontWeight: 700 }}>{fmt(financialOverview.investments)}</div>
               </div>
               <div className="kpi-card" style={{ borderTop: '2px solid #F59E0B', padding: '12px 14px' }}>
                 <div className="kpi-label" style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', textTransform: 'capitalize', letterSpacing: 'normal' }}>Bank Balance</div>
@@ -490,21 +482,9 @@ export default function InvestmentReports({
                   </div>
                 </div>
 
-                <div style={{ background: 'linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%)', border: '1px solid #DDD6FE', borderRadius: 12, padding: 16 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#6D28D9', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>Current Net Worth</div>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: '#5B21B6', marginTop: 4, textAlign: 'center' }}>{fmt(financialOverview.netWorth)}</div>
-
-                  {financialOverview.totalAssets > 0 && (
-                    <div style={{ marginTop: 12 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontWeight: 600, color: '#6D28D9', marginBottom: 4 }}>
-                        <span>Assets vs Liabilities</span>
-                        <span>{Math.round((financialOverview.netWorth / financialOverview.totalAssets) * 100)}% Equity</span>
-                      </div>
-                      <div style={{ height: 6, background: '#DDD6FE', borderRadius: 3, overflow: 'hidden' }}>
-                        <div style={{ height: '100%', background: '#8B5CF6', width: `${Math.max(0, Math.min(100, (financialOverview.netWorth / financialOverview.totalAssets) * 100))}%` }}></div>
-                      </div>
-                    </div>
-                  )}
+                <div style={{ background: 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)', border: '1px solid #A7F3D0', borderRadius: 12, padding: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>Total Investments</div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: '#047857', marginTop: 4, textAlign: 'center' }}>{fmt(financialOverview.investments)}</div>
                 </div>
               </div>
 

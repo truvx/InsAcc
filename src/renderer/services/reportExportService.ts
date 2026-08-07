@@ -1326,4 +1326,135 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
   return null
 }
 
+export interface FinancialOverviewExportParams {
+  title: string
+  subtitle: string
+  filename: string
+  currency: string
+  kpis: { label: string; value: number; color: string }[]
+  summary: {
+    initialCapital: number
+    currentAssets: number
+    revenue: number
+    expenses: number
+    growth: number
+  }
+  recentActivity: any[][]
+}
+
+export async function exportFinancialOverviewPdf(p: FinancialOverviewExportParams): Promise<string | null> {
+  const doc = new jsPDF('landscape')
+  const yStart = 15
+  let y = yStart
+
+  doc.setFontSize(18)
+  doc.setTextColor(15, 76, 53)
+  doc.text(p.title, 14, y)
+
+  y += 6
+  doc.setFontSize(10)
+  doc.setTextColor(100, 116, 139)
+  doc.text(p.subtitle, 14, y)
+
+  y += 15
+
+  // 4 KPI Cards
+  const cardWidth = 63
+  const cardHeight = 25
+  let x = 14
+  
+  doc.setFontSize(9)
+  p.kpis.forEach((kpi, i) => {
+    // Draw box
+    doc.setDrawColor(229, 231, 235) // #E5E7EB
+    doc.setFillColor(255, 255, 255)
+    doc.roundedRect(x, y, cardWidth, cardHeight, 2, 2, 'FD')
+
+    // Label
+    doc.setTextColor(107, 114, 128) // #6B7280
+    doc.text(kpi.label.toUpperCase(), x + 5, y + 8)
+
+    // Value
+    doc.setFontSize(16)
+    doc.setTextColor(17, 24, 39) // #111827
+    doc.text(`${p.currency} ${kpi.value.toLocaleString(undefined, {minimumFractionDigits: 2})}`, x + 5, y + 18)
+    
+    doc.setFontSize(9) // reset for next
+    x += cardWidth + 5
+  })
+
+  y += cardHeight + 10
+
+  // Quick Financial Summary Box
+  doc.setDrawColor(229, 231, 235)
+  doc.setFillColor(255, 255, 255)
+  doc.roundedRect(14, y, 267, 30, 2, 2, 'FD')
+
+  doc.setFontSize(10)
+  doc.setTextColor(17, 24, 39)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Quick Financial Summary', 19, y + 8)
+  doc.setFont('helvetica', 'normal')
+
+  const summaryLabels = ['INITIAL CAPITAL', 'CURRENT ASSETS', 'REVENUE', 'EXPENSES', 'GROWTH']
+  const summaryValues = [
+    `${p.currency} ${p.summary.initialCapital.toLocaleString(undefined, {minimumFractionDigits: 2})}`,
+    `${p.currency} ${p.summary.currentAssets.toLocaleString(undefined, {minimumFractionDigits: 2})}`,
+    `${p.currency} ${p.summary.revenue.toLocaleString(undefined, {minimumFractionDigits: 2})}`,
+    `${p.currency} ${p.summary.expenses.toLocaleString(undefined, {minimumFractionDigits: 2})}`,
+    `${p.summary.growth > 0 ? '+' : ''}${p.summary.growth.toFixed(1)}%`
+  ]
+  const summaryColors = [
+    [107, 114, 128], // gray
+    [15, 76, 53], // primary
+    [59, 165, 73], // green
+    [239, 68, 68], // red
+    p.summary.growth >= 0 ? [59, 165, 73] : [239, 68, 68]
+  ]
+
+  let sx = 19
+  const sWidth = 50
+  for (let i = 0; i < 5; i++) {
+    doc.setFontSize(8)
+    doc.setTextColor(107, 114, 128)
+    doc.text(summaryLabels[i], sx, y + 18)
+    
+    doc.setFontSize(11)
+    doc.setTextColor(summaryColors[i][0], summaryColors[i][1], summaryColors[i][2])
+    doc.text(summaryValues[i], sx, y + 25)
+    sx += sWidth
+  }
+
+  y += 30 + 10
+
+  // Recent Accounting Activity Table
+  doc.setFontSize(12)
+  doc.setTextColor(17, 24, 39)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Recent Accounting Activity', 14, y + 5)
+  doc.setFont('helvetica', 'normal')
+
+  autoTable(doc, {
+    startY: y + 8,
+    head: [['DATE', '#', 'TYPE', 'DESCRIPTION', 'AMOUNT']],
+    body: p.recentActivity,
+    theme: 'plain',
+    headStyles: { textColor: [107, 114, 128], fontSize: 8, fontStyle: 'bold' },
+    bodyStyles: { textColor: [55, 65, 81], fontSize: 9 },
+    alternateRowStyles: { fillColor: [249, 250, 251] },
+    columnStyles: {
+      4: { halign: 'right', textColor: [17, 24, 39] }
+    },
+    didParseCell: (data) => {
+      // Small highlight styling for type column (index 2)
+      if (data.section === 'body' && data.column.index === 2) {
+        data.cell.styles.fontStyle = 'bold'
+      }
+    }
+  })
+
+  const buf = doc.output('arraybuffer')
+  return saveWithDialog(`${p.filename}.pdf`, [{ name: 'PDF', extensions: ['pdf'] }], buf)
+}
+
 export { generatePdf, generateExcel, generateCsv }

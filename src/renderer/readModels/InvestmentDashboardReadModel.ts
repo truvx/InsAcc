@@ -182,8 +182,8 @@ export function getInvestmentDashboardProjection(
     Yearly: aggregateGrowth(4, 'Yearly'),
   }
 
-  // Cash flow by period
-  const aggregateCashFlow = (keyLen: number): CashFlowDataPoint[] => {
+  // Income/Expense by period
+  const aggregateIncomeExpense = (keyLen: number): CashFlowDataPoint[] => {
     const groups: Record<string, { income: number; expense: number }> = {}
     vouchers
       .filter(v => v.status === 'Posted')
@@ -206,27 +206,59 @@ export function getInvestmentDashboardProjection(
     }))
   }
 
+  const incomeExpenseByPeriod = {
+    Daily: aggregateIncomeExpense(10),
+    Monthly: aggregateIncomeExpense(7),
+    Yearly: aggregateIncomeExpense(4),
+  }
+
+  // Real Cash flow by period (Bank accounts)
+  const aggregateCashFlow = (keyLen: number): CashFlowDataPoint[] => {
+    const groups: Record<string, { cashIn: number; cashOut: number }> = {}
+    vouchers
+      .filter(v => v.status === 'Posted')
+      .forEach(v => {
+        const k = v.date.substring(0, keyLen)
+        if (!groups[k]) groups[k] = { cashIn: 0, cashOut: 0 }
+        const g = groups[k]
+        v.lines.forEach(l => {
+          const acct = accounts.find(a => a.id === l.accountId)
+          if (!acct) return
+          // Cash In = Debit to bank/cash
+          if ((acct.type === 'bank' || acct.type === 'cash') && l.type === 'Debit') g.cashIn += l.baseAmount
+          // Cash Out = Credit to bank/cash
+          if ((acct.type === 'bank' || acct.type === 'cash') && l.type === 'Credit') g.cashOut += l.baseAmount
+        })
+      })
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b)).map(([month, vals]) => ({
+      period: month,
+      income: Math.round(vals.cashIn * 100) / 100, // Reusing income/expense keys for chart compatibility if needed
+      expense: Math.round(vals.cashOut * 100) / 100,
+      net: Math.round((vals.cashIn - vals.cashOut) * 100) / 100,
+    }))
+  }
+
   const cashFlowByPeriod = {
     Daily: aggregateCashFlow(10),
     Monthly: aggregateCashFlow(7),
     Yearly: aggregateCashFlow(4),
   }
 
-  const months = new Map<string, { income: number; expense: number }>()
+  const months = new Map<string, { cashIn: number; cashOut: number }>()
   for (const v of vouchers.filter(v => v.status === 'Posted')) {
     const month = v.date.substring(0, 7)
-    if (!months.has(month)) months.set(month, { income: 0, expense: 0 })
+    if (!months.has(month)) months.set(month, { cashIn: 0, cashOut: 0 })
     const m = months.get(month)!
     for (const l of v.lines) {
       const acct = accounts.find(a => a.id === l.accountId)
       if (!acct) continue
-      if (acct.type === 'revenue' && l.type === 'Credit') m.income += l.baseAmount
-      if (acct.type === 'expense' && l.type === 'Debit') m.expense += l.baseAmount
+      if ((acct.type === 'bank' || acct.type === 'cash') && l.type === 'Debit') m.cashIn += l.baseAmount
+      if ((acct.type === 'bank' || acct.type === 'cash') && l.type === 'Credit') m.cashOut += l.baseAmount
     }
   }
   const cashFlowHistory = Array.from(months.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([month, data]) => ({ month, income: data.income, expense: data.expense, net: data.income - data.expense }))
+    .map(([month, data]) => ({ month, income: data.cashIn, expense: data.cashOut, net: data.cashIn - data.cashOut }))
 
   return {
     portfolioValue,
@@ -241,5 +273,6 @@ export function getInvestmentDashboardProjection(
     cashFlowHistory,
     investmentGrowthByPeriod,
     cashFlowByPeriod,
+    incomeExpenseByPeriod,
   }
 }

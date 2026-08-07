@@ -5,6 +5,8 @@ import type { PurchaseRecord } from '../data/purchaseLedger'
 import { Modal } from './design/DesignSystem'
 import AccountDrillDown from './AccountDrillDown'
 import { getFinancialOverviewProjection } from '../readModels/InvestmentFinancialOverviewReadModel'
+import { Download, ChevronLeft as ChevronLeftIcon } from 'lucide-react'
+import { exportFinancialOverviewPdf } from '../services/reportExportService'
 
 interface Props {
   currency?: string
@@ -111,26 +113,59 @@ export default function InvestmentAccountsDashboard({
     }
   }, [accounts])
 
-  const exportCSV = useCallback(() => {
-    const rows = [
-      ['Metric', 'Value (AED)'],
-      ['Cash', projection.cash],
-      ['Bank Balance', projection.bankBalance],
-      ['Investment Assets', projection.investments],
-      ['Revenue', projection.quickSummary.revenue],
-      ['Expenses', projection.quickSummary.expenses],
-      ['Initial Capital', projection.quickSummary.initialCapital],
-      ['Growth %', projection.quickSummary.growth],
-    ]
-    const csv = rows.map(r => r.join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `financial-overview-${new Date().toISOString().split('T')[0]}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+  const [showExportMenu, setShowExportMenu] = useState(false)
+
+  const allRecentActivity = useMemo(() => {
+    const items: Array<{ date: string; number: string; type: string; description: string; amount: number }> = []
+    const push = (arr: typeof items) => items.push(...arr)
+    push(projection.recentPurchases.map(r => ({ ...r, type: 'Purchase' })))
+    push(projection.recentReceipts.map(r => ({ ...r, type: 'Receipt' })))
+    push(projection.recentPayments.map(r => ({ ...r, type: 'Payment' })))
+    push(projection.recentJournals.map(r => ({ ...r, type: 'Journal' })))
+    return items.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20)
   }, [projection])
+
+  const handleExport = useCallback((format: 'csv' | 'pdf') => {
+    if (format === 'csv') {
+      const rows = [
+        ['Metric', 'Value (AED)'],
+        ['Cash', projection.cash],
+        ['Bank Balance', projection.bankBalance],
+        ['Investment Assets', projection.investments],
+        ['Revenue', projection.quickSummary.revenue],
+        ['Expenses', projection.quickSummary.expenses],
+        ['Initial Capital', projection.quickSummary.initialCapital],
+        ['Growth %', projection.quickSummary.growth],
+      ]
+      const csv = rows.map(r => r.join(',')).join('\n')
+      const blob = new Blob([csv], { type: 'text/csv' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `financial-overview-${new Date().toISOString().split('T')[0]}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } else if (format === 'pdf') {
+      const tableRows = allRecentActivity.map(r => [
+        r.date, r.number, r.type, r.description, `${currency} ${r.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}`
+      ])
+      exportFinancialOverviewPdf({
+        title: 'Financial Overview',
+        subtitle: 'Real-time financial position derived from the accounting book.',
+        filename: `financial-overview-${new Date().toISOString().split('T')[0]}`,
+        currency,
+        kpis: [
+          { label: 'Cash', value: projection.cash, color: '#3BA549' },
+          { label: 'Bank Balance', value: projection.bankBalance, color: '#0A0A6F' },
+          { label: 'Investment Assets', value: projection.investments, color: '#1B65A6' },
+          { label: 'Expenses', value: projection.quickSummary.expenses, color: '#EF4444' }
+        ],
+        summary: projection.quickSummary,
+        recentActivity: tableRows
+      })
+    }
+    setShowExportMenu(false)
+  }, [projection, allRecentActivity, currency])
 
   const kpiCards = useMemo(() => [
     {
@@ -157,16 +192,6 @@ export default function InvestmentAccountsDashboard({
     projection.recentJournals.length === 0 &&
     projection.recentPurchases.length === 0,
   [projection])
-
-  const allRecentActivity = useMemo(() => {
-    const items: Array<{ date: string; number: string; type: string; description: string; amount: number }> = []
-    const push = (arr: typeof items) => items.push(...arr)
-    push(projection.recentPurchases.map(r => ({ ...r, type: 'Purchase' })))
-    push(projection.recentReceipts.map(r => ({ ...r, type: 'Receipt' })))
-    push(projection.recentPayments.map(r => ({ ...r, type: 'Payment' })))
-    push(projection.recentJournals.map(r => ({ ...r, type: 'Journal' })))
-    return items.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20)
-  }, [projection])
 
   const sectionGap = 28
   const cardBorder = '1px solid #E5E7EB'
@@ -206,17 +231,47 @@ export default function InvestmentAccountsDashboard({
               <option key={ba.id} value={ba.id}>{ba.institution}</option>
             ))}
           </select>
-          <button
-            onClick={exportCSV}
-            style={{
-              padding: '8px 16px', borderRadius: 8, border: '1px solid #ECECEC',
-              fontSize: 13, fontFamily: "'Inter', sans-serif", background: '#fff',
-              cursor: 'pointer', fontWeight: 500, color: '#374151',
-              boxShadow: cardShadow,
-            }}
-          >
-            Export CSV
-          </button>
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              style={{
+                padding: '8px 16px', borderRadius: 8, border: '1px solid #ECECEC',
+                fontSize: 13, fontFamily: "'Inter', sans-serif", background: '#fff',
+                cursor: 'pointer', fontWeight: 500, color: '#374151',
+                boxShadow: cardShadow, display: 'flex', alignItems: 'center', gap: 6
+              }}
+            >
+              <Download size={16} /> Export
+              <span style={{ display: 'inline-block', transform: showExportMenu ? 'rotate(90deg)' : 'rotate(-90deg)', width: 12, height: 12 }}>
+                <ChevronLeftIcon size={12} />
+              </span>
+            </button>
+            {showExportMenu && (
+              <div style={{
+                position: 'absolute', top: '100%', right: 0, marginTop: 4,
+                background: '#fff', border: '1px solid #E5E7EB', borderRadius: 8,
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                zIndex: 50, display: 'flex', flexDirection: 'column', minWidth: 140, overflow: 'hidden'
+              }}>
+                <button
+                  onClick={() => handleExport('pdf')}
+                  style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#374151' }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F3F4F6'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  PDF (.pdf)
+                </button>
+                <button
+                  onClick={() => handleExport('csv')}
+                  style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: '#374151' }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F3F4F6'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  CSV (.csv)
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

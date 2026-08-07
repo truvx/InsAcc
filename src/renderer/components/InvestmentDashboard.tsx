@@ -372,7 +372,7 @@ function InvestmentDashboardInner({
             <LazyChart height={370}><CashFlowChart dataByPeriod={data.cashFlowByPeriod} /></LazyChart>
           </React.Suspense>
           <React.Suspense fallback={<div style={{ height: 370 }} />}>
-            <LazyChart height={370}><IncomeExpenseChart dataByPeriod={data.cashFlowByPeriod} /></LazyChart>
+            <LazyChart height={370}><IncomeExpenseChart dataByPeriod={data.incomeExpenseByPeriod} /></LazyChart>
           </React.Suspense>
         </div>
 
