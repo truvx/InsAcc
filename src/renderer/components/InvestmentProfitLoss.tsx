@@ -5,8 +5,9 @@ import { generateChartOfAccountsReadModel, generateTrialBalanceReadModel, genera
 import { EmptyState, Modal } from './design/DesignSystem'
 import AccountDrillDown from './AccountDrillDown'
 
-import { TrendingUp, TrendingDown } from 'lucide-react'
+import { TrendingUp, TrendingDown, Download } from 'lucide-react'
 import { CurrencyText } from './design/CurrencyText'
+import { exportSideBySidePdf } from '../services/reportExportService'
 
 interface Props {
   currency?: string
@@ -132,6 +133,38 @@ export default function InvestmentProfitLoss({ currency = 'AED', accounts, vouch
     </div>
   )
 
+  const handleExport = () => {
+    exportSideBySidePdf({
+      title: 'Profit & Loss',
+      subtitle: 'Revenue — Expenses = Net Income',
+      periodLabel: 'All Time',
+      currency: currency,
+      filename: `Profit_And_Loss_${new Date().toISOString().split('T')[0]}`,
+      leftCol: {
+        title: 'Revenue',
+        rows: revenueRows.map(r => [
+          { content: r.account.name, styles: { paddingLeft: 10 + r.depth * 5 } },
+          { content: r.balance.toLocaleString(undefined, { minimumFractionDigits: 2 }), styles: { halign: 'right' } }
+        ]),
+        total: totalRevenue,
+        accentColor: '#059669'
+      },
+      rightCol: {
+        title: 'Expenses',
+        rows: expenseRows.map(r => [
+          { content: r.account.name, styles: { paddingLeft: 10 + r.depth * 5 } },
+          { content: r.balance.toLocaleString(undefined, { minimumFractionDigits: 2 }), styles: { halign: 'right' } }
+        ]),
+        total: totalExpenses,
+        accentColor: '#DC2626'
+      },
+      footer: {
+        label: 'Net Profit / Loss',
+        value: netIncome
+      }
+    })
+  }
+
   return (
     <>
       <Modal open={drillAccountId !== null} title={`Account Drill Down — ${drillAccountName}`} onClose={() => setDrillAccountId(null)}>
@@ -152,6 +185,19 @@ export default function InvestmentProfitLoss({ currency = 'AED', accounts, vouch
             <div className="page-title">Profit & Loss</div>
             <div className="page-subtitle">Revenue — Expenses = Net Income</div>
           </div>
+        </div>
+        <div className="page-header-right">
+          <button
+            onClick={handleExport}
+            style={{
+              padding: '8px 16px', borderRadius: 8, border: '1px solid #E5E7EB',
+              background: '#fff', cursor: 'pointer', fontSize: 13,
+              display: 'flex', alignItems: 'center', gap: 6,
+              color: '#374151', fontWeight: 500
+            }}
+          >
+            <Download size={16} /> Export PDF
+          </button>
         </div>
       </div>
 
