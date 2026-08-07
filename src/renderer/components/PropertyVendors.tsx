@@ -311,7 +311,7 @@ export default function PropertyVendors({
       v.phone || '',
       v.email || '',
       v.trn || '',
-      vendorPaymentTotals[v.id] || 0,
+      Number((vendorPaymentTotals[v.id] || 0).toFixed(2)),
       vendorExpenseCounts[v.id] || 0,
       v.status
     ])
