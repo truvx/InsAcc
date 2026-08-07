@@ -21,6 +21,7 @@ export interface ActivityExportEntry {
 export interface ReportExportInput {
   currency: string
   periodLabel: string
+  moduleName?: string
   kpis: KpiExportItem[]
   income: number
   expenses: number
@@ -936,7 +937,7 @@ export async function exportAccountingCsv(p: ExcelExportParams): Promise<string 
   return saveWithDialog(filename, [{ name: 'CSV', extensions: ['csv'] }], csv)
 }
 
-function generatePdfCoverPage(doc: any, title: string, subtitle: string, periodLabel: string, currency: string, totalTxns?: number) {
+function generatePdfCoverPage(doc: any, title: string, subtitle: string, periodLabel: string, currency: string, totalTxns?: number, moduleName?: string) {
   doc.setFillColor(15, 76, 53)
   doc.rect(0, 0, 210, 110, 'F')
 
@@ -1004,6 +1005,24 @@ function generatePdfCoverPage(doc: any, title: string, subtitle: string, periodL
     doc.text(totalTxns.toString(), valX, myY)
   }
 
+  let finalModuleName = moduleName
+  if (!finalModuleName && typeof document !== 'undefined') {
+    const appShell = document.querySelector('.app-shell')
+    if (appShell) {
+      const activeModule = appShell.getAttribute('data-module')
+      if (activeModule === 'property') finalModuleName = 'Properties Management'
+      else if (activeModule === 'investment') finalModuleName = 'Investment Portfolio'
+    }
+  }
+
+  if (finalModuleName) {
+    myY += 10
+    doc.setFont('helvetica', 'bold')
+    doc.text('Portfolio', labelX, myY, { align: 'right' })
+    doc.setFont('helvetica', 'normal')
+    doc.text(finalModuleName, valX, myY)
+  }
+
   myY += 20
   doc.setFontSize(8)
   doc.setFont('helvetica', 'bold')
@@ -1021,7 +1040,7 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
   fv.forEach(v => v.lines.forEach(l => { if (l.type === 'Debit') totDr += l.amount; else totCr += l.amount }))
 
   const moduleName = p.module === 'Property' ? 'Properties Management' : 'Investment Portfolio'
-  generatePdfCoverPage(doc, 'GENERAL LEDGER REPORT', moduleName, p.periodLabel, p.currency, fv.length)
+  generatePdfCoverPage(doc, 'GENERAL LEDGER REPORT', moduleName, p.periodLabel, p.currency, fv.length, moduleName)
   doc.addPage()
 
   // Report Page
@@ -1131,6 +1150,7 @@ export interface TableExportParams {
   periodLabel?: string
   currency?: string
   orientation?: 'portrait' | 'landscape'
+  moduleName?: string
 }
 
 export interface SideBySideExportParams {
@@ -1155,6 +1175,7 @@ export interface SideBySideExportParams {
     label: string
     value: number
   }
+  moduleName?: string
 }
 
 export async function exportSideBySidePdf(p: SideBySideExportParams): Promise<string | null> {
@@ -1166,7 +1187,8 @@ export async function exportSideBySidePdf(p: SideBySideExportParams): Promise<st
     p.subtitle || '', 
     p.periodLabel || 'All Time', 
     p.currency || 'AED',
-    p.leftCol.rows.length + p.rightCol.rows.length
+    p.leftCol.rows.length + p.rightCol.rows.length,
+    p.moduleName
   )
   
   doc.addPage()
@@ -1256,7 +1278,8 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
       p.subtitle || '', 
       p.periodLabel || 'All Time', 
       p.currency || 'AED',
-      p.rows.length
+      p.rows.length,
+      p.moduleName
     )
     doc.addPage()
 
@@ -1340,13 +1363,14 @@ export interface FinancialOverviewExportParams {
     growth: number
   }
   recentActivity: any[][]
+  moduleName?: string
 }
 
 export async function exportFinancialOverviewPdf(p: FinancialOverviewExportParams): Promise<string | null> {
   const doc = new jsPDF('portrait')
   
   // 1. Cover Page
-  generatePdfCoverPage(doc, p.title.toUpperCase(), p.subtitle, 'YTD', p.currency, p.recentActivity.length)
+  generatePdfCoverPage(doc, p.title.toUpperCase(), p.subtitle, 'YTD', p.currency, p.recentActivity.length, p.moduleName)
   doc.addPage()
 
   let y = 15
