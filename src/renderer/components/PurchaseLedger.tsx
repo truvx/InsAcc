@@ -627,18 +627,35 @@ export default function PurchaseLedger({
   }
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
-    const exportColumns = ['Lot ID', 'Date', 'Type', 'Asset', 'Status', 'Qty', 'Unit Price', 'Total Cost', 'Buyer']
-    const rows = filtered.map(r => [
-      r.lotId,
-      formatDate(r.purchaseDate, dateFormat),
-      formatAssetType(r.assetType),
-      r.assetName,
-      r.status,
-      r.quantity,
-      r.unitPrice,
-      r.totalValue,
-      r.buyer || ''
-    ])
+    const exportColumns = [
+      'PURCHASE #', 'DATE', 'ASSET', 'QTY', 'UNIT PRICE', 'TOTAL', 
+      'PAID FROM', 'BUYER', 'PAYMENT MODE', 'CHART', 'VOUCHER', 
+      'JOURNAL #', 'DOCS', 'POSTING', 'STATUS'
+    ]
+    
+    const rows = filtered.map(r => {
+      const bank = r.fundingBankAccountId ? bankByIdMap.get(r.fundingBankAccountId) ?? null : null
+      const d = purchaseDetailMap.get(r.id)
+      const paidFrom = bank ? bank.institution : (d?.creditAccountName || (r.voucherNumber ? '—' : 'N/A'))
+      
+      return [
+        r.lotId,
+        formatDate(r.purchaseDate, dateFormat),
+        `${r.assetName}\n(${formatAssetType(r.assetType)})`,
+        r.quantity.toLocaleString(),
+        formatCurrency(r.unitPrice, currency),
+        formatCurrency(r.totalValue, currency),
+        paidFrom,
+        r.buyer || '—',
+        r.paymentMode || 'Unknown',
+        r.accountCode || '—',
+        r.voucherNumber || '—',
+        r.voucherNumber ? `JRNL-${r.voucherNumber.replace('VCH-', '')}` : '—',
+        d && d.docsCount > 0 ? String(d.docsCount) : '—',
+        d && d.postingStatus !== '—' ? d.postingStatus : '—',
+        r.status
+      ]
+    })
 
     exportTableData({
       format,
