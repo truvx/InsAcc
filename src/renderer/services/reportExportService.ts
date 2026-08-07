@@ -1129,6 +1129,7 @@ export interface TableExportParams {
   rows: (string | number)[][]
   periodLabel?: string
   currency?: string
+  orientation?: 'portrait' | 'landscape'
 }
 
 export interface SideBySideExportParams {
@@ -1241,7 +1242,7 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
   }
 
   if (p.format === 'pdf') {
-    const doc = new jsPDF()
+    const doc = new jsPDF({ orientation: p.orientation || 'portrait' })
     
     generatePdfCoverPage(
       doc, 

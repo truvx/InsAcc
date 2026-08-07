@@ -664,7 +664,8 @@ export default function PurchaseLedger({
       filename: `Purchase_Ledger_${new Date().toISOString().split('T')[0]}`,
       columns: exportColumns,
       rows,
-      currency
+      currency,
+      orientation: 'landscape'
     })
     setShowExportMenu(false)
   }
