@@ -471,27 +471,7 @@ export default function PurchaseLedger({
         return <Badge variant={variant[d.postingStatus] || 'neutral'}>{d.postingStatus}</Badge>
       },
     },
-    {
-      key: 'acctImpact', header: 'Impact', width: '65px',
-      render: r => r.voucherId ? (
-        <Button variant="ghost" size="sm" onClick={() => setAcctImpactId(r.id)}
-          style={{ padding: '2px 6px', fontSize: 11, color: 'var(--primary)' }}
-        >
-          Impact
-        </Button>
-      ) : (
-        <span className="text-xs text-secondary">—</span>
-      ),
-    },
-    {
-      key: 'currentValue', header: 'Cur Val', sortable: true, numeric: true, width: '100px',
-      render: r => {
-        const d = purchaseDetailMap.get(r.id)
-        return d?.currentValue ? (
-          <span className="text-xs fw-500"><CurrencyText value={d.currentValue} currency={currency} /></span>
-        ) : <span className="text-xs text-secondary">—</span>
-      },
-    },
+
     {
       key: 'status', header: 'Status', width: '70px',
       render: r => statusBadge(r.status),
