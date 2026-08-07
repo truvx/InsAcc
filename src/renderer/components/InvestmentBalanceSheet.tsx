@@ -5,8 +5,9 @@ import { generateChartOfAccountsReadModel, generateTrialBalanceReadModel, genera
 import { EmptyState, Modal } from './design/DesignSystem'
 import AccountDrillDown from './AccountDrillDown'
 
-import { Landmark, ListChecks } from 'lucide-react'
+import { Landmark, ListChecks, Download } from 'lucide-react'
 import { CurrencyText } from './design/CurrencyText'
+import { exportSideBySidePdf } from '../services/reportExportService'
 
 interface Props {
   currency?: string
@@ -167,6 +168,46 @@ export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vou
     </div>
   )
 
+  const handleExport = () => {
+    exportSideBySidePdf({
+      title: 'Balance Sheet',
+      subtitle: 'Financial position at a glance',
+      periodLabel: 'As of Today',
+      currency: currency,
+      filename: `Balance_Sheet_${new Date().toISOString().split('T')[0]}`,
+      leftCol: {
+        title: 'Assets',
+        rows: assetRows.map(r => [
+          { content: r.account.name, styles: { paddingLeft: 10 + r.depth * 5 } },
+          { content: r.balance.toLocaleString(undefined, { minimumFractionDigits: 2 }), styles: { halign: 'right' } }
+        ]),
+        total: totalAssets,
+        accentColor: '#0A0A6F'
+      },
+      rightCol: {
+        title: 'Liabilities & Equity',
+        rows: [
+          [{ content: 'Liabilities', colSpan: 2, styles: { fillColor: [248, 251, 249], fontStyle: 'bold', textColor: '#D97706' } }],
+          ...liabilityRows.map(r => [
+            { content: r.account.name, styles: { paddingLeft: 10 + r.depth * 5 } },
+            { content: r.balance.toLocaleString(undefined, { minimumFractionDigits: 2 }), styles: { halign: 'right' } }
+          ]),
+          [{ content: 'Equity', colSpan: 2, styles: { fillColor: [248, 251, 249], fontStyle: 'bold', textColor: '#059669' } }],
+          ...equityRows.map(r => [
+            { content: r.account.name, styles: { paddingLeft: 10 + r.depth * 5 } },
+            { content: r.balance.toLocaleString(undefined, { minimumFractionDigits: 2 }), styles: { halign: 'right' } }
+          ])
+        ],
+        total: totalLiabilities + totalEquity,
+        accentColor: '#D97706'
+      },
+      footer: {
+        label: 'Balance Difference',
+        value: Math.abs(totalAssets - (totalLiabilities + totalEquity))
+      }
+    })
+  }
+
   return (
     <>
       <Modal open={drillAccountId !== null} title={`Account Drill Down — ${drillAccountName}`} onClose={() => setDrillAccountId(null)}>
@@ -187,6 +228,19 @@ export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vou
             <div className="page-title">Balance Sheet</div>
             <div className="page-subtitle">Financial position at a glance</div>
           </div>
+        </div>
+        <div className="page-header-right">
+          <button
+            onClick={handleExport}
+            style={{
+              padding: '8px 16px', borderRadius: 8, border: '1px solid #E5E7EB',
+              background: '#fff', cursor: 'pointer', fontSize: 13,
+              display: 'flex', alignItems: 'center', gap: 6,
+              color: '#374151', fontWeight: 500
+            }}
+          >
+            <Download size={16} /> Export PDF
+          </button>
         </div>
       </div>
 
