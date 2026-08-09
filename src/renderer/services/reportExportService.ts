@@ -504,9 +504,30 @@ function sheetSummary(p: ExcelExportParams, fv: Voucher[], totDr: number, totCr:
   })
 }
 
+function addSheetHeader(rows: XCell[][], p: ExcelExportParams, title: string, cols: number): any[] {
+  const modStr = p.module === 'Property' ? 'PROPERTIES MANAGEMENT' : 'INVESTMENT PORTFOLIO'
+  const periodStr = `Period: ${p.periodLabel || 'All Time'}`
+  
+  const r1 = Array(cols).fill(null).map(() => eCell(C.primaryDark))
+  r1[0] = hCell(`INSACC - ${modStr}`, { sz: 12, bg: C.primaryDark })
+
+  const r2 = Array(cols).fill(null).map(() => eCell(C.subHdr))
+  r2[0] = hCell(`${title.toUpperCase()}  |  ${periodStr}`, { sz: 10, bg: C.subHdr, bold: false })
+
+  const r3 = Array(cols).fill(null).map(() => eCell())
+  
+  rows.push(r1, r2, r3)
+
+  return [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: cols - 1 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: cols - 1 } }
+  ]
+}
+
 // ── SHEET 3: TRANSACTIONS ─────────────────────────────────────────
 function sheetTransactions(p: ExcelExportParams, fv: Voucher[]): any {
   const rows: XCell[][] = []
+  const merges = addSheetHeader(rows, p, 'Transactions', 18)
   const hdrs = ['Date', 'Voucher No.', 'Ref. No.', 'Type', 'Party / Tenant / Vendor', 'Description', 'Narration', 'From Account', 'To Account', 'Payment Mode', 'Cheque No.', 'Account Code', 'Account Name', 'Debit', 'Credit', 'Running Balance', 'Posted By', 'Posted Time']
   rows.push(hdrs.map(h => hCell(h, { bg: C.primaryDark, sz: 9 })))
 
@@ -563,14 +584,16 @@ function sheetTransactions(p: ExcelExportParams, fv: Voucher[]): any {
   rows.push(tot)
 
   return buildWS(rows, {
-    freeze: { r: 1, c: 2 }, filterRow: 0,
+    freeze: { r: 4, c: 2 }, filterRow: 3,
     colW: [{ wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 22 }, { wch: 34 }, { wch: 28 }, { wch: 22 }, { wch: 22 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 24 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 18 }],
+    merges
   })
 }
 
 // ── SHEET 4: VOUCHER DETAILS ──────────────────────────────────────
 function sheetVoucherDetails(p: ExcelExportParams, fv: Voucher[]): any {
   const rows: XCell[][] = []
+  const merges = addSheetHeader(rows, p, 'Voucher Details', 13)
   const hdrs = ['Voucher No.', 'Type', 'Date', 'Currency', 'Exch. Rate', 'Total Debit', 'Total Credit', 'Net', 'Party', 'Description', 'Created By', 'Approved By', 'Reference']
   rows.push(hdrs.map(h => hCell(h, { bg: C.primaryDark, sz: 9 })))
   const lHdrs = ['', '  Line #', 'Account Code', 'Account Name', 'Dr / Cr', '', 'Debit Amount', 'Credit Amount', '', 'Line Narration', '', '', '']
@@ -615,14 +638,16 @@ function sheetVoucherDetails(p: ExcelExportParams, fv: Voucher[]): any {
   }
 
   return buildWS(rows, {
-    freeze: { r: 2, c: 1 }, filterRow: 0,
+    freeze: { r: 5, c: 1 }, filterRow: 3,
     colW: [{ wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 38 }, { wch: 14 }, { wch: 14 }, { wch: 16 }],
+    merges
   })
 }
 
 // ── SHEET 5: BANK ACTIVITY ────────────────────────────────────────
 function sheetBankActivity(p: ExcelExportParams, fv: Voucher[]): any {
   const rows: XCell[][] = []
+  const merges = addSheetHeader(rows, p, 'Bank Activity', 11)
   const bankAccts = p.accounts.filter(a => (a.code.startsWith('1110') || a.code.startsWith('1120')) && a.isActive)
   const sorted = [...fv].sort((a, b) => a.date.localeCompare(b.date))
   const hdrs = ['Date', 'Voucher No.', 'Type', 'Description', 'Narration', 'Payment Mode', 'Cheque No.', 'Reference', 'Money In', 'Money Out', 'Running Balance']
@@ -675,14 +700,16 @@ function sheetBankActivity(p: ExcelExportParams, fv: Voucher[]): any {
   }
 
   return buildWS(rows, {
-    freeze: { r: 2, c: 0 },
+    freeze: { r: 5, c: 0 },
     colW: [{ wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 34 }, { wch: 28 }, { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }],
+    merges
   })
 }
 
 // ── SHEET 6: GENERAL LEDGER ───────────────────────────────────────
 function sheetLedger(p: ExcelExportParams, fv: Voucher[]): any {
   const rows: XCell[][] = []
+  const merges = addSheetHeader(rows, p, 'General Ledger', 7)
   const sorted = [...fv].sort((a, b) => a.date.localeCompare(b.date))
   const typeOrder = ['asset', 'liability', 'equity', 'revenue', 'expense']
   const typeLabels: Record<string, string> = { asset: 'ASSETS', liability: 'LIABILITIES', equity: 'EQUITY', revenue: 'REVENUE / INCOME', expense: 'EXPENSES' }
@@ -735,13 +762,16 @@ function sheetLedger(p: ExcelExportParams, fv: Voucher[]): any {
   }
 
   return buildWS(rows, {
+    freeze: { r: 4, c: 0 }, filterRow: 3,
     colW: [{ wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 38 }, { wch: 16 }, { wch: 16 }, { wch: 16 }],
+    merges
   })
 }
 
 // ── SHEET 7: AUDIT TRAIL ──────────────────────────────────────────
 function sheetAudit(p: ExcelExportParams): any {
   const rows: XCell[][] = []
+  const merges = addSheetHeader(rows, p, 'Audit Trail', 7)
   const hdrs = ['Timestamp', 'Created By', 'Module', 'Action', 'Target / Voucher ID', 'Status', 'Details']
   rows.push(hdrs.map(h => hCell(h, { bg: C.primaryDark })))
   const logs = p.auditLogs || []
@@ -761,17 +791,16 @@ function sheetAudit(p: ExcelExportParams): any {
       ])
     })
   }
-  return buildWS(rows, { freeze: { r: 1, c: 0 }, filterRow: 0, colW: [{ wch: 22 }, { wch: 16 }, { wch: 14 }, { wch: 18 }, { wch: 24 }, { wch: 10 }, { wch: 48 }] })
+  return buildWS(rows, { freeze: { r: 4, c: 0 }, filterRow: 3, colW: [{ wch: 22 }, { wch: 16 }, { wch: 14 }, { wch: 18 }, { wch: 24 }, { wch: 10 }, { wch: 48 }], merges })
 }
 
 // ── SHEET 8: NOTES ────────────────────────────────────────────────
 function sheetNotes(p: ExcelExportParams, count: number): any {
   const rows: XCell[][] = []
+  const merges = addSheetHeader(rows, p, 'Report Notes & Metadata', 3)
   const now = new Date()
   const blk = (lbl: string, val: string) => [dCell(lbl, { bold: true, color: C.gray }), dCell(val), eCell()]
 
-  rows.push([hCell('REPORT NOTES & METADATA', { sz: 12, bg: C.primaryDark }), hCell('', { bg: C.primaryDark }), hCell('', { bg: C.primaryDark })])
-  rows.push([])
   rows.push(sectionRow('  EXPORT CONFIGURATION', 3))
   rows.push(blk('Company Name', p.companyName))
   rows.push(blk('Report Title', p.reportTitle))
@@ -800,7 +829,7 @@ function sheetNotes(p: ExcelExportParams, count: number): any {
   rows.push(blk('Report Format', 'Professional Excel Workbook (.xlsx)'))
   rows.push(blk('Sheets', '8 (Cover, Executive Summary, Transactions, Voucher Details, Bank Activity, General Ledger, Audit Trail, Notes)'))
 
-  return buildWS(rows, { freeze: { r: 1, c: 0 }, colW: [{ wch: 30 }, { wch: 52 }, { wch: 10 }], landscape: false })
+  return buildWS(rows, { freeze: { r: 4, c: 0 }, colW: [{ wch: 30 }, { wch: 52 }, { wch: 10 }], landscape: false, merges })
 }
 
 function getGroupedData(p: ExcelExportParams, fv: Voucher[]): { groupName: string, lines: any[] }[] {
