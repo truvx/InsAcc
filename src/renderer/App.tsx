@@ -49,6 +49,48 @@ export interface LoginEntry {
 // One-time localStorage migrations (fast on warm boot — only checks migration keys)
 function runMigrations() {
   try {
+    const shortenVouchersKey = 'insacc_shorten_voucher_numbers_v1'
+    if (!localStorage.getItem(shortenVouchersKey)) {
+      try {
+        const regex = /^([A-Z]+-\d{4})-000(\d{3})$/
+        
+        const invRaw = localStorage.getItem('insacc_vouchers')
+        if (invRaw) {
+          const invVouchers = JSON.parse(invRaw)
+          if (Array.isArray(invVouchers)) {
+            let modified = false
+            const updated = invVouchers.map((v: any) => {
+              if (v.number && regex.test(v.number)) {
+                modified = true
+                return { ...v, number: v.number.replace(regex, '$1-$2') }
+              }
+              return v
+            })
+            if (modified) localStorage.setItem('insacc_vouchers', JSON.stringify(updated))
+          }
+        }
+
+        const propRaw = localStorage.getItem('insacc_prop_vouchers')
+        if (propRaw) {
+          const propVouchers = JSON.parse(propRaw)
+          if (Array.isArray(propVouchers)) {
+            let modified = false
+            const updated = propVouchers.map((v: any) => {
+              if (v.number && regex.test(v.number)) {
+                modified = true
+                return { ...v, number: v.number.replace(regex, '$1-$2') }
+              }
+              return v
+            })
+            if (modified) localStorage.setItem('insacc_prop_vouchers', JSON.stringify(updated))
+          }
+        }
+      } catch (e) {
+        console.error('Failed to shorten voucher numbers:', e)
+      }
+      localStorage.setItem(shortenVouchersKey, 'true')
+    }
+
     const hierarchyResetKey = 'insacc_hierarchy_reset_v5'
     if (!localStorage.getItem(hierarchyResetKey)) {
       const isE2E = typeof window !== 'undefined' && window.navigator.webdriver;
