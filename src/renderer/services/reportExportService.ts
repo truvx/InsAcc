@@ -1061,7 +1061,7 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
   fv.forEach(v => v.lines.forEach(l => { if (l.type === 'Debit') totDr += l.amount; else totCr += l.amount }))
 
   const moduleName = p.module === 'Property' ? 'Properties Management' : 'Investment Portfolio'
-  let y = generatePdfCoverPage(doc, 'GENERAL LEDGER REPORT', moduleName, p.periodLabel, p.currency, fv.length, moduleName)
+  let y = generatePdfCoverPage(doc, (p.reportTitle || 'ACCOUNTING REPORT').toUpperCase(), moduleName, p.periodLabel, p.currency, fv.length, moduleName)
 
   // Report Page
   doc.setFontSize(18)

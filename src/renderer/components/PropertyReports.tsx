@@ -172,10 +172,19 @@ export default function PropertyReports({
   const handleReportExport = async (format: 'xlsx' | 'csv' | 'pdf', reportType: string = 'Standard', advanced: any = {}) => {
     setIsExportModalOpen(false)
     try {
-      if (activeTab === 'overview' || reportType !== 'Standard') {
+      if (activeTab === 'overview' || activeTab === 'general-journal' || activeTab === 'general-ledger' || reportType !== 'Standard') {
+        let dynamicTitle = 'Transaction Report';
+        if (reportType === 'LedgerBreakup') dynamicTitle = 'Ledger-wise Breakup Report';
+        else if (reportType === 'PropertyBreakup') dynamicTitle = 'Property-wise Breakup Report';
+        else if (reportType === 'SupplierBreakup') dynamicTitle = 'Supplier-wise Breakup Report';
+        else if (reportType === 'TenantBreakup') dynamicTitle = 'Tenant-wise Breakup Report';
+        else if (activeTab === 'general-ledger') dynamicTitle = 'General Ledger Report';
+        else if (activeTab === 'general-journal') dynamicTitle = 'General Journal Report';
+        else if (activeTab === 'overview') dynamicTitle = 'Overview Report';
+
         const p = {
           companyName: 'INSACC',
-          reportTitle: 'GENERAL LEDGER REPORT',
+          reportTitle: dynamicTitle.toUpperCase(),
           module: 'Property' as const,
           periodLabel: `${filterStart} - ${filterEnd}`,
           generatedBy: 'User',
