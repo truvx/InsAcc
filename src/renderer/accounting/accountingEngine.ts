@@ -70,6 +70,7 @@ export function createAccountingEngine() {
       createdBy?: string
       periodId?: string
       fiscalYearId?: string
+      tags?: string[]
     },
     accounts: Account[],
     existingVouchers: Voucher[],
@@ -147,6 +148,8 @@ export function createAccountingEngine() {
 
     const enhancedVoucher: Voucher = {
       ...voucher,
+      postedBy: undefined,
+      tags: context.tags,
       periodId: context.periodId,
       fiscalYearId: context.fiscalYearId,
     }

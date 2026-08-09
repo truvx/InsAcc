@@ -80,7 +80,8 @@ export default function PropertyJournalVoucher({
   const [formDebitAccount, setFormDebitAccount] = useState('')
   const [formCreditAccount, setFormCreditAccount] = useState('')
   const [formAmount, setFormAmount] = useState('')
-  const [formReference, setFormReference] = useState('')
+  const [formTags, setFormTags] = useState('')
+  const [tagFilter, setTagFilter] = useState('')
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showAuditModal, setShowAuditModal] = useState(false)
@@ -112,14 +113,18 @@ export default function PropertyJournalVoucher({
       })
     }
 
+    if (tagFilter) {
+      const q = tagFilter.toLowerCase()
+      list = list.filter(v => v.tags && v.tags.some(t => t.toLowerCase().includes(q)))
+    }
+
     if (!searchQuery) return list
     const q = searchQuery.toLowerCase()
     return list.filter(v =>
       v.number.toLowerCase().includes(q) ||
-      v.description.toLowerCase().includes(q) ||
-      v.reference.toLowerCase().includes(q)
+      v.description.toLowerCase().includes(q)
     )
-  }, [journalVouchers, searchQuery, dateFrom, dateTo, filterParty, allParties, leases])
+  }, [journalVouchers, searchQuery, dateFrom, dateTo, filterParty, tagFilter, allParties, leases])
 
   const leafAccounts = useMemo(() =>
     accounts.filter(a => a.isActive && !accounts.some(c => c.parentId === a.id && c.isActive))
@@ -141,7 +146,7 @@ export default function PropertyJournalVoucher({
     setFormDebitAccount('')
     setFormCreditAccount('')
     setFormAmount('')
-    setFormReference('')
+    setFormTags('')
     setEditingId(null)
   }
 
@@ -154,7 +159,7 @@ export default function PropertyJournalVoucher({
     setFormDescription(v.description)
     setFormDebitAccount(debitLine?.accountId || '')
     setFormCreditAccount(creditLine?.accountId || '')
-    setFormReference(v.reference)
+    setFormTags(v.tags ? v.tags.join(', ') : '')
     setEditingId(v.id)
     setShowForm(true)
   }
@@ -164,6 +169,7 @@ export default function PropertyJournalVoucher({
     setEditingId(null)
     setFormDate(new Date().toISOString().split('T')[0])
     setFormDescription(`Copy of ${v.description}`)
+    setFormTags(v.tags ? v.tags.join(', ') : '')
   }
 
   const handleDelete = (v: Voucher) => {
@@ -234,7 +240,7 @@ export default function PropertyJournalVoucher({
         ...oldVoucher,
         date: formDate,
         description: formDescription,
-        reference: formReference || '',
+        tags: formTags ? formTags.split(',').map(t => t.trim()).filter(Boolean) : [],
         modifiedAt: new Date().toISOString(),
         modifiedBy: 'user',
         lines: oldVoucher.lines.map(line => {
@@ -292,8 +298,7 @@ export default function PropertyJournalVoucher({
           baseCurrency: 'AED',
           debitAccount: formDebitAccount,
           creditAccount: formCreditAccount,
-          referenceType: 'Property',
-          referenceId: formReference || undefined,
+          tags: formTags ? formTags.split(',').map(t => t.trim()).filter(Boolean) : [],
           createdBy: 'user',
         },
         accounts,
@@ -348,9 +353,9 @@ export default function PropertyJournalVoucher({
       render: v => <span className="fw-500">{v.description}</span>,
     },
     {
-      key: 'reference',
-      header: 'Reference',
-      render: v => <span className="text-secondary text-xs">{v.reference || '—'}</span>,
+      key: 'tags',
+      header: 'Tags',
+      render: v => <span className="text-secondary text-xs">{v.tags ? v.tags.join(', ') : '—'}</span>,
     },
     {
       key: 'amount',
@@ -398,7 +403,7 @@ export default function PropertyJournalVoucher({
       title: 'Journal Vouchers',
       subtitle: `Total Journals: ${filtered.length}`,
       filename: `Journal_Vouchers_${new Date().toISOString().split('T')[0]}`,
-      columns: ['Voucher #', 'Date', 'Description', 'Reference', 'Total Amount', 'Status'],
+      columns: ['Voucher #', 'Date', 'Description', 'Tags', 'Total Amount', 'Status'],
       rows: filtered.map(v => {
         const totalAmount = v.lines.reduce((s: number, l: any) => s + (l.type === 'Debit' ? (l.baseAmount ?? l.amount) : 0), 0)
 
@@ -406,7 +411,7 @@ export default function PropertyJournalVoucher({
           v.number,
           formatDate(v.date, dateFormat),
           v.description || '-',
-          v.reference || '-',
+          v.tags ? v.tags.join(', ') : '-',
           totalAmount ? formatCurrency(totalAmount, currency) : '-',
           v.status || 'Draft'
         ]
@@ -445,7 +450,7 @@ export default function PropertyJournalVoucher({
         </div>
         <div className="form-row">
           <Input label="Description" value={formDescription} onChange={e => setFormDescription(e.target.value)} placeholder="e.g. PDC adjustment" />
-          <Input label="Reference (optional)" value={formReference} onChange={e => setFormReference(e.target.value)} placeholder="e.g. Ref #" />
+          <Input label="Tags (comma separated)" value={formTags} onChange={e => setFormTags(e.target.value)} placeholder="e.g. adjustment, urgent" />
         </div>
         <div className="form-row">
           <Select label="Debit Account" value={formDebitAccount} onChange={e => setFormDebitAccount(e.target.value)} options={accountOptions} />
@@ -523,6 +528,22 @@ export default function PropertyJournalVoucher({
                 parties={allParties}
                 placeholder="Filter by Vendor, Tenant, Property..."
               />
+            </div>
+            <div className="data-table-search" style={{ maxWidth: 'none', width: 'auto', flex: '0 0 auto', padding: '0 12px' }}>
+              <SearchIcon />
+              <input
+                type="text"
+                className="data-table-search-input"
+                style={{ width: 140 }}
+                placeholder="Filter by tag..."
+                value={tagFilter}
+                onChange={e => setTagFilter(e.target.value)}
+              />
+              {tagFilter && (
+                <button className="data-table-search-clear" onClick={() => setTagFilter('')} aria-label="Clear">
+                  <CloseIcon />
+                </button>
+              )}
             </div>
           </div>
           <div className="data-table-search">

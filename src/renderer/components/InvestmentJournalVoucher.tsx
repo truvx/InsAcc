@@ -49,7 +49,8 @@ export default function InvestmentJournalVoucher({
   const [formDebitAccount, setFormDebitAccount] = useState('')
   const [formCreditAccount, setFormCreditAccount] = useState('')
   const [formAmount, setFormAmount] = useState('')
-  const [formReference, setFormReference] = useState('')
+  const [formTags, setFormTags] = useState('')
+  const [tagFilter, setTagFilter] = useState('')
 
   const [editingId, setEditingId] = useState<string | null>(null)
 
@@ -69,6 +70,10 @@ export default function InvestmentJournalVoucher({
     let result = journalVouchers
     if (dateFrom) result = result.filter(v => v.date >= dateFrom)
     if (dateTo) result = result.filter(v => v.date <= dateTo)
+    if (tagFilter) {
+      const q = tagFilter.toLowerCase()
+      result = result.filter(v => v.tags && v.tags.some(t => t.toLowerCase().includes(q)))
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
       result = result.filter(v =>
@@ -77,11 +82,11 @@ export default function InvestmentJournalVoucher({
       )
     }
     return result
-  }, [journalVouchers, searchQuery, dateFrom, dateTo])
+  }, [journalVouchers, searchQuery, dateFrom, dateTo, tagFilter])
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     try {
-      const columns = ['Voucher #', 'Date', 'Description', 'Amount', 'Debit Account', 'Credit Account', 'Status']
+      const columns = ['Voucher #', 'Date', 'Description', 'Tags', 'Amount', 'Debit Account', 'Credit Account', 'Status']
       const rows = filtered.map(v => {
         const debitLine = v.lines.find(l => l.type === 'Debit')
         const creditLine = v.lines.find(l => l.type === 'Credit')
@@ -90,6 +95,7 @@ export default function InvestmentJournalVoucher({
           v.number,
           formatDate(v.date, dateFormat),
           v.description,
+          v.tags ? v.tags.join(', ') : '-',
           `${currency} ${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
           debitLine ? accounts.find(a => a.id === debitLine.accountId)?.name || '—' : '—',
           creditLine ? accounts.find(a => a.id === creditLine.accountId)?.name || '—' : '—',
@@ -146,7 +152,7 @@ export default function InvestmentJournalVoucher({
     setFormDebitAccount('')
     setFormCreditAccount('')
     setFormAmount('')
-    setFormReference('')
+    setFormTags('')
     setEditingId(null)
   }
 
@@ -197,7 +203,7 @@ export default function InvestmentJournalVoucher({
     setFormDescription(v.description)
     setFormDebitAccount(debitLine?.accountId || '')
     setFormCreditAccount(creditLine?.accountId || '')
-    setFormReference(v.reference)
+    setFormTags(v.tags ? v.tags.join(', ') : '')
 
     setEditingId(v.id)
     setShowForm(true)
@@ -208,6 +214,7 @@ export default function InvestmentJournalVoucher({
     setEditingId(null)
     setFormDate(new Date().toISOString().split('T')[0])
     setFormDescription(`Copy of ${v.description}`)
+    setFormTags(v.tags ? v.tags.join(', ') : '')
   }
 
   const handleCreateVoucher = () => {
@@ -237,7 +244,7 @@ export default function InvestmentJournalVoucher({
         ...oldVoucher,
         date: formDate,
         description: formDescription,
-        reference: formReference || '',
+        tags: formTags ? formTags.split(',').map(t => t.trim()).filter(Boolean) : [],
         modifiedAt: new Date().toISOString(),
         modifiedBy: 'user',
         lines: oldVoucher.lines.map(line => {
@@ -295,8 +302,7 @@ export default function InvestmentJournalVoucher({
           baseCurrency: 'AED',
           debitAccount: formDebitAccount,
           creditAccount: formCreditAccount,
-          referenceType: 'Investment',
-          referenceId: formReference || undefined,
+          tags: formTags ? formTags.split(',').map(t => t.trim()).filter(Boolean) : [],
           createdBy: 'user',
         },
         accounts,
@@ -314,7 +320,10 @@ export default function InvestmentJournalVoucher({
         return
       }
 
-      const newVch: Voucher = { ...postResult.voucher }
+      const newVch: Voucher = { 
+        ...postResult.voucher,
+        tags: formTags ? formTags.split(',').map(t => t.trim()).filter(Boolean) : [],
+      }
 
       setVouchers(prev => [newVch, ...prev])
       setShowForm(false)
@@ -351,9 +360,9 @@ export default function InvestmentJournalVoucher({
       render: v => <span className="fw-500">{v.description}</span>,
     },
     {
-      key: 'reference',
-      header: 'Reference',
-      render: v => <span className="text-secondary text-xs">{v.reference || '—'}</span>,
+      key: 'tags',
+      header: 'Tags',
+      render: v => <span className="text-secondary text-xs">{v.tags ? v.tags.join(', ') : '—'}</span>,
     },
     {
       key: 'amount',
@@ -409,7 +418,7 @@ export default function InvestmentJournalVoucher({
         </div>
         <div className="form-row">
           <Input label="Description" value={formDescription} onChange={e => setFormDescription(e.target.value)} placeholder="e.g. Opening balance" />
-          <Input label="Reference (optional)" value={formReference} onChange={e => setFormReference(e.target.value)} placeholder="e.g. Ref #" />
+          <Input label="Tags (comma separated)" value={formTags} onChange={e => setFormTags(e.target.value)} placeholder="e.g. adjustment, urgent" />
         </div>
         <div className="form-row">
           <Select label="Debit Account" value={formDebitAccount} onChange={e => setFormDebitAccount(e.target.value)} options={accountOptions} />
@@ -478,6 +487,22 @@ export default function InvestmentJournalVoucher({
             <div className="data-table-search" style={{ maxWidth: 'none', width: 'auto', flex: '0 0 auto', padding: '0 12px' }}>
               <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginRight: 8 }}>To</span>
               <input type="date" className="data-table-search-input" style={{ width: 110 }} value={dateTo} onChange={e => setDateTo(e.target.value)} />
+            </div>
+            <div className="data-table-search" style={{ maxWidth: 'none', width: 'auto', flex: '0 0 auto', padding: '0 12px' }}>
+              <SearchIcon />
+              <input
+                type="text"
+                className="data-table-search-input"
+                style={{ width: 140 }}
+                placeholder="Filter by tag..."
+                value={tagFilter}
+                onChange={e => setTagFilter(e.target.value)}
+              />
+              {tagFilter && (
+                <button className="data-table-search-clear" onClick={() => setTagFilter('')} aria-label="Clear">
+                  <CloseIcon />
+                </button>
+              )}
             </div>
           </div>
           <div className="data-table-search">
