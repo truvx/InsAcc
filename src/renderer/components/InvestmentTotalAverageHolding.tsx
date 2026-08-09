@@ -124,13 +124,12 @@ export default function InvestmentTotalAverageHolding({
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     // Only exporting purity averages as a summary
-    const exportColumns = ['Purity/Type', 'Purchases', 'Total Qty', 'Total Invested', 'Weighted Avg Price', 'Purity Avg Price']
+    const exportColumns = ['Purity/Type', 'Purchases', 'Total Qty', 'Total Invested', 'Purity Avg Price']
     const rows = purityWiseData.map(p => [
       p.purity,
       p.purchaseCount,
       p.totalQuantity,
       parseFloat(p.totalInvested.toFixed(2)),
-      parseFloat(p.weightedAveragePrice.toFixed(2)),
       parseFloat(p.purityAveragePrice.toFixed(2))
     ])
 
