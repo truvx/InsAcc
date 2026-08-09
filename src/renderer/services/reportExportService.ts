@@ -393,6 +393,7 @@ function sheetSummary(p: ExcelExportParams, fv: Voucher[], totDr: number, totCr:
 
   rows.push([hCell('EXECUTIVE SUMMARY', { sz: 13, bg: C.primaryDark }), hCell('', { bg: C.primaryDark }), hCell('', { bg: C.primaryDark }), hCell('', { bg: C.primaryDark })])
   rows.push([hCell(p.reportTitle, { sz: 10, bg: C.subHdr, bold: false }), hCell('', { bg: C.subHdr }), hCell('', { bg: C.subHdr }), hCell('', { bg: C.subHdr })])
+  rows.push([hCell(`Period: ${p.periodLabel || 'All Time'}`, { sz: 10, bg: C.subHdr, bold: false }), hCell('', { bg: C.subHdr }), hCell('', { bg: C.subHdr }), hCell('', { bg: C.subHdr })])
   rows.push([])
 
   rows.push(sectionRow('  KEY PERFORMANCE INDICATORS', 4))
@@ -922,7 +923,7 @@ export async function exportAccountingExcel(p: ExcelExportParams): Promise<strin
 
 export async function exportAccountingCsv(p: ExcelExportParams): Promise<string | null> {
   const fv = getFilteredVouchers(p)
-  let csv = 'Date,Voucher No,Type,Account,Debit,Credit,Description\n'
+  let csv = `${p.reportTitle}\nPeriod: ${p.periodLabel || 'All Time'}\n\nDate,Voucher No,Type,Account,Debit,Credit,Description\n`
   
   fv.forEach(v => {
     v.lines.forEach(l => {
