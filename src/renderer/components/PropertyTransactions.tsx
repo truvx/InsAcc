@@ -997,7 +997,20 @@ export default function PropertyTransactions({
           <Select
             label="Property (Optional)"
             value={selectedPropertyId}
-            onChange={e => setSelectedPropertyId(e.target.value)}
+            onChange={e => {
+              const newPropId = e.target.value
+              const oldPropName = properties.find(p => p.id === selectedPropertyId)?.name
+              const newPropName = properties.find(p => p.id === newPropId)?.name
+              
+              setSelectedPropertyId(newPropId)
+              
+              setFormTags(prev => {
+                let tagsList = prev.split(',').map(t => t.trim()).filter(Boolean)
+                if (oldPropName) tagsList = tagsList.filter(t => t !== oldPropName)
+                if (newPropName && !tagsList.includes(newPropName)) tagsList.push(newPropName)
+                return tagsList.join(', ')
+              })
+            }}
             options={properties.length === 0 ? [{ value: '', label: 'No properties found' }] : [{ value: '', label: 'Select Property' }, ...properties.map(p => ({ value: p.id, label: p.name }))]}
           />
           <Select

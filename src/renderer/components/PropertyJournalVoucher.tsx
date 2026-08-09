@@ -483,7 +483,18 @@ export default function PropertyJournalVoucher({
             placeholder="Search Buyers & Counterparties"
             customLabel="Use custom party"
           />
-          <Select label="Reference Property" value={formReference} onChange={e => setFormReference(e.target.value)} options={propertyOptions} />
+          <Select label="Reference Property" value={formReference} onChange={e => {
+            const newPropName = e.target.value
+            const oldPropName = formReference
+            setFormReference(newPropName)
+            
+            setFormTags(prev => {
+              let tagsList = prev.split(',').map(t => t.trim()).filter(Boolean)
+              if (oldPropName) tagsList = tagsList.filter(t => t !== oldPropName)
+              if (newPropName && !tagsList.includes(newPropName)) tagsList.push(newPropName)
+              return tagsList.join(', ')
+            })
+          }} options={propertyOptions} />
         </div>
         <div className="form-row">
           <Input label="Description" value={formDescription} onChange={e => setFormDescription(e.target.value)} placeholder="e.g. PDC adjustment" />

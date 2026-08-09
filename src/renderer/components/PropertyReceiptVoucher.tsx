@@ -638,7 +638,18 @@ export default function PropertyReceiptVoucher({
             placeholder="Tenant or payer name"
             customLabel="Use custom payer"
           />
-          <Select label="Reference Property" value={formReference} onChange={e => setFormReference(e.target.value)} options={propertyOptions} />
+          <Select label="Reference Property" value={formReference} onChange={e => {
+            const newPropName = e.target.value
+            const oldPropName = formReference
+            setFormReference(newPropName)
+            
+            setFormTags(prev => {
+              let tagsList = prev.split(',').map(t => t.trim()).filter(Boolean)
+              if (oldPropName) tagsList = tagsList.filter(t => t !== oldPropName)
+              if (newPropName && !tagsList.includes(newPropName)) tagsList.push(newPropName)
+              return tagsList.join(', ')
+            })
+          }} options={propertyOptions} />
         </div>
         <div className="form-row">
           <Select
