@@ -51,9 +51,16 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
   const filteredVouchers = useMemo(() => {
     if (!filterPropertyId) return vouchers
     
+    const targetPropName = properties.find(p => p.id === filterPropertyId)?.name
+
     return vouchers.map(v => {
       const leaseByVoucherRef = v.reference ? leases.find(l => l.leaseNumber === v.reference) : undefined
       const isVoucherLinkedToProp = !!leaseByVoucherRef && leaseByVoucherRef.propertyId === filterPropertyId
+      const isVoucherTaggedToProp = !!targetPropName && !!v.tags?.includes(targetPropName)
+
+      if (isVoucherTaggedToProp) {
+        return v
+      }
 
       const filteredLines = v.lines.filter(l => {
         if (isVoucherLinkedToProp) return true
@@ -67,7 +74,7 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
       
       return { ...v, lines: filteredLines }
     }).filter(v => v.lines.length > 0)
-  }, [vouchers, filterPropertyId, leases])
+  }, [vouchers, filterPropertyId, leases, properties])
 
   const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, filteredVouchers, !!filterPropertyId), [accounts, filteredVouchers, filterPropertyId])
   
