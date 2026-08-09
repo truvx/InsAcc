@@ -103,14 +103,63 @@ export function t(key: string, lang: string = 'English'): string {
 
 export function formatDate(dateStr: string, format: string = 'DD/MM/YYYY'): string {
   if (!dateStr) return ''
-  // Strip time portion from ISO datetime strings (e.g. "2026-07-28T00:00:00.000Z")
+  
+  // Strip time portion from ISO datetime strings
   const datePart = dateStr.split('T')[0]
-  const parts = datePart.split('-')
-  if (parts.length !== 3) return dateStr
-  const [y, m, d] = parts
-  if (format === 'MM/DD/YYYY') return `${m}/${d}/${y}`
-  if (format === 'YYYY-MM-DD') return `${y}-${m}-${d}`
-  return `${d}/${m}/${y}`
+  
+  // Handle dash separated (YYYY-MM-DD or DD-MM-YYYY)
+  const dashParts = datePart.split('-')
+  if (dashParts.length === 3) {
+    let [y, m, d] = dashParts
+    if (y.length !== 4 && d.length === 4) {
+      // It's DD-MM-YYYY
+      d = dashParts[0]
+      m = dashParts[1]
+      y = dashParts[2]
+    }
+    
+    if (format === 'MM/DD/YYYY') return `${m.padStart(2, '0')}/${d.padStart(2, '0')}/${y}`
+    if (format === 'YYYY-MM-DD') return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
+    return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`
+  }
+  
+  // Handle slash separated (DD/MM/YYYY, D/M/YY, YYYY/MM/DD)
+  const slashParts = datePart.split('/')
+  if (slashParts.length === 3) {
+    let [dStr, mStr, yStr] = slashParts
+    if (dStr.length === 4) {
+      // It's YYYY/MM/DD
+      yStr = slashParts[0]
+      mStr = slashParts[1]
+      dStr = slashParts[2]
+    }
+    
+    if (yStr.length === 2) {
+      yStr = '20' + yStr // Assume 2000s for 2-digit years
+    }
+    
+    const y = yStr.padStart(4, '0')
+    const m = mStr.padStart(2, '0')
+    const d = dStr.padStart(2, '0')
+    
+    if (format === 'MM/DD/YYYY') return `${m}/${d}/${y}`
+    if (format === 'YYYY-MM-DD') return `${y}-${m}-${d}`
+    return `${d}/${m}/${y}`
+  }
+  
+  // Fallback to JS Date parsing
+  const dObj = new Date(dateStr)
+  if (!isNaN(dObj.getTime())) {
+    const y = String(dObj.getFullYear())
+    const m = String(dObj.getMonth() + 1).padStart(2, '0')
+    const d = String(dObj.getDate()).padStart(2, '0')
+    
+    if (format === 'MM/DD/YYYY') return `${m}/${d}/${y}`
+    if (format === 'YYYY-MM-DD') return `${y}-${m}-${d}`
+    return `${d}/${m}/${y}`
+  }
+
+  return dateStr
 }
 
 export function maskAccountNumber(accountNumber: string): string {
