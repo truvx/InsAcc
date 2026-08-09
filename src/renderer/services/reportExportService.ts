@@ -1282,11 +1282,11 @@ export async function exportSideBySidePdf(p: SideBySideExportParams): Promise<st
 }
 
 export async function exportTableData(p: TableExportParams): Promise<string | null> {
-  const columnsToRemove = ['Status', 'Posting', 'Posting Status']
+  const columnsToRemove = ['status', 'posting', 'posting status']
   const indicesToRemove: number[] = []
   
   p.columns = p.columns.filter((col, i) => {
-    if (columnsToRemove.includes(col)) {
+    if (columnsToRemove.includes(col.toLowerCase())) {
       indicesToRemove.push(i)
       return false
     }
