@@ -1080,6 +1080,11 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
 
   const isBreakup = p.reportType && p.reportType !== 'Standard'
   
+  if (!isBreakup) {
+    y += 8
+    doc.text(`Total Debits: ${p.currency} ${totDr.toLocaleString(undefined, {minimumFractionDigits: 2})} | Total Credits: ${p.currency} ${totCr.toLocaleString(undefined, {minimumFractionDigits: 2})}`, 14, y)
+  }
+  
   if (isBreakup) {
     const groupedData = getGroupedData(p, fv)
     groupedData.forEach((group) => {
@@ -1141,13 +1146,6 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
         ])
       })
     })
-
-    // Add Totals Row
-    tableData.push([
-      { content: 'TOTAL', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold', fillColor: [230, 240, 235] } },
-      { content: totDr.toLocaleString(undefined, {minimumFractionDigits: 2}), styles: { fontStyle: 'bold', fillColor: [230, 240, 235] } },
-      { content: totCr.toLocaleString(undefined, {minimumFractionDigits: 2}), styles: { fontStyle: 'bold', fillColor: [230, 240, 235] } }
-    ])
 
     autoTable(doc, {
       startY: y + 5,

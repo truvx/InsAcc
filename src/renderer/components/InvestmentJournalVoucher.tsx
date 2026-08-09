@@ -356,6 +356,14 @@ export default function InvestmentJournalVoucher({
       render: v => <span className="text-secondary text-xs">{v.reference || '—'}</span>,
     },
     {
+      key: 'amount',
+      header: 'Amount',
+      render: v => {
+        const amt = v.lines.filter(l => l.type === 'Debit').reduce((sum, l) => sum + l.amount, 0)
+        return <span className="text-mono text-xs fw-600">{currency} {amt.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+      },
+    },
+    {
       key: 'status',
       header: 'Status',
       sortable: true,
