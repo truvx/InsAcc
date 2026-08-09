@@ -482,7 +482,7 @@ function sheetSummary(p: ExcelExportParams, fv: Voucher[], totDr: number, totCr:
 // ── SHEET 3: TRANSACTIONS ─────────────────────────────────────────
 function sheetTransactions(p: ExcelExportParams, fv: Voucher[]): any {
   const rows: XCell[][] = []
-  const hdrs = ['Date', 'Voucher No.', 'Ref. No.', 'Type', 'Party / Tenant / Vendor', 'Description', 'Narration', 'From Account', 'To Account', 'Payment Mode', 'Cheque No.', 'Account Code', 'Account Name', 'Debit', 'Credit', 'Running Balance', 'Status', 'Posted By', 'Posted Time']
+  const hdrs = ['Date', 'Voucher No.', 'Ref. No.', 'Type', 'Party / Tenant / Vendor', 'Description', 'Narration', 'From Account', 'To Account', 'Payment Mode', 'Cheque No.', 'Account Code', 'Account Name', 'Debit', 'Credit', 'Running Balance', 'Posted By', 'Posted Time']
   rows.push(hdrs.map(h => hCell(h, { bg: C.primaryDark, sz: 9 })))
 
   const sorted = [...fv].sort((a, b) => a.date.localeCompare(b.date))
@@ -525,14 +525,13 @@ function sheetTransactions(p: ExcelExportParams, fv: Voucher[]): any {
         isDr ? cCell(l.amount, bg) : eCell(bg),
         !isDr ? cCell(l.amount, bg) : eCell(bg),
         cCell(runBal, bg),
-        dCell(v.status, { bg, center: true, color: v.status === 'Posted' ? C.primaryMid : v.status === 'Cancelled' ? C.red : C.gray }),
         dCell(v.postedBy || v.createdBy || 'system', { bg }),
         dCell(fmtDT(v.postedAt || v.createdAt || ''), { bg }),
       ])
     }
   }
 
-  const tot: XCell[] = Array(19).fill(null).map(() => eCell(C.totalsRow))
+  const tot: XCell[] = Array(18).fill(null).map(() => eCell(C.totalsRow))
   tot[0] = dCell('TOTAL', { bold: true, bg: C.totalsRow })
   tot[13] = cCell(totDr, C.totalsRow, true)
   tot[14] = cCell(totCr, C.totalsRow, true)
@@ -540,14 +539,14 @@ function sheetTransactions(p: ExcelExportParams, fv: Voucher[]): any {
 
   return buildWS(rows, {
     freeze: { r: 1, c: 2 }, filterRow: 0,
-    colW: [{ wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 22 }, { wch: 34 }, { wch: 28 }, { wch: 22 }, { wch: 22 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 24 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 18 }],
+    colW: [{ wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 22 }, { wch: 34 }, { wch: 28 }, { wch: 22 }, { wch: 22 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 24 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 18 }],
   })
 }
 
 // ── SHEET 4: VOUCHER DETAILS ──────────────────────────────────────
 function sheetVoucherDetails(p: ExcelExportParams, fv: Voucher[]): any {
   const rows: XCell[][] = []
-  const hdrs = ['Voucher No.', 'Type', 'Date', 'Status', 'Currency', 'Exch. Rate', 'Total Debit', 'Total Credit', 'Net', 'Party', 'Description', 'Created By', 'Approved By', 'Reference']
+  const hdrs = ['Voucher No.', 'Type', 'Date', 'Currency', 'Exch. Rate', 'Total Debit', 'Total Credit', 'Net', 'Party', 'Description', 'Created By', 'Approved By', 'Reference']
   rows.push(hdrs.map(h => hCell(h, { bg: C.primaryDark, sz: 9 })))
   const lHdrs = ['', '  Line #', 'Account Code', 'Account Name', 'Dr / Cr', '', 'Debit Amount', 'Credit Amount', '', 'Line Narration', '', '', '']
   rows.push(lHdrs.map(h => hCell(h, { bg: C.subHdr, sz: 8, bold: h !== '' })))
@@ -568,7 +567,6 @@ function sheetVoucherDetails(p: ExcelExportParams, fv: Voucher[]): any {
     const bg = vi % 2 === 0 ? C.rowEven : C.rowAlt
     rows.push([
       dCell(v.number, { bg, bold: true }), dCell(v.type, { bg, center: true }), dCell(fmtD(v.date), { bg }),
-      dCell(v.status, { bg, center: true, color: v.status === 'Posted' ? C.primaryMid : C.gray }),
       dCell(v.currency || p.currency, { bg, center: true }), dCell(v.exchangeRate || 1, { bg, center: true, fmt: '#,##0.0000' }),
       cCell(vDr, bg, true), cCell(vCr, bg, true), cCell(vDr - vCr, bg),
       dCell(party, { bg }), dCell(v.description, { bg }),
@@ -593,7 +591,7 @@ function sheetVoucherDetails(p: ExcelExportParams, fv: Voucher[]): any {
 
   return buildWS(rows, {
     freeze: { r: 2, c: 1 }, filterRow: 0,
-    colW: [{ wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 38 }, { wch: 14 }, { wch: 14 }, { wch: 16 }],
+    colW: [{ wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 38 }, { wch: 14 }, { wch: 14 }, { wch: 16 }],
   })
 }
 
@@ -663,7 +661,7 @@ function sheetLedger(p: ExcelExportParams, fv: Voucher[]): any {
   const sorted = [...fv].sort((a, b) => a.date.localeCompare(b.date))
   const typeOrder = ['asset', 'liability', 'equity', 'revenue', 'expense']
   const typeLabels: Record<string, string> = { asset: 'ASSETS', liability: 'LIABILITIES', equity: 'EQUITY', revenue: 'REVENUE / INCOME', expense: 'EXPENSES' }
-  const colHdrs = ['Date', 'Voucher No.', 'Type', 'Description', 'Debit', 'Credit', 'Running Balance', 'Status']
+  const colHdrs = ['Date', 'Voucher No.', 'Type', 'Description', 'Debit', 'Credit', 'Running Balance']
 
   for (const aType of typeOrder) {
     const accs = p.accounts.filter(a => a.isActive && a.type === aType)
@@ -685,7 +683,7 @@ function sheetLedger(p: ExcelExportParams, fv: Voucher[]): any {
       rows.push([
         dCell('—', { center: true, bg: C.grayLight }), dCell('OPEN', { bold: true, bg: C.grayLight }),
         dCell('Opening', { bg: C.grayLight }), dCell('Balance brought forward', { bold: true, bg: C.grayLight }),
-        eCell(C.grayLight), eCell(C.grayLight), cCell(runBal, C.grayLight, true), dCell('', { bg: C.grayLight }),
+        eCell(C.grayLight), eCell(C.grayLight), cCell(runBal, C.grayLight, true),
       ])
 
       let tDr = 0, tCr = 0, xi = 0
@@ -699,12 +697,12 @@ function sheetLedger(p: ExcelExportParams, fv: Voucher[]): any {
           dCell(fmtD(v.date), { bg }), dCell(v.number, { bg, bold: true }), dCell(v.type, { bg, center: true }),
           dCell(v.description, { bg }),
           isDr ? cCell(l.amount, bg) : eCell(bg), !isDr ? cCell(l.amount, bg) : eCell(bg),
-          cCell(runBal, bg), dCell(v.status, { bg, center: true, color: v.status === 'Posted' ? C.primaryMid : C.gray }),
+          cCell(runBal, bg),
         ])
       }
       rows.push([
         dCell('CLOSING BALANCE', { bold: true, bg: C.totalsRow }), eCell(C.totalsRow), eCell(C.totalsRow), eCell(C.totalsRow),
-        cCell(tDr, C.totalsRow, true), cCell(tCr, C.totalsRow, true), cCell(runBal, C.totalsRow, true), eCell(C.totalsRow),
+        cCell(tDr, C.totalsRow, true), cCell(tCr, C.totalsRow, true), cCell(runBal, C.totalsRow, true),
       ])
       rows.push([])
     }
@@ -712,7 +710,7 @@ function sheetLedger(p: ExcelExportParams, fv: Voucher[]): any {
   }
 
   return buildWS(rows, {
-    colW: [{ wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 38 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 12 }],
+    colW: [{ wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 38 }, { wch: 16 }, { wch: 16 }, { wch: 16 }],
   })
 }
 
@@ -833,8 +831,8 @@ function sheetBreakup(p: ExcelExportParams, fv: Voucher[]): any {
       else totCr += x.l.amount
     })
     
-    rows.push(sectionRow(`  ${group.groupName.toUpperCase()} - (Debits: ${p.currency} ${totDr.toFixed(2)} | Credits: ${p.currency} ${totCr.toFixed(2)})`, 9, C.primaryDark))
-    const hdrs = ['Date', 'Voucher', 'Reference', 'Type', 'Account', 'Description', 'Debit', 'Credit', 'Status']
+    rows.push(sectionRow(`  ${group.groupName.toUpperCase()} - (Debits: ${p.currency} ${totDr.toFixed(2)} | Credits: ${p.currency} ${totCr.toFixed(2)})`, 8, C.primaryDark))
+    const hdrs = ['Date', 'Voucher', 'Reference', 'Type', 'Account', 'Description', 'Debit', 'Credit']
     rows.push(hdrs.map(h => hCell(h, { bg: C.primary })))
     
     group.lines.forEach((x: any) => {
@@ -847,8 +845,7 @@ function sheetBreakup(p: ExcelExportParams, fv: Voucher[]): any {
         dCell(x.accName, { bg: lb }),
         dCell(x.desc, { bg: lb }),
         x.l.type === 'Debit' ? cCell(x.l.amount, lb) : eCell(lb),
-        x.l.type === 'Credit' ? cCell(x.l.amount, lb) : eCell(lb),
-        dCell(x.v.status, { bg: lb, center: true })
+        x.l.type === 'Credit' ? cCell(x.l.amount, lb) : eCell(lb)
       ])
     })
     rows.push([]) // Spacer
@@ -856,7 +853,7 @@ function sheetBreakup(p: ExcelExportParams, fv: Voucher[]): any {
   
   return buildWS(rows, {
     freeze: { r: 1, c: 0 }, filterRow: 0,
-    colW: [{ wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 25 }, { wch: 40 }, { wch: 14 }, { wch: 14 }, { wch: 14 }]
+    colW: [{ wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 25 }, { wch: 40 }, { wch: 14 }, { wch: 14 }]
   })
 }
 
@@ -1100,16 +1097,15 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
           x.accName,
           dStr.length > 40 ? dStr.substring(0, 40) + '...' : dStr,
           x.l.type === 'Debit' ? x.l.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : '',
-          x.l.type === 'Credit' ? x.l.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : '',
-          x.v.status
+          x.l.type === 'Credit' ? x.l.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : ''
         ]
       })
       
       autoTable(doc, {
         startY: y + 5,
         head: [
-          [{ content: `${group.groupName} - Debits: ${p.currency} ${totGrDr.toLocaleString(undefined, {minimumFractionDigits: 2})} | Credits: ${p.currency} ${totGrCr.toLocaleString(undefined, {minimumFractionDigits: 2})}`, colSpan: 9, styles: { halign: 'left', fillColor: [15, 76, 53], textColor: [255, 255, 255] } }],
-          ['Date', 'Voucher', 'Reference', 'Type', 'Account', 'Description', 'Debit', 'Credit', 'Status']
+          [{ content: `${group.groupName} - Debits: ${p.currency} ${totGrDr.toLocaleString(undefined, {minimumFractionDigits: 2})} | Credits: ${p.currency} ${totGrCr.toLocaleString(undefined, {minimumFractionDigits: 2})}`, colSpan: 8, styles: { halign: 'left', fillColor: [15, 76, 53], textColor: [255, 255, 255] } }],
+          ['Date', 'Voucher', 'Reference', 'Type', 'Account', 'Description', 'Debit', 'Credit']
         ],
         body: tableData,
         theme: 'grid',
@@ -1138,15 +1134,14 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
           acc,
           desc.length > 40 ? desc.substring(0, 40) + '...' : desc,
           l.type === 'Debit' ? l.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : '',
-          l.type === 'Credit' ? l.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : '',
-          v.status
+          l.type === 'Credit' ? l.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : ''
         ])
       })
     })
 
     autoTable(doc, {
       startY: y + 5,
-      head: [['Date', 'Voucher', 'Reference', 'Type', 'Account', 'Description', 'Debit', 'Credit', 'Status']],
+      head: [['Date', 'Voucher', 'Reference', 'Type', 'Account', 'Description', 'Debit', 'Credit']],
       body: tableData,
       theme: 'grid',
       styles: { fontSize: 8 },
