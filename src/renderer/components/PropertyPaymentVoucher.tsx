@@ -102,7 +102,7 @@ export default function PropertyPaymentVoucher({
   const [formPaidTo, setFormPaidTo] = useState('')
 
   const [formPaymentMode, setFormPaymentMode] = useState<string>('Bank Transfer')
-  const [formPaymentReference, setFormPaymentReference] = useState('')
+  const [formTags, setFormTags] = useState('')
   const [tagFilter, setTagFilter] = useState('')
 
   const handlePaymentModeChange = (mode: string) => {
@@ -145,9 +145,9 @@ export default function PropertyPaymentVoucher({
       )
     }
 
-    if (tagFilter) {
       const q = tagFilter.toLowerCase()
       list = list.filter(v => {
+        if (v.tags && v.tags.some(t => t.toLowerCase().includes(q))) return true
         const refs = v.lines.filter(l => l.referenceType === 'Purchase' || l.referenceType === 'Property')
         for (const ref of refs) {
           if (ref.referenceId) {
@@ -206,7 +206,7 @@ export default function PropertyPaymentVoucher({
     setFormReference('')
     setFormPaidTo('')
     setFormPaymentMode('Bank Transfer')
-    setFormPaymentReference('')
+    setFormTags('')
     setEditingId(null)
   }
 
@@ -228,7 +228,7 @@ export default function PropertyPaymentVoucher({
     setFormPaidTo(paidToMatch ? paidToMatch[1] : v.reference || '')
 
     setFormPaymentMode(v.paymentMode || 'Bank Transfer')
-    setFormPaymentReference(v.paymentReference || '')
+    setFormTags(v.tags?.join(', ') || '')
 
     setEditingId(v.id)
     setShowForm(true)
@@ -398,7 +398,7 @@ export default function PropertyPaymentVoucher({
         ...postResult.voucher,
         paymentMode: formPaymentMode as any,
         paymentChannel: formPaymentMode === 'Cash' ? 'Cash In Hand' : 'Bank Account',
-        paymentReference: formPaymentReference || undefined,
+        tags: formTags.split(',').map(t => t.trim()).filter(Boolean),
         reference: ref || ''
       }
 
@@ -485,9 +485,13 @@ export default function PropertyPaymentVoucher({
     {
       key: 'paymentMode',
       header: 'Payment Mode',
-      render: v => <span className="text-sm">{v.paymentMode || 'Unknown'}</span>,
+      render: v => <span className="text-xs text-secondary">{v.paymentMode || '—'}</span>,
     },
-
+    {
+      key: 'tags',
+      header: 'Tags',
+      render: v => <span className="text-xs text-secondary">{v.tags?.length ? v.tags.join(', ') : '—'}</span>,
+    },
     {
       key: 'status',
       header: 'Status',
@@ -531,7 +535,7 @@ export default function PropertyPaymentVoucher({
       title: 'Payment Vouchers',
       subtitle: `Total Vouchers: ${filtered.length}`,
       filename: `Payment_Vouchers_${new Date().toISOString().split('T')[0]}`,
-      columns: ['Voucher #', 'Date', 'Paid To', 'Paid From', 'Expense Type', 'Description', 'Amount', 'Payment Mode', 'Status'],
+      columns: ['Voucher #', 'Date', 'Paid To', 'Paid From', 'Expense Type', 'Description', 'Amount', 'Payment Mode', 'Status', 'Tags'],
       rows: filtered.map(v => {
         let paidToMatch = v.description.match(/\(paid to\s+(.*?)\)$/i)
         if (!paidToMatch && v.description.includes('Expense:')) {
@@ -549,7 +553,8 @@ export default function PropertyPaymentVoucher({
           v.description || '-',
           formatCurrency(totalAmount, currency),
           v.paymentMode || 'Unknown',
-          v.status || 'Draft'
+          v.status || 'Draft',
+          v.tags?.length ? v.tags.join(', ') : '—'
         ]
       }),
       currency
@@ -620,10 +625,10 @@ export default function PropertyPaymentVoucher({
             <Select label="Bank Account" value={formBankAccount} onChange={e => setFormBankAccount(e.target.value)} options={bankOptions} />
           )}
           <Input 
-            label="Reference Number (optional)" 
-            value={formPaymentReference} 
-            onChange={e => setFormPaymentReference(e.target.value)} 
-            placeholder="e.g. TXN-12345" 
+            label="Tags" 
+            value={formTags} 
+            onChange={e => setFormTags(e.target.value)} 
+            placeholder="Comma-separated tags" 
           />
         </div>
       </EntityForm>
