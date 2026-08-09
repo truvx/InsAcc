@@ -349,26 +349,29 @@ function buildWS(rows: XCell[][], opts: { freeze?: { r: number; c: number }; fil
 }
 
 // ── SHEET 1: COVER ────────────────────────────────────────────────
-function getCoverData(p: ExcelExportParams, count: number): any {
+function getCoverData(p: ExcelExportParams, count: number, colCount: number): any {
   const now = new Date()
   const rows: XCell[][] = []
   const bg = C.primaryDark
-  const blk = () => Array(4).fill(null).map(() => mkCell('', { fill: { fgColor: { rgb: bg } } }))
+  const blk = () => Array(colCount).fill(null).map(() => mkCell('', { fill: { fgColor: { rgb: bg } } }))
   const cvr = (text: string, sz: number, bold: boolean, fg = C.white, filBg = bg) =>
-    Array(4).fill(null).map((_, i) => mkCell(i === 0 ? text : '', {
+    Array(colCount).fill(null).map((_, i) => mkCell(i === 0 ? text : '', {
       font: { name: FN, bold, sz, color: { rgb: fg } },
       fill: { fgColor: { rgb: filBg } },
       alignment: { horizontal: 'center', vertical: 'center' },
     }))
-  const goldLine = () => Array(4).fill(null).map(() => mkCell('', { fill: { fgColor: { rgb: C.gold } } }))
+  const goldLine = () => Array(colCount).fill(null).map(() => mkCell('', { fill: { fgColor: { rgb: C.gold } } }))
   const metaBg = 'FAFAFA'
-  const meta = (lbl: string, val: string) => [
-    mkCell(lbl, { font: { name: FN, bold: true, sz: 10, color: { rgb: C.gray } }, fill: { fgColor: { rgb: metaBg } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { right: bdr(C.grayBorder) } }),
-    mkCell('', { fill: { fgColor: { rgb: metaBg } } }),
-    mkCell(val, { font: { name: FN, sz: 11, color: { rgb: C.black } }, fill: { fgColor: { rgb: metaBg } }, alignment: { horizontal: 'left', vertical: 'center' } }),
-    mkCell('', { fill: { fgColor: { rgb: metaBg } } }),
-  ]
-  const blkM = () => Array(4).fill(null).map(() => mkCell('', { fill: { fgColor: { rgb: metaBg } } }))
+  
+  const lblSpan = Math.floor(colCount / 2)
+  
+  const meta = (lbl: string, val: string) => {
+    const row = Array(colCount).fill(null).map(() => mkCell('', { fill: { fgColor: { rgb: metaBg } } }))
+    row[0] = mkCell(lbl, { font: { name: FN, bold: true, sz: 10, color: { rgb: C.gray } }, fill: { fgColor: { rgb: metaBg } }, alignment: { horizontal: 'right', vertical: 'center' }, border: { right: bdr(C.grayBorder) } })
+    row[lblSpan] = mkCell(val, { font: { name: FN, sz: 11, color: { rgb: C.black } }, fill: { fgColor: { rgb: metaBg } }, alignment: { horizontal: 'left', vertical: 'center' } })
+    return row
+  }
+  const blkM = () => Array(colCount).fill(null).map(() => mkCell('', { fill: { fgColor: { rgb: metaBg } } }))
 
   rows.push(blk()); rows.push(blk()); rows.push(blk())
   rows.push(cvr('INSACC', 28, true))
@@ -395,11 +398,17 @@ function getCoverData(p: ExcelExportParams, count: number): any {
   return {
     rows,
     merges: [
-      { s: { r: 3, c: 0 }, e: { r: 3, c: 3 } },
-      { s: { r: 5, c: 0 }, e: { r: 5, c: 3 } },
-      { s: { r: 6, c: 0 }, e: { r: 6, c: 3 } },
-      { s: { r: 9, c: 0 }, e: { r: 9, c: 3 } },
-      { s: { r: 11, c: 0 }, e: { r: 11, c: 3 } },
+      { s: { r: 3, c: 0 }, e: { r: 3, c: colCount - 1 } },
+      { s: { r: 5, c: 0 }, e: { r: 5, c: colCount - 1 } },
+      { s: { r: 6, c: 0 }, e: { r: 6, c: colCount - 1 } },
+      { s: { r: 9, c: 0 }, e: { r: 9, c: colCount - 1 } },
+      { s: { r: 11, c: 0 }, e: { r: 11, c: colCount - 1 } },
+      { s: { r: 14, c: 0 }, e: { r: 14, c: lblSpan - 1 } }, { s: { r: 14, c: lblSpan }, e: { r: 14, c: colCount - 1 } },
+      { s: { r: 16, c: 0 }, e: { r: 16, c: lblSpan - 1 } }, { s: { r: 16, c: lblSpan }, e: { r: 16, c: colCount - 1 } },
+      { s: { r: 17, c: 0 }, e: { r: 17, c: lblSpan - 1 } }, { s: { r: 17, c: lblSpan }, e: { r: 17, c: colCount - 1 } },
+      { s: { r: 18, c: 0 }, e: { r: 18, c: lblSpan - 1 } }, { s: { r: 18, c: lblSpan }, e: { r: 18, c: colCount - 1 } },
+      { s: { r: 20, c: 0 }, e: { r: 20, c: lblSpan - 1 } }, { s: { r: 20, c: lblSpan }, e: { r: 20, c: colCount - 1 } },
+      { s: { r: 22, c: 0 }, e: { r: 22, c: lblSpan - 1 } }, { s: { r: 22, c: lblSpan }, e: { r: 22, c: colCount - 1 } },
     ],
     rowHeights: [
       {}, {}, {}, { hpt: 52 }, { hpt: 10 }, { hpt: 22 }, { hpt: 10 },
@@ -875,9 +884,13 @@ function sheetBreakup(p: ExcelExportParams, fv: Voucher[], coverData?: any): any
     rows.push([]) // Spacer
   })
   
+  const offset = coverData ? coverData.rows.length + 2 : 0
+
   return buildWS(rows, {
-    freeze: { r: 1, c: 0 }, filterRow: 0,
-    colW: [{ wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 25 }, { wch: 40 }, { wch: 14 }, { wch: 14 }]
+    freeze: { r: 1 + offset, c: 0 }, filterRow: offset,
+    colW: [{ wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 25 }, { wch: 40 }, { wch: 14 }, { wch: 14 }],
+    merges: coverData?.merges,
+    rowHeights: coverData?.rowHeights
   })
 }
 
@@ -939,9 +952,10 @@ export async function exportAccountingExcel(p: ExcelExportParams): Promise<strin
   const wb = XLSX.utils.book_new()
   wb.Props = { Title: p.reportTitle, Subject: 'InsAcc Professional Accounting Report', Author: p.generatedBy, Company: p.companyName, CreatedDate: new Date() }
 
-  const coverData = getCoverData(p, fv.length)
+  const isBreakup = p.reportType && p.reportType !== 'Standard'
+  const coverData = getCoverData(p, fv.length, isBreakup ? 8 : 5)
   
-  if (p.reportType && p.reportType !== 'Standard') {
+  if (isBreakup) {
     XLSX.utils.book_append_sheet(wb, sheetBreakup(p, fv, coverData), '1. Breakup Report')
   } else {
     XLSX.utils.book_append_sheet(wb, sheetSummary(p, fv, totDr, totCr, coverData), '1. Executive Summary')
