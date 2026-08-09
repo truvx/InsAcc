@@ -152,8 +152,8 @@ function generateExcel(data: ReportExportInput): Uint8Array {
   data.kpis.forEach(k => { if (typeof k.value === 'number') k.value = roundDecimals(k.value) })
   const wb = XLSX.utils.book_new()
   const summaryData = [
+    ...(data.moduleName ? [[data.moduleName, '']] : []),
     ['InsAcc Financial Report', ''],
-    ...(data.moduleName ? [['Module', data.moduleName]] : []),
     ['Generated', new Date().toLocaleDateString()],
     ['Period', data.periodLabel],
     ['', ''],
@@ -1335,12 +1335,16 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
 
   if (p.format === 'xlsx') {
     const wb = XLSX.utils.book_new()
-    const wsData = [
+    const prefixRows = [
+      ...(p.moduleName ? [[p.moduleName]] : []),
       [p.title],
-      ...(p.moduleName ? [[`Module: ${p.moduleName}`]] : []),
       ...(p.subtitle ? [[p.subtitle]] : []),
       [`Period: ${p.periodLabel || 'All Time'}`],
-      [],
+      []
+    ]
+    const headerRow = prefixRows.length
+    const wsData = [
+      ...prefixRows,
       p.columns,
       ...p.rows,
       ...(p.foot || [])
@@ -1348,12 +1352,14 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
     const ws = XLSX.utils.aoa_to_sheet(wsData)
     
     // Style title
-    if (ws['A1']) {
+    if (p.moduleName && ws['A1']) {
+      ws['A1'].s = { font: { sz: 12, color: { rgb: '64748B' } } }
+      if (ws['A2']) ws['A2'].s = { font: { sz: 14, bold: true, color: { rgb: '0F4C35' } } }
+    } else if (ws['A1']) {
       ws['A1'].s = { font: { sz: 14, bold: true, color: { rgb: '0F4C35' } } }
     }
     
     // Style headers
-    const headerRow = p.subtitle ? 3 : 2
     for (let c = 0; c < p.columns.length; c++) {
       const cellRef = XLSX.utils.encode_cell({ r: headerRow, c })
       if (ws[cellRef]) {
