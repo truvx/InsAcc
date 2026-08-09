@@ -231,10 +231,10 @@ export default function PropertyPaymentVoucher({
     setFormDescription(v.description.replace(/\s*\(paid to.*\)$/i, ''))
     setFormBankAccount(bankId)
     setFormExpenseAccount(debitLine?.accountId || '')
-    setFormReference(v.reference)
+    setFormReference(v.reference || '')
 
     const paidToMatch = v.description.match(/\(paid to\s+(.*)\)$/i)
-    setFormPaidTo(paidToMatch ? paidToMatch[1] : v.reference || '')
+    setFormPaidTo(paidToMatch ? paidToMatch[1] : '')
 
     setFormPaymentMode(v.paymentMode || 'Bank Transfer')
     setFormTags(v.tags?.join(', ') || '')
@@ -312,7 +312,7 @@ export default function PropertyPaymentVoucher({
       bankAccountId = mappedId
     }
 
-    const ref = formPaidTo || formReference || undefined
+    const ref = formReference || undefined
     const desc = formDescription + (formPaidTo ? ` (paid to ${formPaidTo})` : '')
 
     if (editingId) {
@@ -323,7 +323,7 @@ export default function PropertyPaymentVoucher({
         ...oldVoucher,
         date: formDate,
         description: desc,
-        reference: formPaidTo || formReference || '',
+        reference: formReference || '',
         modifiedAt: new Date().toISOString(),
         modifiedBy: 'user',
         paymentMode: formPaymentMode as any,

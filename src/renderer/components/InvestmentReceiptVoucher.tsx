@@ -240,10 +240,10 @@ export default function InvestmentReceiptVoucher({
     setFormDescription(v.description.replace(/\s*\(from.*\)$/i, ''))
     setFormBankAccount(bankId)
     setFormRevenueAccount(creditLine?.accountId || '')
-    setFormReference(v.reference)
+    setFormReference(v.reference || '')
 
     const payerMatch = v.description.match(/\(from\s+(.*)\)$/i)
-    setFormReceivedFrom(payerMatch ? payerMatch[1] : v.reference || '')
+    setFormReceivedFrom(payerMatch ? payerMatch[1] : '')
 
     setFormPaymentMode(v.paymentMode || 'Bank Transfer')
     setFormPaymentReference(v.paymentReference || '')
@@ -290,7 +290,7 @@ export default function InvestmentReceiptVoucher({
       bankAccountId = mappedId
     }
 
-    const ref = formReceivedFrom || formReference || undefined
+    const ref = formReference || undefined
     const desc = formDescription + (formReceivedFrom ? ` (from ${formReceivedFrom})` : '')
 
     if (editingId) {
@@ -301,7 +301,7 @@ export default function InvestmentReceiptVoucher({
         ...oldVoucher,
         date: formDate,
         description: desc,
-        reference: formReceivedFrom || formReference || '',
+        reference: formReference || '',
         modifiedAt: new Date().toISOString(),
         modifiedBy: 'user',
         paymentMode: formPaymentMode as any,

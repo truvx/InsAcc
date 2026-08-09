@@ -271,10 +271,10 @@ export default function InvestmentPaymentVoucher({
     setFormAmount(String(debitLine?.amount || 0))
     setFormDescription(v.description.replace(/\s*\(paid to.*\)$/i, ''))
     setFormBankAccount(bankId)
-    setFormReference(v.reference)
+    setFormReference(v.reference || '')
 
     const paidToMatch = v.description.match(/\(paid to\s+(.*)\)$/i)
-    setFormPaidTo(paidToMatch ? paidToMatch[1] : v.reference || '')
+    setFormPaidTo(paidToMatch ? paidToMatch[1] : '')
 
     // Check whether the debit account or its parent is an asset account
     const debitAcct = debitLine ? accounts.find(a => a.id === debitLine.accountId) : null
@@ -388,7 +388,7 @@ export default function InvestmentPaymentVoucher({
       bankAccountId = mappedId
     }
 
-    const ref = formPaidTo || formReference || undefined
+    const ref = formReference || undefined
     const desc = formDescription + (formPaidTo ? ` (paid to ${formPaidTo})` : '')
     const resolvedAssetAccount = formHoldingAccount || formAssetAccount
     const targetDebitAccount = formPaymentType === 'asset' ? resolvedAssetAccount : formExpenseAccount
@@ -401,7 +401,7 @@ export default function InvestmentPaymentVoucher({
         ...oldVoucher,
         date: formDate,
         description: desc,
-        reference: formPaidTo || formReference || '',
+        reference: formReference || '',
         modifiedAt: new Date().toISOString(),
         modifiedBy: 'user',
         paymentMode: formPaymentMode as any,
