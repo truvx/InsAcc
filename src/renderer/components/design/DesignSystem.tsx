@@ -110,8 +110,10 @@ export function Select({
   const dropdownRef = useRef<HTMLDivElement>(null)
   const [dropdownCoords, setDropdownCoords] = useState({ top: 0, left: 0, width: 0 })
 
+  const safeOptions = options || []
+
   // Find active option label
-  const selectedOption = options.find(o => String(o.value) === String(value))
+  const selectedOption = safeOptions.find(o => String(o.value) === String(value))
   const displayLabel = selectedOption ? selectedOption.label : (placeholder || 'Select Option')
 
   // Close dropdown on click outside
@@ -154,10 +156,10 @@ export function Select({
   // Reset highlight index when opening
   useEffect(() => {
     if (isOpen) {
-      const idx = options.findIndex(o => String(o.value) === String(value))
+      const idx = safeOptions.findIndex(o => String(o.value) === String(value))
       setHighlightedIndex(idx >= 0 ? idx : 0)
     }
-  }, [isOpen, value, options])
+  }, [isOpen, value, safeOptions])
 
   const handleSelect = (val: string) => {
     if (onChange) {
@@ -177,8 +179,8 @@ export function Select({
       e.preventDefault()
       if (!isOpen) {
         setIsOpen(true)
-      } else if (highlightedIndex >= 0 && highlightedIndex < options.length) {
-        handleSelect(options[highlightedIndex].value)
+      } else if (highlightedIndex >= 0 && highlightedIndex < (filteredOptions || safeOptions).length) {
+        handleSelect((filteredOptions || safeOptions)[highlightedIndex].value)
       }
     } else if (e.key === 'Escape') {
       setIsOpen(false)
@@ -187,23 +189,25 @@ export function Select({
       if (!isOpen) {
         setIsOpen(true)
       } else {
-        setHighlightedIndex(prev => (prev + 1) % options.length)
+        const listLength = (filteredOptions || safeOptions).length || 1
+        setHighlightedIndex(prev => (prev + 1) % listLength)
       }
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       if (!isOpen) {
         setIsOpen(true)
       } else {
-        setHighlightedIndex(prev => (prev - 1 + (filteredOptions.length || options.length)) % (filteredOptions.length || options.length))
+        const listLength = (filteredOptions || safeOptions).length || 1
+        setHighlightedIndex(prev => (prev - 1 + listLength) % listLength)
       }
     }
   }
 
   const filteredOptions = useMemo(() => {
-    if (!searchable || !searchQuery) return options
+    if (!searchable || !searchQuery) return safeOptions
     const q = searchQuery.toLowerCase()
-    return options.filter(o => o.label.toLowerCase().includes(q))
-  }, [options, searchable, searchQuery])
+    return safeOptions.filter(o => o.label?.toLowerCase().includes(q))
+  }, [safeOptions, searchable, searchQuery])
 
   return (
     <div
