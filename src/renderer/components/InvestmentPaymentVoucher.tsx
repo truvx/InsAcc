@@ -106,6 +106,7 @@ export default function InvestmentPaymentVoucher({
 
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [tagFilter, setTagFilter] = useState('')
   const [showExportMenu, setShowExportMenu] = useState(false)
 
   const handlePaymentModeChange = (mode: string) => {
@@ -133,8 +134,21 @@ export default function InvestmentPaymentVoucher({
         v.reference.toLowerCase().includes(q)
       )
     }
+    if (tagFilter) {
+      const q = tagFilter.toLowerCase()
+      result = result.filter(v => {
+        const refs = v.lines.filter(l => l.referenceType === 'Purchase' || l.referenceType === 'Investment')
+        for (const ref of refs) {
+          if (ref.referenceId) {
+            const p = purchaseRecords.find(pr => pr.id === ref.referenceId)
+            if (p && p.tags && p.tags.some(t => t.toLowerCase().includes(q))) return true
+          }
+        }
+        return false
+      })
+    }
     return result
-  }, [paymentVouchers, searchQuery, dateFrom, dateTo])
+  }, [paymentVouchers, searchQuery, tagFilter, dateFrom, dateTo])
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     try {
@@ -724,6 +738,9 @@ export default function InvestmentPaymentVoucher({
             <div className="data-table-search" style={{ maxWidth: 'none', width: 'auto', flex: '0 0 auto', padding: '0 12px' }}>
               <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginRight: 8 }}>To</span>
               <input type="date" className="data-table-search-input" style={{ width: 110 }} value={dateTo} onChange={e => setDateTo(e.target.value)} />
+            </div>
+            <div className="data-table-search" style={{ maxWidth: 'none', width: 'auto', flex: '0 0 auto' }}>
+              <input type="text" className="data-table-search-input" style={{ width: 140 }} placeholder="Filter by tag..." value={tagFilter} onChange={e => setTagFilter(e.target.value)} />
             </div>
           </div>
           <div className="data-table-search">

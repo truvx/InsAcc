@@ -434,6 +434,14 @@ export default function PurchaseLedger({
       render: r => <span className="text-xs text-secondary">{r.paymentMode || 'Unknown'}</span>,
     },
     {
+      key: 'tags', header: 'Tags', width: '100px',
+      render: r => <span className="text-xs text-secondary">{r.tags?.length > 0 ? r.tags.join(', ') : '—'}</span>,
+    },
+    {
+      key: 'notes', header: 'Notes', width: '120px',
+      render: r => <span className="text-xs text-secondary" title={r.notes}>{r.notes ? (r.notes.length > 20 ? r.notes.slice(0, 20) + '...' : r.notes) : '—'}</span>,
+    },
+    {
       key: 'accountCode', header: 'Chart', width: '70px',
       render: r => r.accountCode ? (
         <Badge variant="neutral">{r.accountCode}</Badge>
@@ -618,7 +626,7 @@ export default function PurchaseLedger({
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     const exportColumns = [
       'VOUCHER', 'DATE', 'ASSET', 'QTY', 'UNIT PRICE', 'TOTAL', 
-      'PAID FROM', 'BUYER', 'PAYMENT MODE', 
+      'PAID FROM', 'BUYER', 'PAYMENT MODE', 'TAGS', 'NOTES',
       'DOCS', 'POSTING', 'STATUS'
     ]
     
@@ -637,6 +645,8 @@ export default function PurchaseLedger({
         paidFrom,
         r.buyer || '—',
         r.paymentMode || 'Unknown',
+        r.tags?.length > 0 ? r.tags.join(', ') : '—',
+        r.notes || '—',
         d && d.docsCount > 0 ? String(d.docsCount) : '—',
         d && d.postingStatus !== '—' ? d.postingStatus : '—',
         r.status
@@ -645,7 +655,7 @@ export default function PurchaseLedger({
 
     const totalInvested = calculateTotalInvested(filtered)
     const foot = [
-      ['', '', '', '', 'Total Invested:', formatCurrency(totalInvested, currency), '', '', '', '', '', '']
+      ['', '', '', '', 'Total Invested:', formatCurrency(totalInvested, currency), '', '', '', '', '', '', '', '']
     ]
 
     exportTableData({
@@ -1520,12 +1530,6 @@ export default function PurchaseLedger({
             value={formData.bankAccountId}
             onChange={e => setFormData(prev => ({ ...prev, bankAccountId: e.target.value }))}
             options={bankOptions}
-          />
-          <Input
-            label="Reference Number (optional)"
-            value={formData.paymentReference}
-            onChange={e => setFormData(prev => ({ ...prev, paymentReference: e.target.value }))}
-            placeholder="e.g. Cheque/Reference #"
           />
         </div>
 

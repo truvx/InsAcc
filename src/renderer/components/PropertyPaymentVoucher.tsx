@@ -103,6 +103,7 @@ export default function PropertyPaymentVoucher({
 
   const [formPaymentMode, setFormPaymentMode] = useState<string>('Bank Transfer')
   const [formPaymentReference, setFormPaymentReference] = useState('')
+  const [tagFilter, setTagFilter] = useState('')
 
   const handlePaymentModeChange = (mode: string) => {
     setFormPaymentMode(mode)
@@ -135,14 +136,31 @@ export default function PropertyPaymentVoucher({
       })
     }
 
-    if (!searchQuery) return list
-    const q = searchQuery.toLowerCase()
-    return list.filter(v =>
-      v.number.toLowerCase().includes(q) ||
-      v.description.toLowerCase().includes(q) ||
-      v.reference.toLowerCase().includes(q)
-    )
-  }, [paymentVouchers, searchQuery, dateFrom, dateTo, filterParty, allParties])
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      list = list.filter(v =>
+        v.number.toLowerCase().includes(q) ||
+        v.description.toLowerCase().includes(q) ||
+        v.reference.toLowerCase().includes(q)
+      )
+    }
+
+    if (tagFilter) {
+      const q = tagFilter.toLowerCase()
+      list = list.filter(v => {
+        const refs = v.lines.filter(l => l.referenceType === 'Purchase' || l.referenceType === 'Property')
+        for (const ref of refs) {
+          if (ref.referenceId) {
+            const p = purchaseRecords.find(pr => pr.id === ref.referenceId)
+            if (p && p.tags && p.tags.some(t => t.toLowerCase().includes(q))) return true
+          }
+        }
+        return false
+      })
+    }
+
+    return list
+  }, [paymentVouchers, searchQuery, dateFrom, dateTo, filterParty, allParties, tagFilter])
 
   const bankOptions = useMemo(() => [
     { value: '', label: 'Select bank account' },
@@ -686,6 +704,9 @@ export default function PropertyPaymentVoucher({
                 parties={allParties}
                 placeholder="Filter by Vendor, Tenant, Property..."
               />
+            </div>
+            <div className="data-table-search" style={{ maxWidth: 'none', width: 'auto', flex: '0 0 auto' }}>
+              <input type="text" className="data-table-search-input" style={{ width: 140 }} placeholder="Filter by tag..." value={tagFilter} onChange={e => setTagFilter(e.target.value)} />
             </div>
           </div>
           <div className="data-table-search">
