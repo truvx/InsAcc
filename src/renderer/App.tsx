@@ -1191,6 +1191,10 @@ export default function App() {
     }
   }, [vouchers, setVouchers])
 
+
+
+  const [propVouchers, setPropVouchers] = useLazyPersistedState<Voucher[]>('insacc_prop_vouchers', [])
+  
   useEffect(() => {
     if (propVouchers.length > 0) {
       const regex = /^([A-Z]+-\d{4})-000(\d{3})$/
@@ -1206,7 +1210,6 @@ export default function App() {
     }
   }, [propVouchers, setPropVouchers])
 
-  const [propVouchers, setPropVouchers] = useLazyPersistedState<Voucher[]>('insacc_prop_vouchers', [])
   const [propBankMappings, setPropBankMappings] = useLazyPersistedState<BankMapping[]>('insacc_prop_bank_mappings', [])
 
   const [propAccounts, setPropAccounts] = useLazyPersistedState<PropAccount[]>('insacc_prop_bank_accounts', [])
