@@ -1077,6 +1077,7 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
   doc.text(`Total Debits: ${p.currency} ${totDr.toLocaleString(undefined, {minimumFractionDigits: 2})} | Total Credits: ${p.currency} ${totCr.toLocaleString(undefined, {minimumFractionDigits: 2})}`, 14, y)
 
   const isBreakup = p.reportType && p.reportType !== 'Standard'
+  console.log('DEBUG isBreakup:', isBreakup, 'p.reportType:', p.reportType)
   
   if (isBreakup) {
     const groupedData = getGroupedData(p, fv)
@@ -1101,12 +1102,13 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
         ]
       })
       
+      tableData.unshift([
+        { content: `${group.groupName} - Debits: ${p.currency} ${totGrDr.toLocaleString(undefined, {minimumFractionDigits: 2})} | Credits: ${p.currency} ${totGrCr.toLocaleString(undefined, {minimumFractionDigits: 2})}`, colSpan: 8, styles: { halign: 'left', fillColor: [15, 76, 53], textColor: [255, 255, 255], fontStyle: 'bold' } }
+      ])
+      
       autoTable(doc, {
         startY: y + 5,
-        head: [
-          [{ content: `${group.groupName} - Debits: ${p.currency} ${totGrDr.toLocaleString(undefined, {minimumFractionDigits: 2})} | Credits: ${p.currency} ${totGrCr.toLocaleString(undefined, {minimumFractionDigits: 2})}`, colSpan: 8, styles: { halign: 'left', fillColor: [15, 76, 53], textColor: [255, 255, 255] } }],
-          ['Date', 'Voucher', 'Reference', 'Type', 'Account', 'Description', 'Debit', 'Credit']
-        ],
+        head: [['Date', 'Voucher', 'Reference', 'Type', 'Account', 'Description', 'Debit', 'Credit']],
         body: tableData,
         theme: 'grid',
         styles: { fontSize: 8 },
