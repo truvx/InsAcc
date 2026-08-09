@@ -17,6 +17,8 @@ import AuditTrailModal from './design/AuditTrailModal'
 import { printVoucher } from '../utils/printVoucherHelper'
 import { exportVoucherToPDF } from '../utils/pdfVoucherHelper'
 import type { AuditEvent } from '../data/auditTypes'
+import type { PurchaseRecord } from '../data/purchaseLedger'
+import { mergeTags } from './InvestmentVouchersTagHelper'
 
 interface Props {
   currency?: string
@@ -28,6 +30,7 @@ interface Props {
   onAuditEvent?: (event: AuditEvent) => void
   auditEvents?: AuditEvent[]
   setTransactions?: React.Dispatch<React.SetStateAction<any[]>>
+  purchaseRecords?: PurchaseRecord[]
 }
 
 export default function InvestmentJournalVoucher({
@@ -35,6 +38,7 @@ export default function InvestmentJournalVoucher({
   accounts, vouchers, setVouchers, accountingEngine, onAuditEvent,
   auditEvents = [],
   setTransactions,
+  purchaseRecords = [],
 }: Props) {
   const {
     detailVoucher, setDetailVoucher,
@@ -62,8 +66,11 @@ export default function InvestmentJournalVoucher({
   const [showExportMenu, setShowExportMenu] = useState(false)
 
   const journalVouchers = useMemo(() =>
-    vouchers.filter(v => v.type === 'Journal' && !v.isDeleted).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [vouchers]
+    vouchers.filter(v => v.type === 'Journal' && !v.isDeleted).map(v => ({
+      ...v,
+      tags: mergeTags(v.tags, v.id, v.reference, purchaseRecords)
+    })).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [vouchers, purchaseRecords]
   )
 
   const filtered = useMemo(() => {

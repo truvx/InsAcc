@@ -26,6 +26,7 @@ import AuditTrailModal from './design/AuditTrailModal'
 import { printVoucher } from '../utils/printVoucherHelper'
 import { exportVoucherToPDF } from '../utils/pdfVoucherHelper'
 import type { AuditEvent } from '../data/auditTypes'
+import { mergeTags } from './InvestmentVouchersTagHelper'
 
 const ASSET_ACCOUNTS = [
   { code: '1210', name: 'Gold' },
@@ -118,8 +119,11 @@ export default function InvestmentPaymentVoucher({
   const [auditVoucher, setAuditVoucher] = useState<Voucher | null>(null)
 
   const paymentVouchers = useMemo(() =>
-    vouchers.filter(v => v.type === 'Payment' && !v.isDeleted).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [vouchers]
+    vouchers.filter(v => v.type === 'Payment' && !v.isDeleted).map(v => ({
+      ...v,
+      tags: mergeTags(v.tags, v.id, v.reference, purchaseRecords)
+    })).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [vouchers, purchaseRecords]
   )
 
   const filtered = useMemo(() => {

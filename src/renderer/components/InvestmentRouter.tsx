@@ -202,6 +202,7 @@ export default function InvestmentRouter(props: Props) {
           accountingEngine={accountingEngine}
           onAuditEvent={recordAuditEvent}
           auditEvents={auditEvents}
+          purchaseRecords={purchaseRecords}
         />
       )
     case 'reports':

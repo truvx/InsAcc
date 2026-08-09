@@ -6,6 +6,9 @@ import type { BankAccount } from '../data/banking'
 import type { PurchaseRecord, ValidationError, AdditionalCostLine } from '../data/purchaseLedger'
 import type { AuditEvent } from '../data/auditTypes'
 import type { DocItem } from './Documents'
+import { AssetHoldingModal } from './InvestmentHoldings'
+import { getAssetWeightMultiplier } from '../data/investmentMasterData'
+import { mergePurchaseTags } from './InvestmentVouchersTagHelper'
 import type { InvestmentCategory, InvestmentAsset } from '../data/investmentMasterData'
 import { getActiveCategories, getAssetsForCategory, findCategoryByName, formatAssetType } from '../data/investmentMasterData'
 import {
@@ -176,7 +179,10 @@ export default function PurchaseLedger({
     [bankAccounts],
   )
 
-  const activeRecords = useMemo(() => purchaseRecords, [purchaseRecords])
+  const activeRecords = useMemo(() => purchaseRecords.map(r => ({
+    ...r,
+    tags: mergePurchaseTags(r.tags, r.voucherId, vouchers)
+  })), [purchaseRecords, vouchers])
 
   const kpis = useMemo(() => {
     let gold = 0

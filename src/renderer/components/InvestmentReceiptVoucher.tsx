@@ -25,6 +25,7 @@ import AuditTrailModal from './design/AuditTrailModal'
 import { printVoucher } from '../utils/printVoucherHelper'
 import { exportVoucherToPDF } from '../utils/pdfVoucherHelper'
 import type { AuditEvent } from '../data/auditTypes'
+import { mergeTags } from './InvestmentVouchersTagHelper'
 
 interface Props {
   currency?: string
@@ -97,8 +98,11 @@ export default function InvestmentReceiptVoucher({
   const [auditVoucher, setAuditVoucher] = useState<Voucher | null>(null)
 
   const receiptVouchers = useMemo(() =>
-    vouchers.filter(v => v.type === 'Receipt' && !v.isDeleted).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [vouchers]
+    vouchers.filter(v => v.type === 'Receipt' && !v.isDeleted).map(v => ({
+      ...v,
+      tags: mergeTags(v.tags, v.id, v.reference, purchaseRecords)
+    })).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [vouchers, purchaseRecords]
   )
 
   const filtered = useMemo(() => {
