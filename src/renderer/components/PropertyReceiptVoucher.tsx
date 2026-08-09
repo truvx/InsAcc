@@ -633,6 +633,7 @@ export default function PropertyReceiptVoucher({
             value={formCreditAccount}
             onChange={e => setFormCreditAccount(e.target.value)}
             options={coaOptions}
+            searchable
           />
           <Select
             label="Mode of Payment"

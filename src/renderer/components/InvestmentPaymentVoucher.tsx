@@ -645,7 +645,7 @@ export default function InvestmentPaymentVoucher({
               )}
             </>
           ) : (
-            <Select label="Account to Debit" value={formExpenseAccount} onChange={e => setFormExpenseAccount(e.target.value)} options={coaOptions} />
+            <Select label="Account to Debit" value={formExpenseAccount} onChange={e => setFormExpenseAccount(e.target.value)} options={coaOptions} searchable />
           )}
         </div>
         <div className="form-row">

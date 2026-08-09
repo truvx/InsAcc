@@ -428,8 +428,8 @@ export default function InvestmentJournalVoucher({
           <Input label="Tags (comma separated)" value={formTags} onChange={e => setFormTags(e.target.value)} placeholder="e.g. adjustment, urgent" />
         </div>
         <div className="form-row">
-          <Select label="Debit Account" value={formDebitAccount} onChange={e => setFormDebitAccount(e.target.value)} options={accountOptions} />
-          <Select label="Credit Account" value={formCreditAccount} onChange={e => setFormCreditAccount(e.target.value)} options={accountOptions} />
+          <Select label="Debit Account" value={formDebitAccount} onChange={e => setFormDebitAccount(e.target.value)} options={accountOptions} searchable />
+          <Select label="Credit Account" value={formCreditAccount} onChange={e => setFormCreditAccount(e.target.value)} options={accountOptions} searchable />
         </div>
       </EntityForm>
 

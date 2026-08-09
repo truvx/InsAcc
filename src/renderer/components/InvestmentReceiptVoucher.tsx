@@ -508,7 +508,7 @@ export default function InvestmentReceiptVoucher({
             placeholder="Payer name"
             customLabel="Use custom payer"
           />
-          <Select label="Account to Credit" value={formRevenueAccount} onChange={e => setFormRevenueAccount(e.target.value)} options={coaOptions} />
+          <Select label="Account to Credit" value={formRevenueAccount} onChange={e => setFormRevenueAccount(e.target.value)} options={coaOptions} searchable />
         </div>
         <div className="form-row">
           <Input label="Description" value={formDescription} onChange={e => setFormDescription(e.target.value)} placeholder="e.g. Dividend received" />

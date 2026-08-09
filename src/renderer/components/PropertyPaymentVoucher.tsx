@@ -611,7 +611,7 @@ export default function PropertyPaymentVoucher({
         </div>
         <div className="form-row">
           <Input label="Description" value={formDescription} onChange={e => setFormDescription(e.target.value)} placeholder="e.g. Maintenance payment" />
-          <Select label="Account to Debit" value={formExpenseAccount} onChange={e => setFormExpenseAccount(e.target.value)} options={coaOptions} />
+          <Select label="Account to Debit" value={formExpenseAccount} onChange={e => setFormExpenseAccount(e.target.value)} options={coaOptions} searchable />
         </div>
         <div className="form-row">
           <Select

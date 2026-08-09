@@ -83,6 +83,7 @@ interface SelectProps {
   style?: React.CSSProperties
   required?: boolean
   onDeleteOption?: (val: string) => void
+  searchable?: boolean
   [key: string]: any
 }
 
@@ -98,9 +99,11 @@ export function Select({
   placeholder,
   style,
   onDeleteOption,
+  searchable,
   ...props
 }: SelectProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const containerRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLDivElement>(null)
@@ -164,6 +167,7 @@ export function Select({
       } as any)
     }
     setIsOpen(false)
+    setSearchQuery('')
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -190,10 +194,16 @@ export function Select({
       if (!isOpen) {
         setIsOpen(true)
       } else {
-        setHighlightedIndex(prev => (prev - 1 + options.length) % options.length)
+        setHighlightedIndex(prev => (prev - 1 + (filteredOptions.length || options.length)) % (filteredOptions.length || options.length))
       }
     }
   }
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !searchQuery) return options
+    const q = searchQuery.toLowerCase()
+    return options.filter(o => o.label.toLowerCase().includes(q))
+  }, [options, searchable, searchQuery])
 
   return (
     <div
@@ -258,7 +268,30 @@ export function Select({
             zIndex: 99999
           }}
         >
-          {options.map((option, index) => {
+          {searchable && (
+            <div style={{ padding: '6px', borderBottom: '1px solid var(--border)' }}>
+              <input
+                type="text"
+                autoFocus
+                className="input"
+                style={{ width: '100%', padding: '6px 10px', fontSize: '13px' }}
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Enter' && e.key !== 'Escape') {
+                    e.stopPropagation()
+                  }
+                }}
+              />
+            </div>
+          )}
+          {filteredOptions.length === 0 && searchable && (
+            <div style={{ padding: '10px var(--space-3)', fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)' }}>
+              No results found
+            </div>
+          )}
+          {filteredOptions.map((option, index) => {
             const isSelected = String(option.value) === String(value)
             const isHighlighted = index === highlightedIndex
             return (
