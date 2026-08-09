@@ -135,8 +135,10 @@ function generatePdf(data: ReportExportInput): ArrayBuffer {
 function generateCsv(data: ReportExportInput): string {
   data.kpis.forEach(k => { if (typeof k.value === 'number') k.value = roundDecimals(k.value) })
   const lines: string[] = []
-  const esc = (v: string | number) => {
+  const esc = (v: string | number | undefined | null) => {
+    if (v === null || v === undefined) return ''
     const s = String(v)
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return `="${s}"`
     return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g, '""')}"` : s
   }
   if (data.moduleName) lines.push(esc(data.moduleName))
@@ -946,7 +948,7 @@ export async function exportAccountingCsv(p: ExcelExportParams): Promise<string 
     v.lines.forEach(l => {
       const acc = p.accounts.find(a => a.id === l.accountId)?.name || l.accountId
       const desc = (l.narration || v.description || '').replace(/"/g, '""')
-      csv += `${formatDate(v.date, 'DD/MM/YYYY')},${v.number},${v.type},"${acc}",${l.type === 'Debit' ? l.amount : ''},${l.type === 'Credit' ? l.amount : ''},"${desc}"\n`
+      csv += `="${formatDate(v.date, 'DD/MM/YYYY')}",${v.number},${v.type},"${acc}",${l.type === 'Debit' ? l.amount : ''},${l.type === 'Credit' ? l.amount : ''},"${desc}"\n`
     })
   })
   
@@ -1287,6 +1289,7 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
     const esc = (v: string | number | undefined | null) => {
       if (v === null || v === undefined) return ''
       const s = String(v)
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return `="${s}"`
       return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g, '""')}"` : s
     }
     
