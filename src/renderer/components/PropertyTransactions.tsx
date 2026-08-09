@@ -82,7 +82,7 @@ export default function PropertyTransactions({
 
   const [formPaymentMode, setFormPaymentMode] = useState<string>('Bank Transfer')
   const [formPaymentChannel, setFormPaymentChannel] = useState<'Bank Account' | 'Cash In Hand'>('Bank Account')
-  const [formPaymentReference, setFormPaymentReference] = useState('')
+  const [formTags, setFormTags] = useState('')
   const [formBankAccount, setFormBankAccount] = useState('')
 
   const handlePaymentModeChange = (mode: string) => {
@@ -193,7 +193,7 @@ export default function PropertyTransactions({
     setSelectedTenantId('')
     setFormPaymentMode('Bank Transfer')
     setFormPaymentChannel('Bank Account')
-    setFormPaymentReference('')
+    setFormTags('')
     setFormBankAccount('')
   }
 
@@ -242,7 +242,7 @@ export default function PropertyTransactions({
       tenantId: selectedTenantId || undefined,
       paymentMode: formPaymentMode as any,
       paymentChannel: formPaymentChannel,
-      paymentReference: formPaymentReference || undefined
+      tags: formTags.split(',').map(t => t.trim()).filter(Boolean)
     } as any
 
     if (setPropTransactions) {
@@ -302,7 +302,7 @@ export default function PropertyTransactions({
       lines,
       paymentMode: formPaymentMode as any,
       paymentChannel: formPaymentChannel,
-      paymentReference: formPaymentReference || undefined
+      tags: formTags.split(',').map(t => t.trim()).filter(Boolean)
     }
 
     if (setVouchers) {
@@ -327,7 +327,7 @@ export default function PropertyTransactions({
     setSelectedTenantId((txn as any).tenantId || '')
     setFormPaymentMode(txn.paymentMode || 'Bank Transfer')
     setFormPaymentChannel(txn.paymentChannel || 'Bank Account')
-    setFormPaymentReference(txn.paymentReference || '')
+    setFormTags(txn.tags?.join(', ') || '')
     
     // Find the mapped bank account ID from the voucher line
     const v = vouchers.find(vc => vc.reference === txn.id)
@@ -357,7 +357,7 @@ export default function PropertyTransactions({
           tenantId: selectedTenantId || undefined,
           paymentMode: formPaymentMode as any,
           paymentChannel: formPaymentChannel,
-          paymentReference: formPaymentReference || undefined,
+          tags: formTags.split(',').map(t => t.trim()).filter(Boolean),
           updatedAt: new Date().toISOString(),
           updatedBy: 'user',
         } : t
@@ -419,7 +419,7 @@ export default function PropertyTransactions({
       lines,
       paymentMode: formPaymentMode as any,
       paymentChannel: formPaymentChannel,
-      paymentReference: formPaymentReference || undefined
+      tags: formTags.split(',').map(t => t.trim()).filter(Boolean)
     }
 
     if (setVouchers) {
@@ -687,7 +687,7 @@ export default function PropertyTransactions({
         (t.category && t.category.toLowerCase().includes(q)) ||
         (t.paymentMode && t.paymentMode.toLowerCase().includes(q)) ||
         (t.reference && t.reference.toLowerCase().includes(q)) ||
-        (t.paymentReference && t.paymentReference.toLowerCase().includes(q))
+        (t.tags && t.tags.some(tag => tag.toLowerCase().includes(q)))
       )
     }
 
@@ -717,6 +717,11 @@ export default function PropertyTransactions({
       key: 'paymentMode',
       header: 'Payment Mode',
       render: txn => <span className="text-sm">{txn.paymentMode || 'Unknown'}</span>,
+    },
+    {
+      key: 'tags',
+      header: 'Tags',
+      render: txn => <span className="text-xs text-secondary">{txn.tags?.length ? txn.tags.join(', ') : '—'}</span>,
     },
     {
       key: 'paymentChannel',
@@ -809,7 +814,7 @@ export default function PropertyTransactions({
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     // Allow exporting empty list to generate a template/blank report
 
-    const columns = ['Date', 'Description', 'Category', 'Payment Mode', 'Payment Voucher', 'Type', 'Amount']
+    const columns = ['Date', 'Description', 'Category', 'Payment Mode', 'Payment Voucher', 'Type', 'Amount', 'Tags']
     const rows = filtered.map(t => [
       formatDate(t.date, dateFormat),
       t.description || '—',
@@ -817,7 +822,8 @@ export default function PropertyTransactions({
       t.paymentMode || '—',
       t.reference || t.paymentReference || '—',
       t.type === 'credit' ? 'Income' : 'Expense',
-      t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })
+      t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }),
+      t.tags?.length ? t.tags.join(', ') : '—'
     ])
 
     exportTableData({
@@ -961,10 +967,10 @@ export default function PropertyTransactions({
             />
           )}
           <Input 
-            label="Reference Number (optional)" 
-            value={formPaymentReference} 
-            onChange={e => setFormPaymentReference(e.target.value)} 
-            placeholder="e.g. TXN-12345" 
+            label="Tags" 
+            value={formTags} 
+            onChange={e => setFormTags(e.target.value)} 
+            placeholder="Comma-separated tags" 
           />
         </div>
       </EntityForm>

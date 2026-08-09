@@ -30,6 +30,7 @@ export interface PropTransaction {
   paymentMode?: 'Cash' | 'Bank Transfer' | 'Cheque' | 'Post Dated Cheque (PDC)' | 'Online Transfer' | 'Card' | 'Other'
   paymentChannel?: 'Bank Account' | 'Cash In Hand'
   paymentReference?: string
+  tags?: string[]
   createdAt: string
   updatedAt: string
   createdBy: string
