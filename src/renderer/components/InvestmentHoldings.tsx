@@ -56,7 +56,7 @@ export default function InvestmentHoldings({
   const totalHoldings = holdings.length
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
-    const exportColumns = ['Asset', 'Type', 'Paid From', 'Qty', 'Invested Amount', 'Avg Price', 'Market Price', 'Market Value']
+    const exportColumns = ['Asset', 'Type', 'Paid From', 'Qty', 'Invested Amount', 'Avg Price']
     const rows = holdings.map(h => {
       const record = purchaseRecords.find(p => h.purchaseRecordIds.includes(p.id))
       const bank = record && record.fundingBankAccountId ? bankByIdMap.get(record.fundingBankAccountId) : null
@@ -67,9 +67,7 @@ export default function InvestmentHoldings({
         bank?.institution || '—',
         h.totalQuantity,
         parseFloat(h.totalInvested.toFixed(2)),
-        parseFloat(h.avgPurchaseValue.toFixed(2)),
-        h.totalQuantity > 0 ? parseFloat((h.marketValue / h.totalQuantity).toFixed(2)) : 0,
-        parseFloat(h.marketValue.toFixed(2))
+        parseFloat(h.avgPurchaseValue.toFixed(2))
       ]
     })
 
