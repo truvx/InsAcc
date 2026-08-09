@@ -1700,6 +1700,14 @@ export async function exportOverviewPdf(p: ExcelExportParams): Promise<string | 
     }
   }
 
+  // Add Totals Row
+  txnRows.push([
+    { content: 'TOTAL', colSpan: 8, styles: { halign: 'right', fontStyle: 'bold', fillColor: [230, 240, 235] } },
+    { content: totDr.toLocaleString(undefined, { minimumFractionDigits: 2 }), styles: { fontStyle: 'bold', fillColor: [230, 240, 235] } },
+    { content: totCr.toLocaleString(undefined, { minimumFractionDigits: 2 }), styles: { fontStyle: 'bold', fillColor: [230, 240, 235] } },
+    { content: runBal.toLocaleString(undefined, { minimumFractionDigits: 2 }), styles: { fontStyle: 'bold', fillColor: [230, 240, 235] } }
+  ])
+
   autoTable(doc, {
     startY: y,
     head: [['Date', 'Voucher', 'Ref', 'Type', 'Party', 'Description', 'Code', 'Account', 'Debit', 'Credit', 'Balance']],
