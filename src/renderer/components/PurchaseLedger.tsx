@@ -618,7 +618,7 @@ export default function PurchaseLedger({
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     const exportColumns = [
       'VOUCHER', 'DATE', 'ASSET', 'QTY', 'UNIT PRICE', 'TOTAL', 
-      'PAID FROM', 'BUYER', 'PAYMENT MODE', 'CHART', 
+      'PAID FROM', 'BUYER', 'PAYMENT MODE', 
       'DOCS', 'POSTING', 'STATUS'
     ]
     
@@ -637,7 +637,6 @@ export default function PurchaseLedger({
         paidFrom,
         r.buyer || '—',
         r.paymentMode || 'Unknown',
-        r.accountCode || '—',
         d && d.docsCount > 0 ? String(d.docsCount) : '—',
         d && d.postingStatus !== '—' ? d.postingStatus : '—',
         r.status
@@ -646,7 +645,7 @@ export default function PurchaseLedger({
 
     const totalInvested = calculateTotalInvested(filtered)
     const foot = [
-      ['', '', '', '', 'Total Invested:', formatCurrency(totalInvested, currency), '', '', '', '', '', '', '', '', '']
+      ['', '', '', '', 'Total Invested:', formatCurrency(totalInvested, currency), '', '', '', '', '', '']
     ]
 
     exportTableData({
