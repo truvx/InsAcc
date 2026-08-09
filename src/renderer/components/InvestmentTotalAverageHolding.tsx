@@ -129,9 +129,9 @@ export default function InvestmentTotalAverageHolding({
       p.purity,
       p.purchaseCount,
       p.totalQuantity,
-      p.totalInvested,
-      p.weightedAveragePrice,
-      p.purityAveragePrice
+      parseFloat(p.totalInvested.toFixed(2)),
+      parseFloat(p.weightedAveragePrice.toFixed(2)),
+      parseFloat(p.purityAveragePrice.toFixed(2))
     ])
 
     exportTableData({
