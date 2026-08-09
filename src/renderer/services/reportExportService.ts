@@ -457,7 +457,9 @@ function sheetSummary(p: ExcelExportParams, fv: Voucher[], totDr: number, totCr:
     const bg = idx % 2 === 0 ? C.rowEven : C.rowAlt
     rows.push([
       dCell(lbl, { bg, bold: true }),
-      typeof val === 'number' ? cCell(val, bg) : dCell(val, { bg, bold: true, color: C.primaryMid }),
+      typeof val === 'number' 
+        ? (lbl === 'Total Vouchers' ? dCell(val, { bg, right: true, bold: true, fmt: '#,##0' }) : cCell(val, bg))
+        : dCell(val, { bg, bold: true, color: C.primaryMid }),
       dCell(note, { bg, italic: true, color: C.gray }),
       eCell(bg),
     ])
