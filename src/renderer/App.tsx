@@ -1191,6 +1191,21 @@ export default function App() {
     }
   }, [vouchers, setVouchers])
 
+  useEffect(() => {
+    if (purchaseRecords.length > 0) {
+      const regex = /^([A-Z]+-\d{4})-000(\d{3})$/
+      let modified = false
+      const updated = purchaseRecords.map(r => {
+        if (r.voucherNumber && regex.test(r.voucherNumber)) {
+          modified = true
+          return { ...r, voucherNumber: r.voucherNumber.replace(regex, '$1-$2') }
+        }
+        return r
+      })
+      if (modified) setPurchaseRecords(updated)
+    }
+  }, [purchaseRecords, setPurchaseRecords])
+
 
 
   const [propVouchers, setPropVouchers] = useLazyPersistedState<Voucher[]>('insacc_prop_vouchers', [])
