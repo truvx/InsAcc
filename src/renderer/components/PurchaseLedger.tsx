@@ -360,8 +360,17 @@ export default function PurchaseLedger({
 
   const columns: Column<PurchaseRecord>[] = [
     {
-      key: 'purchaseNumber', header: 'Purchase #', width: '100px',
-      render: r => <span className="text-mono text-xs fw-500">{r.lotId}</span>,
+      key: 'voucherNumber', header: 'Voucher', width: '100px',
+      render: r => r.voucherNumber ? (
+        <span
+          className="text-mono text-xs fw-600"
+          style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline dotted' }}
+          onClick={() => r.voucherId && onNavigate('reports')}
+          title="View in Reports"
+        >{r.voucherNumber}</span>
+      ) : (
+        <span className="text-xs text-secondary">—</span>
+      ),
     },
     {
       key: 'purchaseDate', header: 'Date', sortable: true, width: '90px',
@@ -430,27 +439,7 @@ export default function PurchaseLedger({
         <Badge variant="neutral">{r.accountCode}</Badge>
       ) : <span className="text-xs text-secondary">—</span>,
     },
-    {
-      key: 'voucherNumber', header: 'Voucher', width: '100px',
-      render: r => r.voucherNumber ? (
-        <span
-          className="text-mono text-xs fw-600"
-          style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline dotted' }}
-          onClick={() => r.voucherId && onNavigate('reports')}
-          title="View in Reports"
-        >{r.voucherNumber}</span>
-      ) : (
-        <span className="text-xs text-secondary">—</span>
-      ),
-    },
-    {
-      key: 'journalNumber', header: 'Journal #', width: '100px',
-      render: r => r.voucherNumber ? (
-        <span className="text-mono text-xs">JRNL-{r.voucherNumber.replace('VCH-', '')}</span>
-      ) : (
-        <span className="text-xs text-secondary">—</span>
-      ),
-    },
+
     {
       key: 'docsCount', header: 'Docs', width: '50px',
       render: r => {
@@ -628,9 +617,9 @@ export default function PurchaseLedger({
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     const exportColumns = [
-      'PURCHASE #', 'DATE', 'ASSET', 'QTY', 'UNIT PRICE', 'TOTAL', 
-      'PAID FROM', 'BUYER', 'PAYMENT MODE', 'CHART', 'VOUCHER', 
-      'JOURNAL #', 'DOCS', 'POSTING', 'STATUS'
+      'VOUCHER', 'DATE', 'ASSET', 'QTY', 'UNIT PRICE', 'TOTAL', 
+      'PAID FROM', 'BUYER', 'PAYMENT MODE', 'CHART', 
+      'DOCS', 'POSTING', 'STATUS'
     ]
     
     const rows = filtered.map(r => {
@@ -639,7 +628,7 @@ export default function PurchaseLedger({
       const paidFrom = bank ? bank.institution : (d?.creditAccountName || (r.voucherNumber ? '—' : 'N/A'))
       
       return [
-        r.lotId,
+        r.voucherNumber || '—',
         formatDate(r.purchaseDate, dateFormat),
         `${r.assetName}\n(${formatAssetType(r.assetType)})`,
         r.quantity.toLocaleString(),
@@ -649,8 +638,6 @@ export default function PurchaseLedger({
         r.buyer || '—',
         r.paymentMode || 'Unknown',
         r.accountCode || '—',
-        r.voucherNumber || '—',
-        r.voucherNumber ? `JRNL-${r.voucherNumber.replace('VCH-', '')}` : '—',
         d && d.docsCount > 0 ? String(d.docsCount) : '—',
         d && d.postingStatus !== '—' ? d.postingStatus : '—',
         r.status
