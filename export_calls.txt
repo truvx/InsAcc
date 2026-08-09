@@ -1,0 +1,539 @@
+src/renderer/components/InvestmentBankAccounts.tsx-146-      return [
+src/renderer/components/InvestmentBankAccounts.tsx-147-        acct.institution,
+src/renderer/components/InvestmentBankAccounts.tsx-148-        ledgerBalance,
+src/renderer/components/InvestmentBankAccounts.tsx-149-        bal,
+src/renderer/components/InvestmentBankAccounts.tsx-150-        Math.abs(diff) < 0.01 ? 0 : diff,
+src/renderer/components/InvestmentBankAccounts.tsx-151-        lastReconciled === 'Never' ? 'Never' : formatDate(lastReconciled, dateFormat),
+src/renderer/components/InvestmentBankAccounts.tsx-152-        statusLabel
+src/renderer/components/InvestmentBankAccounts.tsx-153-      ]
+src/renderer/components/InvestmentBankAccounts.tsx-154-    })
+src/renderer/components/InvestmentBankAccounts.tsx-155-
+src/renderer/components/InvestmentBankAccounts.tsx:156:    exportTableData({
+src/renderer/components/InvestmentBankAccounts.tsx-157-      moduleName: 'Investment Portfolio',
+src/renderer/components/InvestmentBankAccounts.tsx-158-      format,
+src/renderer/components/InvestmentBankAccounts.tsx-159-      title: 'Bank Accounts Summary',
+src/renderer/components/InvestmentBankAccounts.tsx-160-      subtitle: `Exported on ${formatDate(new Date().toISOString(), dateFormat)}`,
+src/renderer/components/InvestmentBankAccounts.tsx-161-      filename: `Bank_Accounts_${new Date().toISOString().split('T')[0]}`,
+src/renderer/components/InvestmentBankAccounts.tsx-162-      columns: exportColumns,
+src/renderer/components/InvestmentBankAccounts.tsx-163-      rows,
+src/renderer/components/InvestmentBankAccounts.tsx-164-      currency
+src/renderer/components/InvestmentBankAccounts.tsx-165-    })
+src/renderer/components/InvestmentBankAccounts.tsx-166-    setShowExportMenu(false)
+src/renderer/components/InvestmentBankAccounts.tsx-167-  }
+src/renderer/components/InvestmentBankAccounts.tsx-168-
+src/renderer/components/InvestmentBankAccounts.tsx-169-  const selectedBankAccount = useMemo(() => bankAccounts.find(a => a.id === selectedId) || null, [bankAccounts, selectedId])
+src/renderer/components/InvestmentBankAccounts.tsx-170-
+src/renderer/components/InvestmentBankAccounts.tsx-171-  const accountStatement = useMemo(() => {
+--
+src/renderer/components/InvestmentHoldings.tsx-64-      return [
+src/renderer/components/InvestmentHoldings.tsx-65-        h.assetName,
+src/renderer/components/InvestmentHoldings.tsx-66-        h.assetType,
+src/renderer/components/InvestmentHoldings.tsx-67-        bank?.institution || '—',
+src/renderer/components/InvestmentHoldings.tsx-68-        h.totalQuantity,
+src/renderer/components/InvestmentHoldings.tsx-69-        parseFloat(h.totalInvested.toFixed(2)),
+src/renderer/components/InvestmentHoldings.tsx-70-        parseFloat(h.avgPurchaseValue.toFixed(2))
+src/renderer/components/InvestmentHoldings.tsx-71-      ]
+src/renderer/components/InvestmentHoldings.tsx-72-    })
+src/renderer/components/InvestmentHoldings.tsx-73-
+src/renderer/components/InvestmentHoldings.tsx:74:    exportTableData({
+src/renderer/components/InvestmentHoldings.tsx-75-      moduleName: 'Investment Portfolio',
+src/renderer/components/InvestmentHoldings.tsx-76-      format,
+src/renderer/components/InvestmentHoldings.tsx-77-      title: 'Investment Holdings',
+src/renderer/components/InvestmentHoldings.tsx-78-      subtitle: `Exported on ${new Date().toISOString().split('T')[0]}`,
+src/renderer/components/InvestmentHoldings.tsx-79-      filename: `Investment_Holdings_${new Date().toISOString().split('T')[0]}`,
+src/renderer/components/InvestmentHoldings.tsx-80-      columns: exportColumns,
+src/renderer/components/InvestmentHoldings.tsx-81-      rows,
+src/renderer/components/InvestmentHoldings.tsx-82-      currency
+src/renderer/components/InvestmentHoldings.tsx-83-    })
+src/renderer/components/InvestmentHoldings.tsx-84-    setShowExportMenu(false)
+src/renderer/components/InvestmentHoldings.tsx-85-  }
+src/renderer/components/InvestmentHoldings.tsx-86-
+src/renderer/components/InvestmentHoldings.tsx-87-  const columns: Column<AssetHolding>[] = [
+src/renderer/components/InvestmentHoldings.tsx-88-    {
+src/renderer/components/InvestmentHoldings.tsx-89-      key: 'assetName', header: 'Asset', sortable: true,
+--
+src/renderer/components/InvestmentJournalVoucher.tsx-90-          v.number,
+src/renderer/components/InvestmentJournalVoucher.tsx-91-          formatDate(v.date, dateFormat),
+src/renderer/components/InvestmentJournalVoucher.tsx-92-          v.description,
+src/renderer/components/InvestmentJournalVoucher.tsx-93-          `${currency} ${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+src/renderer/components/InvestmentJournalVoucher.tsx-94-          debitLine ? accounts.find(a => a.id === debitLine.accountId)?.name || '—' : '—',
+src/renderer/components/InvestmentJournalVoucher.tsx-95-          creditLine ? accounts.find(a => a.id === creditLine.accountId)?.name || '—' : '—',
+src/renderer/components/InvestmentJournalVoucher.tsx-96-          v.status
+src/renderer/components/InvestmentJournalVoucher.tsx-97-        ]
+src/renderer/components/InvestmentJournalVoucher.tsx-98-      })
+src/renderer/components/InvestmentJournalVoucher.tsx-99-      
+src/renderer/components/InvestmentJournalVoucher.tsx:100:      exportTableData({
+src/renderer/components/InvestmentJournalVoucher.tsx-101-      moduleName: 'Investment Portfolio',
+src/renderer/components/InvestmentJournalVoucher.tsx-102-        title: 'Investment Journal Vouchers',
+src/renderer/components/InvestmentJournalVoucher.tsx-103-        subtitle: `Report generated on ${new Date().toLocaleDateString()}${dateFrom || dateTo ? ` | Period: ${dateFrom || 'Start'} to ${dateTo || 'End'}` : ''}`,
+src/renderer/components/InvestmentJournalVoucher.tsx-104-        columns,
+src/renderer/components/InvestmentJournalVoucher.tsx-105-        rows,
+src/renderer/components/InvestmentJournalVoucher.tsx-106-        format,
+src/renderer/components/InvestmentJournalVoucher.tsx-107-        filename: `Investment_Journal_Vouchers_${new Date().toISOString().split('T')[0]}`
+src/renderer/components/InvestmentJournalVoucher.tsx-108-      })
+src/renderer/components/InvestmentJournalVoucher.tsx-109-
+src/renderer/components/InvestmentJournalVoucher.tsx-110-      onAuditEvent?.(
+src/renderer/components/InvestmentJournalVoucher.tsx-111-        recordModuleEvent(
+src/renderer/components/InvestmentJournalVoucher.tsx-112-          'Investments',
+src/renderer/components/InvestmentJournalVoucher.tsx-113-          'Export',
+src/renderer/components/InvestmentJournalVoucher.tsx-114-          'Journal Vouchers',
+src/renderer/components/InvestmentJournalVoucher.tsx-115-          'export',
+--
+src/renderer/components/InvestmentPaymentVoucher.tsx-160-          formatDate(v.date, dateFormat),
+src/renderer/components/InvestmentPaymentVoucher.tsx-161-          getPaidTo(v),
+src/renderer/components/InvestmentPaymentVoucher.tsx-162-          accounts.find(a => a.id === v.lines[0]?.accountId)?.name || '—',
+src/renderer/components/InvestmentPaymentVoucher.tsx-163-          v.description,
+src/renderer/components/InvestmentPaymentVoucher.tsx-164-          `${currency} ${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+src/renderer/components/InvestmentPaymentVoucher.tsx-165-          v.paymentMode || '—',
+src/renderer/components/InvestmentPaymentVoucher.tsx-166-          v.status
+src/renderer/components/InvestmentPaymentVoucher.tsx-167-        ]
+src/renderer/components/InvestmentPaymentVoucher.tsx-168-      })
+src/renderer/components/InvestmentPaymentVoucher.tsx-169-      
+src/renderer/components/InvestmentPaymentVoucher.tsx:170:      exportTableData({
+src/renderer/components/InvestmentPaymentVoucher.tsx-171-      moduleName: 'Investment Portfolio',
+src/renderer/components/InvestmentPaymentVoucher.tsx-172-        title: 'Investment Payment Vouchers',
+src/renderer/components/InvestmentPaymentVoucher.tsx-173-        subtitle: `Report generated on ${new Date().toLocaleDateString()}${dateFrom || dateTo ? ` | Period: ${dateFrom || 'Start'} to ${dateTo || 'End'}` : ''}`,
+src/renderer/components/InvestmentPaymentVoucher.tsx-174-        columns,
+src/renderer/components/InvestmentPaymentVoucher.tsx-175-        rows,
+src/renderer/components/InvestmentPaymentVoucher.tsx-176-        format,
+src/renderer/components/InvestmentPaymentVoucher.tsx-177-        filename: `Investment_Payment_Vouchers_${new Date().toISOString().split('T')[0]}`
+src/renderer/components/InvestmentPaymentVoucher.tsx-178-      })
+src/renderer/components/InvestmentPaymentVoucher.tsx-179-
+src/renderer/components/InvestmentPaymentVoucher.tsx-180-      onAuditEvent?.(
+src/renderer/components/InvestmentPaymentVoucher.tsx-181-        recordModuleEvent(
+src/renderer/components/InvestmentPaymentVoucher.tsx-182-          'Investments',
+src/renderer/components/InvestmentPaymentVoucher.tsx-183-          'Export',
+src/renderer/components/InvestmentPaymentVoucher.tsx-184-          'Payment Vouchers',
+src/renderer/components/InvestmentPaymentVoucher.tsx-185-          'export',
+--
+src/renderer/components/InvestmentReceiptVoucher.tsx-125-          v.number,
+src/renderer/components/InvestmentReceiptVoucher.tsx-126-          formatDate(v.date, dateFormat),
+src/renderer/components/InvestmentReceiptVoucher.tsx-127-          accounts.find(a => a.id === v.lines[0]?.accountId)?.name || '—',
+src/renderer/components/InvestmentReceiptVoucher.tsx-128-          v.description,
+src/renderer/components/InvestmentReceiptVoucher.tsx-129-          `${currency} ${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+src/renderer/components/InvestmentReceiptVoucher.tsx-130-          v.paymentMode || '—',
+src/renderer/components/InvestmentReceiptVoucher.tsx-131-          v.status
+src/renderer/components/InvestmentReceiptVoucher.tsx-132-        ]
+src/renderer/components/InvestmentReceiptVoucher.tsx-133-      })
+src/renderer/components/InvestmentReceiptVoucher.tsx-134-      
+src/renderer/components/InvestmentReceiptVoucher.tsx:135:      exportTableData({
+src/renderer/components/InvestmentReceiptVoucher.tsx-136-      moduleName: 'Investment Portfolio',
+src/renderer/components/InvestmentReceiptVoucher.tsx-137-        title: 'Investment Receipt Vouchers',
+src/renderer/components/InvestmentReceiptVoucher.tsx-138-        subtitle: `Report generated on ${new Date().toLocaleDateString()}${dateFrom || dateTo ? ` | Period: ${dateFrom || 'Start'} to ${dateTo || 'End'}` : ''}`,
+src/renderer/components/InvestmentReceiptVoucher.tsx-139-        columns,
+src/renderer/components/InvestmentReceiptVoucher.tsx-140-        rows,
+src/renderer/components/InvestmentReceiptVoucher.tsx-141-        format,
+src/renderer/components/InvestmentReceiptVoucher.tsx-142-        filename: `Investment_Receipt_Vouchers_${new Date().toISOString().split('T')[0]}`
+src/renderer/components/InvestmentReceiptVoucher.tsx-143-      })
+src/renderer/components/InvestmentReceiptVoucher.tsx-144-
+src/renderer/components/InvestmentReceiptVoucher.tsx-145-      onAuditEvent?.(
+src/renderer/components/InvestmentReceiptVoucher.tsx-146-        recordModuleEvent(
+src/renderer/components/InvestmentReceiptVoucher.tsx-147-          'Investments',
+src/renderer/components/InvestmentReceiptVoucher.tsx-148-          'Export',
+src/renderer/components/InvestmentReceiptVoucher.tsx-149-          'Receipt Vouchers',
+src/renderer/components/InvestmentReceiptVoucher.tsx-150-          'export',
+--
+src/renderer/components/InvestmentReports.tsx-320-            ...projection.cashFlow.investing.map(c => ['Investing', c.category, c.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })]),
+src/renderer/components/InvestmentReports.tsx-321-            ['', 'Total Investing', projection.cashFlow.totalInvesting.toLocaleString(undefined, { minimumFractionDigits: 2 })],
+src/renderer/components/InvestmentReports.tsx-322-            ...projection.cashFlow.financing.map(c => ['Financing', c.category, c.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })]),
+src/renderer/components/InvestmentReports.tsx-323-            ['', 'Total Financing', projection.cashFlow.totalFinancing.toLocaleString(undefined, { minimumFractionDigits: 2 })],
+src/renderer/components/InvestmentReports.tsx-324-            ['', 'Net Cash Flow', projection.cashFlow.netCashFlow.toLocaleString(undefined, { minimumFractionDigits: 2 })],
+src/renderer/components/InvestmentReports.tsx-325-          ]
+src/renderer/components/InvestmentReports.tsx-326-          break
+src/renderer/components/InvestmentReports.tsx-327-        }
+src/renderer/components/InvestmentReports.tsx-328-      }
+src/renderer/components/InvestmentReports.tsx-329-
+src/renderer/components/InvestmentReports.tsx:330:      await exportTableData({
+src/renderer/components/InvestmentReports.tsx-331-      moduleName: 'Investment Portfolio',
+src/renderer/components/InvestmentReports.tsx-332-        format,
+src/renderer/components/InvestmentReports.tsx-333-        title,
+src/renderer/components/InvestmentReports.tsx-334-        subtitle: `Investment Portfolio`,
+src/renderer/components/InvestmentReports.tsx-335-        periodLabel: `${filterStart} - ${filterEnd}`,
+src/renderer/components/InvestmentReports.tsx-336-        currency: currency,
+src/renderer/components/InvestmentReports.tsx-337-        filename: `Investment_${title.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}`,
+src/renderer/components/InvestmentReports.tsx-338-        columns,
+src/renderer/components/InvestmentReports.tsx-339-        rows
+src/renderer/components/InvestmentReports.tsx-340-      })
+src/renderer/components/InvestmentReports.tsx-341-    } catch (e) {
+src/renderer/components/InvestmentReports.tsx-342-      console.error(e)
+src/renderer/components/InvestmentReports.tsx-343-    }
+src/renderer/components/InvestmentReports.tsx-344-  }
+src/renderer/components/InvestmentReports.tsx-345-
+--
+src/renderer/components/InvestmentTotalAverageHolding.tsx-126-    // Only exporting purity averages as a summary
+src/renderer/components/InvestmentTotalAverageHolding.tsx-127-    const exportColumns = ['Purity/Type', 'Purchases', 'Total Qty', 'Total Invested', 'Purity Avg Price']
+src/renderer/components/InvestmentTotalAverageHolding.tsx-128-    const rows = purityWiseData.map(p => [
+src/renderer/components/InvestmentTotalAverageHolding.tsx-129-      p.purity,
+src/renderer/components/InvestmentTotalAverageHolding.tsx-130-      p.purchaseCount,
+src/renderer/components/InvestmentTotalAverageHolding.tsx-131-      p.totalQuantity,
+src/renderer/components/InvestmentTotalAverageHolding.tsx-132-      parseFloat(p.totalInvested.toFixed(2)),
+src/renderer/components/InvestmentTotalAverageHolding.tsx-133-      parseFloat(p.purityAveragePrice.toFixed(2))
+src/renderer/components/InvestmentTotalAverageHolding.tsx-134-    ])
+src/renderer/components/InvestmentTotalAverageHolding.tsx-135-
+src/renderer/components/InvestmentTotalAverageHolding.tsx:136:    exportTableData({
+src/renderer/components/InvestmentTotalAverageHolding.tsx-137-      moduleName: 'Investment Portfolio',
+src/renderer/components/InvestmentTotalAverageHolding.tsx-138-      format,
+src/renderer/components/InvestmentTotalAverageHolding.tsx-139-      title: 'Total Average Holding - Purity Summary',
+src/renderer/components/InvestmentTotalAverageHolding.tsx-140-      subtitle: `Exported on ${new Date().toISOString().split('T')[0]}`,
+src/renderer/components/InvestmentTotalAverageHolding.tsx-141-      filename: `Average_Holding_${new Date().toISOString().split('T')[0]}`,
+src/renderer/components/InvestmentTotalAverageHolding.tsx-142-      columns: exportColumns,
+src/renderer/components/InvestmentTotalAverageHolding.tsx-143-      rows,
+src/renderer/components/InvestmentTotalAverageHolding.tsx-144-      currency
+src/renderer/components/InvestmentTotalAverageHolding.tsx-145-    })
+src/renderer/components/InvestmentTotalAverageHolding.tsx-146-    setShowExportMenu(false)
+src/renderer/components/InvestmentTotalAverageHolding.tsx-147-  }
+src/renderer/components/InvestmentTotalAverageHolding.tsx-148-
+src/renderer/components/InvestmentTotalAverageHolding.tsx-149-  const totalInvested = useMemo(
+src/renderer/components/InvestmentTotalAverageHolding.tsx-150-    () => purityWiseData.reduce((s, p) => s + p.totalInvested, 0),
+src/renderer/components/InvestmentTotalAverageHolding.tsx-151-    [purityWiseData]
+--
+src/renderer/components/PropertyBankAccounts.tsx-1037-                  t.description,
+src/renderer/components/PropertyBankAccounts.tsx-1038-                  isInc ? 'Deposit' : 'Withdrawal',
+src/renderer/components/PropertyBankAccounts.tsx-1039-                  isInc ? formatCurrency(t.debit, currency) : '-',
+src/renderer/components/PropertyBankAccounts.tsx-1040-                  !isInc ? formatCurrency(t.credit, currency) : '-',
+src/renderer/components/PropertyBankAccounts.tsx-1041-                  formatCurrency(t.balance, currency)
+src/renderer/components/PropertyBankAccounts.tsx-1042-                ]
+src/renderer/components/PropertyBankAccounts.tsx-1043-              })
+src/renderer/components/PropertyBankAccounts.tsx-1044-
+src/renderer/components/PropertyBankAccounts.tsx-1045-              const currentBalance = exportStatement.length > 0 ? exportStatement[exportStatement.length - 1].balance : (acc.openingBalance || 0)
+src/renderer/components/PropertyBankAccounts.tsx-1046-
+src/renderer/components/PropertyBankAccounts.tsx:1047:              exportTableData({
+src/renderer/components/PropertyBankAccounts.tsx-1048-      moduleName: 'Properties Management',
+src/renderer/components/PropertyBankAccounts.tsx-1049-                format: exportFormat,
+src/renderer/components/PropertyBankAccounts.tsx-1050-                title: `${acc.institution} Ledger`,
+src/renderer/components/PropertyBankAccounts.tsx-1051-                subtitle: `Account: ${acc.accountNumber} - Current Balance: ${formatCurrency(currentBalance, currency)}`,
+src/renderer/components/PropertyBankAccounts.tsx-1052-                filename: `Bank_Ledger_${acc.institution.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`,
+src/renderer/components/PropertyBankAccounts.tsx-1053-                columns,
+src/renderer/components/PropertyBankAccounts.tsx-1054-                rows,
+src/renderer/components/PropertyBankAccounts.tsx-1055-                currency
+src/renderer/components/PropertyBankAccounts.tsx-1056-              })
+src/renderer/components/PropertyBankAccounts.tsx-1057-
+src/renderer/components/PropertyBankAccounts.tsx-1058-              onAuditEvent?.(
+src/renderer/components/PropertyBankAccounts.tsx-1059-                recordModuleEvent(
+src/renderer/components/PropertyBankAccounts.tsx-1060-                  'Bank Accounts',
+src/renderer/components/PropertyBankAccounts.tsx-1061-                  'Export',
+src/renderer/components/PropertyBankAccounts.tsx-1062-                  'Bank Ledger',
+--
+src/renderer/components/PropertyExpenses.tsx-709-        unitNumber,
+src/renderer/components/PropertyExpenses.tsx-710-        e.category,
+src/renderer/components/PropertyExpenses.tsx-711-        e.paidTo,
+src/renderer/components/PropertyExpenses.tsx-712-        e.paymentMode || e.paymentMethod || 'Unknown',
+src/renderer/components/PropertyExpenses.tsx-713-        bankName,
+src/renderer/components/PropertyExpenses.tsx-714-        e.totalAmount,
+src/renderer/components/PropertyExpenses.tsx-715-        e.status
+src/renderer/components/PropertyExpenses.tsx-716-      ]
+src/renderer/components/PropertyExpenses.tsx-717-    })
+src/renderer/components/PropertyExpenses.tsx-718-
+src/renderer/components/PropertyExpenses.tsx:719:    exportTableData({
+src/renderer/components/PropertyExpenses.tsx-720-      moduleName: 'Properties Management',
+src/renderer/components/PropertyExpenses.tsx-721-      format,
+src/renderer/components/PropertyExpenses.tsx-722-      title: 'Property Expenses',
+src/renderer/components/PropertyExpenses.tsx-723-      subtitle: 'List of all operating expenses',
+src/renderer/components/PropertyExpenses.tsx-724-      filename: `Property_Expenses_${new Date().toISOString().split('T')[0]}`,
+src/renderer/components/PropertyExpenses.tsx-725-      columns,
+src/renderer/components/PropertyExpenses.tsx-726-      rows,
+src/renderer/components/PropertyExpenses.tsx-727-      currency
+src/renderer/components/PropertyExpenses.tsx-728-    })
+src/renderer/components/PropertyExpenses.tsx-729-
+src/renderer/components/PropertyExpenses.tsx-730-    onAuditEvent?.(
+src/renderer/components/PropertyExpenses.tsx-731-      recordModuleEvent(
+src/renderer/components/PropertyExpenses.tsx-732-        'Property Transactions',
+src/renderer/components/PropertyExpenses.tsx-733-        'Export',
+src/renderer/components/PropertyExpenses.tsx-734-        'Expenses List',
+--
+src/renderer/components/PropertyHierarchy.tsx-202-      nodes.forEach(n => {
+src/renderer/components/PropertyHierarchy.tsx-203-        const typeStr = n.type === 'main-category' ? 'Main Category' : n.type === 'property' ? 'Property' : n.type === 'income-category' ? 'Income Category' : 'Unit/Customer'
+src/renderer/components/PropertyHierarchy.tsx-204-        const prefix = '  '.repeat(depth)
+src/renderer/components/PropertyHierarchy.tsx-205-        rows.push([typeStr, prefix + n.name])
+src/renderer/components/PropertyHierarchy.tsx-206-        flatten(n.children, depth + 1)
+src/renderer/components/PropertyHierarchy.tsx-207-      })
+src/renderer/components/PropertyHierarchy.tsx-208-    }
+src/renderer/components/PropertyHierarchy.tsx-209-    flatten(filteredTreeNodes)
+src/renderer/components/PropertyHierarchy.tsx-210-
+src/renderer/components/PropertyHierarchy.tsx-211-    try {
+src/renderer/components/PropertyHierarchy.tsx:212:      exportTableData({
+src/renderer/components/PropertyHierarchy.tsx-213-      moduleName: 'Properties Management',
+src/renderer/components/PropertyHierarchy.tsx-214-        format,
+src/renderer/components/PropertyHierarchy.tsx-215-        title: 'Property Portfolio Hierarchy',
+src/renderer/components/PropertyHierarchy.tsx-216-        subtitle: 'Structural layout of categories and properties',
+src/renderer/components/PropertyHierarchy.tsx-217-        filename: `Property_Hierarchy_${new Date().toISOString().split('T')[0]}`,
+src/renderer/components/PropertyHierarchy.tsx-218-        columns: ['Type', 'Name'],
+src/renderer/components/PropertyHierarchy.tsx-219-        rows,
+src/renderer/components/PropertyHierarchy.tsx-220-        currency
+src/renderer/components/PropertyHierarchy.tsx-221-      }).then(() => {
+src/renderer/components/PropertyHierarchy.tsx-222-        onAuditEvent?.(
+src/renderer/components/PropertyHierarchy.tsx-223-          recordModuleEvent(
+src/renderer/components/PropertyHierarchy.tsx-224-            'Property Hierarchy',
+src/renderer/components/PropertyHierarchy.tsx-225-            'Export',
+src/renderer/components/PropertyHierarchy.tsx-226-            'Hierarchy Tree',
+src/renderer/components/PropertyHierarchy.tsx-227-            'bulk',
+--
+src/renderer/components/PropertyJournalVoucher.tsx-377-            canDelete={!v.isReconciled && !v.isLocked}
+src/renderer/components/PropertyJournalVoucher.tsx-378-          />
+src/renderer/components/PropertyJournalVoucher.tsx-379-        </div>
+src/renderer/components/PropertyJournalVoucher.tsx-380-      ),
+src/renderer/components/PropertyJournalVoucher.tsx-381-    },
+src/renderer/components/PropertyJournalVoucher.tsx-382-  ], [dateFormat, accounts, currency])
+src/renderer/components/PropertyJournalVoucher.tsx-383-
+src/renderer/components/PropertyJournalVoucher.tsx-384-  const [showExportMenu, setShowExportMenu] = useState(false)
+src/renderer/components/PropertyJournalVoucher.tsx-385-
+src/renderer/components/PropertyJournalVoucher.tsx-386-  const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+src/renderer/components/PropertyJournalVoucher.tsx:387:    exportTableData({
+src/renderer/components/PropertyJournalVoucher.tsx-388-      moduleName: 'Properties Management',
+src/renderer/components/PropertyJournalVoucher.tsx-389-      format,
+src/renderer/components/PropertyJournalVoucher.tsx-390-      title: 'Journal Vouchers',
+src/renderer/components/PropertyJournalVoucher.tsx-391-      subtitle: `Total Journals: ${filtered.length}`,
+src/renderer/components/PropertyJournalVoucher.tsx-392-      filename: `Journal_Vouchers_${new Date().toISOString().split('T')[0]}`,
+src/renderer/components/PropertyJournalVoucher.tsx-393-      columns: ['Voucher #', 'Date', 'Description', 'Reference', 'Total Amount', 'Status'],
+src/renderer/components/PropertyJournalVoucher.tsx-394-      rows: filtered.map(v => {
+src/renderer/components/PropertyJournalVoucher.tsx-395-        const totalAmount = v.lines.reduce((s: number, l: any) => s + (l.type === 'Debit' ? (l.baseAmount ?? l.amount) : 0), 0)
+src/renderer/components/PropertyJournalVoucher.tsx-396-
+src/renderer/components/PropertyJournalVoucher.tsx-397-        return [
+src/renderer/components/PropertyJournalVoucher.tsx-398-          v.number,
+src/renderer/components/PropertyJournalVoucher.tsx-399-          formatDate(v.date, dateFormat),
+src/renderer/components/PropertyJournalVoucher.tsx-400-          v.description || '-',
+src/renderer/components/PropertyJournalVoucher.tsx-401-          v.reference || '-',
+src/renderer/components/PropertyJournalVoucher.tsx-402-          totalAmount ? formatCurrency(totalAmount, currency) : '-',
+--
+src/renderer/components/PropertyLeases.tsx-1078-        p?.name || '—',
+src/renderer/components/PropertyLeases.tsx-1079-        u?.unitNumber || '—',
+src/renderer/components/PropertyLeases.tsx-1080-        t?.name || '—',
+src/renderer/components/PropertyLeases.tsx-1081-        formatDate(l.startDate, dateFormat),
+src/renderer/components/PropertyLeases.tsx-1082-        formatDate(l.endDate, dateFormat),
+src/renderer/components/PropertyLeases.tsx-1083-        l.annualRent.toLocaleString(undefined, { minimumFractionDigits: 2 }),
+src/renderer/components/PropertyLeases.tsx-1084-        l.status || 'Active'
+src/renderer/components/PropertyLeases.tsx-1085-      ]
+src/renderer/components/PropertyLeases.tsx-1086-    })
+src/renderer/components/PropertyLeases.tsx-1087-
+src/renderer/components/PropertyLeases.tsx:1088:    exportTableData({
+src/renderer/components/PropertyLeases.tsx-1089-      moduleName: 'Properties Management',
+src/renderer/components/PropertyLeases.tsx-1090-      format,
+src/renderer/components/PropertyLeases.tsx-1091-      title: 'Lease Management',
+src/renderer/components/PropertyLeases.tsx-1092-      subtitle: 'List of all property leases',
+src/renderer/components/PropertyLeases.tsx-1093-      filename: `Property_Leases_${new Date().toISOString().split('T')[0]}`,
+src/renderer/components/PropertyLeases.tsx-1094-      columns,
+src/renderer/components/PropertyLeases.tsx-1095-      rows,
+src/renderer/components/PropertyLeases.tsx-1096-      currency
+src/renderer/components/PropertyLeases.tsx-1097-    }).catch(e => {
+src/renderer/components/PropertyLeases.tsx-1098-      setToast({ visible: true, message: 'Export failed: ' + (e.message || e), type: 'error' })
+src/renderer/components/PropertyLeases.tsx-1099-    })
+src/renderer/components/PropertyLeases.tsx-1100-
+src/renderer/components/PropertyLeases.tsx-1101-    onAuditEvent?.(
+src/renderer/components/PropertyLeases.tsx-1102-      recordModuleEvent(
+src/renderer/components/PropertyLeases.tsx-1103-        'Lease Management',
+--
+src/renderer/components/PropertyPaymentVoucher.tsx-523-  ], [dateFormat, accounts, currency, bankMappings])
+src/renderer/components/PropertyPaymentVoucher.tsx-524-
+src/renderer/components/PropertyPaymentVoucher.tsx-525-  const totalAmount = useMemo(() =>
+src/renderer/components/PropertyPaymentVoucher.tsx-526-    filtered.filter(v => v.status === 'Posted').reduce((s, v) => s + v.lines.reduce((ls, l) => ls + (l.type === 'Credit' ? l.amount : 0), 0), 0),
+src/renderer/components/PropertyPaymentVoucher.tsx-527-    [filtered]
+src/renderer/components/PropertyPaymentVoucher.tsx-528-  )
+src/renderer/components/PropertyPaymentVoucher.tsx-529-
+src/renderer/components/PropertyPaymentVoucher.tsx-530-  const [showExportMenu, setShowExportMenu] = useState(false)
+src/renderer/components/PropertyPaymentVoucher.tsx-531-
+src/renderer/components/PropertyPaymentVoucher.tsx-532-  const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+src/renderer/components/PropertyPaymentVoucher.tsx:533:    exportTableData({
+src/renderer/components/PropertyPaymentVoucher.tsx-534-      moduleName: 'Properties Management',
+src/renderer/components/PropertyPaymentVoucher.tsx-535-      format,
+src/renderer/components/PropertyPaymentVoucher.tsx-536-      title: 'Payment Vouchers',
+src/renderer/components/PropertyPaymentVoucher.tsx-537-      subtitle: `Total Vouchers: ${filtered.length}`,
+src/renderer/components/PropertyPaymentVoucher.tsx-538-      filename: `Payment_Vouchers_${new Date().toISOString().split('T')[0]}`,
+src/renderer/components/PropertyPaymentVoucher.tsx-539-      columns: ['Voucher #', 'Date', 'Paid To', 'Paid From', 'Expense Type', 'Description', 'Amount', 'Payment Mode', 'Status', 'Tags'],
+src/renderer/components/PropertyPaymentVoucher.tsx-540-      rows: filtered.map(v => {
+src/renderer/components/PropertyPaymentVoucher.tsx-541-        let paidToMatch = v.description.match(/\(paid to\s+(.*?)\)$/i)
+src/renderer/components/PropertyPaymentVoucher.tsx-542-        if (!paidToMatch && v.description.includes('Expense:')) {
+src/renderer/components/PropertyPaymentVoucher.tsx-543-          paidToMatch = v.description.match(/for\s+(.*)$/i)
+src/renderer/components/PropertyPaymentVoucher.tsx-544-        }
+src/renderer/components/PropertyPaymentVoucher.tsx-545-        const paidTo = paidToMatch ? paidToMatch[1] : '—'
+src/renderer/components/PropertyPaymentVoucher.tsx-546-        const totalAmount = v.lines.reduce((s: number, l: any) => s + (l.type === 'Credit' ? (l.baseAmount ?? l.amount) : 0), 0)
+src/renderer/components/PropertyPaymentVoucher.tsx-547-
+src/renderer/components/PropertyPaymentVoucher.tsx-548-        return [
+--
+src/renderer/components/PropertyPdcManager.tsx-860-        meta?.tenantName || 'Unknown',
+src/renderer/components/PropertyPdcManager.tsx-861-        meta?.propertyName || '—',
+src/renderer/components/PropertyPdcManager.tsx-862-        chq.chequeNumber,
+src/renderer/components/PropertyPdcManager.tsx-863-        meta?.bankName || '—',
+src/renderer/components/PropertyPdcManager.tsx-864-        formatDate(chq.dueDate, dateFormat),
+src/renderer/components/PropertyPdcManager.tsx-865-        chq.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }),
+src/renderer/components/PropertyPdcManager.tsx-866-        chq.status
+src/renderer/components/PropertyPdcManager.tsx-867-      ]
+src/renderer/components/PropertyPdcManager.tsx-868-    })
+src/renderer/components/PropertyPdcManager.tsx-869-
+src/renderer/components/PropertyPdcManager.tsx:870:    exportTableData({
+src/renderer/components/PropertyPdcManager.tsx-871-      moduleName: 'Properties Management',
+src/renderer/components/PropertyPdcManager.tsx-872-      format,
+src/renderer/components/PropertyPdcManager.tsx-873-      title: 'Post-Dated Cheques (PDC) Schedule',
+src/renderer/components/PropertyPdcManager.tsx-874-      subtitle: `Exported on ${formatDate(new Date().toISOString(), dateFormat)}`,
+src/renderer/components/PropertyPdcManager.tsx-875-      filename: `PDC_Schedule_${new Date().toISOString().split('T')[0]}`,
+src/renderer/components/PropertyPdcManager.tsx-876-      columns,
+src/renderer/components/PropertyPdcManager.tsx-877-      rows,
+src/renderer/components/PropertyPdcManager.tsx-878-      currency
+src/renderer/components/PropertyPdcManager.tsx-879-    })
+src/renderer/components/PropertyPdcManager.tsx-880-
+src/renderer/components/PropertyPdcManager.tsx-881-    onAuditEvent?.(
+src/renderer/components/PropertyPdcManager.tsx-882-      recordModuleEvent(
+src/renderer/components/PropertyPdcManager.tsx-883-        'PDC Manager',
+src/renderer/components/PropertyPdcManager.tsx-884-        'Export',
+src/renderer/components/PropertyPdcManager.tsx-885-        'PDC Schedule',
+--
+src/renderer/components/PropertyReceiptVoucher.tsx-536-  ], [dateFormat, accounts, currency, bankMappings, formReceivedFrom, leases, tenants])
+src/renderer/components/PropertyReceiptVoucher.tsx-537-
+src/renderer/components/PropertyReceiptVoucher.tsx-538-  const totalAmount = useMemo(() =>
+src/renderer/components/PropertyReceiptVoucher.tsx-539-    filtered.filter(v => v.status === 'Posted').reduce((s, v) => s + v.lines.reduce((ls, l) => ls + (l.type === 'Debit' ? l.amount : 0), 0), 0),
+src/renderer/components/PropertyReceiptVoucher.tsx-540-    [filtered]
+src/renderer/components/PropertyReceiptVoucher.tsx-541-  )
+src/renderer/components/PropertyReceiptVoucher.tsx-542-
+src/renderer/components/PropertyReceiptVoucher.tsx-543-  const [showExportMenu, setShowExportMenu] = useState(false)
+src/renderer/components/PropertyReceiptVoucher.tsx-544-
+src/renderer/components/PropertyReceiptVoucher.tsx-545-  const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+src/renderer/components/PropertyReceiptVoucher.tsx:546:    exportTableData({
+src/renderer/components/PropertyReceiptVoucher.tsx-547-      moduleName: 'Properties Management',
+src/renderer/components/PropertyReceiptVoucher.tsx-548-      format,
+src/renderer/components/PropertyReceiptVoucher.tsx-549-      title: 'Receipt Vouchers',
+src/renderer/components/PropertyReceiptVoucher.tsx-550-      subtitle: `Total Vouchers: ${filtered.length}`,
+src/renderer/components/PropertyReceiptVoucher.tsx-551-      filename: `Receipt_Vouchers_${new Date().toISOString().split('T')[0]}`,
+src/renderer/components/PropertyReceiptVoucher.tsx-552-      columns: ['Voucher #', 'Date', 'Received From', 'Credited To', 'Description', 'Amount', 'Payment Mode', 'Status'],
+src/renderer/components/PropertyReceiptVoucher.tsx-553-      rows: filtered.map(v => {
+src/renderer/components/PropertyReceiptVoucher.tsx-554-        const refInfo = getReferenceInfo(v.reference)
+src/renderer/components/PropertyReceiptVoucher.tsx-555-        const receivedFrom = refInfo?.tenant || v.reference || '—'
+src/renderer/components/PropertyReceiptVoucher.tsx-556-        const totalAmount = v.lines.reduce((s: number, l: any) => s + (l.type === 'Debit' ? (l.baseAmount ?? l.amount) : 0), 0)
+src/renderer/components/PropertyReceiptVoucher.tsx-557-
+src/renderer/components/PropertyReceiptVoucher.tsx-558-        return [
+src/renderer/components/PropertyReceiptVoucher.tsx-559-          v.number,
+src/renderer/components/PropertyReceiptVoucher.tsx-560-          formatDate(v.date, dateFormat),
+src/renderer/components/PropertyReceiptVoucher.tsx-561-          receivedFrom,
+--
+src/renderer/components/PropertyReports.tsx-318-            formatDate(e.date, dateFormat),
+src/renderer/components/PropertyReports.tsx-319-            propName,
+src/renderer/components/PropertyReports.tsx-320-            e.category,
+src/renderer/components/PropertyReports.tsx-321-            e.paidTo,
+src/renderer/components/PropertyReports.tsx-322-            e.paymentMethod,
+src/renderer/components/PropertyReports.tsx-323-            e.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })
+src/renderer/components/PropertyReports.tsx-324-          ]
+src/renderer/components/PropertyReports.tsx-325-        })
+src/renderer/components/PropertyReports.tsx-326-      }
+src/renderer/components/PropertyReports.tsx-327-
+src/renderer/components/PropertyReports.tsx:328:      await exportTableData({
+src/renderer/components/PropertyReports.tsx-329-      moduleName: 'Properties Management',
+src/renderer/components/PropertyReports.tsx-330-        format,
+src/renderer/components/PropertyReports.tsx-331-        title,
+src/renderer/components/PropertyReports.tsx-332-        subtitle: `Properties Management`,
+src/renderer/components/PropertyReports.tsx-333-        periodLabel: `${filterStart} - ${filterEnd}`,
+src/renderer/components/PropertyReports.tsx-334-        currency: currency,
+src/renderer/components/PropertyReports.tsx-335-        filename: `Property_${title.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}`,
+src/renderer/components/PropertyReports.tsx-336-        columns,
+src/renderer/components/PropertyReports.tsx-337-        rows
+src/renderer/components/PropertyReports.tsx-338-      })
+src/renderer/components/PropertyReports.tsx-339-    } catch (e) {
+src/renderer/components/PropertyReports.tsx-340-      console.error(e)
+src/renderer/components/PropertyReports.tsx-341-    }
+src/renderer/components/PropertyReports.tsx-342-  }
+src/renderer/components/PropertyReports.tsx-343-
+--
+src/renderer/components/PropertyTenants.tsx-222-    const rows = filteredTenants.map(t => [
+src/renderer/components/PropertyTenants.tsx-223-      t.name,
+src/renderer/components/PropertyTenants.tsx-224-      t.phone || '—',
+src/renderer/components/PropertyTenants.tsx-225-      t.email || '—',
+src/renderer/components/PropertyTenants.tsx-226-      t.nationality || '—',
+src/renderer/components/PropertyTenants.tsx-227-      t.status || 'Active',
+src/renderer/components/PropertyTenants.tsx-228-      `${getTotalLeaseCount(t.id)}`,
+src/renderer/components/PropertyTenants.tsx-229-      formatDate(t.createdAt, dateFormat)
+src/renderer/components/PropertyTenants.tsx-230-    ])
+src/renderer/components/PropertyTenants.tsx-231-
+src/renderer/components/PropertyTenants.tsx:232:    exportTableData({
+src/renderer/components/PropertyTenants.tsx-233-      moduleName: 'Properties Management',
+src/renderer/components/PropertyTenants.tsx-234-      format,
+src/renderer/components/PropertyTenants.tsx-235-      title: 'Tenant Management',
+src/renderer/components/PropertyTenants.tsx-236-      subtitle: 'List of all property tenants',
+src/renderer/components/PropertyTenants.tsx-237-      filename: `Property_Tenants_${new Date().toISOString().split('T')[0]}`,
+src/renderer/components/PropertyTenants.tsx-238-      columns,
+src/renderer/components/PropertyTenants.tsx-239-      rows,
+src/renderer/components/PropertyTenants.tsx-240-      currency: _currency
+src/renderer/components/PropertyTenants.tsx-241-    })
+src/renderer/components/PropertyTenants.tsx-242-
+src/renderer/components/PropertyTenants.tsx-243-    onAuditEvent?.(
+src/renderer/components/PropertyTenants.tsx-244-      recordModuleEvent(
+src/renderer/components/PropertyTenants.tsx-245-        'Tenant Management',
+src/renderer/components/PropertyTenants.tsx-246-        'Export',
+src/renderer/components/PropertyTenants.tsx-247-        'Tenants List',
+--
+src/renderer/components/PropertyTransactions.tsx-900-      formatDate(t.date, dateFormat),
+src/renderer/components/PropertyTransactions.tsx-901-      t.description || '—',
+src/renderer/components/PropertyTransactions.tsx-902-      t.category || '—',
+src/renderer/components/PropertyTransactions.tsx-903-      t.paymentMode || '—',
+src/renderer/components/PropertyTransactions.tsx-904-      t.reference || t.paymentReference || '—',
+src/renderer/components/PropertyTransactions.tsx-905-      t.type === 'credit' ? 'Income' : 'Expense',
+src/renderer/components/PropertyTransactions.tsx-906-      t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }),
+src/renderer/components/PropertyTransactions.tsx-907-      t.tags?.length ? t.tags.join(', ') : '—'
+src/renderer/components/PropertyTransactions.tsx-908-    ])
+src/renderer/components/PropertyTransactions.tsx-909-
+src/renderer/components/PropertyTransactions.tsx:910:    exportTableData({
+src/renderer/components/PropertyTransactions.tsx-911-      moduleName: 'Properties Management',
+src/renderer/components/PropertyTransactions.tsx-912-      format,
+src/renderer/components/PropertyTransactions.tsx-913-      title: 'Property Transactions',
+src/renderer/components/PropertyTransactions.tsx-914-      subtitle: 'Track income and expenses for your property investments',
+src/renderer/components/PropertyTransactions.tsx-915-      filename: `Property_Transactions_${new Date().toISOString().split('T')[0]}`,
+src/renderer/components/PropertyTransactions.tsx-916-      columns,
+src/renderer/components/PropertyTransactions.tsx-917-      rows,
+src/renderer/components/PropertyTransactions.tsx-918-      currency
+src/renderer/components/PropertyTransactions.tsx-919-    })
+src/renderer/components/PropertyTransactions.tsx-920-
+src/renderer/components/PropertyTransactions.tsx-921-    onAuditEvent?.(
+src/renderer/components/PropertyTransactions.tsx-922-      recordModuleEvent(
+src/renderer/components/PropertyTransactions.tsx-923-        'Property Transactions',
+src/renderer/components/PropertyTransactions.tsx-924-        'Export',
+src/renderer/components/PropertyTransactions.tsx-925-        'Transactions List',
+--
+src/renderer/components/PropertyVendors.tsx-309-      v.category,
+src/renderer/components/PropertyVendors.tsx-310-      v.contactPerson || '',
+src/renderer/components/PropertyVendors.tsx-311-      v.phone || '',
+src/renderer/components/PropertyVendors.tsx-312-      v.email || '',
+src/renderer/components/PropertyVendors.tsx-313-      v.trn || '',
+src/renderer/components/PropertyVendors.tsx-314-      Number((vendorPaymentTotals[v.id] || 0).toFixed(2)),
+src/renderer/components/PropertyVendors.tsx-315-      vendorExpenseCounts[v.id] || 0,
+src/renderer/components/PropertyVendors.tsx-316-      v.status
+src/renderer/components/PropertyVendors.tsx-317-    ])
+src/renderer/components/PropertyVendors.tsx-318-
+src/renderer/components/PropertyVendors.tsx:319:    exportTableData({
+src/renderer/components/PropertyVendors.tsx-320-      moduleName: 'Properties Management',
+src/renderer/components/PropertyVendors.tsx-321-      format,
+src/renderer/components/PropertyVendors.tsx-322-      title: 'Vendors & Suppliers',
+src/renderer/components/PropertyVendors.tsx-323-      subtitle: 'List of all registered property vendors',
+src/renderer/components/PropertyVendors.tsx-324-      filename: `Vendors_${new Date().toISOString().split('T')[0]}`,
+src/renderer/components/PropertyVendors.tsx-325-      columns,
+src/renderer/components/PropertyVendors.tsx-326-      rows,
+src/renderer/components/PropertyVendors.tsx-327-      currency
+src/renderer/components/PropertyVendors.tsx-328-    })
+src/renderer/components/PropertyVendors.tsx-329-
+src/renderer/components/PropertyVendors.tsx-330-    setToast({ message: `Exported successfully`, type: 'success' })
+src/renderer/components/PropertyVendors.tsx-331-    setShowExportMenu(false)
+src/renderer/components/PropertyVendors.tsx-332-  }, [filtered, vendorPaymentTotals, vendorExpenseCounts, currency])
+src/renderer/components/PropertyVendors.tsx-333-
+src/renderer/components/PropertyVendors.tsx-334-  const handlePrintLedger = useCallback(() => {
+--
+src/renderer/components/PurchaseLedger.tsx-651-        d && d.postingStatus !== '—' ? d.postingStatus : '—',
+src/renderer/components/PurchaseLedger.tsx-652-        r.status
+src/renderer/components/PurchaseLedger.tsx-653-      ]
+src/renderer/components/PurchaseLedger.tsx-654-    })
+src/renderer/components/PurchaseLedger.tsx-655-
+src/renderer/components/PurchaseLedger.tsx-656-    const totalInvested = calculateTotalInvested(filtered)
+src/renderer/components/PurchaseLedger.tsx-657-    const foot = [
+src/renderer/components/PurchaseLedger.tsx-658-      ['', '', '', '', 'Total Invested:', formatCurrency(totalInvested, currency), '', '', '', '', '', '', '', '']
+src/renderer/components/PurchaseLedger.tsx-659-    ]
+src/renderer/components/PurchaseLedger.tsx-660-
+src/renderer/components/PurchaseLedger.tsx:661:    exportTableData({
+src/renderer/components/PurchaseLedger.tsx-662-      moduleName: 'Investment Portfolio',
+src/renderer/components/PurchaseLedger.tsx-663-      format,
+src/renderer/components/PurchaseLedger.tsx-664-      title: 'Purchase Ledger',
+src/renderer/components/PurchaseLedger.tsx-665-      subtitle: `Exported on ${formatDate(new Date().toISOString(), dateFormat)}`,
+src/renderer/components/PurchaseLedger.tsx-666-      filename: `Purchase_Ledger_${new Date().toISOString().split('T')[0]}`,
+src/renderer/components/PurchaseLedger.tsx-667-      columns: exportColumns,
+src/renderer/components/PurchaseLedger.tsx-668-      rows,
+src/renderer/components/PurchaseLedger.tsx-669-      foot,
+src/renderer/components/PurchaseLedger.tsx-670-      currency,
+src/renderer/components/PurchaseLedger.tsx-671-      orientation: 'landscape'
+src/renderer/components/PurchaseLedger.tsx-672-    })
+src/renderer/components/PurchaseLedger.tsx-673-    setShowExportMenu(false)
+src/renderer/components/PurchaseLedger.tsx-674-  }
+src/renderer/components/PurchaseLedger.tsx-675-
+src/renderer/components/PurchaseLedger.tsx-676-  const handleDuplicate = (r: PurchaseRecord) => {

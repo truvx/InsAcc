@@ -1282,8 +1282,19 @@ export async function exportSideBySidePdf(p: SideBySideExportParams): Promise<st
 }
 
 export async function exportTableData(p: TableExportParams): Promise<string | null> {
-  p.rows = formatRows(p.rows)
-  if (p.foot) p.foot = formatRows(p.foot)
+  const columnsToRemove = ['Status', 'Posting', 'Posting Status']
+  const indicesToRemove: number[] = []
+  
+  p.columns = p.columns.filter((col, i) => {
+    if (columnsToRemove.includes(col)) {
+      indicesToRemove.push(i)
+      return false
+    }
+    return true
+  })
+
+  p.rows = formatRows(p.rows.map(row => row.filter((_, i) => !indicesToRemove.includes(i))))
+  if (p.foot) p.foot = formatRows(p.foot.map(row => row.filter((_, i) => !indicesToRemove.includes(i))))
 
   if (p.format === 'csv') {
     const esc = (v: string | number | undefined | null) => {
