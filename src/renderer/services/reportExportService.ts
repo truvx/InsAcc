@@ -74,6 +74,18 @@ function checkPageBreak(doc: jsPDF, y: number, needed: number): number {
   return y
 }
 
+function roundDecimals(val: any): any {
+  if (typeof val === 'number' && !Number.isInteger(val)) {
+    return Number(val.toFixed(2))
+  }
+  return val
+}
+
+function formatRows(rows: any[][]): any[][] {
+  return rows.map(r => r.map(roundDecimals))
+}
+
+
 function generatePdf(data: ReportExportInput): ArrayBuffer {
   const doc = new jsPDF()
   const currency = data.currency
@@ -120,6 +132,7 @@ function generatePdf(data: ReportExportInput): ArrayBuffer {
 }
 
 function generateCsv(data: ReportExportInput): string {
+  data.kpis.forEach(k => { if (typeof k.value === 'number') k.value = roundDecimals(k.value) })
   const lines: string[] = []
   const esc = (v: string | number) => {
     const s = String(v)
@@ -136,6 +149,7 @@ function generateCsv(data: ReportExportInput): string {
 }
 
 function generateExcel(data: ReportExportInput): Uint8Array {
+  data.kpis.forEach(k => { if (typeof k.value === 'number') k.value = roundDecimals(k.value) })
   const wb = XLSX.utils.book_new()
   const summaryData = [
     ['InsAcc Financial Report', ''],
@@ -1183,6 +1197,12 @@ export interface SideBySideExportParams {
 }
 
 export async function exportSideBySidePdf(p: SideBySideExportParams): Promise<string | null> {
+  p.leftCol.rows = formatRows(p.leftCol.rows)
+  p.rightCol.rows = formatRows(p.rightCol.rows)
+  p.leftCol.total = roundDecimals(p.leftCol.total)
+  p.rightCol.total = roundDecimals(p.rightCol.total)
+  p.footer.value = roundDecimals(p.footer.value)
+
   const doc = new jsPDF()
   
   let y = generatePdfCoverPage(
@@ -1257,6 +1277,9 @@ export async function exportSideBySidePdf(p: SideBySideExportParams): Promise<st
 }
 
 export async function exportTableData(p: TableExportParams): Promise<string | null> {
+  p.rows = formatRows(p.rows)
+  if (p.foot) p.foot = formatRows(p.foot)
+
   if (p.format === 'csv') {
     const lines = [
       p.title,
@@ -1364,6 +1387,14 @@ export interface FinancialOverviewExportParams {
 }
 
 export async function exportFinancialOverviewPdf(p: FinancialOverviewExportParams): Promise<string | null> {
+  p.recentActivity = formatRows(p.recentActivity)
+  p.kpis.forEach(k => { k.value = roundDecimals(k.value) })
+  p.summary.initialCapital = roundDecimals(p.summary.initialCapital)
+  p.summary.currentAssets = roundDecimals(p.summary.currentAssets)
+  p.summary.revenue = roundDecimals(p.summary.revenue)
+  p.summary.expenses = roundDecimals(p.summary.expenses)
+  p.summary.growth = roundDecimals(p.summary.growth)
+
   const doc = new jsPDF('portrait')
   
   // 1. Cover Page
