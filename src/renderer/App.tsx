@@ -1176,6 +1176,36 @@ export default function App() {
     }
   }, [propChartAccounts, setPropChartAccounts])
 
+  useEffect(() => {
+    if (vouchers.length > 0) {
+      const regex = /^([A-Z]+-\d{4})-000(\d{3})$/
+      let modified = false
+      const updated = vouchers.map(v => {
+        if (v.number && regex.test(v.number)) {
+          modified = true
+          return { ...v, number: v.number.replace(regex, '$1-$2') }
+        }
+        return v
+      })
+      if (modified) setVouchers(updated)
+    }
+  }, [vouchers, setVouchers])
+
+  useEffect(() => {
+    if (propVouchers.length > 0) {
+      const regex = /^([A-Z]+-\d{4})-000(\d{3})$/
+      let modified = false
+      const updated = propVouchers.map(v => {
+        if (v.number && regex.test(v.number)) {
+          modified = true
+          return { ...v, number: v.number.replace(regex, '$1-$2') }
+        }
+        return v
+      })
+      if (modified) setPropVouchers(updated)
+    }
+  }, [propVouchers, setPropVouchers])
+
   const [propVouchers, setPropVouchers] = useLazyPersistedState<Voucher[]>('insacc_prop_vouchers', [])
   const [propBankMappings, setPropBankMappings] = useLazyPersistedState<BankMapping[]>('insacc_prop_bank_mappings', [])
 
