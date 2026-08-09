@@ -124,6 +124,7 @@ export interface LeaseEntry {
   updatedAt: string
   buyer?: string
   notes?: string
+  tags?: string[]
   amountReceived?: number
   paymentStatus?: 'Pending' | 'Partially Paid' | 'Paid in Full'
 }

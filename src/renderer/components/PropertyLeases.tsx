@@ -430,6 +430,7 @@ export default function PropertyLeases({
   const [formPdcStartDate, setFormPdcStartDate] = useState(() => new Date().toISOString().split('T')[0])
   const [formDueDay, setFormDueDay] = useState('1')
   const [formNotes, setFormNotes] = useState('')
+  const [formTags, setFormTags] = useState('')
   const [formPdcCount, setFormPdcCount] = useState<string>('')
 
   // PDC generation immediately toggles
@@ -501,6 +502,7 @@ export default function PropertyLeases({
     setFormPdcCount('')
     setFormDueDay('1')
     setFormNotes('')
+    setFormTags('')
 
     setGeneratePdcSchedule(true)
     setDepositBankId(defaultBank ? defaultBank.id : '')
@@ -621,6 +623,7 @@ export default function PropertyLeases({
     setFormPdcCount(String(lease.pdcCount || ''))
     setFormDueDay(String(lease.paymentDueDay))
     setFormNotes(lease.notes || '')
+    setFormTags(lease.tags ? lease.tags.join(', ') : '')
     setShowModal(true)
   }
 
@@ -728,6 +731,8 @@ export default function PropertyLeases({
           )
 
           if (draftResult.success && draftResult.voucher) {
+            const leaseTags = formTags ? formTags.split(',').map(t => t.trim()).filter(Boolean) : []
+            if (leaseTags.length > 0) draftResult.voucher.tags = leaseTags
             const appResult = accountingEngine.approve(draftResult.voucher, 'user')
             if (appResult.success && appResult.voucher) {
               const postResult = accountingEngine.post(appResult.voucher, 'user', accounts || [], vouchers || [])
@@ -834,6 +839,7 @@ export default function PropertyLeases({
 
           paymentDueDay: Number(formDueDay) || 1,
           notes: formNotes,
+          tags: formTags ? formTags.split(',').map(t => t.trim()).filter(Boolean) : [],
           updatedAt: nowStr,
         }
 
@@ -914,6 +920,7 @@ export default function PropertyLeases({
         pdcCount: formModeOfPayment === PDC_MODE ? (Number(formPdcCount) || 0) : 0,
         paymentDueDay: Number(formDueDay) || 1,
         notes: formNotes,
+        tags: formTags ? formTags.split(',').map(t => t.trim()).filter(Boolean) : [],
         updatedAt: nowStr,
       } : null
 
@@ -941,6 +948,7 @@ export default function PropertyLeases({
 
         paymentDueDay: Number(formDueDay) || 1,
         notes: formNotes,
+        tags: formTags ? formTags.split(',').map(t => t.trim()).filter(Boolean) : [],
         status: 'Active',
         amountReceived: 0,
         paymentStatus: 'Pending',
@@ -983,6 +991,8 @@ export default function PropertyLeases({
             vouchers
           )
           if (draftResult.success && draftResult.voucher) {
+            const leaseTags = formTags ? formTags.split(',').map(t => t.trim()).filter(Boolean) : []
+            if (leaseTags.length > 0) draftResult.voucher.tags = leaseTags
             const postResult = autoPostVoucher(accountingEngine, draftResult.voucher, accounts)
             if (postResult.success && postResult.voucher) {
               setVouchers(prev => [postResult.voucher!, ...prev])
@@ -1482,6 +1492,7 @@ export default function PropertyLeases({
                   </div>
                 )}
                 <Input label="Lease Notes" value={formNotes} onChange={e => setFormNotes(e.target.value)} placeholder="Additional notes or references" />
+                <Input label="Tags" value={formTags} onChange={e => setFormTags(e.target.value)} placeholder="e.g. Q3-2026, Unit-101, Renewal (comma separated)" />
               </div>
 
               {/* PDC scheduler toggle inside creation */}
