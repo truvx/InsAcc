@@ -343,97 +343,141 @@ export default function PropertyTransactions({
 
   const handleUpdate = () => {
     if (!validate()) return
-    const prevTxn = propTransactions.find(t => t.id === editingId)
-    if (setPropTransactions) {
-      setPropTransactions(prev => prev.map(t =>
-        t.id === editingId ? {
-          ...t,
-          date: formDate,
-          type: formType,
-          category: formCategory,
+
+    const isManual = propTransactions.some(t => t.id === editingId)
+    const isVoucher = (vouchers || []).some(v => v.id === editingId)
+    const isExpense = (propExpenses || []).some(e => e.id === editingId)
+
+    if (isManual) {
+      const prevTxn = propTransactions.find(t => t.id === editingId)
+      if (setPropTransactions) {
+        setPropTransactions(prev => prev.map(t =>
+          t.id === editingId ? {
+            ...t,
+            date: formDate,
+            type: formType,
+            category: formCategory,
+            amount: Number(formAmount),
+            description: formDescription,
+            propertyId: selectedPropertyId || undefined,
+            tenantId: selectedTenantId || undefined,
+            paymentMode: formPaymentMode as any,
+            paymentChannel: formPaymentChannel,
+            tags: formTags.split(',').map(t => t.trim()).filter(Boolean),
+            updatedAt: new Date().toISOString(),
+            updatedBy: 'user',
+          } : t
+        ))
+      }
+
+      // --- GL Voucher Updating ---
+      let categoryAccountId = ensureCategoryAccount(formCategory, formType)
+      if (formCategory === 'Security Deposit Refund') {
+        categoryAccountId = '2120'
+      }
+      const bankOrCashAccountId = getBankOrCashAccountId()
+      const voucherId = `vch-${editingId}`
+      const vchType: VoucherType = formType === 'credit' ? 'Receipt' : 'Payment'
+
+      const existingVoucher = vouchers.find(v => v.id === voucherId)
+      const vchNumber = existingVoucher ? existingVoucher.number : VoucherNumberService.generateNextNumber(vchType, formDate, vouchers)
+
+      const lines: VoucherLine[] = [
+        {
+          id: `${voucherId}-l1`,
+          accountId: formType === 'credit' ? bankOrCashAccountId : categoryAccountId,
+          type: 'Debit',
           amount: Number(formAmount),
+          baseAmount: Number(formAmount),
+          currency: 'AED',
+          narration: formDescription || `${formCategory} transaction`,
+          referenceType: 'Property',
+          referenceId: selectedPropertyId || undefined,
+        },
+        {
+          id: `${voucherId}-l2`,
+          accountId: formType === 'credit' ? categoryAccountId : bankOrCashAccountId,
+          type: 'Credit',
+          amount: Number(formAmount),
+          baseAmount: Number(formAmount),
+          currency: 'AED',
+          narration: formDescription || `${formCategory} transaction`,
+          referenceType: 'Property',
+          referenceId: selectedPropertyId || undefined,
+        }
+      ]
+
+      const updatedVoucher: Voucher = {
+        id: voucherId,
+        number: vchNumber,
+        date: formDate,
+        type: vchType,
+        reference: editingId!,
+        description: formDescription || `${formCategory} transaction`,
+        status: 'Posted',
+        currency: 'AED',
+        exchangeRate: 1,
+        baseCurrency: 'AED',
+        createdBy: 'user',
+        createdAt: existingVoucher ? existingVoucher.createdAt : new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lines,
+        paymentMode: formPaymentMode as any,
+        paymentChannel: formPaymentChannel,
+        tags: formTags.split(',').map(t => t.trim()).filter(Boolean)
+      }
+
+      if (setVouchers) {
+        setVouchers(prev => {
+          const filtered = prev.filter(v => v.id !== voucherId)
+          return [...filtered, updatedVoucher]
+        })
+      }
+      invalidateBalanceCache()
+      
+      if (prevTxn) {
+        onAuditEvent?.(recordModuleEvent('Property Transactions', 'Update', `${displayType} - ${formCategory}`, editingId!, `Updated ${displayType} transaction: ${formCategory} ${currency}${Number(formAmount).toLocaleString()}`, 'Info', prevTxn as any, { date: formDate, type: formType, category: formCategory, amount: Number(formAmount), description: formDescription }))
+      }
+    } else if (isVoucher) {
+      if (setVouchers) {
+        setVouchers(prev => prev.map(v => v.id === editingId ? {
+          ...v,
+          date: formDate,
           description: formDescription,
-          propertyId: selectedPropertyId || undefined,
-          tenantId: selectedTenantId || undefined,
           paymentMode: formPaymentMode as any,
           paymentChannel: formPaymentChannel,
           tags: formTags.split(',').map(t => t.trim()).filter(Boolean),
-          updatedAt: new Date().toISOString(),
-          updatedBy: 'user',
-        } : t
-      ))
-    }
-
-    // --- GL Voucher Updating ---
-    let categoryAccountId = ensureCategoryAccount(formCategory, formType)
-    if (formCategory === 'Security Deposit Refund') {
-
-      categoryAccountId = '2120'
-    }
-    const bankOrCashAccountId = getBankOrCashAccountId()
-    const voucherId = `vch-${editingId}`
-    const vchType: VoucherType = formType === 'credit' ? 'Receipt' : 'Payment'
-
-    const existingVoucher = vouchers.find(v => v.id === voucherId)
-    const vchNumber = existingVoucher ? existingVoucher.number : VoucherNumberService.generateNextNumber(vchType, formDate, vouchers)
-
-    const lines: VoucherLine[] = [
-      {
-        id: `${voucherId}-l1`,
-        accountId: formType === 'credit' ? bankOrCashAccountId : categoryAccountId,
-        type: 'Debit',
-        amount: Number(formAmount),
-        baseAmount: Number(formAmount),
-        currency: 'AED',
-        narration: formDescription || `${formCategory} transaction`,
-        referenceType: 'Property',
-        referenceId: selectedPropertyId || undefined,
-      },
-      {
-        id: `${voucherId}-l2`,
-        accountId: formType === 'credit' ? categoryAccountId : bankOrCashAccountId,
-        type: 'Credit',
-        amount: Number(formAmount),
-        baseAmount: Number(formAmount),
-        currency: 'AED',
-        narration: formDescription || `${formCategory} transaction`,
-        referenceType: 'Property',
-        referenceId: selectedPropertyId || undefined,
+          updatedAt: new Date().toISOString()
+        } : v))
       }
-    ]
-
-    const updatedVoucher: Voucher = {
-      id: voucherId,
-      number: vchNumber,
-      date: formDate,
-      type: vchType,
-      reference: editingId!,
-      description: formDescription || `${formCategory} transaction`,
-      status: 'Posted',
-      currency: 'AED',
-      exchangeRate: 1,
-      baseCurrency: 'AED',
-      createdBy: 'user',
-      createdAt: existingVoucher ? existingVoucher.createdAt : new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      lines,
-      paymentMode: formPaymentMode as any,
-      paymentChannel: formPaymentChannel,
-      tags: formTags.split(',').map(t => t.trim()).filter(Boolean)
+    } else if (isExpense) {
+      if (setPropExpenses) {
+        setPropExpenses(prev => prev.map(e => e.id === editingId ? {
+          ...e,
+          date: formDate,
+          description: formDescription,
+          paymentMode: formPaymentMode as any,
+          paymentChannel: formPaymentChannel,
+          updatedAt: new Date().toISOString()
+        } : e))
+      }
+      const expVoucherId = `vch-exp-${editingId}`
+      if (setVouchers) {
+        setVouchers(prev => prev.map(v => v.id === expVoucherId ? {
+          ...v,
+          date: formDate,
+          description: formDescription,
+          paymentMode: formPaymentMode as any,
+          paymentChannel: formPaymentChannel,
+          tags: formTags.split(',').map(t => t.trim()).filter(Boolean),
+          updatedAt: new Date().toISOString()
+        } : v))
+      }
+    } else {
+      setToast({ visible: true, message: 'This automated transaction must be edited from its source module.', type: 'error' })
+      return
     }
 
-    if (setVouchers) {
-      setVouchers(prev => {
-        const filtered = prev.filter(v => v.id !== voucherId)
-        return [...filtered, updatedVoucher]
-      })
-    }
-    invalidateBalanceCache()
-    // ---------------------------
-    
-    if (prevTxn) {
-      onAuditEvent?.(recordModuleEvent('Property Transactions', 'Update', `${displayType} - ${formCategory}`, editingId!, `Updated ${displayType} transaction: ${formCategory} ${currency}${Number(formAmount).toLocaleString()}`, 'Info', prevTxn as any, { date: formDate, type: formType, category: formCategory, amount: Number(formAmount), description: formDescription }))
-    }
     setEditingId(null)
     setShowForm(false)
     setToast({ visible: true, message: 'Transaction updated', type: 'success' })
@@ -781,14 +825,11 @@ export default function PropertyTransactions({
       key: 'actions',
       header: '',
       render: txn => {
-        const isManual = propTransactions.some(mt => mt.id === txn.id)
         return (
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            {isManual && (
-              <Button variant="ghost" size="sm" onClick={() => handleEdit(txn)} aria-label="Edit">
-                <EditIcon />
-              </Button>
-            )}
+            <Button variant="ghost" size="sm" onClick={() => handleEdit(txn)} aria-label="Edit">
+              <EditIcon />
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(txn.id)} aria-label="Delete">
               <TrashIcon />
             </Button>
@@ -919,14 +960,20 @@ export default function PropertyTransactions({
           />
         </div>
         <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">Date</label>
-            <input className="input" type="date" value={formDate} onChange={e => setFormDate(e.target.value)} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Amount ({currency})</label>
-            <input className="input" type="number" placeholder="0" min="0" step="0.01" value={formAmount} onChange={e => setFormAmount(e.target.value)} />
-          </div>
+          <Input 
+            label={`Amount (${currency})`} 
+            type="number" 
+            value={formAmount} 
+            onChange={e => setFormAmount(e.target.value)} 
+            placeholder="0" 
+            disabled={editingId !== null && !propTransactions.some(t => t.id === editingId)}
+          />
+          <Input 
+            label="Date" 
+            type="date" 
+            value={formDate} 
+            onChange={e => setFormDate(e.target.value)} 
+          />
         </div>
         <div className="form-row">
           <div className="form-group">
@@ -960,6 +1007,7 @@ export default function PropertyTransactions({
               label="Bank Account"
               value={formBankAccount}
               onChange={e => setFormBankAccount(e.target.value)}
+              disabled={editingId !== null && !propTransactions.some(t => t.id === editingId)}
               options={[{ value: '', label: 'Select Bank Account' }, ...propAccounts.map(ba => ({
                 value: ba.id,
                 label: ba.institution,
