@@ -1077,7 +1077,6 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
   doc.text(`Total Debits: ${p.currency} ${totDr.toLocaleString(undefined, {minimumFractionDigits: 2})} | Total Credits: ${p.currency} ${totCr.toLocaleString(undefined, {minimumFractionDigits: 2})}`, 14, y)
 
   const isBreakup = p.reportType && p.reportType !== 'Standard'
-  console.log('DEBUG isBreakup:', isBreakup, 'p.reportType:', p.reportType)
   
   if (isBreakup) {
     const groupedData = getGroupedData(p, fv)
@@ -1532,3 +1531,452 @@ export async function exportFinancialOverviewPdf(p: FinancialOverviewExportParam
 }
 
 export { generatePdf, generateExcel, generateCsv }
+
+// ════════════════════════════════════════════════════════════════════
+// OVERVIEW PDF — Mirrors the 8-tab Excel workbook
+// ════════════════════════════════════════════════════════════════════
+
+function pdfSectionBanner(doc: any, title: string, y: number): number {
+  const pw = doc.internal.pageSize.getWidth()
+  doc.setFillColor(15, 76, 53)
+  doc.rect(0, y, pw, 10, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.text(title, 14, y + 7)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(0, 0, 0)
+  return y + 14
+}
+
+function pdfSubHeader(doc: any, text: string, y: number): number {
+  const pw = doc.internal.pageSize.getWidth()
+  doc.setFillColor(30, 58, 47) // subHdr
+  doc.rect(14, y, pw - 28, 7, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'bold')
+  doc.text(text, 16, y + 5)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(0, 0, 0)
+  return y + 10
+}
+
+function pdfCheckNewPage(doc: any, y: number, needed: number = 30): number {
+  const ph = doc.internal.pageSize.getHeight()
+  if (y + needed > ph - 20) {
+    doc.addPage()
+    return 15
+  }
+  return y
+}
+
+export async function exportOverviewPdf(p: ExcelExportParams): Promise<string | null> {
+  const doc = new jsPDF('landscape')
+  const fv = getFilteredVouchers(p)
+  const sorted = [...fv].sort((a, b) => a.date.localeCompare(b.date))
+  const pw = doc.internal.pageSize.getWidth()
+
+  let totDr = 0, totCr = 0
+  fv.forEach(v => v.lines.forEach(l => { if (l.type === 'Debit') totDr += l.amount; else totCr += l.amount }))
+
+  const moduleName = p.module === 'Property' ? 'Properties Management' : 'Investment Portfolio'
+
+  // ─── PAGE 1: COVER ──────────────────────────────────────────────
+  generatePdfCoverPage(doc, 'OVERVIEW REPORT', moduleName, p.periodLabel, p.currency, fv.length, moduleName)
+
+  // ─── PAGE 2: EXECUTIVE SUMMARY ──────────────────────────────────
+  doc.addPage()
+  let y = pdfSectionBanner(doc, '2. EXECUTIVE SUMMARY', 10)
+
+  // KPIs
+  let incTot = 0, expTot = 0
+  for (const v of fv) {
+    for (const l of v.lines) {
+      const a = p.accounts.find(x => x.id === l.accountId)
+      if (!a) continue
+      if (a.type === 'revenue' && l.type === 'Credit') incTot += l.amount
+      if (a.type === 'expense' && l.type === 'Debit') expTot += l.amount
+    }
+  }
+
+  const fmt2 = (n: number) => `${p.currency} ${n.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+
+  const kpiData = [
+    ['Total Vouchers', String(fv.length), `Period: ${p.periodLabel}`],
+    ['Total Debit', fmt2(totDr), 'Sum of all debit entries'],
+    ['Total Credit', fmt2(totCr), 'Sum of all credit entries'],
+    ['Net Movement', fmt2(totDr - totCr), 'Debit minus Credit'],
+    ['Total Income', fmt2(incTot), 'Revenue account credits'],
+    ['Total Expenses', fmt2(expTot), 'Expense account debits'],
+    ['Net Profit / (Loss)', fmt2(incTot - expTot), 'Income minus Expenses'],
+  ]
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Metric', 'Value', 'Notes']],
+    body: kpiData,
+    theme: 'grid',
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [34, 164, 93], textColor: [255, 255, 255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [248, 251, 249] },
+    columnStyles: { 0: { fontStyle: 'bold' }, 2: { textColor: [100, 116, 139], fontStyle: 'italic' } },
+  })
+  y = (doc as any).lastAutoTable.finalY + 8
+
+  // Monthly Breakdown
+  const months: Record<string, { inc: number; exp: number; cnt: number }> = {}
+  for (const v of fv) {
+    const m = v.date.slice(0, 7)
+    if (!months[m]) months[m] = { inc: 0, exp: 0, cnt: 0 }
+    months[m].cnt++
+    for (const l of v.lines) {
+      const a = p.accounts.find(x => x.id === l.accountId)
+      if (!a) continue
+      if (a.type === 'revenue' && l.type === 'Credit') months[m].inc += l.amount
+      if (a.type === 'expense' && l.type === 'Debit') months[m].exp += l.amount
+    }
+  }
+  const mKeys = Object.keys(months).sort()
+  if (mKeys.length > 0) {
+    y = pdfCheckNewPage(doc, y, 40)
+    y = pdfSubHeader(doc, '  MONTHLY BREAKDOWN', y)
+    const monthRows = mKeys.map(m => {
+      const { inc, exp, cnt } = months[m]
+      return [formatMonth(m), String(cnt), fmt2(inc), fmt2(exp), fmt2(inc - exp)]
+    })
+    const tI = mKeys.reduce((s, m) => s + months[m].inc, 0)
+    const tE = mKeys.reduce((s, m) => s + months[m].exp, 0)
+    monthRows.push(['TOTAL', String(fv.length), fmt2(tI), fmt2(tE), fmt2(tI - tE)])
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Month', 'Transactions', 'Income', 'Expenses', 'Net']],
+      body: monthRows,
+      theme: 'grid',
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [34, 164, 93], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 251, 249] },
+      columnStyles: { 1: { halign: 'center' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } },
+    })
+    y = (doc as any).lastAutoTable.finalY + 8
+  }
+
+  // ─── PAGE 3: TRANSACTIONS ───────────────────────────────────────
+  doc.addPage()
+  y = pdfSectionBanner(doc, '3. TRANSACTIONS', 10)
+
+  const txnRows: any[][] = []
+  let runBal = 0
+  for (const v of sorted) {
+    for (const l of v.lines) {
+      const acct = p.accounts.find(a => a.id === l.accountId)
+      const isDr = l.type === 'Debit'
+      runBal += isDr ? l.amount : -l.amount
+
+      let party = ''
+      const lease = p.leases?.find(le => le.leaseNumber === v.reference)
+      if (lease) { const t = p.tenants?.find(t => t.id === lease.tenantId); if (t) party = t.name }
+      if (!party) party = v.description.match(/from (.*?)(?:\)|$)/)?.[1] || v.description.match(/paid to (.*?)(?:\)|$)/)?.[1] || ''
+
+      txnRows.push([
+        formatDate(v.date, 'DD/MM/YYYY'),
+        v.number,
+        v.reference || '-',
+        v.type,
+        party.length > 20 ? party.substring(0, 20) + '...' : party,
+        (v.description || '').length > 35 ? v.description.substring(0, 35) + '...' : v.description,
+        acct?.code || '',
+        acct?.name || '',
+        isDr ? l.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '',
+        !isDr ? l.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '',
+        runBal.toLocaleString(undefined, { minimumFractionDigits: 2 }),
+      ])
+    }
+  }
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Date', 'Voucher', 'Ref', 'Type', 'Party', 'Description', 'Code', 'Account', 'Debit', 'Credit', 'Balance']],
+    body: txnRows,
+    theme: 'grid',
+    styles: { fontSize: 7 },
+    headStyles: { fillColor: [15, 76, 53], textColor: [255, 255, 255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [248, 251, 249] },
+    columnStyles: { 8: { halign: 'right' }, 9: { halign: 'right' }, 10: { halign: 'right' } },
+  })
+
+  // ─── PAGE 4: VOUCHER DETAILS ────────────────────────────────────
+  doc.addPage()
+  y = pdfSectionBanner(doc, '4. VOUCHER DETAILS', 10)
+
+  const vdRows: any[][] = []
+  for (const v of sorted) {
+    const vDr = v.lines.filter(l => l.type === 'Debit').reduce((s, l) => s + l.amount, 0)
+    const vCr = v.lines.filter(l => l.type === 'Credit').reduce((s, l) => s + l.amount, 0)
+    let party = ''
+    if (p.module === 'Property') {
+      const lease = p.leases?.find(le => le.leaseNumber === v.reference)
+      const t = lease ? p.tenants?.find(t => t.id === lease.tenantId) : null
+      if (t) party = t.name
+    } else {
+      party = v.description.match(/from (.*?)(?:\)|$)/)?.[1] || v.description.match(/paid to (.*?)(?:\)|$)/)?.[1] || ''
+    }
+
+    // Voucher header row
+    vdRows.push([
+      { content: `${v.number}  |  ${v.type}  |  ${formatDate(v.date, 'DD/MM/YYYY')}  |  ${party}  |  Dr: ${fmt2(vDr)}  Cr: ${fmt2(vCr)}`, colSpan: 7, styles: { fillColor: [30, 58, 47], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 } }
+    ])
+
+    // Line items
+    v.lines.forEach((l, li) => {
+      const a = p.accounts.find(x => x.id === l.accountId)
+      vdRows.push([
+        `  ${li + 1}`,
+        a?.code || '',
+        a?.name || '',
+        l.type,
+        l.type === 'Debit' ? l.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '',
+        l.type === 'Credit' ? l.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '',
+        (l.narration || '').length > 40 ? (l.narration || '').substring(0, 40) + '...' : (l.narration || ''),
+      ])
+    })
+  }
+
+  autoTable(doc, {
+    startY: y,
+    head: [['#', 'Code', 'Account', 'Dr/Cr', 'Debit', 'Credit', 'Narration']],
+    body: vdRows,
+    theme: 'grid',
+    styles: { fontSize: 7 },
+    headStyles: { fillColor: [34, 164, 93], textColor: [255, 255, 255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [248, 251, 249] },
+    columnStyles: { 4: { halign: 'right' }, 5: { halign: 'right' } },
+  })
+
+  // ─── PAGE 5: BANK ACTIVITY ──────────────────────────────────────
+  doc.addPage()
+  y = pdfSectionBanner(doc, '5. BANK ACTIVITY', 10)
+
+  const bankAccts = p.accounts.filter(a => (a.code.startsWith('1110') || a.code.startsWith('1120')) && a.isActive)
+
+  if (bankAccts.length === 0) {
+    doc.setFontSize(9)
+    doc.setTextColor(100, 116, 139)
+    doc.text('No bank accounts found.', 14, y + 5)
+    y += 12
+  } else {
+    for (const ba of bankAccts) {
+      y = pdfCheckNewPage(doc, y, 40)
+      y = pdfSubHeader(doc, `  ${ba.name.toUpperCase()}  (${ba.code})`, y)
+
+      const baRows: any[][] = []
+      let bRunBal = 0, bIn = 0, bOut = 0
+
+      // Opening balance row
+      baRows.push([
+        formatDate(p.filters?.dateRange?.start || '', 'DD/MM/YYYY'),
+        '—', 'Opening', 'Balance brought forward', '', '', '',
+        bRunBal.toLocaleString(undefined, { minimumFractionDigits: 2 })
+      ])
+
+      for (const v of sorted) {
+        for (const l of v.lines) {
+          if (l.accountId !== ba.id) continue
+          const isDr = l.type === 'Debit'
+          if (isDr) { bRunBal += l.amount; bIn += l.amount } else { bRunBal -= l.amount; bOut += l.amount }
+          baRows.push([
+            formatDate(v.date, 'DD/MM/YYYY'),
+            v.number,
+            v.type,
+            (v.description || '').length > 35 ? v.description.substring(0, 35) + '...' : v.description,
+            v.reference || '-',
+            isDr ? l.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '',
+            !isDr ? l.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '',
+            bRunBal.toLocaleString(undefined, { minimumFractionDigits: 2 }),
+          ])
+        }
+      }
+
+      // Closing balance
+      baRows.push([
+        { content: `CLOSING  |  Money In: ${fmt2(bIn)}  |  Money Out: ${fmt2(bOut)}  |  Balance: ${fmt2(bRunBal)}`, colSpan: 8, styles: { fillColor: [232, 245, 237], fontStyle: 'bold', fontSize: 7 } }
+      ])
+
+      autoTable(doc, {
+        startY: y,
+        head: [['Date', 'Voucher', 'Type', 'Description', 'Ref', 'Money In', 'Money Out', 'Balance']],
+        body: baRows,
+        theme: 'grid',
+        styles: { fontSize: 7 },
+        headStyles: { fillColor: [34, 164, 93], textColor: [255, 255, 255], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [248, 251, 249] },
+        columnStyles: { 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' } },
+      })
+      y = (doc as any).lastAutoTable.finalY + 10
+    }
+  }
+
+  // ─── PAGE 6: GENERAL LEDGER ─────────────────────────────────────
+  doc.addPage()
+  y = pdfSectionBanner(doc, '6. GENERAL LEDGER', 10)
+
+  const typeOrder = ['asset', 'liability', 'equity', 'revenue', 'expense']
+  const typeLabels: Record<string, string> = { asset: 'ASSETS', liability: 'LIABILITIES', equity: 'EQUITY', revenue: 'REVENUE / INCOME', expense: 'EXPENSES' }
+
+  for (const aType of typeOrder) {
+    const accs = p.accounts.filter(a => a.isActive && a.type === aType)
+    if (accs.length === 0) continue
+
+    y = pdfCheckNewPage(doc, y, 30)
+    y = pdfSubHeader(doc, `  ${typeLabels[aType]}`, y)
+
+    for (const acct of accs) {
+      const txns: Array<{ v: Voucher; l: Voucher['lines'][0] }> = []
+      for (const v of sorted) for (const l of v.lines) if (l.accountId === acct.id) txns.push({ v, l })
+      if (txns.length === 0) continue
+
+      y = pdfCheckNewPage(doc, y, 30)
+
+      const ledgerRows: any[][] = []
+
+      // Opening balance
+      let lRunBal = 0
+      ledgerRows.push([
+        '—', 'OPEN', 'Opening', 'Balance brought forward', '', '',
+        lRunBal.toLocaleString(undefined, { minimumFractionDigits: 2 })
+      ])
+
+      let lDr = 0, lCr = 0
+      for (const { v, l } of txns) {
+        const isDr = l.type === 'Debit'
+        const mult = acct.normalBalance === 'debit' ? (isDr ? 1 : -1) : (isDr ? -1 : 1)
+        lRunBal += l.amount * mult
+        if (isDr) lDr += l.amount; else lCr += l.amount
+        ledgerRows.push([
+          formatDate(v.date, 'DD/MM/YYYY'),
+          v.number,
+          v.type,
+          (v.description || '').length > 35 ? v.description.substring(0, 35) + '...' : v.description,
+          isDr ? l.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '',
+          !isDr ? l.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '',
+          lRunBal.toLocaleString(undefined, { minimumFractionDigits: 2 }),
+        ])
+      }
+
+      // Closing
+      ledgerRows.push([
+        { content: `CLOSING  |  Dr: ${fmt2(lDr)}  |  Cr: ${fmt2(lCr)}  |  Balance: ${fmt2(lRunBal)}`, colSpan: 7, styles: { fillColor: [232, 245, 237], fontStyle: 'bold', fontSize: 7 } }
+      ])
+
+      // Account header + table
+      autoTable(doc, {
+        startY: y,
+        head: [
+          [{ content: `${acct.code}  ${acct.name}`, colSpan: 7, styles: { fillColor: [30, 58, 47], textColor: [255, 255, 255], fontStyle: 'bold' } }],
+          ['Date', 'Voucher', 'Type', 'Description', 'Debit', 'Credit', 'Balance']
+        ],
+        body: ledgerRows,
+        theme: 'grid',
+        styles: { fontSize: 7 },
+        headStyles: { fillColor: [34, 164, 93], textColor: [255, 255, 255], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [248, 251, 249] },
+        columnStyles: { 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' } },
+      })
+      y = (doc as any).lastAutoTable.finalY + 6
+    }
+    y += 4
+  }
+
+  // ─── PAGE 7: AUDIT TRAIL ───────────────────────────────────────
+  doc.addPage()
+  y = pdfSectionBanner(doc, '7. AUDIT TRAIL', 10)
+
+  const logs = p.auditLogs || []
+  if (logs.length === 0) {
+    autoTable(doc, {
+      startY: y,
+      head: [['Timestamp', 'User', 'Module', 'Action', 'Target', 'Status', 'Details']],
+      body: [['No audit records found for this period.', '', '', '', '', '', '']],
+      theme: 'grid',
+      styles: { fontSize: 7, textColor: [100, 116, 139], fontStyle: 'italic' },
+      headStyles: { fillColor: [15, 76, 53], textColor: [255, 255, 255], fontStyle: 'bold' },
+    })
+  } else {
+    const auditRows = logs.map((log: any) => [
+      fmtDT(log.timestamp || log.createdAt || ''),
+      log.user || log.createdBy || 'system',
+      log.module || '',
+      log.action || '',
+      log.targetId || '',
+      log.status || 'Success',
+      (log.details || log.description || '').length > 40 ? (log.details || log.description || '').substring(0, 40) + '...' : (log.details || log.description || ''),
+    ])
+    autoTable(doc, {
+      startY: y,
+      head: [['Timestamp', 'User', 'Module', 'Action', 'Target', 'Status', 'Details']],
+      body: auditRows,
+      theme: 'grid',
+      styles: { fontSize: 7 },
+      headStyles: { fillColor: [15, 76, 53], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 251, 249] },
+    })
+  }
+
+  // ─── PAGE 8: NOTES & METADATA ──────────────────────────────────
+  doc.addPage()
+  y = pdfSectionBanner(doc, '8. NOTES & METADATA', 10)
+
+  const now = new Date()
+  const dateOpts: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }
+
+  const notesData = [
+    [{ content: 'EXPORT CONFIGURATION', colSpan: 2, styles: { fillColor: [30, 58, 47], textColor: [255, 255, 255], fontStyle: 'bold' } }],
+    ['Company Name', p.companyName],
+    ['Report Title', 'OVERVIEW REPORT'],
+    ['Module', p.module],
+    ['Currency', p.currency],
+    ['Generated By', p.generatedBy],
+    ['Generated On', now.toLocaleString('en-GB', dateOpts).replace(',', '')],
+    [{ content: 'ACTIVE FILTERS', colSpan: 2, styles: { fillColor: [30, 58, 47], textColor: [255, 255, 255], fontStyle: 'bold' } }],
+    ['Date Range', p.filters?.dateRange ? `${p.filters.dateRange.start} → ${p.filters.dateRange.end}` : 'All dates'],
+    ['Voucher Type', p.filters?.voucherType || 'All'],
+    ['Status', p.filters?.status || 'All'],
+    ['Bank Account', p.filters?.bankAccountId && p.filters.bankAccountId !== 'All' ? (p.accounts.find(a => a.id === p.filters?.bankAccountId)?.name || p.filters.bankAccountId) : 'All'],
+    ['Ledger Account', p.filters?.accountId && p.filters.accountId !== 'All' ? (p.accounts.find(a => a.id === p.filters?.accountId)?.name || p.filters.accountId) : 'All'],
+    [{ content: 'STATISTICS', colSpan: 2, styles: { fillColor: [30, 58, 47], textColor: [255, 255, 255], fontStyle: 'bold' } }],
+    ['Total Vouchers (After Filter)', String(fv.length)],
+    ['Total Active Accounts', String(p.accounts.filter(a => a.isActive).length)],
+    [{ content: 'APPLICATION INFO', colSpan: 2, styles: { fillColor: [30, 58, 47], textColor: [255, 255, 255], fontStyle: 'bold' } }],
+    ['Application', 'InsAcc — Intelligent Asset & Investment Accounting'],
+    ['Version', '1.0.0'],
+    ['Report Format', 'Professional PDF Report'],
+    ['Sections', '8 (Cover, Executive Summary, Transactions, Voucher Details, Bank Activity, General Ledger, Audit Trail, Notes)'],
+  ]
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Field', 'Value']],
+    body: notesData,
+    theme: 'grid',
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [34, 164, 93], textColor: [255, 255, 255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [248, 251, 249] },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 60 } },
+  })
+
+  // Footer on all pages
+  const pageCount = doc.internal.getNumberOfPages()
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i)
+    const ph = doc.internal.pageSize.getHeight()
+    doc.setFontSize(7)
+    doc.setTextColor(100, 116, 139)
+    doc.text(`Generated by InsAcc — Intelligent Asset & Investment Accounting  |  Page ${i} of ${pageCount}`, pw / 2, ph - 8, { align: 'center' })
+  }
+
+  const today = new Date().toISOString().slice(0, 10)
+  const filename = `InsAcc_${p.module === 'Property' ? 'Properties_Management' : 'Investment_Portfolio'}_Overview_Report_${today}.pdf`
+  const buf = doc.output('arraybuffer')
+  return saveWithDialog(filename, [{ name: 'PDF', extensions: ['pdf'] }], buf)
+}

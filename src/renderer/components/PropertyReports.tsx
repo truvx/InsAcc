@@ -13,7 +13,7 @@ import { t } from '../utils'
 import { getPropertyFinancialSummary } from '../services/propertyFinancialAggregationService'
 import { getBalanceSheetTree, getProfitLossTree, flattenStatementRows } from '../services/propertyFinancialStatements'
 import { formatDate } from '../utils'
-import { exportAccountingExcel, exportAccountingCsv, exportAccountingPdf, exportTableData, exportSideBySidePdf } from '../services/reportExportService'
+import { exportAccountingExcel, exportAccountingCsv, exportAccountingPdf, exportOverviewPdf, exportTableData, exportSideBySidePdf } from '../services/reportExportService'
 import ExportReportModal from './design/ExportReportModal'
 
 function BuildingIcon() {
@@ -215,7 +215,13 @@ export default function PropertyReports({
         
         if (format === 'xlsx') await exportAccountingExcel(p)
         else if (format === 'csv') await exportAccountingCsv(p)
-        else if (format === 'pdf') await exportAccountingPdf(p)
+        else if (format === 'pdf') {
+          if (activeTab === 'overview' && effectiveReportType === 'Standard') {
+            await exportOverviewPdf(p)
+          } else {
+            await exportAccountingPdf(p)
+          }
+        }
         return
       }
 

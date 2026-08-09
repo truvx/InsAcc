@@ -8,7 +8,7 @@ import type { BankAccount, BankTransaction } from '../data/banking'
 import { UaeDirhamIcon } from './design/UaeDirhamIcon'
 import BankAccountAvatar from './BankAccountAvatar'
 import { formatAssetType } from '../data/investmentMasterData'
-import { exportAccountingExcel, exportAccountingCsv, exportAccountingPdf, exportTableData, exportSideBySidePdf } from '../services/reportExportService'
+import { exportAccountingExcel, exportAccountingCsv, exportAccountingPdf, exportOverviewPdf, exportTableData, exportSideBySidePdf } from '../services/reportExportService'
 import ExportReportModal from './design/ExportReportModal'
 import { validateLedgerBalance } from '../accounting/ledgerService'
 
@@ -230,7 +230,13 @@ export default function InvestmentReports({
         
         if (format === 'xlsx') await exportAccountingExcel(p)
         else if (format === 'csv') await exportAccountingCsv(p)
-        else if (format === 'pdf') await exportAccountingPdf(p)
+        else if (format === 'pdf') {
+          if (activeTab === 'overview' && effectiveReportType === 'Standard') {
+            await exportOverviewPdf(p)
+          } else {
+            await exportAccountingPdf(p)
+          }
+        }
         return
       }
 
