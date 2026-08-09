@@ -14,8 +14,7 @@ import { invalidateBalanceCache } from '../accounting/ledgerService'
 import VoucherStatusBadge from './design/VoucherStatusBadge'
 import VoucherDetailsModal from './design/VoucherDetailsModal'
 import ActionsMenu from './design/ActionsMenu'
-import { PartyLookupService } from '../services/partyLookupService'
-import { SearchablePartySelect } from './design/SearchablePartySelect'
+
 import AuditTrailModal from './design/AuditTrailModal'
 import { printVoucher } from '../utils/printVoucherHelper'
 import { exportVoucherToPDF } from '../utils/pdfVoucherHelper'
@@ -69,18 +68,7 @@ export default function PropertyJournalVoucher({
     handlePost, handleApprove, handleCancel, handleDiscard, handleReverse
   } = useVoucherLifecycle(accountingEngine, accounts, setVouchers)
 
-  const lookupService = useMemo(() => new PartyLookupService({
-    properties,
-    units,
-    tenants,
-    propVendors: vendors,
-    leases,
-  }), [properties, units, tenants, vendors, leases])
-
-  const allParties = useMemo(() => lookupService.getAllPropertyParties(), [lookupService])
-
   const [searchQuery, setSearchQuery] = useState('')
-  const [filterParty, setFilterParty] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -109,21 +97,7 @@ export default function PropertyJournalVoucher({
     if (dateFrom) list = list.filter(v => v.date >= dateFrom)
     if (dateTo) list = list.filter(v => v.date <= dateTo)
 
-    if (filterParty) {
-      const party = allParties.find(p => p.name === filterParty)
-      list = list.filter(v => {
-        if (v.reference === filterParty || v.description.includes(filterParty)) return true
-        if (party) {
-          if (party.type === 'Property' && (v.description.includes(party.name) || v.reference.includes(party.name))) return true
-          const lease = leases.find(l => l.leaseNumber === v.reference || l.id === v.reference)
-          if (lease) {
-            if (party.type === 'Property' && party.id === lease.propertyId) return true
-            if ((party.type === 'Tenant' || party.type === 'Active Tenant' || party.type === 'Historical Tenant') && party.id === lease.tenantId) return true
-          }
-        }
-        return false
-      })
-    }
+    if (dateTo) list = list.filter(v => v.date <= dateTo)
 
     if (tagFilter) {
       const q = tagFilter.toLowerCase()
@@ -136,7 +110,7 @@ export default function PropertyJournalVoucher({
       v.number.toLowerCase().includes(q) ||
       v.description.toLowerCase().includes(q)
     )
-  }, [journalVouchers, searchQuery, dateFrom, dateTo, filterParty, tagFilter, allParties, leases])
+  }, [journalVouchers, searchQuery, dateFrom, dateTo, tagFilter, leases])
 
   const leafAccounts = useMemo(() =>
     accounts.filter(a => a.isActive && !accounts.some(c => c.parentId === a.id && c.isActive))
@@ -532,15 +506,7 @@ export default function PropertyJournalVoucher({
               <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginRight: 8 }}>To</span>
               <input type="date" className="data-table-search-input" style={{ width: 110 }} value={dateTo} onChange={e => setDateTo(e.target.value)} />
             </div>
-            <div style={{ width: 220 }}>
-              <SearchablePartySelect
-                label=""
-                value={filterParty}
-                onChange={setFilterParty}
-                parties={allParties}
-                placeholder="Filter by Vendor, Tenant, Property..."
-              />
-            </div>
+
             <div className="data-table-search" style={{ maxWidth: 'none', width: 'auto', flex: '0 0 auto', padding: '0 12px' }}>
               <SearchIcon />
               <input
