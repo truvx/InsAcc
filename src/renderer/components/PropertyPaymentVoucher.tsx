@@ -320,7 +320,7 @@ export default function PropertyPaymentVoucher({
         modifiedBy: 'user',
         paymentMode: formPaymentMode as any,
         paymentChannel: formPaymentMode === 'Cash' ? 'Cash In Hand' : 'Bank Account',
-        paymentReference: formPaymentReference || undefined,
+        tags: formTags.split(',').map(t => t.trim()).filter(Boolean),
         lines: oldVoucher.lines.map(line => {
           if (line.type === 'Debit') {
             return {
