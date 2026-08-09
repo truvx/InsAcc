@@ -1319,6 +1319,7 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
       head: [p.columns],
       body: p.rows,
       foot: p.foot,
+      showFoot: 'lastPage',
       theme: 'grid',
       styles: { fontSize: 9 },
       headStyles: { fillColor: [15, 76, 53], textColor: [255, 255, 255], fontStyle: 'bold' },
