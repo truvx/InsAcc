@@ -603,11 +603,15 @@ export default function PropertyTransactions({
   }, [vouchers, accounts, propAccounts])
 
   const allTransactions = useMemo(() => {
-    const manualTxns = propTransactions.map(t => ({
-      ...t,
-      bankAccountId: (t as any).bankAccountId || null,
-      tags: mergeTxnTags(t.tags, t.id, vouchers)
-    }))
+    const manualTxns = propTransactions.map(t => {
+      const mergedTags = mergeTxnTags(t.tags, t.id, vouchers)
+      return {
+        ...t,
+        bankAccountId: (t as any).bankAccountId || null,
+        tags: mergedTags,
+        propertyId: t.propertyId || properties.find(p => mergedTags.includes(p.name))?.id || undefined
+      }
+    })
 
     const pdcTxns = (pdcCheques || []).map(c => {
       const lease = leases.find(l => l.id === c.leaseId)
@@ -710,6 +714,7 @@ export default function PropertyTransactions({
       .map(v => {
       const typeStr = v.type === 'Receipt' ? 'credit' : 'debit'
       const amount = v.lines.reduce((sum, l) => sum + (l.type === 'Debit' ? l.amount : 0), 0)
+      const mergedTags = mergeTxnTags(v.tags, v.id, vouchers)
       return {
         id: v.id,
         accountId: '',
@@ -723,7 +728,8 @@ export default function PropertyTransactions({
         paymentMode: v.paymentMode || 'Bank Transfer',
         paymentChannel: v.paymentChannel || 'Bank Account',
         paymentReference: v.paymentReference,
-        tags: mergeTxnTags(v.tags, v.id, vouchers), // Though it's a voucher, mergeTxnTags will just return its tags because it matches by ID. But actually, v.tags is fine. Let's just use v.tags to save performance
+        tags: mergedTags,
+        propertyId: properties.find(p => mergedTags.includes(p.name) || p.name === v.reference)?.id || undefined,
         bankAccountId: null,
         createdAt: v.createdAt,
         updatedAt: v.updatedAt,
