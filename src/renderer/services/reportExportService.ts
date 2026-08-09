@@ -972,12 +972,6 @@ function generatePdfCoverPage(doc: any, title: string, subtitle: string, periodL
   doc.setFont('helvetica', 'bold')
   doc.text(title.toUpperCase(), centerX, 45, { align: 'center' })
 
-  if (subtitle) {
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(9)
-    doc.setFont('helvetica', 'normal')
-    doc.text(subtitle, centerX, 52, { align: 'center' })
-  }
 
   doc.setTextColor(15, 76, 53)
   doc.setFontSize(9)
