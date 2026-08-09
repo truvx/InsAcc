@@ -173,11 +173,16 @@ export default function PropertyReports({
     setIsExportModalOpen(false)
     try {
       if (activeTab === 'overview' || activeTab === 'general-journal' || activeTab === 'general-ledger' || reportType !== 'Standard') {
+        let effectiveReportType = reportType
+        if (activeTab === 'general-ledger' && reportType === 'Standard') {
+          effectiveReportType = 'LedgerBreakup'
+        }
+
         let dynamicTitle = 'Transaction Report';
-        if (reportType === 'LedgerBreakup') dynamicTitle = 'Ledger-wise Breakup Report';
-        else if (reportType === 'PropertyBreakup') dynamicTitle = 'Property-wise Breakup Report';
-        else if (reportType === 'SupplierBreakup') dynamicTitle = 'Supplier-wise Breakup Report';
-        else if (reportType === 'TenantBreakup') dynamicTitle = 'Tenant-wise Breakup Report';
+        if (effectiveReportType === 'LedgerBreakup' && activeTab !== 'general-ledger') dynamicTitle = 'Ledger-wise Breakup Report';
+        else if (effectiveReportType === 'PropertyBreakup') dynamicTitle = 'Property-wise Breakup Report';
+        else if (effectiveReportType === 'SupplierBreakup') dynamicTitle = 'Supplier-wise Breakup Report';
+        else if (effectiveReportType === 'TenantBreakup') dynamicTitle = 'Tenant-wise Breakup Report';
         else if (activeTab === 'general-ledger') dynamicTitle = 'General Ledger Report';
         else if (activeTab === 'general-journal') dynamicTitle = 'General Journal Report';
         else if (activeTab === 'overview') dynamicTitle = 'Overview Report';
@@ -204,7 +209,7 @@ export default function PropertyReports({
           units,
           tenants,
           leases,
-          reportType: reportType as 'Standard' | 'LedgerBreakup' | 'PropertyBreakup' | 'SupplierBreakup' | 'TenantBreakup',
+          reportType: effectiveReportType as 'Standard' | 'LedgerBreakup' | 'PropertyBreakup' | 'SupplierBreakup' | 'TenantBreakup',
           advancedOptions: advanced
         }
         
