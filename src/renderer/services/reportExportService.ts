@@ -145,7 +145,7 @@ function generateCsv(data: ReportExportInput): string {
   lines.push('KPI Summary')
   lines.push('Metric,Value,Change')
   for (const k of data.kpis) lines.push(`${esc(k.label)},${esc(k.value)},${esc(k.change ? k.change.value : '')}`)
-  return lines.join('\n')
+  return '\uFEFF' + lines.join('\n')
 }
 
 function generateExcel(data: ReportExportInput): Uint8Array {
@@ -937,7 +937,7 @@ export async function exportAccountingExcel(p: ExcelExportParams): Promise<strin
 
 export async function exportAccountingCsv(p: ExcelExportParams): Promise<string | null> {
   const fv = getFilteredVouchers(p)
-  let csv = `${p.reportTitle}\nPeriod: ${p.periodLabel || 'All Time'}\n\nDate,Voucher No,Type,Account,Debit,Credit,Description\n`
+  let csv = '\uFEFF' + `${p.reportTitle}\nPeriod: ${p.periodLabel || 'All Time'}\n\nDate,Voucher No,Type,Account,Debit,Credit,Description\n`
   
   fv.forEach(v => {
     v.lines.forEach(l => {
@@ -1290,7 +1290,7 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
       ...p.rows.map(r => r.map(c => typeof c === 'string' && c.includes(',') ? `"${c}"` : c).join(',')),
       ...(p.foot ? p.foot.map(r => r.map(c => typeof c === 'string' && c.includes(',') ? `"${c}"` : c).join(',')) : [])
     ]
-    const buf = new Blob([lines.join('\n')], { type: 'text/csv' })
+    const buf = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
     return saveWithDialog(`${p.filename}.csv`, [{ name: 'CSV', extensions: ['csv'] }], buf)
   }
 
