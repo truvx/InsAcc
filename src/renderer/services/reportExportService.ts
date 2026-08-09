@@ -1340,7 +1340,8 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
       [`Period: ${p.periodLabel || 'All Time'}`],
       [],
       p.columns,
-      ...p.rows
+      ...p.rows,
+      ...(p.foot || [])
     ]
     const ws = XLSX.utils.aoa_to_sheet(wsData)
     
