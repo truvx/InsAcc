@@ -1366,7 +1366,22 @@ export default function PropertyLeases({
                   <Select
                     label="Property *"
                     value={formPropertyId}
-                    onChange={e => { setFormPropertyId(e.target.value); setFormFloor(''); setFormUnitId('') }}
+                    onChange={e => {
+                      const newPropId = e.target.value
+                      const oldPropName = properties.find(p => p.id === formPropertyId)?.name
+                      const newPropName = properties.find(p => p.id === newPropId)?.name
+                      
+                      setFormPropertyId(newPropId)
+                      setFormFloor('')
+                      setFormUnitId('')
+                      
+                      setFormTags(prev => {
+                        let tagsList = prev.split(',').map(t => t.trim()).filter(Boolean)
+                        if (oldPropName) tagsList = tagsList.filter(t => t !== oldPropName)
+                        if (newPropName && !tagsList.includes(newPropName)) tagsList.push(newPropName)
+                        return tagsList.join(', ')
+                      })
+                    }}
                     options={[{ value: '', label: 'Select Property' }, ...properties.map(p => ({ value: p.id, label: p.name }))]}
                   />
                   <Select
