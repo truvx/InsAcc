@@ -26,7 +26,7 @@ function generateLineId(): string {
 
 export function generateVoucherNumber(type: VoucherType, year: number, sequence: number): string {
   const prefix = type === 'Payment' ? 'PV' : type === 'Receipt' ? 'RV' : type === 'Contra' ? 'CV' : 'JV'
-  return `${prefix}-${year}-${String(sequence).padStart(6, '0')}`
+  return `${prefix}-${year}-${String(sequence).padStart(3, '0')}`
 }
 
 export function getNextSequence(vouchers: Voucher[], type: VoucherType, year: number): number {

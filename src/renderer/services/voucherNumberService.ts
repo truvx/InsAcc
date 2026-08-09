@@ -86,7 +86,7 @@ export class VoucherNumberService {
 
     // Step 2: Propose the next sequential number
     let nextSeq = maxSeq + 1
-    let proposedNumber = `${prefix}-${year}-${String(nextSeq).padStart(6, '0')}`
+    let proposedNumber = `${prefix}-${year}-${String(nextSeq).padStart(3, '0')}`
 
     // Step 3: Concurrency protection — loop until we find a number that has not been used or generated in this session
     while (
@@ -94,7 +94,7 @@ export class VoucherNumberService {
       this.sessionGenerated.has(proposedNumber)
     ) {
       nextSeq++
-      proposedNumber = `${prefix}-${year}-${String(nextSeq).padStart(6, '0')}`
+      proposedNumber = `${prefix}-${year}-${String(nextSeq).padStart(3, '0')}`
     }
 
     // Add to session cache to prevent duplicates generated in quick succession
