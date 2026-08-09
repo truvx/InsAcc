@@ -1201,7 +1201,6 @@ export async function exportSideBySidePdf(p: SideBySideExportParams): Promise<st
   y += 6
   doc.setFontSize(10)
   doc.setTextColor(100, 116, 139)
-  doc.text(p.subtitle || '', 14, y)
 
   y += 10
   
@@ -1287,12 +1286,7 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
     doc.setTextColor(15, 76, 53) // primaryDark
     doc.text(p.title, 14, y)
     
-    if (p.subtitle) {
-      y += 8
-      doc.setFontSize(10)
-      doc.setTextColor(100, 116, 139)
-      doc.text(p.subtitle, 14, y)
-    }
+    // Subtitle deliberately omitted in PDF as it's redundant with cover page details
 
     autoTable(doc, {
       startY: y + 8,
