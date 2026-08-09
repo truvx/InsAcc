@@ -321,7 +321,7 @@ export default function ExportReportModal({
                 value={reportType}
                 onChange={e => setReportType(e.target.value)}
                 options={[
-                  { value: 'Standard', label: 'Standard Transaction Dump' },
+                  { value: 'Standard', label: 'Standard Transaction' },
                   { value: 'LedgerBreakup', label: 'Ledger-wise Breakup' },
                   ...(module === 'Property' ? [
                     { value: 'PropertyBreakup', label: 'Property-wise Breakup' },
