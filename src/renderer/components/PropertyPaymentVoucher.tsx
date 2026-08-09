@@ -145,6 +145,7 @@ export default function PropertyPaymentVoucher({
       )
     }
 
+    if (tagFilter) {
       const q = tagFilter.toLowerCase()
       list = list.filter(v => {
         if (v.tags && v.tags.some(t => t.toLowerCase().includes(q))) return true
