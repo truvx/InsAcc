@@ -105,8 +105,14 @@ export default function PropertyReceiptVoucher({
   const defaultBank = useMemo(() => getDefaultPropertyReceiptBankAccount(propAccounts), [propAccounts])
   const [formBankAccount, setFormBankAccount] = useState(defaultBank ? defaultBank.id : '')
   const [formReceivedFrom, setFormReceivedFrom] = useState('')
+  const [formReference, setFormReference] = useState('')
   const [formPaymentMode, setFormPaymentMode] = useState('Bank Transfer')
   const [formCreditAccount, setFormCreditAccount] = useState('')
+
+  const propertyOptions = useMemo(() => [
+    { value: '', label: 'Select property (optional)' },
+    ...properties.map(p => ({ value: p.name, label: p.name })),
+  ], [properties])
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showAuditModal, setShowAuditModal] = useState(false)
@@ -181,6 +187,7 @@ export default function PropertyReceiptVoucher({
     setFormDescription('')
     setFormBankAccount(defaultBank ? defaultBank.id : '')
     setFormReceivedFrom('')
+    setFormReference('')
     setFormTags('')
     setFormPaymentMode('Bank Transfer')
     const defaultCredit = accounts.find(a => a.code === '4120')?.id || ''
@@ -197,13 +204,11 @@ export default function PropertyReceiptVoucher({
 
     setFormDate(v.date)
     setFormAmount(String(debitLine?.amount || 0))
-    setFormDescription(v.description.replace(/\s*\(from.*\)$/i, ''))
+    setFormDescription(v.description.replace(/\s*\(from.*\)$/i, '').trim())
+    setFormTags(v.tags ? v.tags.join(', ') : '')
     setFormBankAccount(bankId)
-    setFormCreditAccount(creditLine ? creditLine.accountId : '')
-
-    const payerMatch = v.description.match(/\(from\s+(.*)\)$/i)
-    setFormReceivedFrom(payerMatch ? payerMatch[1] : v.reference || '')
-
+    setFormReceivedFrom(v.description.match(/\(from\s+(.*)\)$/i)?.[1] || '')
+    setFormReference(v.reference || '')
     setFormPaymentMode(v.paymentMode || 'Bank Transfer')
     setFormTags(v.tags ? v.tags.join(', ') : '')
     setEditingId(v.id)
@@ -276,7 +281,7 @@ export default function PropertyReceiptVoucher({
       bankAccountId = mappedId
     }
 
-    const ref = formReceivedFrom || undefined
+    const ref = formReference || formReceivedFrom || undefined
     const desc = formDescription + (formReceivedFrom ? ` (from ${formReceivedFrom})` : '')
     const targetCreditAccount = formCreditAccount || accounts.find(a => a.code === '4120')?.id
 
@@ -319,7 +324,7 @@ export default function PropertyReceiptVoucher({
         ...oldVoucher,
         date: formDate,
         description: desc,
-        reference: formReceivedFrom || '',
+        reference: formReference || formReceivedFrom || '',
         modifiedAt: new Date().toISOString(),
         modifiedBy: 'user',
         paymentMode: formPaymentMode as any,
@@ -403,7 +408,7 @@ export default function PropertyReceiptVoucher({
         ...postResult.voucher,
         paymentMode: formPaymentMode as any,
         paymentChannel: formPaymentMode === 'Cash' ? 'Cash In Hand' : 'Bank Account',
-        reference: leaseRef || '',
+        reference: leaseRef || formReference || '',
         tags: formTags ? formTags.split(',').map(t => t.trim()).filter(Boolean) : []
       }
 
@@ -628,6 +633,9 @@ export default function PropertyReceiptVoucher({
             placeholder="Tenant or payer name"
             customLabel="Use custom payer"
           />
+          <Select label="Reference Property" value={formReference} onChange={e => setFormReference(e.target.value)} options={propertyOptions} />
+        </div>
+        <div className="form-row">
           <Select
             label="Account to Credit (Income/Liability)"
             value={formCreditAccount}
