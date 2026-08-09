@@ -2951,6 +2951,38 @@ export default function App() {
     setPropFiscalYears, setInvFiscalYears,
   ])
 
+  useEffect(() => {
+    if (propProperties.length > 0) {
+      const hasMigrated = localStorage.getItem('insacc_migration_tilal_4');
+      if (!hasMigrated) {
+        const targetProperty = propProperties[0]?.name;
+        if (!targetProperty) return;
+        
+        let updatedTxs = false;
+        const newTxs = propTransactions.map(tx => {
+          if (!tx.tags?.includes(targetProperty)) {
+            updatedTxs = true;
+            return { ...tx, tags: [...(tx.tags || []), targetProperty] };
+          }
+          return tx;
+        });
+        if (updatedTxs) setPropTransactions(newTxs);
+
+        let updatedVouchers = false;
+        const newVouchers = propVouchers.map(v => {
+          if (!v.tags?.includes(targetProperty)) {
+            updatedVouchers = true;
+            return { ...v, tags: [...(v.tags || []), targetProperty] };
+          }
+          return v;
+        });
+        if (updatedVouchers) setPropVouchers(newVouchers);
+
+        localStorage.setItem('insacc_migration_tilal_4', 'true');
+      }
+    }
+  }, [propProperties, propTransactions, propVouchers, setPropTransactions, setPropVouchers]);
+
   const renderPageContent = useCallback(() => {
     if (activeModule === 'property') {
       return (
