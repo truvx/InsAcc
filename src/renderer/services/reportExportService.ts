@@ -91,6 +91,13 @@ function generatePdf(data: ReportExportInput): ArrayBuffer {
   const currency = data.currency
   let y = PAGE_MARGIN + 5
 
+  if (data.moduleName) {
+    doc.setFontSize(FONT_SIZE_SUBTITLE)
+    doc.setTextColor(...COLORS.secondary)
+    doc.text(data.moduleName, PAGE_MARGIN, y)
+    y += 5
+  }
+
   doc.setFontSize(FONT_SIZE_TITLE)
   doc.setTextColor(...COLORS.primary)
   doc.text('InsAcc Financial Report', PAGE_MARGIN, y)
@@ -1318,11 +1325,24 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
     )
 
     // Report Page
+    if (p.moduleName) {
+      doc.setFontSize(12)
+      doc.setTextColor(100, 116, 139) // Slate-500
+      doc.text(p.moduleName, 14, y)
+      y += 6
+    }
+    
     doc.setFontSize(18)
     doc.setTextColor(15, 76, 53) // primaryDark
     doc.text(p.title, 14, y)
+    y += 6
     
-    // Subtitle deliberately omitted in PDF as it's redundant with cover page details
+    if (p.subtitle) {
+      doc.setFontSize(10)
+      doc.setTextColor(100, 116, 139)
+      doc.text(p.subtitle, 14, y)
+      y += 4
+    }
 
     autoTable(doc, {
       startY: y + 8,
