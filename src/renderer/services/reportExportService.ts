@@ -783,6 +783,11 @@ function getGroupedData(p: ExcelExportParams, fv: Voucher[]): { groupName: strin
   
   fv.forEach(v => {
     v.lines.forEach(l => {
+      // If an account filter is applied, only group the lines that match the filter.
+      if (p.reportType === 'LedgerBreakup' && p.filters?.accountId && p.filters.accountId !== 'All') {
+        if (l.accountId !== p.filters.accountId) return
+      }
+
       let key = 'Uncategorized'
       
       if (p.reportType === 'LedgerBreakup') {
@@ -1073,10 +1078,12 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
   doc.setTextColor(100, 116, 139)
   doc.text(`Generated: ${new Date().toLocaleDateString()} | Period: ${p.periodLabel}`, 14, y)
 
-  y += 8
-  doc.text(`Total Debits: ${p.currency} ${totDr.toLocaleString(undefined, {minimumFractionDigits: 2})} | Total Credits: ${p.currency} ${totCr.toLocaleString(undefined, {minimumFractionDigits: 2})}`, 14, y)
-
   const isBreakup = p.reportType && p.reportType !== 'Standard'
+  
+  if (!isBreakup) {
+    y += 8
+    doc.text(`Total Debits: ${p.currency} ${totDr.toLocaleString(undefined, {minimumFractionDigits: 2})} | Total Credits: ${p.currency} ${totCr.toLocaleString(undefined, {minimumFractionDigits: 2})}`, 14, y)
+  }
   
   if (isBreakup) {
     const groupedData = getGroupedData(p, fv)
