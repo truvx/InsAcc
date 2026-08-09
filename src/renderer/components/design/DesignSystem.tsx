@@ -206,7 +206,7 @@ export function Select({
   const filteredOptions = useMemo(() => {
     if (!searchable || !searchQuery) return safeOptions
     const q = searchQuery.toLowerCase()
-    return safeOptions.filter(o => o.label?.toLowerCase().includes(q))
+    return safeOptions.filter(o => String(o.label).toLowerCase().includes(q))
   }, [safeOptions, searchable, searchQuery])
 
   return (
