@@ -66,10 +66,10 @@ export default function InvestmentHoldings({
         h.assetType,
         bank?.institution || '—',
         h.totalQuantity,
-        h.totalInvested,
-        h.avgPurchaseValue,
-        h.totalQuantity > 0 ? h.marketValue / h.totalQuantity : 0,
-        h.marketValue
+        parseFloat(h.totalInvested.toFixed(2)),
+        parseFloat(h.avgPurchaseValue.toFixed(2)),
+        h.totalQuantity > 0 ? parseFloat((h.marketValue / h.totalQuantity).toFixed(2)) : 0,
+        parseFloat(h.marketValue.toFixed(2))
       ]
     })
 
