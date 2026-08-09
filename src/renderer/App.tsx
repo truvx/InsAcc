@@ -2953,7 +2953,7 @@ export default function App() {
 
   useEffect(() => {
     if (propProperties.length > 0) {
-      const hasMigrated = localStorage.getItem('insacc_migration_tilal_4');
+      const hasMigrated = localStorage.getItem('insacc_migration_tilal_7');
       if (!hasMigrated) {
         const targetProperty = propProperties[0]?.name;
         if (!targetProperty) return;
@@ -2969,19 +2969,19 @@ export default function App() {
         if (updatedTxs) setPropTransactions(newTxs);
 
         let updatedVouchers = false;
-        const newVouchers = propVouchers.map(v => {
+        const newVouchers = vouchers.map(v => {
           if (!v.tags?.includes(targetProperty)) {
             updatedVouchers = true;
             return { ...v, tags: [...(v.tags || []), targetProperty] };
           }
           return v;
         });
-        if (updatedVouchers) setPropVouchers(newVouchers);
+        if (updatedVouchers) setVouchers(newVouchers);
 
-        localStorage.setItem('insacc_migration_tilal_4', 'true');
+        localStorage.setItem('insacc_migration_tilal_7', 'true');
       }
     }
-  }, [propProperties, propTransactions, propVouchers, setPropTransactions, setPropVouchers]);
+  }, [propProperties, propTransactions, vouchers, setPropTransactions, setVouchers]);
 
   const renderPageContent = useCallback(() => {
     if (activeModule === 'property') {
