@@ -26,6 +26,7 @@ import AuditTrailModal from './design/AuditTrailModal'
 import { printVoucher } from '../utils/printVoucherHelper'
 import { exportVoucherToPDF } from '../utils/pdfVoucherHelper'
 import type { AuditEvent } from '../data/auditTypes'
+import { mergeTags } from './PropertyVouchersTagHelper'
 
 const EXPENSE_ACCOUNTS = [
   { code: '5120', name: 'Maintenance' },
@@ -54,6 +55,8 @@ interface Props {
   onAuditEvent?: (event: AuditEvent) => void
   auditEvents?: AuditEvent[]
   vendors?: VendorEntry[]
+  propTransactions?: any[]
+  propExpenses?: any[]
 }
 
 export default function PropertyPaymentVoucher({
@@ -67,6 +70,8 @@ export default function PropertyPaymentVoucher({
   onAuditEvent,
   auditEvents = [],
   vendors = [],
+  propTransactions = [],
+  propExpenses = [],
 }: Props) {
   const {
     detailVoucher, setDetailVoucher,
@@ -114,8 +119,11 @@ export default function PropertyPaymentVoucher({
   const [auditVoucher, setAuditVoucher] = useState<Voucher | null>(null)
 
   const paymentVouchers = useMemo(() =>
-    vouchers.filter(v => v.type === 'Payment' && !v.isDeleted).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [vouchers]
+    vouchers.filter(v => v.type === 'Payment' && !v.isDeleted).map(v => ({
+      ...v,
+      tags: mergeTags(v.tags, v.id, v.reference, propTransactions, propExpenses, [], [])
+    })).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [vouchers, propTransactions, propExpenses]
   )
 
   const filtered = useMemo(() => {

@@ -13,6 +13,7 @@ import { VoucherNumberService } from '../services/voucherNumberService'
 import { invalidateBalanceCache } from '../accounting/ledgerService'
 import { CurrencyText } from './design/CurrencyText'
 import { exportTableData } from '../services/reportExportService'
+import { mergeTxnTags } from './PropertyTransactionTagHelper'
 
 interface Props {
   currency?: string
@@ -604,7 +605,8 @@ export default function PropertyTransactions({
   const allTransactions = useMemo(() => {
     const manualTxns = propTransactions.map(t => ({
       ...t,
-      bankAccountId: (t as any).bankAccountId || null
+      bankAccountId: (t as any).bankAccountId || null,
+      tags: mergeTxnTags(t.tags, t.id, vouchers)
     }))
 
     const pdcTxns = (pdcCheques || []).map(c => {
@@ -624,6 +626,7 @@ export default function PropertyTransactions({
         paymentMode: 'Post Dated Cheque (PDC)' as const,
         paymentChannel: 'Bank Account' as const,
         paymentReference: c.chequeNumber,
+        tags: mergeTxnTags([], c.id, vouchers),
         bankAccountId: c.bankAccountId || null,
         createdAt: c.createdAt,
         updatedAt: c.updatedAt,
@@ -656,7 +659,7 @@ export default function PropertyTransactions({
             paymentMode: t.paymentMode || 'Bank Transfer',
             paymentChannel: t.paymentChannel || 'Bank Account',
             paymentReference: t.paymentReference,
-            tags: t.tags || [],
+            tags: mergeTxnTags(t.tags, t.id, vouchers),
             bankAccountId: t.bankAccountId || null,
             createdAt: t.createdAt,
             updatedAt: t.updatedAt,
@@ -680,7 +683,7 @@ export default function PropertyTransactions({
         paymentMode: e.paymentMode || e.paymentMethod || 'Bank Transfer',
         paymentChannel: e.paymentChannel || 'Bank Account',
         paymentReference: e.paymentReference || e.referenceNumber,
-        tags: e.tags || [],
+        tags: mergeTxnTags(e.tags, e.id, vouchers),
         bankAccountId: e.bankAccountId || null,
         createdAt: e.createdAt,
         updatedAt: e.updatedAt,
@@ -720,7 +723,7 @@ export default function PropertyTransactions({
         paymentMode: v.paymentMode || 'Bank Transfer',
         paymentChannel: v.paymentChannel || 'Bank Account',
         paymentReference: v.paymentReference,
-        tags: v.tags || [],
+        tags: mergeTxnTags(v.tags, v.id, vouchers), // Though it's a voucher, mergeTxnTags will just return its tags because it matches by ID. But actually, v.tags is fine. Let's just use v.tags to save performance
         bankAccountId: null,
         createdAt: v.createdAt,
         updatedAt: v.updatedAt,

@@ -21,6 +21,7 @@ import { printVoucher } from '../utils/printVoucherHelper'
 import { exportVoucherToPDF } from '../utils/pdfVoucherHelper'
 import type { AuditEvent } from '../data/auditTypes'
 import type { VendorEntry, TenantEntry, PropertyEntry, UnitEntry, LeaseEntry } from '../data/propertyTypes'
+import { mergeTags } from './PropertyVouchersTagHelper'
 
 interface Props {
   currency?: string
@@ -39,6 +40,10 @@ interface Props {
   properties?: PropertyEntry[]
   units?: UnitEntry[]
   leases?: LeaseEntry[]
+  propTransactions?: any[]
+  propExpenses?: any[]
+  pdcCheques?: any[]
+  securityDeposits?: any[]
 }
 
 export default function PropertyJournalVoucher({
@@ -53,6 +58,10 @@ export default function PropertyJournalVoucher({
   properties = [],
   units = [],
   leases = [],
+  propTransactions = [],
+  propExpenses = [],
+  pdcCheques = [],
+  securityDeposits = [],
 }: Props) {
   const {
     detailVoucher, setDetailVoucher,
@@ -88,8 +97,11 @@ export default function PropertyJournalVoucher({
   const [auditVoucher, setAuditVoucher] = useState<Voucher | null>(null)
 
   const journalVouchers = useMemo(() =>
-    vouchers.filter(v => v.type === 'Journal' && !v.isDeleted).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [vouchers]
+    vouchers.filter(v => v.type === 'Journal' && !v.isDeleted).map(v => ({
+      ...v,
+      tags: mergeTags(v.tags, v.id, v.reference, propTransactions, propExpenses, pdcCheques, securityDeposits)
+    })).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [vouchers, propTransactions, propExpenses, pdcCheques, securityDeposits]
   )
 
   const filtered = useMemo(() => {

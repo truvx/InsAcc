@@ -336,6 +336,9 @@ export default function PropertyRouter(props: Props) {
         onAuditEvent={setPropAuditEvents ? (e => setPropAuditEvents(prev => [e, ...prev])) : undefined}
         auditEvents={propAuditEvents}
         vendors={propVendors}
+        propTransactions={propTransactions}
+        propExpenses={propExpenses}
+        securityDeposits={securityDeposits}
       />
     case 'payment-voucher':
       return <PropertyPaymentVoucher
@@ -348,6 +351,8 @@ export default function PropertyRouter(props: Props) {
         onAuditEvent={setPropAuditEvents ? (e => setPropAuditEvents(prev => [e, ...prev])) : undefined}
         auditEvents={propAuditEvents}
         vendors={propVendors}
+        propTransactions={propTransactions}
+        propExpenses={propExpenses}
       />
     case 'journal-voucher':
       return <PropertyJournalVoucher
@@ -363,6 +368,10 @@ export default function PropertyRouter(props: Props) {
         properties={mappedProperties}
         units={mappedUnits}
         leases={propLeases}
+        propTransactions={propTransactions}
+        propExpenses={propExpenses}
+        pdcCheques={pdcCheques}
+        securityDeposits={securityDeposits}
       />
     case 'chart-of-accounts':
       return <PropertyChartOfAccounts
