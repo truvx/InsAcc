@@ -15,6 +15,8 @@ import VoucherStatusBadge from './design/VoucherStatusBadge'
 import VoucherDetailsModal from './design/VoucherDetailsModal'
 import ActionsMenu from './design/ActionsMenu'
 
+import { PartyLookupService } from '../services/partyLookupService'
+import { SearchablePartySelect } from './design/SearchablePartySelect'
 import AuditTrailModal from './design/AuditTrailModal'
 import { printVoucher } from '../utils/printVoucherHelper'
 import { exportVoucherToPDF } from '../utils/pdfVoucherHelper'
@@ -78,7 +80,24 @@ export default function PropertyJournalVoucher({
   const [formCreditAccount, setFormCreditAccount] = useState('')
   const [formAmount, setFormAmount] = useState('')
   const [formTags, setFormTags] = useState('')
+  const [formReference, setFormReference] = useState('')
+  const [formParty, setFormParty] = useState('')
   const [tagFilter, setTagFilter] = useState('')
+
+  const propertyOptions = useMemo(() => [
+    { value: '', label: 'Select property (optional)' },
+    ...properties.map(p => ({ value: p.name, label: p.name })),
+  ], [properties])
+
+  const lookupService = useMemo(() => new PartyLookupService({
+    properties,
+    units,
+    tenants,
+    propVendors: vendors,
+    leases,
+  }), [properties, units, tenants, vendors, leases])
+
+  const allParties = useMemo(() => lookupService.getAllPropertyParties(), [lookupService])
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showAuditModal, setShowAuditModal] = useState(false)
@@ -133,6 +152,8 @@ export default function PropertyJournalVoucher({
     setFormCreditAccount('')
     setFormAmount('')
     setFormTags('')
+    setFormReference('')
+    setFormParty('')
     setEditingId(null)
   }
 
@@ -142,10 +163,15 @@ export default function PropertyJournalVoucher({
 
     setFormDate(v.date)
     setFormAmount(String(debitLine?.amount || 0))
-    setFormDescription(v.description)
+    
+    const partyMatch = v.description.match(/\(Party:\s+(.*)\)$/i)
+    setFormParty(partyMatch ? partyMatch[1] : '')
+    setFormDescription(v.description.replace(/\s*\(Party:.*\)$/i, '').trim())
+    
     setFormDebitAccount(debitLine?.accountId || '')
     setFormCreditAccount(creditLine?.accountId || '')
     setFormTags(v.tags ? v.tags.join(', ') : '')
+    setFormReference(v.reference || '')
     setEditingId(v.id)
     setShowForm(true)
   }
@@ -154,8 +180,11 @@ export default function PropertyJournalVoucher({
     openEditForm(v)
     setEditingId(null)
     setFormDate(new Date().toISOString().split('T')[0])
-    setFormDescription(`Copy of ${v.description}`)
+    setFormDescription(`Copy of ${v.description.replace(/\s*\(Party:.*\)$/i, '').trim()}`)
     setFormTags(v.tags ? v.tags.join(', ') : '')
+    const partyMatch = v.description.match(/\(Party:\s+(.*)\)$/i)
+    setFormParty(partyMatch ? partyMatch[1] : '')
+    setFormReference(v.reference || '')
   }
 
   const handleDelete = (v: Voucher) => {
@@ -218,6 +247,8 @@ export default function PropertyJournalVoucher({
       return
     }
 
+    const desc = formParty ? `${formDescription} (Party: ${formParty})` : formDescription
+
     if (editingId) {
       const oldVoucher = vouchers.find(v => v.id === editingId)
       if (!oldVoucher) return
@@ -225,7 +256,8 @@ export default function PropertyJournalVoucher({
       const updatedVoucher: Voucher = {
         ...oldVoucher,
         date: formDate,
-        description: formDescription,
+        description: desc,
+        reference: formReference,
         tags: formTags ? formTags.split(',').map(t => t.trim()).filter(Boolean) : [],
         modifiedAt: new Date().toISOString(),
         modifiedBy: 'user',
@@ -236,7 +268,7 @@ export default function PropertyJournalVoucher({
               accountId: formDebitAccount,
               amount: amt,
               baseAmount: amt,
-              narration: formDescription,
+              narration: desc,
             }
           } else {
             return {
@@ -244,7 +276,7 @@ export default function PropertyJournalVoucher({
               accountId: formCreditAccount,
               amount: amt,
               baseAmount: amt,
-              narration: formDescription,
+              narration: desc,
             }
           }
         })
@@ -278,7 +310,7 @@ export default function PropertyJournalVoucher({
         {
           amount: amt,
           date: formDate,
-          description: formDescription,
+          description: desc,
           currency,
           exchangeRate: 1,
           baseCurrency: 'AED',
@@ -302,7 +334,10 @@ export default function PropertyJournalVoucher({
         return
       }
 
-      const newVch: Voucher = { ...postResult.voucher }
+      const newVch: Voucher = { 
+        ...postResult.voucher,
+        reference: formReference
+      }
 
       setVouchers(prev => [newVch, ...prev])
       setShowForm(false)
@@ -431,8 +466,19 @@ export default function PropertyJournalVoucher({
         onSubmit={handleCreateVoucher}
       >
         <div className="form-row">
-          <Input label="Date" type="date" value={formDate} onChange={e => setFormDate(e.target.value)} />
+          <DateInput label="Date" value={formDate} onChange={e => setFormDate(e.target.value)} />
           <Input label={`Amount (${currency})`} type="number" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0" />
+        </div>
+        <div className="form-row">
+          <SearchablePartySelect
+            label="Counterparty (Optional)"
+            value={formParty}
+            onChange={setFormParty}
+            parties={allParties}
+            placeholder="Search Buyers & Counterparties"
+            customLabel="Use custom party"
+          />
+          <Select label="Reference Property" value={formReference} onChange={e => setFormReference(e.target.value)} options={propertyOptions} />
         </div>
         <div className="form-row">
           <Input label="Description" value={formDescription} onChange={e => setFormDescription(e.target.value)} placeholder="e.g. PDC adjustment" />
