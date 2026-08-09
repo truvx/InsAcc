@@ -138,6 +138,7 @@ function generateCsv(data: ReportExportInput): string {
     const s = String(v)
     return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g, '""')}"` : s
   }
+  if (data.moduleName) lines.push(esc(data.moduleName))
   lines.push('InsAcc Financial Report')
   lines.push(`Generated,${esc(new Date().toLocaleDateString())}`)
   lines.push(`Period,${esc(data.periodLabel)}`)
@@ -938,7 +939,8 @@ export async function exportAccountingExcel(p: ExcelExportParams): Promise<strin
 
 export async function exportAccountingCsv(p: ExcelExportParams): Promise<string | null> {
   const fv = getFilteredVouchers(p)
-  let csv = '\uFEFF' + `${p.reportTitle}\nPeriod: ${p.periodLabel || 'All Time'}\n\nDate,Voucher No,Type,Account,Debit,Credit,Description\n`
+  const modStr = p.module === 'Property' ? 'Properties Management' : 'Investment Portfolio'
+  let csv = '\uFEFF' + `${modStr}\n${p.reportTitle}\nPeriod: ${p.periodLabel || 'All Time'}\n\nDate,Voucher No,Type,Account,Debit,Credit,Description\n`
   
   fv.forEach(v => {
     v.lines.forEach(l => {
