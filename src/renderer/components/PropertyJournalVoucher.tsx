@@ -466,7 +466,7 @@ export default function PropertyJournalVoucher({
         onSubmit={handleCreateVoucher}
       >
         <div className="form-row">
-          <DateInput label="Date" value={formDate} onChange={e => setFormDate(e.target.value)} />
+          <Input label="Date" type="date" value={formDate} onChange={e => setFormDate(e.target.value)} />
           <Input label={`Amount (${currency})`} type="number" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0" />
         </div>
         <div className="form-row">
