@@ -1260,6 +1260,7 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
     const lines = [
       p.title,
       ...(p.subtitle ? [p.subtitle] : []),
+      `Period: ${p.periodLabel || 'All Time'}`,
       '',
       p.columns.join(','),
       ...p.rows.map(r => r.map(c => typeof c === 'string' && c.includes(',') ? `"${c}"` : c).join(',')),
@@ -1311,6 +1312,7 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
     const wsData = [
       [p.title],
       ...(p.subtitle ? [[p.subtitle]] : []),
+      [`Period: ${p.periodLabel || 'All Time'}`],
       [],
       p.columns,
       ...p.rows
