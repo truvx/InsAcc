@@ -210,6 +210,7 @@ export default function PropertyHierarchy({
 
     try {
       exportTableData({
+      moduleName: 'Properties Management',
         format,
         title: 'Property Portfolio Hierarchy',
         subtitle: 'Structural layout of categories and properties',

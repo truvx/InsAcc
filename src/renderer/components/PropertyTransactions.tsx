@@ -821,6 +821,7 @@ export default function PropertyTransactions({
     ])
 
     exportTableData({
+      moduleName: 'Properties Management',
       format,
       title: 'Property Transactions',
       subtitle: 'Track income and expenses for your property investments',

@@ -153,6 +153,7 @@ function generateExcel(data: ReportExportInput): Uint8Array {
   const wb = XLSX.utils.book_new()
   const summaryData = [
     ['InsAcc Financial Report', ''],
+    ...(data.moduleName ? [['Module', data.moduleName]] : []),
     ['Generated', new Date().toLocaleDateString()],
     ['Period', data.periodLabel],
     ['', ''],
@@ -1336,6 +1337,7 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
     const wb = XLSX.utils.book_new()
     const wsData = [
       [p.title],
+      ...(p.moduleName ? [[`Module: ${p.moduleName}`]] : []),
       ...(p.subtitle ? [[p.subtitle]] : []),
       [`Period: ${p.periodLabel || 'All Time'}`],
       [],

@@ -717,6 +717,7 @@ export default function PropertyExpenses({
     })
 
     exportTableData({
+      moduleName: 'Properties Management',
       format,
       title: 'Property Expenses',
       subtitle: 'List of all operating expenses',

@@ -649,6 +649,7 @@ export default function PurchaseLedger({
     ]
 
     exportTableData({
+      moduleName: 'Investment Portfolio',
       format,
       title: 'Purchase Ledger',
       subtitle: `Exported on ${formatDate(new Date().toISOString(), dateFormat)}`,

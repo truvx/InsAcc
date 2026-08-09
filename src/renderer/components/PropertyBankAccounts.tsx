@@ -1045,6 +1045,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
               const currentBalance = exportStatement.length > 0 ? exportStatement[exportStatement.length - 1].balance : (acc.openingBalance || 0)
 
               exportTableData({
+      moduleName: 'Properties Management',
                 format: exportFormat,
                 title: `${acc.institution} Ledger`,
                 subtitle: `Account: ${acc.accountNumber} - Current Balance: ${formatCurrency(currentBalance, currency)}`,

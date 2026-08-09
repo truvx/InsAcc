@@ -153,6 +153,7 @@ export default function InvestmentPaymentVoucher({
       })
       
       exportTableData({
+      moduleName: 'Investment Portfolio',
         title: 'Investment Payment Vouchers',
         subtitle: `Report generated on ${new Date().toLocaleDateString()}${dateFrom || dateTo ? ` | Period: ${dateFrom || 'Start'} to ${dateTo || 'End'}` : ''}`,
         columns,

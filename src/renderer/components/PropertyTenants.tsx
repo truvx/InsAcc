@@ -230,6 +230,7 @@ export default function PropertyTenants({ currency: _currency, dateFormat = 'DD/
     ])
 
     exportTableData({
+      moduleName: 'Properties Management',
       format,
       title: 'Tenant Management',
       subtitle: 'List of all property tenants',

@@ -1086,6 +1086,7 @@ export default function PropertyLeases({
     })
 
     exportTableData({
+      moduleName: 'Properties Management',
       format,
       title: 'Lease Management',
       subtitle: 'List of all property leases',

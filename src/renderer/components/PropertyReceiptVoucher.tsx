@@ -544,6 +544,7 @@ export default function PropertyReceiptVoucher({
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     exportTableData({
+      moduleName: 'Properties Management',
       format,
       title: 'Receipt Vouchers',
       subtitle: `Total Vouchers: ${filtered.length}`,

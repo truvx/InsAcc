@@ -385,6 +385,7 @@ export default function PropertyJournalVoucher({
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     exportTableData({
+      moduleName: 'Properties Management',
       format,
       title: 'Journal Vouchers',
       subtitle: `Total Journals: ${filtered.length}`,

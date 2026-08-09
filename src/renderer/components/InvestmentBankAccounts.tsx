@@ -154,6 +154,7 @@ export default function InvestmentBankAccounts({
     })
 
     exportTableData({
+      moduleName: 'Investment Portfolio',
       format,
       title: 'Bank Accounts Summary',
       subtitle: `Exported on ${formatDate(new Date().toISOString(), dateFormat)}`,

@@ -868,6 +868,7 @@ export default function PropertyPdcManager({
     })
 
     exportTableData({
+      moduleName: 'Properties Management',
       format,
       title: 'Post-Dated Cheques (PDC) Schedule',
       subtitle: `Exported on ${formatDate(new Date().toISOString(), dateFormat)}`,

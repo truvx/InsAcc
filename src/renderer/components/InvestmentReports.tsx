@@ -328,6 +328,7 @@ export default function InvestmentReports({
       }
 
       await exportTableData({
+      moduleName: 'Investment Portfolio',
         format,
         title,
         subtitle: `Investment Portfolio`,

@@ -72,6 +72,7 @@ export default function InvestmentHoldings({
     })
 
     exportTableData({
+      moduleName: 'Investment Portfolio',
       format,
       title: 'Investment Holdings',
       subtitle: `Exported on ${new Date().toISOString().split('T')[0]}`,

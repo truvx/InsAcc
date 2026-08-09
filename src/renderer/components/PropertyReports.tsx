@@ -326,6 +326,7 @@ export default function PropertyReports({
       }
 
       await exportTableData({
+      moduleName: 'Properties Management',
         format,
         title,
         subtitle: `Properties Management`,

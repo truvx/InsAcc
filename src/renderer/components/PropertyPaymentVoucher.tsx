@@ -508,6 +508,7 @@ export default function PropertyPaymentVoucher({
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     exportTableData({
+      moduleName: 'Properties Management',
       format,
       title: 'Payment Vouchers',
       subtitle: `Total Vouchers: ${filtered.length}`,

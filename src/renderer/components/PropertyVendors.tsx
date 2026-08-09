@@ -317,6 +317,7 @@ export default function PropertyVendors({
     ])
 
     exportTableData({
+      moduleName: 'Properties Management',
       format,
       title: 'Vendors & Suppliers',
       subtitle: 'List of all registered property vendors',
