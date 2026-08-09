@@ -7,7 +7,6 @@ import type { PurchaseRecord, ValidationError, AdditionalCostLine } from '../dat
 import type { AuditEvent } from '../data/auditTypes'
 import type { DocItem } from './Documents'
 import { AssetHoldingModal } from './InvestmentHoldings'
-import { getAssetWeightMultiplier } from '../data/investmentMasterData'
 import { mergePurchaseTags } from './InvestmentVouchersTagHelper'
 import type { InvestmentCategory, InvestmentAsset } from '../data/investmentMasterData'
 import { getActiveCategories, getAssetsForCategory, findCategoryByName, formatAssetType } from '../data/investmentMasterData'

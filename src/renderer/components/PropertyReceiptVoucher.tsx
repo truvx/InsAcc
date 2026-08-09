@@ -207,10 +207,10 @@ export default function PropertyReceiptVoucher({
     setFormDescription(v.description.replace(/\s*\(from.*\)$/i, '').trim())
     setFormTags(v.tags ? v.tags.join(', ') : '')
     setFormBankAccount(bankId)
+    setFormCreditAccount(creditLine ? creditLine.accountId : '')
     setFormReceivedFrom(v.description.match(/\(from\s+(.*)\)$/i)?.[1] || '')
     setFormReference(v.reference || '')
     setFormPaymentMode(v.paymentMode || 'Bank Transfer')
-    setFormTags(v.tags ? v.tags.join(', ') : '')
     setEditingId(v.id)
     setShowForm(true)
   }

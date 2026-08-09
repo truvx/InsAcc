@@ -172,6 +172,12 @@ export function Select({
     setSearchQuery('')
   }
 
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !searchQuery) return safeOptions
+    const q = searchQuery.toLowerCase()
+    return safeOptions.filter(o => String(o.label).toLowerCase().includes(q))
+  }, [safeOptions, searchable, searchQuery])
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (disabled) return
 
@@ -179,8 +185,8 @@ export function Select({
       e.preventDefault()
       if (!isOpen) {
         setIsOpen(true)
-      } else if (highlightedIndex >= 0 && highlightedIndex < (filteredOptions || safeOptions).length) {
-        handleSelect((filteredOptions || safeOptions)[highlightedIndex].value)
+      } else if (highlightedIndex >= 0 && highlightedIndex < filteredOptions.length) {
+        handleSelect(filteredOptions[highlightedIndex].value)
       }
     } else if (e.key === 'Escape') {
       setIsOpen(false)
@@ -189,7 +195,7 @@ export function Select({
       if (!isOpen) {
         setIsOpen(true)
       } else {
-        const listLength = (filteredOptions || safeOptions).length || 1
+        const listLength = filteredOptions.length || 1
         setHighlightedIndex(prev => (prev + 1) % listLength)
       }
     } else if (e.key === 'ArrowUp') {
@@ -197,17 +203,11 @@ export function Select({
       if (!isOpen) {
         setIsOpen(true)
       } else {
-        const listLength = (filteredOptions || safeOptions).length || 1
+        const listLength = filteredOptions.length || 1
         setHighlightedIndex(prev => (prev - 1 + listLength) % listLength)
       }
     }
   }
-
-  const filteredOptions = useMemo(() => {
-    if (!searchable || !searchQuery) return safeOptions
-    const q = searchQuery.toLowerCase()
-    return safeOptions.filter(o => String(o.label).toLowerCase().includes(q))
-  }, [safeOptions, searchable, searchQuery])
 
   return (
     <div
