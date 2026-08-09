@@ -331,7 +331,10 @@ export default function PropertyTransactions({
     setFormTags(txn.tags?.join(', ') || '')
     
     // Find the mapped bank account ID from the voucher line
-    const v = vouchers.find(vc => vc.reference === txn.id)
+    let v = vouchers.find(vc => vc.reference === txn.id) // Try reference (for manual txns)
+    if (!v) v = vouchers.find(vc => vc.id === txn.id) // Try exact ID (for voucher txns)
+    if (!v) v = vouchers.find(vc => vc.id === `vch-exp-${txn.id}`) // Try expense voucher ID
+
     const debitLine = v?.lines.find(l => l.type === 'Debit')
     const creditLine = v?.lines.find(l => l.type === 'Credit')
     const activeLine = txn.type === 'credit' ? debitLine : creditLine
@@ -440,18 +443,34 @@ export default function PropertyTransactions({
         onAuditEvent?.(recordModuleEvent('Property Transactions', 'Update', `${displayType} - ${formCategory}`, editingId!, `Updated ${displayType} transaction: ${formCategory} ${currency}${Number(formAmount).toLocaleString()}`, 'Info', prevTxn as any, { date: formDate, type: formType, category: formCategory, amount: Number(formAmount), description: formDescription }))
       }
     } else if (isVoucher) {
+      const bankOrCashAccountId = getBankOrCashAccountId()
       if (setVouchers) {
-        setVouchers(prev => prev.map(v => v.id === editingId ? {
-          ...v,
-          date: formDate,
-          description: formDescription,
-          paymentMode: formPaymentMode as any,
-          paymentChannel: formPaymentChannel,
-          tags: formTags.split(',').map(t => t.trim()).filter(Boolean),
-          updatedAt: new Date().toISOString()
-        } : v))
+        setVouchers(prev => prev.map(v => {
+          if (v.id === editingId) {
+            return {
+              ...v,
+              date: formDate,
+              description: formDescription,
+              paymentMode: formPaymentMode as any,
+              paymentChannel: formPaymentChannel,
+              tags: formTags.split(',').map(t => t.trim()).filter(Boolean),
+              updatedAt: new Date().toISOString(),
+              lines: v.lines.map(l => {
+                if (v.type === 'Payment' && l.type === 'Credit') {
+                  return { ...l, accountId: bankOrCashAccountId }
+                }
+                if (v.type === 'Receipt' && l.type === 'Debit') {
+                  return { ...l, accountId: bankOrCashAccountId }
+                }
+                return l
+              })
+            }
+          }
+          return v
+        }))
       }
     } else if (isExpense) {
+      const bankOrCashAccountId = getBankOrCashAccountId()
       if (setPropExpenses) {
         setPropExpenses(prev => prev.map(e => e.id === editingId ? {
           ...e,
@@ -459,20 +478,32 @@ export default function PropertyTransactions({
           description: formDescription,
           paymentMode: formPaymentMode as any,
           paymentChannel: formPaymentChannel,
+          bankAccountId: formBankAccount,
           updatedAt: new Date().toISOString()
         } : e))
       }
       const expVoucherId = `vch-exp-${editingId}`
       if (setVouchers) {
-        setVouchers(prev => prev.map(v => v.id === expVoucherId ? {
-          ...v,
-          date: formDate,
-          description: formDescription,
-          paymentMode: formPaymentMode as any,
-          paymentChannel: formPaymentChannel,
-          tags: formTags.split(',').map(t => t.trim()).filter(Boolean),
-          updatedAt: new Date().toISOString()
-        } : v))
+        setVouchers(prev => prev.map(v => {
+          if (v.id === expVoucherId) {
+            return {
+              ...v,
+              date: formDate,
+              description: formDescription,
+              paymentMode: formPaymentMode as any,
+              paymentChannel: formPaymentChannel,
+              tags: formTags.split(',').map(t => t.trim()).filter(Boolean),
+              updatedAt: new Date().toISOString(),
+              lines: v.lines.map(l => {
+                if (v.type === 'Payment' && l.type === 'Credit') {
+                  return { ...l, accountId: bankOrCashAccountId }
+                }
+                return l
+              })
+            }
+          }
+          return v
+        }))
       }
     } else {
       setToast({ visible: true, message: 'This automated transaction must be edited from its source module.', type: 'error' })
@@ -1016,7 +1047,6 @@ export default function PropertyTransactions({
               label="Bank Account"
               value={formBankAccount}
               onChange={e => setFormBankAccount(e.target.value)}
-              disabled={editingId !== null && !propTransactions.some(t => t.id === editingId)}
               options={[{ value: '', label: 'Select Bank Account' }, ...propAccounts.map(ba => ({
                 value: ba.id,
                 label: ba.institution,
