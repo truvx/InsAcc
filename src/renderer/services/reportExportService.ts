@@ -4,8 +4,8 @@ import * as XLSX from 'xlsx-js-style'
 import { saveWithDialog } from './exportService'
 import type { MonthlyTrend, AssetAllocation, CategoryBreakdown } from '../data/reports'
 import { formatMonth } from '../utils/reportFormatters'
+import { formatDate } from '../utils'
 import type { Account, Voucher } from '../accounting/types'
-import { formatDate, formatModifiedDateTime } from '../utils'
 
 export interface KpiExportItem {
   label: string
@@ -100,7 +100,7 @@ function generatePdf(data: ReportExportInput): ArrayBuffer {
   doc.setFontSize(FONT_SIZE_SUBTITLE)
   doc.setTextColor(...COLORS.secondary)
   const now = new Date()
-  doc.text(`Generated: ${formatDate(now.toISOString())}`, PAGE_MARGIN, y)
+  doc.text(`Generated: ${now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, PAGE_MARGIN, y)
   y += 5
   doc.text(`Period: ${data.periodLabel}`, PAGE_MARGIN, y)
   y += 10
@@ -141,7 +141,7 @@ function generateCsv(data: ReportExportInput): string {
   }
   if (data.moduleName) lines.push(esc(data.moduleName))
   lines.push('InsAcc Financial Report')
-  lines.push(`Generated,${esc(formatDate(new Date().toISOString()))}`)
+  lines.push(`Generated,${esc(new Date().toLocaleDateString())}`)
   lines.push(`Period,${esc(data.periodLabel)}`)
   lines.push('')
   lines.push('KPI Summary')
@@ -156,7 +156,7 @@ function generateExcel(data: ReportExportInput): Uint8Array {
   const summaryData = [
     ...(data.moduleName ? [[data.moduleName, '']] : []),
     ['InsAcc Financial Report', ''],
-    ['Generated', formatDate(new Date().toISOString())],
+    ['Generated', new Date().toLocaleDateString()],
     ['Period', data.periodLabel],
     ['', ''],
     ['Metric', 'Value'],
@@ -299,14 +299,13 @@ function sectionRow(text: string, cols: number, bg = C.subHdr): XCell[] {
 }
 
 function fmtD(d: string): string {
-  if (!d) return ''
-  return formatDate(d)
+  return formatDate(d, 'DD/MM/YYYY')
 }
 
 function fmtDT(d: string | Date): string {
   try {
     const dt = typeof d === 'string' ? new Date(d) : d
-    return formatModifiedDateTime(dt.toISOString())
+    return dt.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   } catch { return String(d) }
 }
 
@@ -947,7 +946,7 @@ export async function exportAccountingCsv(p: ExcelExportParams): Promise<string 
     v.lines.forEach(l => {
       const acc = p.accounts.find(a => a.id === l.accountId)?.name || l.accountId
       const desc = (l.narration || v.description || '').replace(/"/g, '""')
-      csv += `${v.date},${v.number},${v.type},"${acc}",${l.type === 'Debit' ? l.amount : ''},${l.type === 'Credit' ? l.amount : ''},"${desc}"\n`
+      csv += `${formatDate(v.date, 'DD/MM/YYYY')},${v.number},${v.type},"${acc}",${l.type === 'Debit' ? l.amount : ''},${l.type === 'Credit' ? l.amount : ''},"${desc}"\n`
     })
   })
   
@@ -1020,7 +1019,8 @@ function generatePdfCoverPage(doc: any, title: string, subtitle: string, periodL
   doc.setFont('helvetica', 'bold')
   doc.text('Generated On', labelX, myY, { align: 'right' })
   doc.setFont('helvetica', 'normal')
-  doc.text(formatDate(new Date().toISOString()), valX, myY)
+  const dateOptions: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }
+  doc.text(new Date().toLocaleString('en-GB', dateOptions).replace(',', ''), valX, myY)
   
   if (totalTxns !== undefined) {
     myY += 8
@@ -1067,11 +1067,12 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
   // Report Page
   doc.setFontSize(18)
   doc.setTextColor(15, 76, 53) // primaryDark
-  doc.text(p.reportTitle, 14, y)
-  y += 6
+  doc.text(`InsAcc ${moduleName} Report`, 14, y)
+  
+  y += 10
   doc.setFontSize(10)
-  doc.setFont('helvetica', 'normal')
-  doc.text(`Generated: ${formatDate(new Date().toISOString())} | Period: ${p.periodLabel}`, 14, y)
+  doc.setTextColor(100, 116, 139)
+  doc.text(`Generated: ${new Date().toLocaleDateString()} | Period: ${p.periodLabel}`, 14, y)
 
   y += 8
   doc.text(`Total Debits: ${p.currency} ${totDr.toLocaleString(undefined, {minimumFractionDigits: 2})} | Total Credits: ${p.currency} ${totCr.toLocaleString(undefined, {minimumFractionDigits: 2})}`, 14, y)
@@ -1090,7 +1091,7 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
       const tableData: any[][] = group.lines.map((x: any) => {
         const dStr = String(x.desc || '')
         return [
-          x.v.date,
+          formatDate(x.v.date, 'DD/MM/YYYY'),
           x.v.number,
           x.v.reference || '-',
           x.v.type,
@@ -1128,7 +1129,7 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
         const acc = p.accounts.find(a => a.id === l.accountId)?.name || l.accountId
         const desc = l.narration || v.description || ''
         tableData.push([
-          v.date,
+          formatDate(v.date, 'DD/MM/YYYY'),
           v.number,
           v.reference || '-',
           v.type,
@@ -1421,11 +1422,12 @@ export async function exportFinancialOverviewPdf(p: FinancialOverviewExportParam
   // 2. Report Header
   doc.setFontSize(18)
   doc.setTextColor(15, 76, 53) // primaryDark
-  doc.text(p.title, 14, y)
-  y += 6
+  doc.text(`InsAcc ${p.title}`, 14, y)
+  
+  y += 10
   doc.setFontSize(10)
-  doc.setFont('helvetica', 'normal')
-  doc.text(`Generated: ${formatDate(new Date().toISOString())} | Period: YTD`, 14, y)
+  doc.setTextColor(100, 116, 139)
+  doc.text(`Generated: ${new Date().toLocaleDateString()} | Period: YTD`, 14, y)
 
   y += 15
 
