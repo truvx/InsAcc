@@ -249,6 +249,7 @@ export interface Voucher {
   approvedAt?: string;
   postedBy?: string;
   postedAt?: string;
+  tags?: string[];
   lines: VoucherLine[];
   reversedVoucherId?: string;
   reversalOfVoucherId?: string;

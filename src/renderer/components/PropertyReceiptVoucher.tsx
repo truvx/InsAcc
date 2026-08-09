@@ -89,9 +89,11 @@ export default function PropertyReceiptVoucher({
   const [filterParty, setFilterParty] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [filterTag, setFilterTag] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0])
   const [formAmount, setFormAmount] = useState('')
+  const [formTags, setFormTags] = useState('')
   const [formDescription, setFormDescription] = useState('')
   const defaultBank = useMemo(() => getDefaultPropertyReceiptBankAccount(propAccounts), [propAccounts])
   const [formBankAccount, setFormBankAccount] = useState(defaultBank ? defaultBank.id : '')
@@ -128,6 +130,11 @@ export default function PropertyReceiptVoucher({
       })
     }
 
+    if (filterTag) {
+      const q = filterTag.toLowerCase()
+      list = list.filter(v => v.tags && v.tags.some(t => t.toLowerCase().includes(q)))
+    }
+
     if (!searchQuery) return list
     const q = searchQuery.toLowerCase()
     return list.filter(v =>
@@ -135,7 +142,7 @@ export default function PropertyReceiptVoucher({
       v.description.toLowerCase().includes(q) ||
       v.reference.toLowerCase().includes(q)
     )
-  }, [receiptVouchers, searchQuery, dateFrom, dateTo, filterParty, allParties, leases])
+  }, [receiptVouchers, searchQuery, dateFrom, dateTo, filterParty, filterTag, allParties, leases])
 
   const bankOptions = useMemo(() => [
     { value: '', label: 'Select bank account' },
@@ -164,6 +171,7 @@ export default function PropertyReceiptVoucher({
     setFormDescription('')
     setFormBankAccount(defaultBank ? defaultBank.id : '')
     setFormReceivedFrom('')
+    setFormTags('')
     setFormPaymentMode('Bank Transfer')
     const defaultCredit = accounts.find(a => a.code === '4120')?.id || ''
     setFormCreditAccount(defaultCredit)
@@ -187,6 +195,7 @@ export default function PropertyReceiptVoucher({
     setFormReceivedFrom(payerMatch ? payerMatch[1] : v.reference || '')
 
     setFormPaymentMode(v.paymentMode || 'Bank Transfer')
+    setFormTags(v.tags ? v.tags.join(', ') : '')
     setEditingId(v.id)
     setShowForm(true)
   }
@@ -196,6 +205,7 @@ export default function PropertyReceiptVoucher({
     setEditingId(null)
     setFormDate(new Date().toISOString().split('T')[0])
     setFormDescription(`Copy of ${v.description.replace(/\s*\(from.*\)$/i, '')}`)
+    setFormTags(v.tags ? v.tags.join(', ') : '')
   }
 
   const handleDelete = (v: Voucher) => {
@@ -383,7 +393,8 @@ export default function PropertyReceiptVoucher({
         ...postResult.voucher,
         paymentMode: formPaymentMode as any,
         paymentChannel: formPaymentMode === 'Cash' ? 'Cash In Hand' : 'Bank Account',
-        reference: leaseRef || ''
+        reference: leaseRef || '',
+        tags: formTags ? formTags.split(',').map(t => t.trim()).filter(Boolean) : []
       }
 
       // Settle rent against linked lease
@@ -630,10 +641,13 @@ export default function PropertyReceiptVoucher({
         </div>
         <div className="form-row">
           <Input label="Description" value={formDescription} onChange={e => setFormDescription(e.target.value)} placeholder="e.g. Rent received" />
-          {formPaymentMode !== 'Cash' && (
-            <Select label="Bank Account" value={formBankAccount} onChange={e => setFormBankAccount(e.target.value)} options={bankOptions} />
-          )}
+          <Input label="Tags (comma separated)" value={formTags} onChange={e => setFormTags(e.target.value)} placeholder="e.g. advance, urgent" />
         </div>
+        {formPaymentMode !== 'Cash' && (
+          <div className="form-row">
+            <Select label="Bank Account" value={formBankAccount} onChange={e => setFormBankAccount(e.target.value)} options={bankOptions} />
+          </div>
+        )}
       </EntityForm>
 
       <VoucherDetailsModal
@@ -712,6 +726,22 @@ export default function PropertyReceiptVoucher({
                 parties={allParties}
                 placeholder="Filter by Vendor, Tenant, Property..."
               />
+            </div>
+            <div className="data-table-search" style={{ maxWidth: 'none', width: 'auto', flex: '0 0 auto', padding: '0 12px' }}>
+              <SearchIcon />
+              <input
+                type="text"
+                className="data-table-search-input"
+                style={{ width: 140 }}
+                placeholder="Filter by tag..."
+                value={filterTag}
+                onChange={e => setFilterTag(e.target.value)}
+              />
+              {filterTag && (
+                <button className="data-table-search-clear" onClick={() => setFilterTag('')} aria-label="Clear">
+                  <CloseIcon />
+                </button>
+              )}
             </div>
           </div>
           <div className="data-table-search">
