@@ -5,6 +5,7 @@ import { saveWithDialog } from './exportService'
 import type { MonthlyTrend, AssetAllocation, CategoryBreakdown } from '../data/reports'
 import { formatMonth } from '../utils/reportFormatters'
 import type { Account, Voucher } from '../accounting/types'
+import { formatDate, formatModifiedDateTime } from '../utils'
 
 export interface KpiExportItem {
   label: string
@@ -91,13 +92,6 @@ function generatePdf(data: ReportExportInput): ArrayBuffer {
   const currency = data.currency
   let y = PAGE_MARGIN + 5
 
-  if (data.moduleName) {
-    doc.setFontSize(FONT_SIZE_SUBTITLE)
-    doc.setTextColor(...COLORS.secondary)
-    doc.text(data.moduleName, PAGE_MARGIN, y)
-    y += 5
-  }
-
   doc.setFontSize(FONT_SIZE_TITLE)
   doc.setTextColor(...COLORS.primary)
   doc.text('InsAcc Financial Report', PAGE_MARGIN, y)
@@ -106,7 +100,7 @@ function generatePdf(data: ReportExportInput): ArrayBuffer {
   doc.setFontSize(FONT_SIZE_SUBTITLE)
   doc.setTextColor(...COLORS.secondary)
   const now = new Date()
-  doc.text(`Generated: ${now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, PAGE_MARGIN, y)
+  doc.text(`Generated: ${formatDate(now.toISOString())}`, PAGE_MARGIN, y)
   y += 5
   doc.text(`Period: ${data.periodLabel}`, PAGE_MARGIN, y)
   y += 10
@@ -147,7 +141,7 @@ function generateCsv(data: ReportExportInput): string {
   }
   if (data.moduleName) lines.push(esc(data.moduleName))
   lines.push('InsAcc Financial Report')
-  lines.push(`Generated,${esc(new Date().toLocaleDateString())}`)
+  lines.push(`Generated,${esc(formatDate(new Date().toISOString()))}`)
   lines.push(`Period,${esc(data.periodLabel)}`)
   lines.push('')
   lines.push('KPI Summary')
@@ -162,7 +156,7 @@ function generateExcel(data: ReportExportInput): Uint8Array {
   const summaryData = [
     ...(data.moduleName ? [[data.moduleName, '']] : []),
     ['InsAcc Financial Report', ''],
-    ['Generated', new Date().toLocaleDateString()],
+    ['Generated', formatDate(new Date().toISOString())],
     ['Period', data.periodLabel],
     ['', ''],
     ['Metric', 'Value'],
@@ -306,13 +300,13 @@ function sectionRow(text: string, cols: number, bg = C.subHdr): XCell[] {
 
 function fmtD(d: string): string {
   if (!d) return ''
-  try { return new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) } catch { return d }
+  return formatDate(d)
 }
 
 function fmtDT(d: string | Date): string {
   try {
     const dt = typeof d === 'string' ? new Date(d) : d
-    return dt.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    return formatModifiedDateTime(dt.toISOString())
   } catch { return String(d) }
 }
 
@@ -1026,8 +1020,7 @@ function generatePdfCoverPage(doc: any, title: string, subtitle: string, periodL
   doc.setFont('helvetica', 'bold')
   doc.text('Generated On', labelX, myY, { align: 'right' })
   doc.setFont('helvetica', 'normal')
-  const dateOptions: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }
-  doc.text(new Date().toLocaleString('en-GB', dateOptions).replace(',', ''), valX, myY)
+  doc.text(formatDate(new Date().toISOString()), valX, myY)
   
   if (totalTxns !== undefined) {
     myY += 8
@@ -1074,12 +1067,11 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
   // Report Page
   doc.setFontSize(18)
   doc.setTextColor(15, 76, 53) // primaryDark
-  doc.text(`InsAcc ${moduleName} Report`, 14, y)
-  
-  y += 10
+  doc.text(p.reportTitle, 14, y)
+  y += 6
   doc.setFontSize(10)
-  doc.setTextColor(100, 116, 139)
-  doc.text(`Generated: ${new Date().toLocaleDateString()} | Period: ${p.periodLabel}`, 14, y)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`Generated: ${formatDate(new Date().toISOString())} | Period: ${p.periodLabel}`, 14, y)
 
   y += 8
   doc.text(`Total Debits: ${p.currency} ${totDr.toLocaleString(undefined, {minimumFractionDigits: 2})} | Total Credits: ${p.currency} ${totCr.toLocaleString(undefined, {minimumFractionDigits: 2})}`, 14, y)
@@ -1325,24 +1317,11 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
     )
 
     // Report Page
-    if (p.moduleName) {
-      doc.setFontSize(12)
-      doc.setTextColor(100, 116, 139) // Slate-500
-      doc.text(p.moduleName, 14, y)
-      y += 6
-    }
-    
     doc.setFontSize(18)
     doc.setTextColor(15, 76, 53) // primaryDark
     doc.text(p.title, 14, y)
-    y += 6
     
-    if (p.subtitle) {
-      doc.setFontSize(10)
-      doc.setTextColor(100, 116, 139)
-      doc.text(p.subtitle, 14, y)
-      y += 4
-    }
+    // Subtitle deliberately omitted in PDF as it's redundant with cover page details
 
     autoTable(doc, {
       startY: y + 8,
@@ -1442,12 +1421,11 @@ export async function exportFinancialOverviewPdf(p: FinancialOverviewExportParam
   // 2. Report Header
   doc.setFontSize(18)
   doc.setTextColor(15, 76, 53) // primaryDark
-  doc.text(`InsAcc ${p.title}`, 14, y)
-  
-  y += 10
+  doc.text(p.title, 14, y)
+  y += 6
   doc.setFontSize(10)
-  doc.setTextColor(100, 116, 139)
-  doc.text(`Generated: ${new Date().toLocaleDateString()} | Period: YTD`, 14, y)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`Generated: ${formatDate(new Date().toISOString())} | Period: YTD`, 14, y)
 
   y += 15
 
