@@ -83,6 +83,7 @@ export default function PropertyTransactions({
   const [formPaymentMode, setFormPaymentMode] = useState<string>('Bank Transfer')
   const [formPaymentChannel, setFormPaymentChannel] = useState<'Bank Account' | 'Cash In Hand'>('Bank Account')
   const [formTags, setFormTags] = useState('')
+  const [tagFilter, setTagFilter] = useState('')
   const [formBankAccount, setFormBankAccount] = useState('')
 
   const handlePaymentModeChange = (mode: string) => {
@@ -624,6 +625,7 @@ export default function PropertyTransactions({
             paymentMode: t.paymentMode || 'Bank Transfer',
             paymentChannel: t.paymentChannel || 'Bank Account',
             paymentReference: t.paymentReference,
+            tags: t.tags || [],
             bankAccountId: t.bankAccountId || null,
             createdAt: t.createdAt,
             updatedAt: t.updatedAt,
@@ -647,6 +649,7 @@ export default function PropertyTransactions({
         paymentMode: e.paymentMode || e.paymentMethod || 'Bank Transfer',
         paymentChannel: e.paymentChannel || 'Bank Account',
         paymentReference: e.paymentReference || e.referenceNumber,
+        tags: e.tags || [],
         bankAccountId: e.bankAccountId || null,
         createdAt: e.createdAt,
         updatedAt: e.updatedAt,
@@ -686,6 +689,7 @@ export default function PropertyTransactions({
         paymentMode: v.paymentMode || 'Bank Transfer',
         paymentChannel: v.paymentChannel || 'Bank Account',
         paymentReference: v.paymentReference,
+        tags: v.tags || [],
         bankAccountId: null,
         createdAt: v.createdAt,
         updatedAt: v.updatedAt,
@@ -724,6 +728,11 @@ export default function PropertyTransactions({
     if (dateFrom) list = list.filter(t => t.date >= dateFrom)
     if (dateTo) list = list.filter(t => t.date <= dateTo)
 
+    if (tagFilter) {
+      const q = tagFilter.toLowerCase()
+      list = list.filter(t => t.tags && t.tags.some(tag => tag.toLowerCase().includes(q)))
+    }
+
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
       list = list.filter(t =>
@@ -736,7 +745,7 @@ export default function PropertyTransactions({
     }
 
     return list
-  }, [allTransactions, typeFilter, searchQuery, dateFrom, dateTo])
+  }, [allTransactions, typeFilter, searchQuery, dateFrom, dateTo, tagFilter])
 
   const columns: Column<PropTransaction>[] = useMemo(() => [
     {
@@ -1104,13 +1113,27 @@ export default function PropertyTransactions({
                 <input type="date" className="data-table-search-input" style={{ width: 110 }} value={dateTo} onChange={e => setDateTo(e.target.value)} />
               </div>
             </div>
+            <div className="data-table-search" style={{ maxWidth: 180, width: '100%', padding: '0 12px' }}>
+              <input
+                type="text"
+                className="data-table-search-input"
+                placeholder="Filter by tag..."
+                value={tagFilter}
+                onChange={e => setTagFilter(e.target.value)}
+              />
+              {tagFilter && (
+                <button className="data-table-search-clear" onClick={() => setTagFilter('')} aria-label="Clear filter">
+                  <CloseIcon />
+                </button>
+              )}
+            </div>
           </div>
           <div className="data-table-search">
             <SearchIcon />
             <input
               type="text"
               className="data-table-search-input"
-              placeholder="Search by category, description, or ID..."
+              placeholder="Search by category, description, tags, or ID..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
