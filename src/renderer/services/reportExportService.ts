@@ -1282,14 +1282,21 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
   if (p.foot) p.foot = formatRows(p.foot)
 
   if (p.format === 'csv') {
+    const esc = (v: string | number | undefined | null) => {
+      if (v === null || v === undefined) return ''
+      const s = String(v)
+      return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g, '""')}"` : s
+    }
+    
     const lines = [
+      ...(p.moduleName ? [p.moduleName] : []),
       p.title,
       ...(p.subtitle ? [p.subtitle] : []),
       `Period: ${p.periodLabel || 'All Time'}`,
       '',
-      p.columns.join(','),
-      ...p.rows.map(r => r.map(c => typeof c === 'string' && c.includes(',') ? `"${c}"` : c).join(',')),
-      ...(p.foot ? p.foot.map(r => r.map(c => typeof c === 'string' && c.includes(',') ? `"${c}"` : c).join(',')) : [])
+      p.columns.map(esc).join(','),
+      ...p.rows.map(r => r.map(esc).join(',')),
+      ...(p.foot ? p.foot.map(r => r.map(esc).join(',')) : [])
     ]
     const buf = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
     return saveWithDialog(`${p.filename}.csv`, [{ name: 'CSV', extensions: ['csv'] }], buf)
