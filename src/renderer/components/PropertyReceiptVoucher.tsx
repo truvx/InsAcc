@@ -97,6 +97,7 @@ export default function PropertyReceiptVoucher({
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [filterTag, setFilterTag] = useState('')
+  const [propertyFilter, setPropertyFilter] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0])
   const [formAmount, setFormAmount] = useState('')
@@ -148,7 +149,11 @@ export default function PropertyReceiptVoucher({
 
     if (filterTag) {
       const q = filterTag.toLowerCase()
-      list = list.filter(v => v.tags && v.tags.some(t => t.toLowerCase().includes(q)))
+      list = list.filter(v => v.tags && v.tags.some(tag => tag.toLowerCase().includes(q)))
+    }
+
+    if (propertyFilter) {
+      list = list.filter(v => v.tags && v.tags.includes(propertyFilter))
     }
 
     if (!searchQuery) return list
@@ -158,7 +163,7 @@ export default function PropertyReceiptVoucher({
       v.description.toLowerCase().includes(q) ||
       v.reference.toLowerCase().includes(q)
     )
-  }, [receiptVouchers, searchQuery, dateFrom, dateTo, filterParty, filterTag, allParties, leases])
+  }, [receiptVouchers, searchQuery, dateFrom, dateTo, filterParty, filterTag, propertyFilter, allParties, leases])
 
   const bankOptions = useMemo(() => [
     { value: '', label: 'Select bank account' },
@@ -744,6 +749,13 @@ export default function PropertyReceiptVoucher({
                 onChange={setFilterParty}
                 parties={allParties}
                 placeholder="Filter by Vendor, Tenant, Property..."
+              />
+            </div>
+            <div className="data-table-search" style={{ maxWidth: 180, width: '100%', padding: '0 12px' }}>
+              <Select
+                value={propertyFilter}
+                onChange={e => setPropertyFilter(e.target.value)}
+                options={[{ value: '', label: 'All Properties' }, ...properties.map(p => ({ value: p.name, label: p.name }))]}
               />
             </div>
             <div className="data-table-search" style={{ maxWidth: 'none', width: 'auto', flex: '0 0 auto', padding: '0 12px' }}>
