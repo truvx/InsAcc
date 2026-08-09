@@ -83,7 +83,7 @@ export default function PropertyJournalVoucher({
   const [formReference, setFormReference] = useState('')
   const [formParty, setFormParty] = useState('')
   const [tagFilter, setTagFilter] = useState('')
-  const [propertyFilter, setPropertyFilter] = useState('')
+
 
   const propertyOptions = useMemo(() => [
     { value: '', label: 'Select property (optional)' },
@@ -124,9 +124,7 @@ export default function PropertyJournalVoucher({
       list = list.filter(v => v.tags && v.tags.some(t => t.toLowerCase().includes(q)))
     }
 
-    if (propertyFilter) {
-      list = list.filter(v => v.tags && v.tags.includes(propertyFilter))
-    }
+
 
     if (!searchQuery) return list
     const q = searchQuery.toLowerCase()
@@ -134,7 +132,7 @@ export default function PropertyJournalVoucher({
       v.number.toLowerCase().includes(q) ||
       v.description.toLowerCase().includes(q)
     )
-  }, [journalVouchers, searchQuery, dateFrom, dateTo, tagFilter, propertyFilter, leases])
+  }, [journalVouchers, searchQuery, dateFrom, dateTo, tagFilter, leases])
 
   const leafAccounts = useMemo(() =>
     accounts.filter(a => a.isActive && !accounts.some(c => c.parentId === a.id && c.isActive))
@@ -565,13 +563,7 @@ export default function PropertyJournalVoucher({
               <input type="date" className="data-table-search-input" style={{ width: 110 }} value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
             </div>
 
-            <div className="data-table-search" style={{ maxWidth: 180, width: '100%', padding: '0 12px' }}>
-              <Select
-                value={propertyFilter}
-                onChange={e => setPropertyFilter(e.target.value)}
-                options={[{ value: '', label: 'All Properties' }, ...properties.map(p => ({ value: p.name, label: p.name }))]}
-              />
-            </div>
+
             <div className="data-table-search" style={{ maxWidth: 'none', width: 'auto', flex: '0 0 auto', padding: '0 12px' }}>
               <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginRight: 8 }}>To</span>
               <input type="date" className="data-table-search-input" style={{ width: 110 }} value={dateTo} onChange={e => setDateTo(e.target.value)} />

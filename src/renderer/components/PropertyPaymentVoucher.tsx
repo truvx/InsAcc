@@ -109,7 +109,7 @@ export default function PropertyPaymentVoucher({
   const [formPaymentMode, setFormPaymentMode] = useState<string>('Bank Transfer')
   const [formTags, setFormTags] = useState('')
   const [tagFilter, setTagFilter] = useState('')
-  const [propertyFilter, setPropertyFilter] = useState('')
+
 
   const handlePaymentModeChange = (mode: string) => {
     setFormPaymentMode(mode)
@@ -169,12 +169,10 @@ export default function PropertyPaymentVoucher({
       })
     }
 
-    if (propertyFilter) {
-      list = list.filter(v => v.tags && v.tags.includes(propertyFilter))
-    }
+
 
     return list
-  }, [paymentVouchers, searchQuery, dateFrom, dateTo, filterParty, allParties, tagFilter, propertyFilter])
+  }, [paymentVouchers, searchQuery, dateFrom, dateTo, filterParty, allParties, tagFilter])
 
   const bankOptions = useMemo(() => [
     { value: '', label: 'Select bank account' },
@@ -735,13 +733,7 @@ export default function PropertyPaymentVoucher({
                 placeholder="Filter by Vendor, Tenant, Property..."
               />
             </div>
-            <div className="data-table-search" style={{ maxWidth: 180, width: '100%', padding: '0 12px' }}>
-              <Select
-                value={propertyFilter}
-                onChange={e => setPropertyFilter(e.target.value)}
-                options={[{ value: '', label: 'All Properties' }, ...properties.map(p => ({ value: p.name, label: p.name }))]}
-              />
-            </div>
+
             <div className="data-table-search" style={{ maxWidth: 'none', width: 'auto', flex: '0 0 auto' }}>
               <input type="text" className="data-table-search-input" style={{ width: 140 }} placeholder="Filter by tag..." value={tagFilter} onChange={e => setTagFilter(e.target.value)} />
             </div>

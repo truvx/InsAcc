@@ -85,7 +85,6 @@ export default function PropertyTransactions({
   const [formPaymentChannel, setFormPaymentChannel] = useState<'Bank Account' | 'Cash In Hand'>('Bank Account')
   const [formTags, setFormTags] = useState('')
   const [tagFilter, setTagFilter] = useState('')
-  const [propertyFilter, setPropertyFilter] = useState('')
   const [formBankAccount, setFormBankAccount] = useState('')
 
   const handlePaymentModeChange = (mode: string) => {
@@ -768,9 +767,7 @@ export default function PropertyTransactions({
       list = list.filter(t => t.tags && t.tags.some(tag => tag.toLowerCase().includes(q)))
     }
 
-    if (propertyFilter) {
-      list = list.filter(t => t.tags && t.tags.includes(propertyFilter))
-    }
+
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
@@ -784,7 +781,7 @@ export default function PropertyTransactions({
     }
 
     return list
-  }, [allTransactions, typeFilter, searchQuery, dateFrom, dateTo, tagFilter, propertyFilter])
+  }, [allTransactions, typeFilter, searchQuery, dateFrom, dateTo, tagFilter])
 
   const columns: Column<PropTransaction>[] = useMemo(() => [
     {
@@ -1164,13 +1161,7 @@ export default function PropertyTransactions({
                 <input type="date" className="data-table-search-input" style={{ width: 110 }} value={dateTo} onChange={e => setDateTo(e.target.value)} />
               </div>
             </div>
-            <div className="data-table-search" style={{ maxWidth: 180, width: '100%', padding: '0 12px' }}>
-              <Select
-                value={propertyFilter}
-                onChange={e => setPropertyFilter(e.target.value)}
-                options={[{ value: '', label: 'All Properties' }, ...properties.map(p => ({ value: p.name, label: p.name }))]}
-              />
-            </div>
+
             <div className="data-table-search" style={{ maxWidth: 180, width: '100%', padding: '0 12px' }}>
               <input
                 type="text"
