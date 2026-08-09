@@ -152,12 +152,13 @@ export default function InvestmentPaymentVoucher({
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     try {
-      const columns = ['Voucher #', 'Date', 'Asset/Expense', 'Description', 'Amount', 'Payment Mode', 'Status']
+      const columns = ['Voucher #', 'Date', 'Paid To', 'Asset/Expense', 'Description', 'Amount', 'Payment Mode', 'Status']
       const rows = filtered.map(v => {
         const totalAmount = v.lines.reduce((sum, l) => l.type === 'Debit' ? sum + l.amount : sum, 0)
         return [
           v.number,
           formatDate(v.date, dateFormat),
+          getPaidTo(v),
           accounts.find(a => a.id === v.lines[0]?.accountId)?.name || '—',
           v.description,
           `${currency} ${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
@@ -507,6 +508,19 @@ export default function InvestmentPaymentVoucher({
     return acct?.name || '—'
   }
 
+  const getPaidTo = (v: Voucher) => {
+    const purchase = purchaseRecords.find(p => p.voucherId === v.id)
+    if (purchase && purchase.buyer) {
+      return purchase.buyer
+    }
+    
+    let match = v.description.match(/\(paid to\s+(.*?)\)$/i)
+    if (!match && v.description.includes('Expense:')) {
+      match = v.description.match(/for\s+(.*)$/i)
+    }
+    return match ? match[1] : '—'
+  }
+
   const columns: Column<Voucher>[] = useMemo(() => [
     {
       key: 'number',
@@ -533,11 +547,7 @@ export default function InvestmentPaymentVoucher({
       header: 'Paid To',
       sortable: true,
       render: v => {
-        let match = v.description.match(/\(paid to\s+(.*?)\)$/i)
-        if (!match && v.description.includes('Expense:')) {
-          match = v.description.match(/for\s+(.*)$/i)
-        }
-        const val = match ? match[1] : '—'
+        const val = getPaidTo(v)
         return <span className="fw-500 text-sm">{val}</span>
       }
     },
