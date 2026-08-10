@@ -321,7 +321,7 @@ export default function PropertyRouter(props: Props) {
         purchaseRecords={purchaseRecords}
         pdcCheques={pdcCheques}
         securityDeposits={securityDeposits}
-        properties={propProperties}
+        properties={mappedProperties}
       />
     case 'receipt-voucher':
       return <PropertyReceiptVoucher
@@ -386,7 +386,7 @@ export default function PropertyRouter(props: Props) {
         vouchers={vouchers}
         bankAccounts={propAccounts}
         bankMappings={bankMappings}
-        properties={propProperties}
+        properties={mappedProperties}
         leases={propLeases}
         tenants={propTenants}
       />
