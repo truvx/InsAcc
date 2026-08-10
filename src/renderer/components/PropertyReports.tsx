@@ -82,9 +82,9 @@ export default function PropertyReports({
 
   const tabs: { id: ReportTab; label: string }[] = [
     { id: 'overview', label: 'Overview' },
-    { id: 'balance-sheet', label: 'Balance Sheet' },
-    { id: 'profit-loss', label: 'Profit & Loss' },
     { id: 'trial-balance', label: 'Trial Balance' },
+    { id: 'profit-loss', label: 'Profit & Loss' },
+    { id: 'balance-sheet', label: 'Balance Sheet' },
     { id: 'rent-collection', label: 'Rent Collection' },
     { id: 'pdc-summary', label: 'PDC Summary' },
     { id: 'lease-expiry', label: 'Lease Expiry' },
@@ -443,9 +443,9 @@ export default function PropertyReports({
               <ChartCard title="Quick Links">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 0' }}>
                   {[
-                    { label: 'Balance Sheet', tab: 'balance-sheet' as ReportTab },
-                    { label: 'Profit & Loss', tab: 'profit-loss' as ReportTab },
                     { label: 'Trial Balance', tab: 'trial-balance' as ReportTab },
+                    { label: 'Profit & Loss', tab: 'profit-loss' as ReportTab },
+                    { label: 'Balance Sheet', tab: 'balance-sheet' as ReportTab },
                     { label: 'Rent Collection', tab: 'rent-collection' as ReportTab },
                     { label: 'PDC Summary', tab: 'pdc-summary' as ReportTab },
                     { label: 'Lease Expiry', tab: 'lease-expiry' as ReportTab },

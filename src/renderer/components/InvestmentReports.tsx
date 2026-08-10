@@ -169,9 +169,9 @@ export default function InvestmentReports({
 
   const tabs: { id: ReportTab; label: string }[] = [
     { id: 'overview', label: 'Overview' },
-    { id: 'balance-sheet', label: 'Balance Sheet' },
-    { id: 'profit-loss', label: 'Profit & Loss' },
     { id: 'trial-balance', label: 'Trial Balance' },
+    { id: 'profit-loss', label: 'Profit & Loss' },
+    { id: 'balance-sheet', label: 'Balance Sheet' },
     { id: 'holdings', label: 'Investment Holdings' },
     { id: 'cash-position', label: 'Cash Position' },
     { id: 'investment-position', label: 'Investment Position' },

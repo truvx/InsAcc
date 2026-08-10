@@ -47,8 +47,8 @@ const PROP_ACCOUNTS_GROUP: NavGroup = {
     { id: 'journal-voucher', label: 'Journal Voucher' },
     { id: 'chart-of-accounts', label: 'Chart of Accounts' },
     { id: 'trial-balance', label: 'Trial Balance' },
-    { id: 'balance-sheet', label: 'Balance Sheet' },
     { id: 'profit-loss', label: 'Profit & Loss' },
+    { id: 'balance-sheet', label: 'Balance Sheet' },
     { id: 'pdc-manager', label: 'PDC Manager' },
     { id: 'deposit-manager', label: 'Security Deposits' },
   ],
@@ -63,8 +63,8 @@ const INV_ACCOUNTS_GROUP: NavGroup = {
     { id: 'journal-voucher', label: 'Journal Voucher' },
     { id: 'chart-of-accounts', label: 'Chart of Accounts' },
     { id: 'trial-balance', label: 'Trial Balance' },
-    { id: 'balance-sheet', label: 'Balance Sheet' },
     { id: 'profit-loss', label: 'Profit & Loss' },
+    { id: 'balance-sheet', label: 'Balance Sheet' },
   ],
 }
 
