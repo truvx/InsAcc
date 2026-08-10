@@ -79,9 +79,10 @@ interface Props {
   purchaseRecords?: PurchaseRecord[]
   pdcCheques?: PdcCheque[]
   securityDeposits?: SecurityDeposit[]
+  properties?: any[]
 }
 
-export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'DD/MM/YYYY', language = 'English', propAccounts, setPropAccounts, propTransactions = [], setPropTransactions = () => {}, onAuditEvent, bankReconciliations, setBankReconciliations, accounts, setAccounts, vouchers, setVouchers, bankMappings, setBankMappings, accountingEngine, purchaseRecords = [], pdcCheques = [], securityDeposits = [] }: Props) {
+export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'DD/MM/YYYY', language = 'English', propAccounts, setPropAccounts, propTransactions = [], setPropTransactions = () => {}, onAuditEvent, bankReconciliations, setBankReconciliations, accounts, setAccounts, vouchers, setVouchers, bankMappings, setBankMappings, accountingEngine, purchaseRecords = [], pdcCheques = [], securityDeposits = [], properties = [] }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [dialog, setDialog] = useState<{ type: DialogType; accountId?: string }>({ type: null })
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
@@ -128,6 +129,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
 
   const [formInstitution, setFormInstitution] = useState('')
   const [formAccountNumber, setFormAccountNumber] = useState('')
+  const [formPropertyId, setFormPropertyId] = useState('')
   const [formOpeningBalance, setFormOpeningBalance] = useState('')
   const [formTheme, setFormTheme] = useState('emerald')
   const [formAmount, setFormAmount] = useState('')
@@ -252,6 +254,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
   const resetForm = () => {
     setFormInstitution('')
     setFormAccountNumber('')
+    setFormPropertyId('')
     setFormOpeningBalance('')
     setFormTheme('emerald')
     setFormAmount('')
@@ -313,6 +316,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
       swift: formSwift,
       branch: formBranch,
       chartAccountId: ledgerAcct.id,
+      propertyId: formPropertyId || undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       createdBy: 'user',
@@ -354,6 +358,12 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
               ...postResult.voucher,
               reference: ref,
             }
+            if (formPropertyId) {
+              const propName = properties.find(p => p.id === formPropertyId)?.name
+              if (propName) {
+                finalVoucher.tags = [propName]
+              }
+            }
             setVouchers(prev => [finalVoucher, ...prev])
           }
         }
@@ -377,6 +387,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
     setFormOpeningBalance(String(currentLedgerBal))
     setFormTheme(acct.theme)
     setFormIban(acct.iban || '')
+    setFormPropertyId(acct.propertyId || '')
     setFormSwift(acct.swift || '')
     setFormBranch(acct.branch || '')
     setFormStatus(acct.status || 'active')
@@ -407,6 +418,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
           iban: formIban,
           swift: formSwift,
           branch: formBranch,
+          propertyId: formPropertyId || undefined,
           status: formStatus,
           updatedAt: new Date().toISOString(),
           updatedBy: 'user'
@@ -614,6 +626,14 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
       const postResult = accountingEngine.post(approveResult.voucher, 'system', accounts, vouchers)
       if (!postResult.success || !postResult.voucher) throw new Error(postResult.errors.map(e => e.message).join(', '))
       
+      const targetAccount = propAccounts.find(a => a.id === targetId)
+      if (targetAccount?.propertyId && properties) {
+         const propName = properties.find(p => p.id === targetAccount.propertyId)?.name
+         if (propName) {
+           postResult.voucher.tags = [propName]
+         }
+      }
+
       setVouchers(prev => [...prev, postResult.voucher!])
       onAuditEvent?.(recordModuleEvent('Property Bank Accounts', 'Update', dialog.accountId || 'account', '', `Deposited ${currency}${amt.toLocaleString()}`))
       setDialog({ type: null })
@@ -662,6 +682,14 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
       const postResult = accountingEngine.post(approveResult.voucher, 'system', accounts, vouchers)
       if (!postResult.success || !postResult.voucher) throw new Error(postResult.errors.map(e => e.message).join(', '))
       
+      const targetAccount = propAccounts.find(a => a.id === targetId)
+      if (targetAccount?.propertyId && properties) {
+         const propName = properties.find(p => p.id === targetAccount.propertyId)?.name
+         if (propName) {
+           postResult.voucher.tags = [propName]
+         }
+      }
+
       setVouchers(prev => [...prev, postResult.voucher!])
       onAuditEvent?.(recordModuleEvent('Property Bank Accounts', 'Update', dialog.accountId || 'account', '', `Withdrew ${currency}${amt.toLocaleString()}`))
       setDialog({ type: null })
@@ -728,6 +756,21 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
       const postResult = accountingEngine.post(approveResult.voucher, 'system', accounts, vouchers)
       if (!postResult.success || !postResult.voucher) throw new Error(postResult.errors.map(e => e.message).join(', '))
       
+      const srcAccount = propAccounts.find(a => a.id === fromId)
+      const destAccount = propAccounts.find(a => a.id === formToAccount)
+      const tags: string[] = []
+      if (srcAccount?.propertyId && properties) {
+         const propName = properties.find(p => p.id === srcAccount.propertyId)?.name
+         if (propName) tags.push(propName)
+      }
+      if (destAccount?.propertyId && properties) {
+         const propName = properties.find(p => p.id === destAccount.propertyId)?.name
+         if (propName && !tags.includes(propName)) tags.push(propName)
+      }
+      if (tags.length > 0) {
+         postResult.voucher.tags = tags
+      }
+
       setVouchers(prev => [...prev, postResult.voucher!])
       onAuditEvent?.(recordModuleEvent('Property Bank Accounts', 'Update', 'Transfer', '', `Transferred ${currency}${amt.toLocaleString()}`))
       setDialog({ type: null })
@@ -951,6 +994,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
             <Input label="SWIFT Code" value={formSwift} onChange={e => setFormSwift(e.target.value)} placeholder="e.g. DIBKAEADXXX" />
             <Input label="Branch" value={formBranch} onChange={e => setFormBranch(e.target.value)} placeholder="e.g. Sheikh Zayed Road Branch" />
             <Input label="Initial Amount (AED)" type="number" value={formOpeningBalance} onChange={e => setFormOpeningBalance(e.target.value)} placeholder="0" />
+            <Select label="Property (Optional)" value={formPropertyId} onChange={e => setFormPropertyId(e.target.value)} options={[{ value: '', label: 'Select Property' }, ...properties.map(p => ({ value: p.id, label: p.name }))]} />
             <Select label="Theme Color" value={formTheme} onChange={e => setFormTheme(e.target.value)} options={themeOptions} />
             {dialog.type === 'editAccount' && (
               <Select label="Status" value={formStatus} onChange={e => setFormStatus(e.target.value as any)} options={statusOptions} />

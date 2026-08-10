@@ -11,6 +11,7 @@ export interface PropAccount {
   swift?: string
   branch?: string
   chartAccountId?: string
+  propertyId?: string
   createdAt: string
   updatedAt: string
   createdBy: string

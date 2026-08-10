@@ -321,6 +321,7 @@ export default function PropertyRouter(props: Props) {
         purchaseRecords={purchaseRecords}
         pdcCheques={pdcCheques}
         securityDeposits={securityDeposits}
+        properties={propProperties}
       />
     case 'receipt-voucher':
       return <PropertyReceiptVoucher
