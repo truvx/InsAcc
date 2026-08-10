@@ -518,7 +518,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
     let count = 0
 
     if (glAccountId) {
-      count += vouchers.filter(v => v.reference !== `OB-${acctId}` && v.lines.some(l => l.accountId === glAccountId)).length
+      count += vouchers.filter(v => !v.isDeleted && v.reference !== `OB-${acctId}` && v.lines.some(l => l.accountId === glAccountId)).length
     }
 
     if (pdcCheques) {

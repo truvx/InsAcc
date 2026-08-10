@@ -168,10 +168,10 @@ export function getReportsProjection(
   const allBals = getAllAccountBalances(vouchers, accounts)
   const leafAccounts = getLeafAccounts(accounts)
 
-  const cashAccounts = leafAccounts.filter(a => a.code.startsWith('1110'))
+  const cashAccounts = leafAccounts.filter(a => a.parentId === '1110' || a.parentId === '1120')
   const cash = cashAccounts.reduce((s, a) => s + (allBals[a.id] || 0), 0)
 
-  const bankAccountsList = leafAccounts.filter(a => a.code.startsWith('1120'))
+  const bankAccountsList = leafAccounts.filter(a => a.parentId === '1120')
   const bankBalance = bankAccountsList.reduce((s, a) => s + (allBals[a.id] || 0), 0)
 
   const investments = leafAccounts

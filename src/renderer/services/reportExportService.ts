@@ -648,7 +648,7 @@ function sheetVoucherDetails(p: ExcelExportParams, fv: Voucher[]): any {
 function sheetBankActivity(p: ExcelExportParams, fv: Voucher[]): any {
   const rows: XCell[][] = []
   const merges = addSheetHeader(rows, p, 'Bank Activity', 11)
-  const bankAccts = p.accounts.filter(a => (a.code.startsWith('1110') || a.code.startsWith('1120')) && a.isActive)
+  const bankAccts = p.accounts.filter(a => (a.parentId === '1110' || a.parentId === '1120') && a.isActive)
   const sorted = [...fv].sort((a, b) => a.date.localeCompare(b.date))
   const hdrs = ['Date', 'Voucher No.', 'Type', 'Description', 'Narration', 'Payment Mode', 'Cheque No.', 'Reference', 'Money In', 'Money Out', 'Running Balance']
 
@@ -931,6 +931,7 @@ function sheetBreakup(p: ExcelExportParams, fv: Voucher[], coverData?: any): any
 
 export function getFilteredVouchers(p: ExcelExportParams) {
   return p.vouchers.filter(v => {
+    if (v.isDeleted || v.status === 'Cancelled' || v.status === 'Reversed') return false;
     if (p.filters?.dateRange) {
       if (v.date < p.filters.dateRange.start || v.date > p.filters.dateRange.end) return false
     }
@@ -1835,7 +1836,7 @@ export async function exportOverviewPdf(p: ExcelExportParams): Promise<string | 
   doc.addPage()
   y = pdfSectionBanner(doc, '5. BANK ACTIVITY', 10)
 
-  const bankAccts = p.accounts.filter(a => (a.code.startsWith('1110') || a.code.startsWith('1120')) && a.isActive)
+  const bankAccts = p.accounts.filter(a => (a.parentId === '1110' || a.parentId === '1120') && a.isActive)
 
   if (bankAccts.length === 0) {
     doc.setFontSize(9)

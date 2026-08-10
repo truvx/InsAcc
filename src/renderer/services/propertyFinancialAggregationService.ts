@@ -40,7 +40,7 @@ export function getPropertyFinancialSummary(
   const bs = generateBalanceSheetReadModel(tb, pl.netProfit, accounts)
 
   const cash = bs.currentAssets
-    .filter(i => i.accountCode.startsWith('1110'))
+    .filter(i => i.accountCode.startsWith('112') || i.accountCode.startsWith('111'))
     .reduce((s, i) => s + i.balance, 0)
 
   // Bank balance from ledger — sum all 1120 leaf account balances
