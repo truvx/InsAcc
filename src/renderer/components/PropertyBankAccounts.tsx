@@ -357,12 +357,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
             const finalVoucher: Voucher = {
               ...postResult.voucher,
               reference: ref,
-            }
-            if (formPropertyId) {
-              const propName = properties.find(p => p.id === formPropertyId)?.name
-              if (propName) {
-                finalVoucher.tags = [propName]
-              }
+              tags: formPropertyId ? [properties.find(p => p.id === formPropertyId)?.name].filter(Boolean) as string[] : []
             }
             setVouchers(prev => [finalVoucher, ...prev])
           }
@@ -483,12 +478,29 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
           if (approveResult.success && approveResult.voucher) {
             const postResult = accountingEngine.post(approveResult.voucher, 'user', accounts, [])
               if (postResult.success && postResult.voucher) {
-                const adjVoucher: Voucher = { ...postResult.voucher, reference: `ADJ-${dialog.accountId}-${Date.now()}` }
+                const adjVoucher: Voucher = { 
+                  ...postResult.voucher, 
+                  reference: `ADJ-${dialog.accountId}-${Date.now()}`,
+                  tags: formPropertyId ? [properties.find(p => p.id === formPropertyId)?.name].filter(Boolean) as string[] : []
+                }
                 setVouchers(prev => [adjVoucher, ...prev])
               }
           }
         }
       }
+      
+      const newPropName = formPropertyId ? properties.find(p => p.id === formPropertyId)?.name : undefined;
+      setVouchers(prev => prev.map(v => {
+        const touchesBank = v.lines.some(l => l.accountId === mapping.accountId);
+        if (touchesBank) {
+          let updatedTags = (v.tags || []).filter(t => !properties.map(p => p.name).includes(t));
+          if (newPropName && !updatedTags.includes(newPropName)) {
+            updatedTags.push(newPropName);
+          }
+          return { ...v, tags: updatedTags };
+        }
+        return v;
+      }));
     }
 
     invalidateBalanceCache()
