@@ -352,15 +352,14 @@ function buildWS(rows: XCell[][], opts: { freeze?: { r: number; c: number }; fil
 function getCoverData(p: ExcelExportParams, count: number, colCount: number): any {
   const now = new Date()
   const rows: XCell[][] = []
-  const bg = C.primaryDark
+  const bg = C.white
   const blk = () => Array(colCount).fill(null).map(() => mkCell('', { fill: { fgColor: { rgb: bg } } }))
-  const cvr = (text: string, sz: number, bold: boolean, fg = C.white, filBg = bg) =>
+  const cvr = (text: string, sz: number, bold: boolean, fg = C.black, filBg = bg) =>
     Array(colCount).fill(null).map((_, i) => mkCell(i === 0 ? text : '', {
       font: { name: FN, bold, sz, color: { rgb: fg } },
       fill: { fgColor: { rgb: filBg } },
       alignment: { horizontal: 'center', vertical: 'center' },
     }))
-  const goldLine = () => Array(colCount).fill(null).map(() => mkCell('', { fill: { fgColor: { rgb: C.gold } } }))
   const metaBg = 'FAFAFA'
   
   const lblSpan = Math.floor(colCount / 2)
@@ -373,17 +372,14 @@ function getCoverData(p: ExcelExportParams, count: number, colCount: number): an
   }
   const blkM = () => Array(colCount).fill(null).map(() => mkCell('', { fill: { fgColor: { rgb: metaBg } } }))
 
-  rows.push(blk()); rows.push(blk()); rows.push(blk())
-  rows.push(cvr('INSACC', 28, true))
   rows.push(blk())
-  rows.push(cvr('Intelligent Asset & Investment Accounting', 12, false, C.primaryLight))
+  rows.push(cvr('Sameer Ishaq Harmoudi', 14, true, C.black))
+  rows.push(cvr('INSACC', 24, true, C.black))
+  rows.push(cvr('Intelligent Asset & Investment Accounting', 10, false, C.gray))
   rows.push(blk())
-  rows.push(goldLine())
+  rows.push(cvr(p.reportTitle, 16, true, C.black))
+  rows.push(cvr(p.module === 'Property' ? 'Properties Management' : 'Investment Portfolio', 11, false, C.gray))
   rows.push(blk())
-  rows.push(cvr(p.reportTitle, 18, true, 'FFD700'))
-  rows.push(blk())
-  rows.push(cvr(p.module === 'Property' ? 'Properties Management' : 'Investment Portfolio', 12, false, C.primaryLight))
-  rows.push(blk()); rows.push(blk()); rows.push(blk())
   rows.push(blkM())
   rows.push(meta('Reporting Period', p.periodLabel))
   rows.push(blkM())
@@ -1038,29 +1034,29 @@ function generatePdfCoverPage(doc: any, title: string, subtitle: string, periodL
   const pageWidth = doc.internal.pageSize.getWidth()
   const centerX = pageWidth / 2
 
-  doc.setFillColor(15, 76, 53)
-  doc.rect(0, 0, pageWidth, 55, 'F')
-
-  doc.setTextColor(255, 255, 255)
-  doc.setFontSize(28)
+  doc.setTextColor(0, 0, 0)
+  doc.setFontSize(14)
   doc.setFont('helvetica', 'bold')
-  doc.text('INSACC', centerX, 20, { align: 'center' })
+  doc.text('Sameer Ishaq Harmoudi', centerX, 20, { align: 'center' })
+
+  doc.setFontSize(24)
+  doc.text('INSACC', centerX, 30, { align: 'center' })
 
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
-  doc.text('Intelligent Asset & Investment Accounting', centerX, 28, { align: 'center' })
+  doc.setTextColor(100, 116, 139)
+  doc.text('Intelligent Asset & Investment Accounting', centerX, 35, { align: 'center' })
 
-  doc.setDrawColor(251, 192, 45)
-  doc.setLineWidth(1)
-  doc.line(0, 35, pageWidth, 35)
+  doc.setDrawColor(200, 200, 200)
+  doc.setLineWidth(0.5)
+  doc.line(0, 42, pageWidth, 42)
 
-  doc.setTextColor(251, 192, 45)
+  doc.setTextColor(0, 0, 0)
   doc.setFontSize(14)
   doc.setFont('helvetica', 'bold')
-  doc.text(title.toUpperCase(), centerX, 45, { align: 'center' })
+  doc.text(title.toUpperCase(), centerX, 52, { align: 'center' })
 
-
-  doc.setTextColor(15, 76, 53)
+  doc.setTextColor(100, 116, 139)
   doc.setFontSize(9)
   doc.setFont('helvetica', 'bold')
   
