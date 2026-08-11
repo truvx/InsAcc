@@ -1129,7 +1129,9 @@ export default function App() {
 
   const [isUnloading, setIsUnloading] = useState(false)
   const [screen, setScreen] = useState<'login' | 'profiles' | 'module' | 'dashboard'>('login')
-  const [loggedInUser, setLoggedInUser] = useState<string>('Admin')
+  const [loggedInUser, setLoggedInUser] = useState<string>(() => {
+    return localStorage.getItem('loggedInUser') || 'Admin'
+  })
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null)
   const storedLoginProfiles: Profile[] = useMemo(() => [
     { id: 1, name: 'Sameer Ishaq Harmoudi', role: 'Admin' as const, avatar: '', initials: 'SH', locked: false },
@@ -2752,6 +2754,7 @@ export default function App() {
   ])
 
   const handleLoginSuccess = useCallback((userName: string) => {
+    localStorage.setItem('loggedInUser', userName)
     setLoggedInUser(userName)
     setScreen('profiles')
   }, [])
