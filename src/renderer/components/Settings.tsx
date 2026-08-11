@@ -424,19 +424,20 @@ export default function Settings({
 
                 {showAddLogin && (
                   <div style={{ marginTop: 12, padding: 16, background: 'var(--bg-secondary)', borderRadius: 8, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
                       <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Full Name</label>
-                        <input className="input" placeholder="e.g. Sameer" value={newLoginName} onChange={e => setNewLoginName(e.target.value)} />
-                      </div>
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Role</label>
+                        <label className="form-label">Select Profile</label>
                         <Select
-                          value={newLoginRole}
-                          onChange={e => setNewLoginRole(e.target.value as any)}
+                          value={newLoginName}
+                          onChange={e => {
+                            const name = e.target.value;
+                            setNewLoginName(name);
+                            const user = users.find(u => u.name === name);
+                            if (user) setNewLoginRole(user.role as any);
+                          }}
                           options={[
-                            { value: 'Admin', label: 'Admin' },
-                            { value: 'Accounts', label: 'Accounts' }
+                            { value: '', label: 'Select a profile from User Management...' },
+                            ...users.map(u => ({ value: u.name, label: u.name }))
                           ]}
                           style={{ margin: 0 }}
                         />
