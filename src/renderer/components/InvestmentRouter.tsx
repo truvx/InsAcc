@@ -267,6 +267,7 @@ export default function InvestmentRouter(props: Props) {
           bankAccounts={bankAccounts}
           bankMappings={bankMappings}
           onNavigate={onNavigate}
+          loggedInUser={props.loggedInUser || 'Admin'}
         />
       )
     case 'documents':

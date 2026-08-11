@@ -18,6 +18,7 @@ interface Props {
   bankAccounts?: BankAccount[]
   bankMappings?: BankMapping[]
   onNavigate?: (page: string) => void
+  loggedInUser?: string
 }
 
 interface PurityGroup {
@@ -44,6 +45,7 @@ export default function InvestmentTotalAverageHolding({
   vouchers,
   purchaseRecords,
   onNavigate = () => {},
+  loggedInUser,
 }: Props) {
   const [showExportMenu, setShowExportMenu] = useState(false)
   // Filter active purchases
@@ -141,7 +143,8 @@ export default function InvestmentTotalAverageHolding({
       filename: `Average_Holding_${new Date().toISOString().split('T')[0]}`,
       columns: exportColumns,
       rows,
-      currency
+      currency,
+      generatedBy: loggedInUser || 'User'
     })
     setShowExportMenu(false)
   }
