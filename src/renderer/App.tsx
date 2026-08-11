@@ -1133,10 +1133,7 @@ export default function App() {
     return localStorage.getItem('loggedInUser') || 'Admin'
   })
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null)
-  const storedLoginProfiles: Profile[] = useMemo(() => [
-    { id: 1, name: 'Sameer Ishaq Harmoudi', role: 'Admin' as const, avatar: '', initials: 'SH', locked: false },
-    { id: 2, name: 'Accounts', role: 'Accounts' as const, avatar: '', initials: 'AC', locked: false },
-  ], [])
+
   const [activeModule, setActiveModule] = useState<Module>('investment')
   const [activePage, setActivePage] = useState<string>('dashboard')
   const [theme, setTheme] = useLazyPersistedState<string>('insacc_theme', 'light')
@@ -1156,10 +1153,24 @@ export default function App() {
   const [purchaseCategories, setPurchaseCategories] = useLazyPersistedState<PurchaseCategory[]>('insacc_purchase_categories', defaultPurchaseCategories)
   const [purchases, setPurchases, resetPurchases] = useLazyPersistedState<Purchase[]>('insacc_purchases', [])
   const [purchaseRecords, setPurchaseRecords] = useLazyPersistedState<PurchaseRecord[]>('insacc_purchases_ledger', [])
-  const [invUsers, setInvUsers] = useLazyPersistedState<UserEntry[]>('insacc_inv_users', [])
+  const [invUsers, setInvUsers] = useLazyPersistedState<UserEntry[]>('insacc_inv_users', [
+    { name: 'Sameer Ishaq Harmoudi', role: 'Admin', status: 'Active' },
+    { name: 'Accounts', role: 'Accounts', status: 'Active' }
+  ])
   const [incomeCustomCategories, setIncomeCustomCategories] = useLazyPersistedState<string[]>('insacc_income_custom_categories', [])
   const [expenseCustomCategories, setExpenseCustomCategories] = useLazyPersistedState<string[]>('insacc_expense_custom_categories', [])
   const [auditEvents, setAuditEvents] = useLazyPersistedState<AuditEvent[]>('insacc_audit_events', [])
+
+  const storedLoginProfiles: Profile[] = useMemo(() => {
+    return invUsers.map((user, idx) => ({
+      id: idx + 1,
+      name: user.name,
+      role: user.role as 'Admin' | 'Accounts',
+      avatar: '',
+      initials: user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
+      locked: false
+    }))
+  }, [invUsers])
   const [accounts, setAccounts] = useLazyPersistedState<Account[]>('insacc_accounts', [])
   const [vouchers, setVouchers] = useLazyPersistedState<Voucher[]>('insacc_vouchers', [])
   const [bankMappings, setBankMappings] = useLazyPersistedState<BankMapping[]>('insacc_bank_mappings', [])
