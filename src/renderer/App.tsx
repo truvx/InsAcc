@@ -1161,6 +1161,15 @@ export default function App() {
   const [expenseCustomCategories, setExpenseCustomCategories] = useLazyPersistedState<string[]>('insacc_expense_custom_categories', [])
   const [auditEvents, setAuditEvents] = useLazyPersistedState<AuditEvent[]>('insacc_audit_events', [])
 
+  useEffect(() => {
+    if (invUsers.length === 0) {
+      setInvUsers([
+        { name: 'Sameer Ishaq Harmoudi', role: 'Admin', status: 'Active' },
+        { name: 'Accounts', role: 'Accounts', status: 'Active' }
+      ])
+    }
+  }, [invUsers.length, setInvUsers])
+
   const storedLoginProfiles: Profile[] = useMemo(() => {
     return invUsers.map((user, idx) => ({
       id: idx + 1,
