@@ -367,20 +367,20 @@ export default function Settings({
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div className="form-group">
-                <label className="form-label">Current Password</label>
-                <input className="input" type="password" placeholder="Enter current password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+                <label className="form-label">Current Passcode</label>
+                <input className="input" type="password" placeholder="Enter current passcode" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className="form-group">
-                  <label className="form-label">New Password</label>
-                  <input className="input" type="password" placeholder="Enter new password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                  <label className="form-label">New Passcode</label>
+                  <input className="input" type="password" placeholder="Enter new passcode" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Confirm New Password</label>
-                  <input className="input" type="password" placeholder="Confirm new password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
+                  <label className="form-label">Confirm New Passcode</label>
+                  <input className="input" type="password" placeholder="Confirm new passcode" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
                 </div>
               </div>
-              <button className="btn btn-primary" style={{ width: '100%' }} onClick={handlePasswordChange}>Update Password</button>
+              <button className="btn btn-primary" style={{ width: '100%' }} onClick={handlePasswordChange}>Update Passcode</button>
               <div style={{ fontSize: 12, color: 'var(--text-light)', textAlign: 'center' }}>Default passcode: 1234</div>
 
               <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
