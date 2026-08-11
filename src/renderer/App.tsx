@@ -1153,22 +1153,13 @@ export default function App() {
   const [purchaseCategories, setPurchaseCategories] = useLazyPersistedState<PurchaseCategory[]>('insacc_purchase_categories', defaultPurchaseCategories)
   const [purchases, setPurchases, resetPurchases] = useLazyPersistedState<Purchase[]>('insacc_purchases', [])
   const [purchaseRecords, setPurchaseRecords] = useLazyPersistedState<PurchaseRecord[]>('insacc_purchases_ledger', [])
-  const [invUsers, setInvUsers] = useLazyPersistedState<UserEntry[]>('insacc_inv_users', [
+  const [invUsers, setInvUsers] = useLazyPersistedState<UserEntry[]>('insacc_inv_users_v2', [
     { name: 'Sameer Ishaq Harmoudi', role: 'Admin', status: 'Active' },
     { name: 'Accounts', role: 'Accounts', status: 'Active' }
   ])
   const [incomeCustomCategories, setIncomeCustomCategories] = useLazyPersistedState<string[]>('insacc_income_custom_categories', [])
   const [expenseCustomCategories, setExpenseCustomCategories] = useLazyPersistedState<string[]>('insacc_expense_custom_categories', [])
   const [auditEvents, setAuditEvents] = useLazyPersistedState<AuditEvent[]>('insacc_audit_events', [])
-
-  useEffect(() => {
-    if (invUsers.length === 0) {
-      setInvUsers([
-        { name: 'Sameer Ishaq Harmoudi', role: 'Admin', status: 'Active' },
-        { name: 'Accounts', role: 'Accounts', status: 'Active' }
-      ])
-    }
-  }, [invUsers.length, setInvUsers])
 
   const storedLoginProfiles: Profile[] = useMemo(() => {
     return invUsers.map((user, idx) => ({
