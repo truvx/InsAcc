@@ -1129,6 +1129,7 @@ export default function App() {
 
   const [isUnloading, setIsUnloading] = useState(false)
   const [screen, setScreen] = useState<'login' | 'profiles' | 'module' | 'dashboard'>('login')
+  const [loggedInUser, setLoggedInUser] = useState<string>('Admin')
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null)
   const storedLoginProfiles: Profile[] = useMemo(() => [
     { id: 1, name: 'Sameer Ishaq Harmoudi', role: 'Admin' as const, avatar: '', initials: 'SH', locked: false },
@@ -2750,7 +2751,8 @@ export default function App() {
     masterVendors, masterCustomers, masterAssetTypes, masterFixedAssets,
   ])
 
-  const handleLoginSuccess = useCallback(() => {
+  const handleLoginSuccess = useCallback((userName: string) => {
+    setLoggedInUser(userName)
     setScreen('profiles')
   }, [])
 
@@ -2971,6 +2973,7 @@ export default function App() {
           onClearTransactions={handleClearTransactions}
           onResetAllData={handleResetAllData}
           onDeleteEvent={handleDeleteAuditEvent}
+          loggedInUser={loggedInUser}
           loginEntries={loginEntries}
           setLoginEntries={setLoginEntries}
           accounts={propChartAccounts}
@@ -3038,6 +3041,7 @@ export default function App() {
         setSupabaseEnabled={setSupabaseEnabled}
         onClearTransactions={handleClearTransactions}
         onDeleteEvent={handleDeleteAuditEvent}
+        loggedInUser={loggedInUser}
         loginEntries={loginEntries}
         setLoginEntries={setLoginEntries}
         accounts={accounts}

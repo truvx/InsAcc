@@ -64,8 +64,9 @@ interface Props {
   theme: string
   onThemeChange: (t: string) => void
   onClearTransactions?: () => void
-  onResetAllData: () => void
-  onDeleteEvent?: (eventId: string) => void
+  onResetAllData?: () => void
+  onDeleteEvent?: (id: string) => void
+  loggedInUser?: string
   recordAuditEvent: (event: AuditEvent) => void
   setAccounts: React.Dispatch<React.SetStateAction<Account[]>>
   bankReconciliations: BankReconciliationRecord[]
@@ -124,6 +125,7 @@ export default function InvestmentRouter(props: Props) {
           bankAccounts={bankAccounts}
           bankMappings={bankMappings}
           onNavigate={onNavigate}
+          loggedInUser={props.loggedInUser || 'Admin'}
         />
       )
     case 'accounts-dashboard':
@@ -214,6 +216,7 @@ export default function InvestmentRouter(props: Props) {
           purchaseRecords={purchaseRecords}
           bankAccounts={bankAccounts}
           bankMappings={bankMappings}
+          loggedInUser={props.loggedInUser || 'Admin'}
         />
       )
     case 'bank-accounts':

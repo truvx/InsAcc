@@ -37,8 +37,9 @@ interface Props {
   dateFormat?: string
   language?: string
   onAuditEvent?: (event: AuditEvent) => void
-  onNavigate?: (page: string) => void
-  expenses?: PropertyExpense[]
+  onNavigate: (page: string) => void
+  expenses: PropertyExpense[]
+  loggedInUser?: string
 }
 
 type ReportTab = 'overview' | 'balance-sheet' | 'profit-loss' | 'trial-balance' | 'rent-collection' | 'pdc-summary' | 'lease-expiry' | 'expense-report'
@@ -192,7 +193,7 @@ export default function PropertyReports({
           reportTitle: dynamicTitle.toUpperCase(),
           module: 'Property' as const,
           periodLabel: `${filterStart} - ${filterEnd}`,
-          generatedBy: 'User',
+          generatedBy: loggedInUser || 'User',
           currency,
           accounts,
           vouchers,

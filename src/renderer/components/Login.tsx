@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import type { LoginEntry } from '../App'
 
 interface Props {
-  onSuccess: () => void
+  onSuccess: (userName: string) => void
   storedPassword?: string
   onBackToModule?: () => void
   loginEntries?: LoginEntry[]
@@ -120,7 +120,7 @@ export default function Login({ onSuccess, storedPassword = '1234', onBackToModu
     )
     
     if (match || isDefaultAdmin) {
-      onSuccess()
+      onSuccess(match ? match.name : 'Admin')
     } else {
       setError('Invalid email or password')
     }
@@ -140,7 +140,7 @@ export default function Login({ onSuccess, storedPassword = '1234', onBackToModu
     const currentPin = pinRef.current
     if (currentPin.length === 4) {
       if (currentPin === storedPassword) {
-        onSuccess()
+        onSuccess('Admin')
       } else {
         setError('Invalid PIN. Please try again.')
         setPin('')

@@ -21,6 +21,7 @@ interface Props {
   bankAccounts?: BankAccount[]
   bankTransactions?: BankTransaction[]
   bankMappings?: BankMapping[]
+  loggedInUser?: string
 }
 
 type ReportTab =
@@ -127,6 +128,7 @@ function getReportTileInfo(id: string) {
 export default function InvestmentReports({
   currency = 'AED', accounts, vouchers,
   purchaseRecords = [], bankAccounts = [], bankTransactions = [], bankMappings = [],
+  loggedInUser,
 }: Props) {
   const [activeTab, setActiveTab] = React.useState<ReportTab>('overview')
   const [isExportModalOpen, setIsExportModalOpen] = React.useState(false)
@@ -204,7 +206,7 @@ export default function InvestmentReports({
           reportTitle: dynamicTitle.toUpperCase(),
           module: 'Investment' as const,
           periodLabel: `${filterStart} - ${filterEnd}`,
-          generatedBy: 'User',
+          generatedBy: loggedInUser || 'User',
           currency,
           accounts,
           vouchers,

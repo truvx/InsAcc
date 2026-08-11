@@ -98,6 +98,7 @@ interface Props {
   onClearTransactions?: () => void
   onResetAllData?: () => void
   onDeleteEvent?: (eventId: string) => void
+  loggedInUser?: string
 }
 
 export default function PropertyRouter(props: Props) {
@@ -436,6 +437,7 @@ export default function PropertyRouter(props: Props) {
         depositMappings={depositMappings}
         setDepositMappings={setDepositMappings}
         onAuditEvent={setPropAuditEvents ? (e => setPropAuditEvents(prev => [e, ...prev])) : undefined}
+        loggedInUser={props.loggedInUser || 'Admin'}
       />
     case 'reports':
       return <PropertyReports
@@ -447,6 +449,7 @@ export default function PropertyRouter(props: Props) {
         bankMappings={bankMappings}
         onNavigate={onNavigate}
         expenses={propExpenses}
+        loggedInUser={props.loggedInUser || 'Admin'}
       />
     case 'documents':
       return <PropertyDocuments
@@ -454,7 +457,7 @@ export default function PropertyRouter(props: Props) {
         setPropDocuments={setPropDocuments}
         properties={mappedProperties}
         dateFormat={dateFormat}
-        currentUser="User"
+        currentUser={props.loggedInUser || 'Admin'}
       />
     case 'history':
       return <History auditEvents={propAuditEvents} language={language} onClearHistory={props.onClearTransactions} onDeleteEvent={props.onDeleteEvent} />
