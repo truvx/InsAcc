@@ -243,6 +243,7 @@ export default function PropertyRouter(props: Props) {
         properties={mappedProperties}
         onNavigate={onNavigate}
         onAuditEvent={setPropAuditEvents ? (e => setPropAuditEvents(prev => [e, ...prev])) : undefined}
+        loggedInUser={props.loggedInUser}
       />
     case 'vendors':
       return <PropertyVendors
@@ -252,6 +253,7 @@ export default function PropertyRouter(props: Props) {
         vouchers={vouchers}
         properties={mappedProperties}
         onAuditEvent={setPropAuditEvents ? (e => setPropAuditEvents(prev => [e, ...prev])) : undefined}
+        loggedInUser={props.loggedInUser}
       />
     case 'leases':
       return <PropertyLeases
@@ -267,6 +269,7 @@ export default function PropertyRouter(props: Props) {
         bankMappings={bankMappings} depositMappings={depositMappings}
         onNavigate={onNavigate}
         onAuditEvent={setPropAuditEvents ? (e => setPropAuditEvents(prev => [e, ...prev])) : undefined}
+        loggedInUser={props.loggedInUser}
       />
     case 'expenses':
       return <PropertyExpenses
@@ -285,6 +288,7 @@ export default function PropertyRouter(props: Props) {
         setVouchers={setVouchers}
         bankMappings={bankMappings}
         onAuditEvent={setPropAuditEvents ? (e => setPropAuditEvents(prev => [e, ...prev])) : undefined}
+        loggedInUser={props.loggedInUser}
       />
     case 'transactions':
       return <PropertyTransactions
@@ -304,6 +308,7 @@ export default function PropertyRouter(props: Props) {
         securityDeposits={securityDeposits}
         propExpenses={propExpenses}
         onAuditEvent={setPropAuditEvents ? (e => setPropAuditEvents(prev => [e, ...prev])) : undefined}
+        loggedInUser={props.loggedInUser}
       />
     case 'bank-accounts':
       return <PropertyBankAccounts
@@ -323,6 +328,7 @@ export default function PropertyRouter(props: Props) {
         pdcCheques={pdcCheques}
         securityDeposits={securityDeposits}
         properties={mappedProperties}
+        loggedInUser={props.loggedInUser}
       />
     case 'receipt-voucher':
       return <PropertyReceiptVoucher
@@ -425,6 +431,7 @@ export default function PropertyRouter(props: Props) {
         bankMappings={bankMappings}
         onNavigate={onNavigate}
         onAuditEvent={setPropAuditEvents ? (e => setPropAuditEvents(prev => [e, ...prev])) : undefined}
+        loggedInUser={props.loggedInUser}
       />
     case 'deposit-manager':
       return <PropertyDepositManager

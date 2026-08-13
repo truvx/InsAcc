@@ -80,9 +80,10 @@ interface Props {
   pdcCheques?: PdcCheque[]
   securityDeposits?: SecurityDeposit[]
   properties?: any[]
+  loggedInUser?: string
 }
 
-export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'DD/MM/YYYY', language = 'English', propAccounts, setPropAccounts, propTransactions = [], setPropTransactions = () => {}, onAuditEvent, bankReconciliations, setBankReconciliations, accounts, setAccounts, vouchers, setVouchers, bankMappings, setBankMappings, accountingEngine, purchaseRecords = [], pdcCheques = [], securityDeposits = [], properties = [] }: Props) {
+export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'DD/MM/YYYY', language = 'English', propAccounts, setPropAccounts, propTransactions = [], setPropTransactions = () => {}, onAuditEvent, bankReconciliations, setBankReconciliations, accounts, setAccounts, vouchers, setVouchers, bankMappings, setBankMappings, accountingEngine, purchaseRecords = [], pdcCheques = [], securityDeposits = [], properties = [], loggedInUser }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [dialog, setDialog] = useState<{ type: DialogType; accountId?: string }>({ type: null })
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
@@ -1108,7 +1109,8 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
                 filename: `Bank_Ledger_${acc.institution.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`,
                 columns,
                 rows,
-                currency
+                currency,
+                generatedBy: loggedInUser
               })
 
               onAuditEvent?.(

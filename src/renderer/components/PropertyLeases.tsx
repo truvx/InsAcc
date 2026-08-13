@@ -49,6 +49,7 @@ interface Props {
   depositMappings?: SecurityDepositGlMappings
   onNavigate?: (page: string) => void
   onAuditEvent?: (event: AuditEvent) => void
+  loggedInUser?: string
 }
 
 // ── Reusable Component: LeaseKPIs ─────────────────────────────────────────────
@@ -382,6 +383,7 @@ export default function PropertyLeases({
   pdcCheques, setPdcCheques, accounts = [], vouchers = [], setVouchers,
   securityDeposits = [], setSecurityDeposits, accountingEngine, propAccounts = [],
   bankMappings = [], depositMappings, onNavigate, onAuditEvent,
+  loggedInUser,
 }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
   const [showModal, setShowModal] = useState(false)
@@ -1103,7 +1105,8 @@ export default function PropertyLeases({
       filename: `Property_Leases_${new Date().toISOString().split('T')[0]}`,
       columns,
       rows,
-      currency
+      currency,
+      generatedBy: loggedInUser
     }).catch(e => {
       setToast({ visible: true, message: 'Export failed: ' + (e.message || e), type: 'error' })
     })

@@ -26,6 +26,7 @@ interface Props {
   vouchers: Voucher[]
   properties: PropertyEntry[]
   onAuditEvent?: (event: AuditEvent) => void
+  loggedInUser?: string
 }
 
 interface VendorForm {
@@ -66,6 +67,7 @@ export default function PropertyVendors({
   vouchers = [],
   properties = [],
   onAuditEvent,
+  loggedInUser,
 }: Props) {
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
@@ -324,7 +326,8 @@ export default function PropertyVendors({
       filename: `Vendors_${new Date().toISOString().split('T')[0]}`,
       columns,
       rows,
-      currency
+      currency,
+      generatedBy: loggedInUser
     })
 
     setToast({ message: `Exported successfully`, type: 'success' })

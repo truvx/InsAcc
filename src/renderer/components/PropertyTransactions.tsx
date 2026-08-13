@@ -37,6 +37,7 @@ interface Props {
   propExpenses?: PropertyExpense[]
   setPropExpenses?: React.Dispatch<React.SetStateAction<PropertyExpense[]>>
   leases?: LeaseEntry[]
+  loggedInUser?: string
 }
 
 const typeFilterOptions = ['All', 'Income', 'Expense'] as const
@@ -62,7 +63,8 @@ export default function PropertyTransactions({
   securityDeposits = [],
   propExpenses = [],
   setPropExpenses,
-  leases = []
+  leases = [],
+  loggedInUser,
 }: Props) {
   const [typeFilter, setTypeFilter] = useState<'All' | 'Income' | 'Expense'>('All')
   const [searchQuery, setSearchQuery] = useState('')
@@ -926,7 +928,8 @@ export default function PropertyTransactions({
       filename: `Property_Transactions_${new Date().toISOString().split('T')[0]}`,
       columns,
       rows,
-      currency
+      currency,
+      generatedBy: loggedInUser
     })
 
     onAuditEvent?.(

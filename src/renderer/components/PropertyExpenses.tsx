@@ -35,6 +35,7 @@ interface Props {
   bankMappings?: BankMapping[]
   vendors?: VendorEntry[]
   onAuditEvent?: (event: AuditEvent) => void
+  loggedInUser?: string
 }
 
 const DEFAULT_CATEGORIES = [
@@ -75,7 +76,8 @@ export default function PropertyExpenses({
   setVouchers,
   bankMappings = [],
   vendors = [],
-  onAuditEvent
+  onAuditEvent,
+  loggedInUser,
 }: Props) {
   const fmt = (n: number) => <CurrencyText value={n} currency={currency} />
   const [searchQuery, setSearchQuery] = useState('')
@@ -724,7 +726,8 @@ export default function PropertyExpenses({
       filename: `Property_Expenses_${new Date().toISOString().split('T')[0]}`,
       columns,
       rows,
-      currency
+      currency,
+      generatedBy: loggedInUser
     })
 
     onAuditEvent?.(

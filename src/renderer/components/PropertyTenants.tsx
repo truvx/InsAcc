@@ -38,6 +38,7 @@ interface Props {
   properties?: any[]
   onNavigate?: (page: string) => void
   onAuditEvent?: (event: AuditEvent) => void
+  loggedInUser?: string
 }
 
 interface TenantForm {
@@ -84,7 +85,7 @@ const DEFAULT_FORM: TenantForm = {
   unitId: null,
 }
 
-export default function PropertyTenants({ currency: _currency, dateFormat = 'DD/MM/YYYY', language: _language, tenants, setTenants, leases = [], units = [], properties = [], onNavigate, onAuditEvent }: Props) {
+export default function PropertyTenants({ currency: _currency, dateFormat = 'DD/MM/YYYY', language: _language, tenants, setTenants, leases = [], units = [], properties = [], onNavigate, onAuditEvent, loggedInUser }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
   const [showModal, setShowModal] = useState(false)
@@ -237,7 +238,8 @@ export default function PropertyTenants({ currency: _currency, dateFormat = 'DD/
       filename: `Property_Tenants_${new Date().toISOString().split('T')[0]}`,
       columns,
       rows,
-      currency: _currency
+      currency: _currency,
+      generatedBy: loggedInUser
     })
 
     onAuditEvent?.(

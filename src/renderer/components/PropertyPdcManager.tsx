@@ -44,6 +44,7 @@ interface Props {
   bankMappings: BankMapping[]
   onNavigate?: (page: string) => void
   onAuditEvent?: (event: AuditEvent) => void
+  loggedInUser?: string
 }
 
 /* ─────────── Row action kebab menu ─────────── */
@@ -175,6 +176,7 @@ export default function PropertyPdcManager({
   bankMappings,
   onNavigate,
   onAuditEvent,
+  loggedInUser,
 }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
@@ -875,7 +877,8 @@ export default function PropertyPdcManager({
       filename: `PDC_Schedule_${new Date().toISOString().split('T')[0]}`,
       columns,
       rows,
-      currency
+      currency,
+      generatedBy: loggedInUser
     })
 
     onAuditEvent?.(
