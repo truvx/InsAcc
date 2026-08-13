@@ -443,32 +443,6 @@ export default function InvestmentChartOfAccounts({ currency = 'AED', accounts, 
                 minWidth: '120px'
               }}
             />
-            <Button
-              variant="secondary"
-              onClick={() => {
-                const csv = [
-                  ['Code', 'Account Name', 'Type', 'Status'],
-                  ...(tree as any[]).flatMap((n: any) => {
-                    const rows: string[][] = []
-                    const walk = (nodes: any[], depth: number) => {
-                      for (const node of nodes) {
-                        rows.push([node.account.code, node.account.name, node.account.type, node.account.isActive ? 'Active' : 'Inactive'])
-                        if (node.children.length > 0) walk(node.children, depth + 1)
-                      }
-                    }
-                    walk([n], 0)
-                    return rows
-                  }),
-                ]
-                const blob = new Blob([csv.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n')], { type: 'text/csv' })
-                const link = document.createElement('a')
-                link.href = URL.createObjectURL(blob)
-                link.download = 'chart-of-accounts.csv'
-                link.click()
-              }}
-            >
-              Export
-            </Button>
             <Button variant="primary" icon={<PlusIcon />} onClick={handleAddNew}>
               Add Account
             </Button>
