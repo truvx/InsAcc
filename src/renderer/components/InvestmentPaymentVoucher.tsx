@@ -136,7 +136,7 @@ export default function InvestmentPaymentVoucher({
       const q = searchQuery.toLowerCase()
       result = result.filter(v =>
         v.number.toLowerCase().includes(q) ||
-        v.description.toLowerCase().includes(q) ||
+        (v.description || '').toLowerCase().includes(q) ||
         v.reference.toLowerCase().includes(q)
       )
     }
@@ -591,7 +591,7 @@ export default function InvestmentPaymentVoucher({
             onEdit={() => openEditForm(v)}
             onDuplicate={() => handleDuplicate(v)}
             onPrint={() => printVoucher(v, accounts, currency)}
-            onExportPDF={() => exportVoucherToPDF(v, accounts, currency)}
+            onExportPDF={() => exportVoucherToPDF(v, accounts, currency, 'Investment Portfolio', loggedInUser)}
             onDelete={() => handleDelete(v)}
             onAuditTrail={() => {
               setAuditVoucher(v)

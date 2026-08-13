@@ -132,7 +132,7 @@ export default function PropertyJournalVoucher({
     const q = searchQuery.toLowerCase()
     return list.filter(v =>
       v.number.toLowerCase().includes(q) ||
-      v.description.toLowerCase().includes(q)
+      (v.description || '').toLowerCase().includes(q)
     )
   }, [journalVouchers, searchQuery, dateFrom, dateTo, tagFilter, leases])
 
@@ -407,7 +407,7 @@ export default function PropertyJournalVoucher({
             onEdit={() => openEditForm(v)}
             onDuplicate={() => handleDuplicate(v)}
             onPrint={() => printVoucher(v, accounts, currency, 'Properties Management')}
-            onExportPDF={() => exportVoucherToPDF(v, accounts, currency, 'Properties Management')}
+            onExportPDF={() => exportVoucherToPDF(v, accounts, currency, 'Properties Management', loggedInUser)}
             onDelete={() => handleDelete(v)}
             onAuditTrail={() => {
               setAuditVoucher(v)

@@ -151,7 +151,7 @@ export default function PropertyPaymentVoucher({
       const q = searchQuery.toLowerCase()
       list = list.filter(v =>
         v.number.toLowerCase().includes(q) ||
-        v.description.toLowerCase().includes(q) ||
+        (v.description || '').toLowerCase().includes(q) ||
         v.reference.toLowerCase().includes(q)
       )
     }
@@ -522,7 +522,7 @@ export default function PropertyPaymentVoucher({
             onEdit={() => openEditForm(v)}
             onDuplicate={() => handleDuplicate(v)}
             onPrint={() => printVoucher(v, accounts, currency, 'Properties Management')}
-            onExportPDF={() => exportVoucherToPDF(v, accounts, currency, 'Properties Management')}
+            onExportPDF={() => exportVoucherToPDF(v, accounts, currency, 'Properties Management', loggedInUser)}
             onDelete={() => handleDelete(v)}
             onAuditTrail={() => {
               setAuditVoucher(v)
@@ -551,9 +551,9 @@ export default function PropertyPaymentVoucher({
       filename: `Payment_Vouchers_${new Date().toISOString().split('T')[0]}`,
       columns: ['Voucher #', 'Date', 'Paid To', 'Paid From', 'Expense Type', 'Description', 'Amount', 'Payment Mode', 'Status', 'Tags'],
       rows: filtered.map(v => {
-        let paidToMatch = v.description.match(/\(paid to\s+(.*?)\)$/i)
-        if (!paidToMatch && v.description.includes('Expense:')) {
-          paidToMatch = v.description.match(/for\s+(.*)$/i)
+        let paidToMatch = (v.description || '').match(/\(paid to\s+(.*?)\)$/i)
+        if (!paidToMatch && (v.description || '').includes('Expense:')) {
+          paidToMatch = (v.description || '').match(/for\s+(.*)$/i)
         }
         const paidTo = paidToMatch ? paidToMatch[1] : '—'
         const totalAmount = v.lines.reduce((s: number, l: any) => s + (l.type === 'Credit' ? (l.baseAmount ?? l.amount) : 0), 0)

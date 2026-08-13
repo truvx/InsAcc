@@ -499,7 +499,7 @@ export default function PurchaseLedger({
               }}
               onExportPDF={() => {
                 if (v) {
-                  exportVoucherToPDF(v, accounts, currency)
+                  exportVoucherToPDF(v, accounts, currency, 'Investment Portfolio', loggedInUser)
                 } else {
                   setToast({ visible: true, message: 'No accounting voucher linked to export', type: 'error' })
                 }

@@ -1797,7 +1797,7 @@ export default function App() {
           return { ...l, accountId: '2120' }
         }
         const isSecDepText =
-          v.description.toLowerCase().includes('security deposit') ||
+          (v.description || '').toLowerCase().includes('security deposit') ||
           (l.narration && l.narration.toLowerCase().includes('security deposit'))
         if (isSecDepText) {
           const targetAcct = propChartAccounts.find(a => a.id === l.accountId)

@@ -160,7 +160,7 @@ export default function PropertyReceiptVoucher({
     const q = searchQuery.toLowerCase()
     return list.filter(v =>
       v.number.toLowerCase().includes(q) ||
-      v.description.toLowerCase().includes(q) ||
+      (v.description || '').toLowerCase().includes(q) ||
       v.reference.toLowerCase().includes(q)
     )
   }, [receiptVouchers, searchQuery, dateFrom, dateTo, filterParty, filterTag, allParties, leases])
@@ -553,7 +553,7 @@ export default function PropertyReceiptVoucher({
             onEdit={() => openEditForm(v)}
             onDuplicate={() => handleDuplicate(v)}
             onPrint={() => printVoucher(v, accounts, currency, 'Properties Management')}
-            onExportPDF={() => exportVoucherToPDF(v, accounts, currency, 'Properties Management')}
+            onExportPDF={() => exportVoucherToPDF(v, accounts, currency, 'Properties Management', loggedInUser)}
             onDelete={() => handleDelete(v)}
             onAuditTrail={() => {
               setAuditVoucher(v)
