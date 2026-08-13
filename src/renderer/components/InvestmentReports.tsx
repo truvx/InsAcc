@@ -266,6 +266,7 @@ export default function InvestmentReports({
               filename: `Investment_Profit_Loss_${new Date().toISOString().slice(0, 10)}`,
               periodLabel: `${filterStart} - ${filterEnd}`,
               currency: currency,
+              generatedBy: loggedInUser || 'User',
               leftCol: {
                 title: 'Revenue',
                 accentColor: '#22A45D',
