@@ -14,6 +14,7 @@ interface Props {
   customers: Customer[]
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>
   onAuditEvent?: (event: AuditEvent) => void
+  loggedInUser?: string
 }
 
 export default function PropertyProperties(props: Props) {

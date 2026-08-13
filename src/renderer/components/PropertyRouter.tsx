@@ -234,6 +234,7 @@ export default function PropertyRouter(props: Props) {
         customers={customers}
         setCustomers={setCustomers}
         onAuditEvent={setPropAuditEvents ? (e => setPropAuditEvents(prev => [e, ...prev])) : undefined}
+        loggedInUser={props.loggedInUser}
       />
     case 'tenants':
       return <PropertyTenants

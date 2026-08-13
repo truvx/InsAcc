@@ -19,6 +19,7 @@ interface Props {
   customers: Customer[]
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>
   onAuditEvent?: (event: AuditEvent) => void
+  loggedInUser?: string
 }
 
 interface TreeNode {
@@ -144,6 +145,7 @@ export default function PropertyHierarchy({
   incomeCategories, setIncomeCategories,
   customers, setCustomers,
   onAuditEvent,
+  loggedInUser,
 }: Props) {
   const [search, setSearch] = useState('')
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({ visible: false, message: '', type: 'success' })
@@ -217,7 +219,8 @@ export default function PropertyHierarchy({
         filename: `Property_Hierarchy_${new Date().toISOString().split('T')[0]}`,
         columns: ['Type', 'Name'],
         rows,
-        currency
+        currency,
+        generatedBy: loggedInUser
       }).then(() => {
         onAuditEvent?.(
           recordModuleEvent(
