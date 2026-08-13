@@ -13,6 +13,7 @@ interface Props {
   currency?: string
   accounts: Account[]
   vouchers: Voucher[]
+  loggedInUser?: string
 }
 
 interface TreeNode {
@@ -37,7 +38,7 @@ function flatRowsFromTree(
   return rows
 }
 
-export default function InvestmentProfitLoss({ currency = 'AED', accounts, vouchers }: Props) {
+export default function InvestmentProfitLoss({ currency = 'AED', accounts, vouchers, loggedInUser }: Props) {
   const [drillAccountId, setDrillAccountId] = useState<string | null>(null)
   const [drillAccountName, setDrillAccountName] = useState<string>('')
 
@@ -134,7 +135,7 @@ export default function InvestmentProfitLoss({ currency = 'AED', accounts, vouch
   )
 
   const handleExport = () => {
-    exportSideBySidePdf({
+    exportSideBySidePdf({ generatedBy: loggedInUser,
       title: 'Profit & Loss',
       subtitle: 'Revenue — Expenses = Net Income',
       periodLabel: 'All Time',

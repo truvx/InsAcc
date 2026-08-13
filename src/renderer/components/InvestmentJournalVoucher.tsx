@@ -31,6 +31,7 @@ interface Props {
   auditEvents?: AuditEvent[]
   setTransactions?: React.Dispatch<React.SetStateAction<any[]>>
   purchaseRecords?: PurchaseRecord[]
+  loggedInUser?: string
 }
 
 export default function InvestmentJournalVoucher({
@@ -39,6 +40,7 @@ export default function InvestmentJournalVoucher({
   auditEvents = [],
   setTransactions,
   purchaseRecords = [],
+  loggedInUser,
 }: Props) {
   const {
     detailVoucher, setDetailVoucher,
@@ -116,6 +118,7 @@ export default function InvestmentJournalVoucher({
         subtitle: `Report generated on ${new Date().toLocaleDateString()}${dateFrom || dateTo ? ` | Period: ${dateFrom || 'Start'} to ${dateTo || 'End'}` : ''}`,
         columns,
         rows,
+        generatedBy: loggedInUser,
         format,
         filename: `Investment_Journal_Vouchers_${new Date().toISOString().split('T')[0]}`
       })

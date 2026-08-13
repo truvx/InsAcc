@@ -76,6 +76,7 @@ interface Props {
   setInvestmentCategories?: React.Dispatch<React.SetStateAction<InvestmentCategory[]>>
   investmentAssets?: InvestmentAsset[]
   setInvestmentAssets?: React.Dispatch<React.SetStateAction<InvestmentAsset[]>>
+  loggedInUser?: string
 }
 
 interface FormState {
@@ -128,6 +129,7 @@ export default function PurchaseLedger({
   setInvestmentCategories,
   investmentAssets = [],
   setInvestmentAssets,
+  loggedInUser,
 }: Props) {
   const getAccountName = (codeOrIdOrName: string) => {
     if (!codeOrIdOrName) return '—'
@@ -673,7 +675,8 @@ export default function PurchaseLedger({
       rows,
       foot,
       currency,
-      orientation: 'landscape'
+      orientation: 'landscape',
+      generatedBy: loggedInUser
     })
     setShowExportMenu(false)
   }

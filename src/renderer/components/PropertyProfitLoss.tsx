@@ -18,6 +18,7 @@ interface Props {
   vouchers: Voucher[]
   properties?: PropertyEntry[]
   leases?: LeaseEntry[]
+  loggedInUser?: string
 }
 
 interface TreeNode {
@@ -42,7 +43,7 @@ function flatRowsFromTree(
   return rows
 }
 
-export default function PropertyProfitLoss({ currency = 'AED', accounts, vouchers, properties = [], leases = [] }: Props) {
+export default function PropertyProfitLoss({ currency = 'AED', accounts, vouchers, properties = [], leases = [], loggedInUser }: Props) {
   const [drillAccountId, setDrillAccountId] = useState<string | null>(null)
   const [drillAccountName, setDrillAccountName] = useState<string>('')
   const [filterPropertyId, setFilterPropertyId] = useState('')
@@ -189,7 +190,7 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
     ])
 
     try {
-      exportSideBySidePdf({
+      exportSideBySidePdf({ generatedBy: loggedInUser,
         title: 'Profit & Loss Statement',
         subtitle: filterPropertyId ? `Property: ${properties.find(p => p.id === filterPropertyId)?.name}` : 'All Properties',
         currency,

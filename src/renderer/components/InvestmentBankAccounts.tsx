@@ -47,6 +47,7 @@ interface Props {
   setBankReconciliations: React.Dispatch<React.SetStateAction<BankReconciliationRecord[]>>
   purchaseRecords?: PurchaseRecord[]
   onAuditEvent?: (event: AuditEvent) => void
+  loggedInUser?: string
 }
 
 type DialogType = 'addAccount' | 'editAccount' | 'deposit' | 'withdraw' | 'transfer' | null
@@ -59,6 +60,7 @@ export default function InvestmentBankAccounts({
   bankMappings, setBankMappings, accountingEngine, onAuditEvent,
   bankReconciliations, setBankReconciliations,
   purchaseRecords = [],
+  loggedInUser,
 }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [dialog, setDialog] = useState<{ type: DialogType; accountId?: string }>({ type: null })
@@ -161,7 +163,8 @@ export default function InvestmentBankAccounts({
       filename: `Bank_Accounts_${new Date().toISOString().split('T')[0]}`,
       columns: exportColumns,
       rows,
-      currency
+      currency,
+      generatedBy: loggedInUser
     })
     setShowExportMenu(false)
   }

@@ -341,6 +341,7 @@ export default function PropertyRouter(props: Props) {
         propTransactions={propTransactions}
         propExpenses={propExpenses}
         securityDeposits={securityDeposits}
+        loggedInUser={props.loggedInUser}
       />
     case 'payment-voucher':
       return <PropertyPaymentVoucher
@@ -355,6 +356,7 @@ export default function PropertyRouter(props: Props) {
         vendors={propVendors}
         propTransactions={propTransactions}
         propExpenses={propExpenses}
+        loggedInUser={props.loggedInUser}
       />
     case 'journal-voucher':
       return <PropertyJournalVoucher
@@ -374,6 +376,7 @@ export default function PropertyRouter(props: Props) {
         propExpenses={propExpenses}
         pdcCheques={pdcCheques}
         securityDeposits={securityDeposits}
+        loggedInUser={props.loggedInUser}
       />
     case 'chart-of-accounts':
       return <PropertyChartOfAccounts
@@ -399,11 +402,13 @@ export default function PropertyRouter(props: Props) {
       return <PropertyBalanceSheet
         currency={currency} accounts={propertyAccounts} vouchers={vouchers}
         properties={mappedProperties} leases={propLeases}
+        loggedInUser={props.loggedInUser}
       />
     case 'profit-loss':
       return <PropertyProfitLoss
         currency={currency} accounts={propertyAccounts} vouchers={vouchers}
         properties={mappedProperties} leases={propLeases}
+        loggedInUser={props.loggedInUser}
       />
     case 'pdc-manager':
       return <PropertyPdcManager

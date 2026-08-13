@@ -57,6 +57,7 @@ interface Props {
   vendors?: VendorEntry[]
   propTransactions?: any[]
   propExpenses?: any[]
+  loggedInUser?: string
 }
 
 export default function PropertyPaymentVoucher({
@@ -72,6 +73,7 @@ export default function PropertyPaymentVoucher({
   vendors = [],
   propTransactions = [],
   propExpenses = [],
+  loggedInUser,
 }: Props) {
   const {
     detailVoucher, setDetailVoucher,
@@ -569,7 +571,8 @@ export default function PropertyPaymentVoucher({
           v.tags?.length ? v.tags.join(', ') : '—'
         ]
       }),
-      currency
+      currency,
+      generatedBy: loggedInUser
     })
 
     onAuditEvent?.(

@@ -23,12 +23,14 @@ interface Props {
   bankAccounts?: BankAccount[]
   bankMappings?: BankMapping[]
   onNavigate?: (page: string) => void
+  loggedInUser?: string
 }
 
 export default function InvestmentHoldings({
   currency = 'AED', accounts, vouchers, purchaseRecords,
   bankAccounts = [], bankMappings = [],
   onNavigate = () => {},
+  loggedInUser,
 }: Props) {
   const [detailHolding, setDetailHolding] = useState<AssetHolding | null>(null)
   const [showExportMenu, setShowExportMenu] = useState(false)
@@ -79,7 +81,8 @@ export default function InvestmentHoldings({
       filename: `Investment_Holdings_${new Date().toISOString().split('T')[0]}`,
       columns: exportColumns,
       rows,
-      currency
+      currency,
+      generatedBy: loggedInUser
     })
     setShowExportMenu(false)
   }

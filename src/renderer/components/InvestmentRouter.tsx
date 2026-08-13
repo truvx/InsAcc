@@ -162,6 +162,7 @@ export default function InvestmentRouter(props: Props) {
           currency={currency}
           accounts={investmentAccounts}
           vouchers={vouchers}
+          loggedInUser={props.loggedInUser}
         />
       )
     case 'profit-loss':
@@ -170,6 +171,7 @@ export default function InvestmentRouter(props: Props) {
           currency={currency}
           accounts={investmentAccounts}
           vouchers={vouchers}
+          loggedInUser={props.loggedInUser}
         />
       )
     case 'receipt-voucher':
@@ -182,6 +184,7 @@ export default function InvestmentRouter(props: Props) {
           purchaseRecords={purchaseRecords}
           onAuditEvent={recordAuditEvent}
           auditEvents={auditEvents}
+          loggedInUser={props.loggedInUser}
         />
       )
     case 'payment-voucher':
@@ -194,6 +197,7 @@ export default function InvestmentRouter(props: Props) {
           purchaseRecords={purchaseRecords}
           onAuditEvent={recordAuditEvent}
           auditEvents={auditEvents}
+          loggedInUser={props.loggedInUser}
         />
       )
     case 'journal-voucher':
@@ -205,6 +209,7 @@ export default function InvestmentRouter(props: Props) {
           onAuditEvent={recordAuditEvent}
           auditEvents={auditEvents}
           purchaseRecords={purchaseRecords}
+          loggedInUser={props.loggedInUser}
         />
       )
     case 'reports':
@@ -234,6 +239,7 @@ export default function InvestmentRouter(props: Props) {
           bankReconciliations={bankReconciliations}
           setBankReconciliations={setBankReconciliations}
           purchaseRecords={purchaseRecords}
+          loggedInUser={props.loggedInUser}
         />
       )
     case 'history':
@@ -255,6 +261,7 @@ export default function InvestmentRouter(props: Props) {
           bankAccounts={bankAccounts}
           bankMappings={bankMappings}
           onNavigate={onNavigate}
+          loggedInUser={props.loggedInUser}
         />
       )
     case 'total-average-holding':
@@ -301,6 +308,7 @@ export default function InvestmentRouter(props: Props) {
           setInvestmentCategories={setInvestmentCategories}
           investmentAssets={investmentAssets}
           setInvestmentAssets={setInvestmentAssets}
+          loggedInUser={props.loggedInUser}
         />
       )
     case 'settings':

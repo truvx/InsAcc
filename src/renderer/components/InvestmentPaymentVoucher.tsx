@@ -62,6 +62,7 @@ interface Props {
   purchaseRecords?: PurchaseRecord[]
   onAuditEvent?: (event: AuditEvent) => void
   auditEvents?: AuditEvent[]
+  loggedInUser?: string
 }
 
 export default function InvestmentPaymentVoucher({
@@ -71,6 +72,7 @@ export default function InvestmentPaymentVoucher({
   purchaseRecords = [],
   onAuditEvent,
   auditEvents = [],
+  loggedInUser,
 }: Props) {
   const {
     detailVoucher, setDetailVoucher,
@@ -177,6 +179,7 @@ export default function InvestmentPaymentVoucher({
         subtitle: `Report generated on ${new Date().toLocaleDateString()}${dateFrom || dateTo ? ` | Period: ${dateFrom || 'Start'} to ${dateTo || 'End'}` : ''}`,
         columns,
         rows,
+        generatedBy: loggedInUser,
         format,
         filename: `Investment_Payment_Vouchers_${new Date().toISOString().split('T')[0]}`
       })

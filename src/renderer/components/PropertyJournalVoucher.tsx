@@ -45,6 +45,7 @@ interface Props {
   propExpenses?: any[]
   pdcCheques?: any[]
   securityDeposits?: any[]
+  loggedInUser?: string
 }
 
 export default function PropertyJournalVoucher({
@@ -63,6 +64,7 @@ export default function PropertyJournalVoucher({
   propExpenses = [],
   pdcCheques = [],
   securityDeposits = [],
+  loggedInUser,
 }: Props) {
   const {
     detailVoucher, setDetailVoucher,
@@ -440,7 +442,8 @@ export default function PropertyJournalVoucher({
           v.status || 'Draft'
         ]
       }),
-      currency
+      currency,
+      generatedBy: loggedInUser
     })
 
     onAuditEvent?.(

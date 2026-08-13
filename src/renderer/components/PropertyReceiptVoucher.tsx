@@ -54,6 +54,7 @@ interface Props {
   propTransactions?: any[]
   propExpenses?: any[]
   securityDeposits?: any[]
+  loggedInUser?: string
 }
 
 export default function PropertyReceiptVoucher({
@@ -70,6 +71,7 @@ export default function PropertyReceiptVoucher({
   propTransactions = [],
   propExpenses = [],
   securityDeposits = [],
+  loggedInUser,
 }: Props) {
   const {
     detailVoucher, setDetailVoucher,
@@ -595,7 +597,8 @@ export default function PropertyReceiptVoucher({
           v.status || 'Draft'
         ]
       }),
-      currency
+      currency,
+      generatedBy: loggedInUser
     })
 
     onAuditEvent?.(

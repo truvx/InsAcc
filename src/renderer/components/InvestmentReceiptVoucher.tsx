@@ -39,6 +39,7 @@ interface Props {
   purchaseRecords?: PurchaseRecord[]
   onAuditEvent?: (event: AuditEvent) => void
   auditEvents?: AuditEvent[]
+  loggedInUser?: string
 }
 
 const REVENUE_ACCOUNTS = [
@@ -59,6 +60,7 @@ export default function InvestmentReceiptVoucher({
   purchaseRecords = [],
   onAuditEvent,
   auditEvents = [],
+  loggedInUser,
 }: Props) {
   const {
     detailVoucher, setDetailVoucher,
@@ -142,6 +144,7 @@ export default function InvestmentReceiptVoucher({
         subtitle: `Report generated on ${new Date().toLocaleDateString()}${dateFrom || dateTo ? ` | Period: ${dateFrom || 'Start'} to ${dateTo || 'End'}` : ''}`,
         columns,
         rows,
+        generatedBy: loggedInUser,
         format,
         filename: `Investment_Receipt_Vouchers_${new Date().toISOString().split('T')[0]}`
       })
