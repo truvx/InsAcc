@@ -137,6 +137,7 @@ export default function InvestmentRouter(props: Props) {
           bankAccounts={bankAccounts}
           bankMappings={bankMappings}
           purchaseRecords={purchaseRecords}
+          loggedInUser={props.loggedInUser}
         />
       )
     case 'chart-of-accounts':

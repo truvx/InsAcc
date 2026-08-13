@@ -15,6 +15,7 @@ interface Props {
   bankAccounts: BankAccount[]
   bankMappings: BankMapping[]
   purchaseRecords: PurchaseRecord[]
+  loggedInUser?: string
 }
 
 const PAGE_BG = '#FFFFFF'
@@ -73,7 +74,7 @@ function getVoucherBadge(type: string) {
 
 
 export default function InvestmentAccountsDashboard({
-  currency = 'AED', accounts, vouchers, bankAccounts, bankMappings, purchaseRecords,
+  currency = 'AED', accounts, vouchers, bankAccounts, bankMappings, purchaseRecords, loggedInUser
 }: Props) {
   const [drillAccountId, setDrillAccountId] = useState<string | null>(null)
   const [drillAccountName, setDrillAccountName] = useState<string>('')
