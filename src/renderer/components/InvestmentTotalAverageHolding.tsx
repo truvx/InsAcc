@@ -29,6 +29,7 @@ interface PurityGroup {
   weightedAveragePrice: number
   purityAveragePrice: number
   purchaseCount: number
+  rawQuantity: number
 }
 
 interface AssetHoldingAverage {
@@ -77,6 +78,7 @@ export default function InvestmentTotalAverageHolding({
     const result: PurityGroup[] = []
     for (const [purity, group] of grouped) {
       const totalQuantity = group.reduce((s, p) => s + p.quantity * getAssetWeightMultiplier(p.assetName), 0)
+      const rawQuantity = group.reduce((s, p) => s + p.quantity, 0)
       const totalInvested = group.reduce((s, p) => s + p.totalValue, 0)
       const purchaseCount = group.length
       const sumUnitPrice = group.reduce((s, p) => s + p.unitPrice, 0)
@@ -91,6 +93,7 @@ export default function InvestmentTotalAverageHolding({
         weightedAveragePrice,
         purityAveragePrice,
         purchaseCount,
+        rawQuantity,
       })
     }
 
@@ -138,10 +141,10 @@ export default function InvestmentTotalAverageHolding({
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     const sym = getCurrencySymbol(currency)
     // Only exporting purity averages as a summary
-    const exportColumns = ['Purity/Type', 'No. of Purchases', 'Total Qty in Grams', 'Total Invested (DHS)', 'Purity Avg Price']
+    const exportColumns = ['Purity/Type', 'Qty (No.)', 'Total Qty in Grams', 'Total Invested (DHS)', 'Purity Avg Price']
     const rows = purityWiseData.map(p => [
       p.purity,
-      p.purchaseCount,
+      p.rawQuantity.toLocaleString(),
       p.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 4 }),
       `${sym} ${p.totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
       `${sym} ${p.purityAveragePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
@@ -217,12 +220,12 @@ export default function InvestmentTotalAverageHolding({
       render: (p) => <span className="fw-600 text-xs"><CurrencyText value={p.totalInvested} currency={currency} /></span>,
     },
     {
-      key: 'purchaseCount',
-      header: 'Lots / Purchases',
+      key: 'rawQuantity',
+      header: 'Qty (No.)',
       sortable: true,
       numeric: true,
       width: '120px',
-      render: (p) => <span className="text-xs text-secondary">{p.purchaseCount}</span>,
+      render: (p) => <span className="text-xs">{p.rawQuantity.toLocaleString()}</span>,
     },
   ]
 
