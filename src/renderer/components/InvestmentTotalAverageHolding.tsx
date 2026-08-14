@@ -126,14 +126,19 @@ export default function InvestmentTotalAverageHolding({
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     // Only exporting purity averages as a summary
-    const exportColumns = ['Purity/Type', 'Purchases', 'Total Qty', 'Total Invested', 'Purity Avg Price']
+    const exportColumns = ['Purity/Type', 'No. of Purchases', 'Total Qty in Grams', 'Total Invested In DHS', 'Purity Avg Price']
     const rows = purityWiseData.map(p => [
       p.purity,
       p.purchaseCount,
       p.totalQuantity,
-      parseFloat(p.totalInvested.toFixed(2)),
-      parseFloat(p.purityAveragePrice.toFixed(2))
+      `${currency} ${p.totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+      `${currency} ${p.purityAveragePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
     ])
+
+    const totalInvestedSum = purityWiseData.reduce((s, p) => s + p.totalInvested, 0)
+    const foot = [
+      ['', '', 'Total Invested:', `${currency} ${totalInvestedSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, '']
+    ]
 
     exportTableData({
       moduleName: 'Investment Portfolio',
@@ -143,6 +148,7 @@ export default function InvestmentTotalAverageHolding({
       filename: `Average_Holding_${new Date().toISOString().split('T')[0]}`,
       columns: exportColumns,
       rows,
+      foot,
       currency,
       generatedBy: loggedInUser || 'User'
     })
