@@ -1,11 +1,11 @@
-/** Maps ISO currency codes to their display symbols. Falls back to the code itself. */
+/** Maps ISO currency codes to their display symbols for exports. Falls back to the code itself. */
 export function getCurrencySymbol(currency: string): string {
   const map: Record<string, string> = {
-    AED: 'د.إ',
+    AED: 'DHS',
     USD: '$',
     EUR: '€',
     GBP: '£',
-    SAR: '﷼',
+    SAR: 'SAR',
     INR: '₹',
     JPY: '¥',
     CNY: '¥',
