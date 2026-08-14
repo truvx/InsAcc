@@ -54,7 +54,7 @@ export function getThemeColorArray(): [number, number, number] {
       return [222, 141, 169]
     }
   }
-  return getThemeColorArray()
+  return [15, 76, 53]
 }
 
 const PAGE_WIDTH = 210
