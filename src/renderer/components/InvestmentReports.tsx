@@ -9,6 +9,7 @@ import { UaeDirhamIcon } from './design/UaeDirhamIcon'
 import BankAccountAvatar from './BankAccountAvatar'
 import { formatAssetType } from '../data/investmentMasterData'
 import { exportAccountingExcel, exportAccountingCsv, exportAccountingPdf, exportOverviewPdf, exportTableData, exportSideBySidePdf } from '../services/reportExportService'
+import { getCurrencySymbol } from '../utils/reportFormatters'
 import ExportReportModal from './design/ExportReportModal'
 import { validateLedgerBalance } from '../accounting/ledgerService'
 
@@ -324,12 +325,13 @@ export default function InvestmentReports({
         }
         case 'purchase-report': {
           title = 'Purchase Report'
+          const sym = getCurrencySymbol(currency)
           columns = ['Date', 'Type', 'Asset', 'Total Qty in Grams', 'Unit Price in DHS', 'Total Invested in DHS', 'Account', 'Voucher']
-          rows = projection.purchaseReport.map(r => [r.date, formatAssetType(r.assetType), r.assetName, r.quantity, `${currency} ${r.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, `${currency} ${r.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, r.accountCode, r.voucherNumber])
+          rows = projection.purchaseReport.map(r => [r.date, formatAssetType(r.assetType), r.assetName, r.quantity, `${sym} ${r.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, `${sym} ${r.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, r.accountCode, r.voucherNumber])
           
           const totalInvestedSum = projection.purchaseReport.reduce((s, r) => s + r.totalValue, 0)
           const foot = [
-            ['', '', '', '', 'Total Invested:', `${currency} ${totalInvestedSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, '', '']
+            ['', '', '', '', 'Total Invested:', `${sym} ${totalInvestedSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, '', '']
           ]
           
           await exportTableData({

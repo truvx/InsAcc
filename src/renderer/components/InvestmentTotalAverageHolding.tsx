@@ -8,6 +8,7 @@ import { getAssetWeightMultiplier } from '../services/purchaseLedgerService'
 import { DataTable, type Column } from './design/Table'
 import { KpiCard, Button, ChevronLeftIcon } from './design/DesignSystem'
 import { exportTableData } from '../services/reportExportService'
+import { getCurrencySymbol } from '../utils/reportFormatters'
 import { Download } from 'lucide-react'
 
 interface Props {
@@ -125,19 +126,20 @@ export default function InvestmentTotalAverageHolding({
   }, [purityWiseData])
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+    const sym = getCurrencySymbol(currency)
     // Only exporting purity averages as a summary
     const exportColumns = ['Purity/Type', 'No. of Purchases', 'Total Qty in Grams', 'Total Invested In DHS', 'Purity Avg Price']
     const rows = purityWiseData.map(p => [
       p.purity,
       p.purchaseCount,
       p.totalQuantity,
-      `${currency} ${p.totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
-      `${currency} ${p.purityAveragePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+      `${sym} ${p.totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+      `${sym} ${p.purityAveragePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
     ])
 
     const totalInvestedSum = purityWiseData.reduce((s, p) => s + p.totalInvested, 0)
     const foot = [
-      ['', '', 'Total Invested:', `${currency} ${totalInvestedSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, '']
+      ['', '', 'Total Invested:', `${sym} ${totalInvestedSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, '']
     ]
 
     exportTableData({

@@ -1,18 +1,34 @@
+/** Maps ISO currency codes to their display symbols. Falls back to the code itself. */
+export function getCurrencySymbol(currency: string): string {
+  const map: Record<string, string> = {
+    AED: 'د.إ',
+    USD: '$',
+    EUR: '€',
+    GBP: '£',
+    SAR: '﷼',
+    INR: '₹',
+    JPY: '¥',
+    CNY: '¥',
+  }
+  return map[(currency || 'AED').toUpperCase()] ?? (currency || 'AED').toUpperCase()
+}
+
 export function formatCurrency(value: number, currency: string = 'AED'): string {
-  const cleanCurrency = (currency || 'AED').toUpperCase();
-  const isNegative = value < 0;
-  const sign = isNegative ? '-' : '';
-  const absValue = Math.abs(value);
+  const symbol = getCurrencySymbol(currency)
+  const isNegative = value < 0
+  const sign = isNegative ? '-' : ''
+  const absValue = Math.abs(value)
   const formattedNumber = absValue.toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
-  });
-  return `${cleanCurrency} ${sign}${formattedNumber}`;
+  })
+  return `${symbol} ${sign}${formattedNumber}`
 }
 
 export function formatCompactCurrency(value: number, currency: string = 'AED'): string {
+  const symbol = getCurrencySymbol(currency)
   const sign = value < 0 ? '- ' : ''
-  return `${sign}${currency} ${formatCompactNumber(Math.abs(value))}`
+  return `${sign}${symbol} ${formatCompactNumber(Math.abs(value))}`
 }
 
 export function formatPercentage(value: number): string {

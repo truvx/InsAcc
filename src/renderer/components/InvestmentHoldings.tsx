@@ -7,7 +7,7 @@ import type { PurchaseRecord } from '../data/purchaseLedger'
 import { getInvestmentHoldingsProjection } from '../readModels/InvestmentHoldingsReadModel'
 import { getAssetWeightMultiplier } from '../services/purchaseLedgerService'
 import { getLinesForAccount } from '../accounting/ledgerService'
-import { formatCurrency } from '../utils/reportFormatters'
+import { formatCurrency, getCurrencySymbol } from '../utils/reportFormatters'
 import { DataTable, type Column } from './design/Table'
 import { exportTableData } from '../services/reportExportService'
 import { Badge, EmptyState, Modal, ChevronLeftIcon, Button } from './design/DesignSystem'
@@ -58,6 +58,7 @@ export default function InvestmentHoldings({
   const totalHoldings = holdings.length
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+    const sym = getCurrencySymbol(currency)
     const exportColumns = ['Asset', 'Type', 'Paid From', 'Total Qty in Grams', 'Total Invested In DHS', 'Purity Avg Price']
     const rows = holdings.map(h => {
       const record = purchaseRecords.find(p => h.purchaseRecordIds.includes(p.id))
@@ -68,14 +69,14 @@ export default function InvestmentHoldings({
         h.assetType,
         bank?.institution || '—',
         h.totalQuantity,
-        `${currency} ${h.totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
-        `${currency} ${h.avgPurchaseValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+        `${sym} ${h.totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+        `${sym} ${h.avgPurchaseValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
       ]
     })
 
     const totalInvestedSum = holdings.reduce((s, h) => s + h.totalInvested, 0)
     const foot = [
-      ['', '', '', 'Total Invested:', `${currency} ${totalInvestedSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, '']
+      ['', '', '', 'Total Invested:', `${sym} ${totalInvestedSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, '']
     ]
 
     exportTableData({
