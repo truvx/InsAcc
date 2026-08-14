@@ -327,7 +327,7 @@ export default function InvestmentReports({
         case 'purchase-report': {
           title = 'Purchase Report'
           const sym = getCurrencySymbol(currency)
-          columns = ['Date', 'Type', 'Asset', 'Qty (No)', 'Qty (Grams)', 'Unit Price in DHS', 'Total Invested in DHS', 'Account', 'Voucher']
+          columns = ['Date', 'Type', 'Asset', 'Qty (No.)', 'Qty (Grams)', 'Unit Price (DHS)', 'Total Invested (DHS)', 'Account', 'Voucher']
           rows = projection.purchaseReport.map(r => [r.date, formatAssetType(r.assetType), r.assetName, r.quantity.toLocaleString(), `${(r.quantity * getAssetWeightMultiplier(r.assetName)).toLocaleString()}g`, `${sym} ${r.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, `${sym} ${r.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, r.accountCode, r.voucherNumber])
           
           const totalInvestedSum = projection.purchaseReport.reduce((s, r) => s + r.totalValue, 0)
@@ -865,7 +865,7 @@ export default function InvestmentReports({
                     <tr>
                       <th>Date</th>
                       <th>Asset</th>
-                      <th style={{ textAlign: 'right' }}>Qty (No)</th>
+                      <th style={{ textAlign: 'right' }}>Qty (No.)</th>
                       <th style={{ textAlign: 'right' }}>Qty (Grams)</th>
                       <th style={{ textAlign: 'right' }}>Unit Price</th>
                       <th style={{ textAlign: 'right' }}>Total</th>

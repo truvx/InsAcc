@@ -70,7 +70,7 @@ export default function InvestmentHoldings({
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     const sym = getCurrencySymbol(currency)
-    const exportColumns = ['ASSET', 'TYPE', 'PAID FROM', 'QTY (NO)', 'QTY (GRAMS)', 'TOTAL INVESTED IN DHS', 'AVERAGE UNIT PRICE']
+    const exportColumns = ['ASSET', 'TYPE', 'PAID FROM', 'QTY (No.)', 'QTY (GRAMS)', 'TOTAL INVESTED (DHS)', 'AVERAGE UNIT PRICE']
     const rows = holdings.map(h => {
       const record = purchaseRecords.find(p => h.purchaseRecordIds.includes(p.id))
       const bank = record && record.fundingBankAccountId ? bankByIdMap.get(record.fundingBankAccountId) : null
@@ -129,7 +129,7 @@ export default function InvestmentHoldings({
       },
     },
     {
-      key: 'totalQuantity', header: 'Qty (No)', sortable: true, numeric: true, width: '70px',
+      key: 'totalQuantity', header: 'Qty (No.)', sortable: true, numeric: true, width: '70px',
       render: h => <span className="text-xs">{h.totalQuantity.toLocaleString()}</span>,
     },
     {
@@ -248,7 +248,7 @@ export default function InvestmentHoldings({
                       <thead>
                         <tr>
                           <th className="text-xs">Date</th>
-                          <th className="text-xs">Qty (No)</th>
+                          <th className="text-xs">Qty (No.)</th>
                           <th className="text-xs">Qty (Grams)</th>
                           <th className="text-xs">Price</th>
                           <th className="text-xs">Total</th>

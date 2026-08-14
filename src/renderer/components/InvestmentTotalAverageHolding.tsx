@@ -138,7 +138,7 @@ export default function InvestmentTotalAverageHolding({
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     const sym = getCurrencySymbol(currency)
     // Only exporting purity averages as a summary
-    const exportColumns = ['Purity/Type', 'No. of Purchases', 'Total Qty in Grams', 'Total Invested In DHS', 'Purity Avg Price']
+    const exportColumns = ['Purity/Type', 'No. of Purchases', 'Total Qty in Grams', 'Total Invested (DHS)', 'Purity Avg Price']
     const rows = purityWiseData.map(p => [
       p.purity,
       p.purchaseCount,
@@ -241,7 +241,7 @@ export default function InvestmentTotalAverageHolding({
     },
     {
       key: 'totalQuantity',
-      header: 'Qty (No)',
+      header: 'Qty (No.)',
       sortable: true,
       numeric: true,
       render: (a) => <span className="text-xs">{a.rawQuantity.toLocaleString()}</span>,

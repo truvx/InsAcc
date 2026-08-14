@@ -410,7 +410,7 @@ export default function PurchaseLedger({
       ),
     },
     {
-      key: 'quantity', header: 'Qty (No)', sortable: true, numeric: true, width: '70px',
+      key: 'quantity', header: 'Qty (No.)', sortable: true, numeric: true, width: '70px',
       render: r => <span className="text-xs">{r.quantity.toLocaleString()}</span>,
     },
     {
@@ -641,7 +641,7 @@ export default function PurchaseLedger({
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     const exportColumns = [
-      'VOUCHER', 'DATE', 'ASSET', 'QTY (NO)', 'QTY (GRAMS)', 'UNIT PRICE IN DHS', 'TOTAL INVESTED IN DHS', 
+      'VOUCHER', 'DATE', 'ASSET', 'QTY (No.)', 'QTY (GRAMS)', 'UNIT PRICE (DHS)', 'TOTAL INVESTED (DHS)', 
       'PAID FROM', 'BUYER', 'PAYMENT MODE', 'TAGS', 'NOTES',
       'DOCS', 'POSTING', 'STATUS'
     ]
