@@ -59,7 +59,7 @@ export default function InvestmentHoldings({
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     const sym = getCurrencySymbol(currency)
-    const exportColumns = ['ASSET', 'TYPE', 'PAID FROM', 'QTY (NO)', 'QTY (GRAMS)', 'TOTAL INVESTED IN DHS', 'PURITY AVG PRICE']
+    const exportColumns = ['ASSET', 'TYPE', 'PAID FROM', 'QTY (NO)', 'QTY (GRAMS)', 'TOTAL INVESTED IN DHS', 'AVERAGE UNIT PRICE']
     const rows = holdings.map(h => {
       const record = purchaseRecords.find(p => h.purchaseRecordIds.includes(p.id))
       const bank = record && record.fundingBankAccountId ? bankByIdMap.get(record.fundingBankAccountId) : null
