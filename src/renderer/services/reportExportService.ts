@@ -1473,59 +1473,53 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
     ]
     const ws = XLSX.utils.aoa_to_sheet(wsData)
     
-    // Style: Row 1 — company name, gray italic
-    if (ws['A1']) ws['A1'].s = { font: { sz: 11, italic: true, color: { rgb: '64748B' } } }
+    // Style: Row 1 — company name, italic
+    if (ws['A1']) ws['A1'].s = { font: { sz: 11, italic: true } }
     
-    // Style: Row 2 — module name, muted
-    if (ws['A2']) ws['A2'].s = { font: { sz: 10, color: { rgb: '64748B' } } }
+    // Style: Row 2 — module name
+    if (ws['A2']) ws['A2'].s = { font: { sz: 10 } }
     
-    // Style: Row 3 — report title, large bold green
-    if (ws['A3']) ws['A3'].s = { font: { sz: 14, bold: true, color: { rgb: '0F4C35' } } }
+    // Style: Row 3 — report title, large bold
+    if (ws['A3']) ws['A3'].s = { font: { sz: 14, bold: true } }
     
-    // Style: Row 4 — exported on, small gray
-    if (ws['A4']) ws['A4'].s = { font: { sz: 9, color: { rgb: '94A3B8' } } }
+    // Style: Row 4 — exported on, small
+    if (ws['A4']) ws['A4'].s = { font: { sz: 9 } }
     
-    // Style: Row 5 — period, small gray
-    if (ws['A5']) ws['A5'].s = { font: { sz: 9, color: { rgb: '94A3B8' } } }
+    // Style: Row 5 — period, small
+    if (ws['A5']) ws['A5'].s = { font: { sz: 9 } }
 
-    // Style: Column headers (row 7, index 6)
-    const headerFill = { fgColor: { rgb: '0F4C35' } }
-    const headerFont = { bold: true, color: { rgb: 'FFFFFF' }, sz: 9 }
+    // Style: Column headers (row 7, index 6) — bold, bottom border only, no fill
+    const headerFont = { bold: true, sz: 9 }
     const headerBorder = {
-      top: { style: 'thin', color: { rgb: 'FFFFFF' } },
-      bottom: { style: 'thin', color: { rgb: 'FFFFFF' } },
-      left: { style: 'thin', color: { rgb: 'FFFFFF' } },
-      right: { style: 'thin', color: { rgb: 'FFFFFF' } }
+      bottom: { style: 'medium', color: { rgb: '000000' } }
     }
     for (let c = 0; c < p.columns.length; c++) {
       const cellRef = XLSX.utils.encode_cell({ r: headerRowIdx, c })
       if (ws[cellRef]) {
-        ws[cellRef].s = { font: headerFont, fill: headerFill, border: headerBorder, alignment: { vertical: 'center' } }
+        ws[cellRef].s = { font: headerFont, border: headerBorder, alignment: { vertical: 'center' } }
       }
     }
     
-    // Style: Alternating data rows (light green for even, white for odd)
+    // Style: Data rows — thin bottom border only, no fills
     const totalDataRows = p.rows.length
+    const dataBorder = {
+      bottom: { style: 'hair', color: { rgb: 'BBBBBB' } }
+    }
     for (let r = 0; r < totalDataRows; r++) {
       const rowIdx = headerRowIdx + 1 + r
-      const isAlt = r % 2 !== 0
       for (let c = 0; c < p.columns.length; c++) {
         const cellRef = XLSX.utils.encode_cell({ r: rowIdx, c })
         if (ws[cellRef]) {
           ws[cellRef].s = {
-            font: { sz: 9, color: { rgb: '111827' } },
-            fill: isAlt ? { fgColor: { rgb: 'F0FDF4' } } : { fgColor: { rgb: 'FFFFFF' } },
-            border: {
-              bottom: { style: 'hair', color: { rgb: 'E2E8F0' } },
-              right: { style: 'hair', color: { rgb: 'E2E8F0' } }
-            },
+            font: { sz: 9 },
+            border: dataBorder,
             alignment: { vertical: 'center' }
           }
         }
       }
     }
 
-    // Style: Footer/total rows
+    // Style: Footer/total rows — bold, thick top border, no fill
     if (p.foot) {
       for (let r = 0; r < p.foot.length; r++) {
         const rowIdx = headerRowIdx + 1 + totalDataRows + r
@@ -1533,9 +1527,8 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
           const cellRef = XLSX.utils.encode_cell({ r: rowIdx, c })
           if (ws[cellRef]) {
             ws[cellRef].s = {
-              font: { bold: true, sz: 9, color: { rgb: '0F4C35' } },
-              fill: { fgColor: { rgb: 'E8F5E9' } },
-              border: { top: { style: 'thin', color: { rgb: '0F4C35' } } }
+              font: { bold: true, sz: 9 },
+              border: { top: { style: 'medium', color: { rgb: '000000' } } }
             }
           }
         }
@@ -1554,7 +1547,7 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
     })
     ws['!cols'] = colWidths
     
-    // Row heights for header and title rows
+    // Row heights
     ws['!rows'] = [
       { hpx: 18 },  // row 1: company
       { hpx: 16 },  // row 2: module
