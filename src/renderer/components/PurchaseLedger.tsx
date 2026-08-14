@@ -1439,7 +1439,6 @@ export default function PurchaseLedger({
                       options={assetNameOptions}
                       onDeleteOption={handleDeleteAssetOption}
                       error={fieldError('assetName')}
-                      disabled={!!editingId}
                     />
                   </div>
                   {selectedCategory && !editingId && (
