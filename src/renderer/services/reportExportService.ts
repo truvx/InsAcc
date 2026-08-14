@@ -1097,26 +1097,23 @@ function generatePdfCoverPage(doc: any, title: string, subtitle: string, periodL
 
   const validMetaItems = metaItems.filter(item => item.val && String(item.val).trim() !== '')
 
-  const columns = 2
+  const columns = 3
   const rowHeight = 8
   
   validMetaItems.forEach((item, index) => {
     const col = index % columns
     const row = Math.floor(index / columns)
     
-    // Bring columns closer together in the center.
-    // Page is ~297mm wide. Center is 148.5.
-    // Col 0: right-aligned at 120, left-aligned at 125
-    // Col 1: right-aligned at 195, left-aligned at 200
-    const labelX = col === 0 ? 120 : 195
-    const valX = col === 0 ? 125 : 200
-    
+    // Left-aligned 3-column grid starting at page margin 14
+    const startX = 14 + (col * 90)
     const itemY = myY + (row * rowHeight)
 
     doc.setFont('helvetica', 'bold')
-    doc.text(item.label, labelX, itemY, { align: 'right' })
+    doc.text(item.label + ':', startX, itemY)
+    
+    const labelWidth = doc.getTextWidth(item.label + ': ')
     doc.setFont('helvetica', 'normal')
-    doc.text(item.val, valX, itemY)
+    doc.text(item.val, startX + labelWidth, itemY)
   })
 
   // Update myY based on how many rows we used
