@@ -52,7 +52,8 @@ export const DEFAULT_INVESTMENT_ASSETS: InvestmentAsset[] = [
 
   // Silver
   { id: 'ast-silver-9999-bar', categoryId: 'cat-silver', name: '999.9 Silver Bar', unit: 'gram', active: true, displayOrder: 1 },
-  { id: 'ast-silver-9999-coin', categoryId: 'cat-silver', name: '999.9 Silver Coin', unit: 'pcs', active: true, displayOrder: 2 },
+  { id: 'ast-silver-9999-bar-1kg', categoryId: 'cat-silver', name: '999.9 Silver Bar 1 kg', unit: 'bar', active: true, displayOrder: 2 },
+  { id: 'ast-silver-9999-coin', categoryId: 'cat-silver', name: '999.9 Silver Coin', unit: 'pcs', active: true, displayOrder: 3 },
   { id: 'ast-silver-9991-bar', categoryId: 'cat-silver', name: '999.1 Silver Bar', unit: 'gram', active: true, displayOrder: 3 },
   { id: 'ast-silver-9991-coin', categoryId: 'cat-silver', name: '999.1 Silver Coin', unit: 'pcs', active: true, displayOrder: 4 },
   { id: 'ast-silver-9990-bar', categoryId: 'cat-silver', name: '999.0 Silver Bar', unit: 'gram', active: true, displayOrder: 5 },

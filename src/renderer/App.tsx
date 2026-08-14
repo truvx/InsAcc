@@ -1220,6 +1220,34 @@ export default function App() {
     }
   }, [purchaseRecords, setPurchaseRecords])
 
+  // Migration: rename '999.9 Silver Bar' → '999.9 Silver Bar 1 kg' and convert qty from grams to bars
+  // The existing purchases of 1000 and 2000 were entered as grams but represent 1 kg bars.
+  // After rename, getAssetWeightMultiplier will apply ×1000, so we divide qty by 1000.
+  useEffect(() => {
+    const MIGRATION_KEY = 'insacc_migrated_silver_bar_1kg_v1'
+    if (localStorage.getItem(MIGRATION_KEY)) return
+    if (purchaseRecords.length === 0) return
+
+    let modified = false
+    const updated = purchaseRecords.map(r => {
+      if (r.assetName === '999.9 Silver Bar' && r.assetType === 'Silver') {
+        modified = true
+        const newQty = r.quantity / 1000
+        return {
+          ...r,
+          assetName: '999.9 Silver Bar 1 kg',
+          quantity: newQty,
+        }
+      }
+      return r
+    })
+
+    if (modified) {
+      setPurchaseRecords(updated)
+    }
+    localStorage.setItem(MIGRATION_KEY, '1')
+  }, [purchaseRecords, setPurchaseRecords])
+
 
 
   const [propVouchers, setPropVouchers] = useLazyPersistedState<Voucher[]>('insacc_prop_vouchers', [])
