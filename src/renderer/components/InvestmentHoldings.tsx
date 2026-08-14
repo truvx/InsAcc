@@ -58,7 +58,7 @@ export default function InvestmentHoldings({
   const totalHoldings = holdings.length
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
-    const exportColumns = ['Asset', 'Type', 'Paid From', 'Qty', 'Invested Amount', 'Avg Price']
+    const exportColumns = ['Asset', 'Type', 'Paid From', 'Total Qty in Grams', 'Total Invested In DHS', 'Purity Avg Price']
     const rows = holdings.map(h => {
       const record = purchaseRecords.find(p => h.purchaseRecordIds.includes(p.id))
       const bank = record && record.fundingBankAccountId ? bankByIdMap.get(record.fundingBankAccountId) : null
@@ -68,10 +68,15 @@ export default function InvestmentHoldings({
         h.assetType,
         bank?.institution || '—',
         h.totalQuantity,
-        parseFloat(h.totalInvested.toFixed(2)),
-        parseFloat(h.avgPurchaseValue.toFixed(2))
+        `${currency} ${h.totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+        `${currency} ${h.avgPurchaseValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
       ]
     })
+
+    const totalInvestedSum = holdings.reduce((s, h) => s + h.totalInvested, 0)
+    const foot = [
+      ['', '', '', 'Total Invested:', `${currency} ${totalInvestedSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, '']
+    ]
 
     exportTableData({
       moduleName: 'Investment Portfolio',
@@ -81,6 +86,7 @@ export default function InvestmentHoldings({
       filename: `Investment_Holdings_${new Date().toISOString().split('T')[0]}`,
       columns: exportColumns,
       rows,
+      foot,
       currency,
       generatedBy: loggedInUser
     })

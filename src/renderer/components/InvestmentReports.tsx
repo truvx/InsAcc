@@ -324,9 +324,28 @@ export default function InvestmentReports({
         }
         case 'purchase-report': {
           title = 'Purchase Report'
-          columns = ['Date', 'Type', 'Asset', 'Qty', 'Unit Price', 'Total', 'Account', 'Voucher']
-          rows = projection.purchaseReport.map(r => [r.date, formatAssetType(r.assetType), r.assetName, r.quantity, r.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 }), r.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 }), r.accountCode, r.voucherNumber])
-          break
+          columns = ['Date', 'Type', 'Asset', 'Total Qty in Grams', 'Unit Price in DHS', 'Total Invested in DHS', 'Account', 'Voucher']
+          rows = projection.purchaseReport.map(r => [r.date, formatAssetType(r.assetType), r.assetName, r.quantity, `${currency} ${r.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, `${currency} ${r.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, r.accountCode, r.voucherNumber])
+          
+          const totalInvestedSum = projection.purchaseReport.reduce((s, r) => s + r.totalValue, 0)
+          const foot = [
+            ['', '', '', '', 'Total Invested:', `${currency} ${totalInvestedSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, '', '']
+          ]
+          
+          await exportTableData({
+            moduleName: 'Investment Portfolio',
+            format,
+            title,
+            subtitle: `Investment Portfolio`,
+            periodLabel: `${filterStart} - ${filterEnd}`,
+            currency: currency,
+            filename: `Investment_${title.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}`,
+            columns,
+            rows,
+            foot,
+            generatedBy: loggedInUser || 'User'
+          })
+          return
         }
         case 'bank-position': {
           title = 'Bank Position'

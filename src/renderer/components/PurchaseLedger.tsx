@@ -632,7 +632,7 @@ export default function PurchaseLedger({
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     const exportColumns = [
-      'VOUCHER', 'DATE', 'ASSET', 'QTY', 'UNIT PRICE', 'TOTAL', 
+      'VOUCHER', 'DATE', 'ASSET', 'TOTAL QTY IN GRAMS', 'UNIT PRICE IN DHS', 'TOTAL INVESTED IN DHS', 
       'PAID FROM', 'BUYER', 'PAYMENT MODE', 'TAGS', 'NOTES',
       'DOCS', 'POSTING', 'STATUS'
     ]
