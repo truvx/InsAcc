@@ -144,14 +144,6 @@ export function getAssetWeightMultiplier(assetName: string): number {
   return 1
 }
 
-export function formatQuantityWithGrams(quantity: number, assetName: string): string {
-  const multiplier = getAssetWeightMultiplier(assetName)
-  if (multiplier === 1) {
-    return quantity.toLocaleString(undefined, { maximumFractionDigits: 4 })
-  }
-  const totalGrams = quantity * multiplier
-  return `${quantity.toLocaleString(undefined, { maximumFractionDigits: 4 })} (${totalGrams.toLocaleString(undefined, { maximumFractionDigits: 4 })}g)`
-}
 
 // ─── Factory ───────────────────────────────────────────────────────────
 

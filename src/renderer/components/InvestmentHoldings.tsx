@@ -5,7 +5,7 @@ import type { Account, Voucher, BankMapping } from '../accounting/types'
 import type { BankAccount } from '../data/banking'
 import type { PurchaseRecord } from '../data/purchaseLedger'
 import { getInvestmentHoldingsProjection } from '../readModels/InvestmentHoldingsReadModel'
-import { getAssetWeightMultiplier, formatQuantityWithGrams } from '../services/purchaseLedgerService'
+import { getAssetWeightMultiplier } from '../services/purchaseLedgerService'
 import { getLinesForAccount } from '../accounting/ledgerService'
 import { formatCurrency, getCurrencySymbol } from '../utils/reportFormatters'
 import { DataTable, type Column } from './design/Table'
@@ -59,7 +59,7 @@ export default function InvestmentHoldings({
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     const sym = getCurrencySymbol(currency)
-    const exportColumns = ['Asset', 'Type', 'Paid From', 'Total Qty in Grams', 'Total Invested In DHS', 'Purity Avg Price']
+    const exportColumns = ['ASSET', 'TYPE', 'PAID FROM', 'QTY (NO)', 'QTY (GRAMS)', 'TOTAL INVESTED IN DHS', 'PURITY AVG PRICE']
     const rows = holdings.map(h => {
       const record = purchaseRecords.find(p => h.purchaseRecordIds.includes(p.id))
       const bank = record && record.fundingBankAccountId ? bankByIdMap.get(record.fundingBankAccountId) : null
@@ -68,7 +68,8 @@ export default function InvestmentHoldings({
         h.assetName,
         h.assetType,
         bank?.institution || '—',
-        formatQuantityWithGrams(h.totalQuantity, h.assetName),
+        h.totalQuantity.toLocaleString(),
+        `${(h.totalQuantity * getAssetWeightMultiplier(h.assetName)).toLocaleString()}g`,
         `${sym} ${h.totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
         `${sym} ${h.avgPurchaseValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
       ]
@@ -116,8 +117,12 @@ export default function InvestmentHoldings({
       },
     },
     {
-      key: 'totalQuantity', header: 'Qty', sortable: true, numeric: true, width: '70px',
-      render: h => <span className="text-xs">{formatQuantityWithGrams(h.totalQuantity, h.assetName)}</span>,
+      key: 'totalQuantity', header: 'Qty (No)', sortable: true, numeric: true, width: '70px',
+      render: h => <span className="text-xs">{h.totalQuantity.toLocaleString()}</span>,
+    },
+    {
+      key: 'totalQuantityGrams', header: 'Qty (Grams)', sortable: true, numeric: true, width: '80px',
+      render: h => <span className="text-xs">{(h.totalQuantity * getAssetWeightMultiplier(h.assetName)).toLocaleString()}g</span>,
     },
     {
       key: 'avgPurchaseValue', header: 'Average Unit Price', sortable: true, numeric: true, width: '180px',
@@ -217,7 +222,8 @@ export default function InvestmentHoldings({
               <Badge variant={detailHolding.growthPercent >= 0 ? 'success' : 'danger'}>
                 {detailHolding.growthPercent >= 0 ? '+' : ''}{detailHolding.growthPercent.toFixed(1)}% growth
               </Badge>
-              <Badge variant="neutral">Qty: {formatQuantityWithGrams(detailHolding.totalQuantity, detailHolding.assetName)}</Badge>
+              <Badge variant="neutral">Qty: {detailHolding.totalQuantity.toLocaleString()}</Badge>
+              <Badge variant="neutral">Grams: {(detailHolding.totalQuantity * getAssetWeightMultiplier(detailHolding.assetName)).toLocaleString()}g</Badge>
             </div>
 
             <div>
@@ -230,7 +236,8 @@ export default function InvestmentHoldings({
                       <thead>
                         <tr>
                           <th className="text-xs">Date</th>
-                          <th className="text-xs">Qty</th>
+                          <th className="text-xs">Qty (No)</th>
+                          <th className="text-xs">Qty (Grams)</th>
                           <th className="text-xs">Price</th>
                           <th className="text-xs">Total</th>
                           <th className="text-xs">Paid From</th>
@@ -243,7 +250,8 @@ export default function InvestmentHoldings({
                           return (
                             <tr key={p.id}>
                               <td className="text-xs text-secondary">{p.purchaseDate.substring(0, 10)}</td>
-                              <td className="text-xs">{formatQuantityWithGrams(p.quantity, p.assetName)}</td>
+                              <td className="text-xs">{p.quantity.toLocaleString()}</td>
+                              <td className="text-xs">{(p.quantity * getAssetWeightMultiplier(p.assetName)).toLocaleString()}g</td>
                               <td className="text-xs text-mono">
                                 <CurrencyText value={p.unitPrice} currency={currency} />/g
                                 {(() => {

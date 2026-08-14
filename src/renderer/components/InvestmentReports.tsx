@@ -10,7 +10,7 @@ import BankAccountAvatar from './BankAccountAvatar'
 import { formatAssetType } from '../data/investmentMasterData'
 import { exportAccountingExcel, exportAccountingCsv, exportAccountingPdf, exportOverviewPdf, exportTableData, exportSideBySidePdf } from '../services/reportExportService'
 import { getCurrencySymbol } from '../utils/reportFormatters'
-import { formatQuantityWithGrams } from '../services/purchaseLedgerService'
+import { getAssetWeightMultiplier } from '../services/purchaseLedgerService'
 import ExportReportModal from './design/ExportReportModal'
 import { validateLedgerBalance } from '../accounting/ledgerService'
 
@@ -327,12 +327,12 @@ export default function InvestmentReports({
         case 'purchase-report': {
           title = 'Purchase Report'
           const sym = getCurrencySymbol(currency)
-          columns = ['Date', 'Type', 'Asset', 'Total Qty in Grams', 'Unit Price in DHS', 'Total Invested in DHS', 'Account', 'Voucher']
-          rows = projection.purchaseReport.map(r => [r.date, formatAssetType(r.assetType), r.assetName, formatQuantityWithGrams(r.quantity, r.assetName), `${sym} ${r.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, `${sym} ${r.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, r.accountCode, r.voucherNumber])
+          columns = ['Date', 'Type', 'Asset', 'Qty (No)', 'Qty (Grams)', 'Unit Price in DHS', 'Total Invested in DHS', 'Account', 'Voucher']
+          rows = projection.purchaseReport.map(r => [r.date, formatAssetType(r.assetType), r.assetName, r.quantity.toLocaleString(), `${(r.quantity * getAssetWeightMultiplier(r.assetName)).toLocaleString()}g`, `${sym} ${r.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, `${sym} ${r.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, r.accountCode, r.voucherNumber])
           
           const totalInvestedSum = projection.purchaseReport.reduce((s, r) => s + r.totalValue, 0)
           const foot = [
-            ['', '', '', '', 'Total Invested:', `${sym} ${totalInvestedSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, '', '']
+            ['', '', '', '', '', 'Total Invested:', `${sym} ${totalInvestedSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, '', '']
           ]
           
           await exportTableData({
@@ -865,7 +865,8 @@ export default function InvestmentReports({
                     <tr>
                       <th>Date</th>
                       <th>Asset</th>
-                      <th style={{ textAlign: 'right' }}>Qty</th>
+                      <th style={{ textAlign: 'right' }}>Qty (No)</th>
+                      <th style={{ textAlign: 'right' }}>Qty (Grams)</th>
                       <th style={{ textAlign: 'right' }}>Unit Price</th>
                       <th style={{ textAlign: 'right' }}>Total</th>
                       <th>Account</th>
@@ -877,7 +878,8 @@ export default function InvestmentReports({
                       <tr key={r.id}>
                         <td className="text-xs text-secondary">{r.date}</td>
                         <td className="text-sm">{r.assetName} <span className="text-xs text-secondary">{formatAssetType(r.assetType)}</span></td>
-                        <td className="text-mono text-xs" style={{ textAlign: 'right' }}>{formatQuantityWithGrams(r.quantity, r.assetName)}</td>
+                        <td className="text-mono text-xs" style={{ textAlign: 'right' }}>{r.quantity.toLocaleString()}</td>
+                        <td className="text-mono text-xs" style={{ textAlign: 'right' }}>{(r.quantity * getAssetWeightMultiplier(r.assetName)).toLocaleString()}g</td>
                         <td className="text-mono text-xs" style={{ textAlign: 'right' }}>{fmt(r.unitPrice)}</td>
                         <td className="text-mono text-xs fw-600" style={{ textAlign: 'right' }}>{fmt(r.totalValue)}</td>
                         <td className="text-mono text-xs">{r.accountCode}</td>
@@ -885,7 +887,7 @@ export default function InvestmentReports({
                       </tr>
                     ))}
                     <tr>
-                      <td colSpan={4} className="fw-700 text-sm" style={{ borderTop: '1px solid var(--border)' }}>Total</td>
+                      <td colSpan={5} className="fw-700 text-sm" style={{ borderTop: '1px solid var(--border)' }}>Total</td>
                       <td className="text-mono text-xs fw-600" style={{ textAlign: 'right', borderTop: '1px solid var(--border)' }}>{fmt(projection.purchaseReport.reduce((s, r) => s + r.totalValue, 0))}</td>
                       <td colSpan={2} style={{ borderTop: '1px solid var(--border)' }} />
                     </tr>

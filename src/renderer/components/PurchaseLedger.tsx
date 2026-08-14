@@ -31,7 +31,7 @@ import {
   type SortField,
   type SortOrder,
   getAssetWeightMultiplier,
-  formatQuantityWithGrams,
+
 } from '../services/purchaseLedgerService'
 import { purchaseAndCreateVoucher, updatePurchaseVouchers } from '../services/purchaseAccountingService'
 import { getLinesForAccount, getLinesByReference, getAccountBalance, invalidateBalanceCache } from '../accounting/ledgerService'
@@ -406,8 +406,12 @@ export default function PurchaseLedger({
       ),
     },
     {
-      key: 'quantity', header: 'Qty', sortable: true, numeric: true, width: '70px',
-      render: r => <span className="text-xs">{formatQuantityWithGrams(r.quantity, r.assetName)}</span>,
+      key: 'quantity', header: 'Qty (No)', sortable: true, numeric: true, width: '70px',
+      render: r => <span className="text-xs">{r.quantity.toLocaleString()}</span>,
+    },
+    {
+      key: 'quantityGrams', header: 'Qty (Grams)', sortable: true, numeric: true, width: '80px',
+      render: r => <span className="text-xs">{(r.quantity * getAssetWeightMultiplier(r.assetName)).toLocaleString()}g</span>,
     },
     {
       key: 'unitPrice', header: 'Unit Price', sortable: true, numeric: true, width: '100px',
@@ -633,7 +637,7 @@ export default function PurchaseLedger({
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     const exportColumns = [
-      'VOUCHER', 'DATE', 'ASSET', 'TOTAL QTY IN GRAMS', 'UNIT PRICE IN DHS', 'TOTAL INVESTED IN DHS', 
+      'VOUCHER', 'DATE', 'ASSET', 'QTY (NO)', 'QTY (GRAMS)', 'UNIT PRICE IN DHS', 'TOTAL INVESTED IN DHS', 
       'PAID FROM', 'BUYER', 'PAYMENT MODE', 'TAGS', 'NOTES',
       'DOCS', 'POSTING', 'STATUS'
     ]
@@ -647,7 +651,8 @@ export default function PurchaseLedger({
         r.voucherNumber || '—',
         formatDate(r.purchaseDate, dateFormat),
         `${r.assetName}\n(${formatAssetType(r.assetType)})`,
-        formatQuantityWithGrams(r.quantity, r.assetName),
+        r.quantity.toLocaleString(),
+        `${(r.quantity * getAssetWeightMultiplier(r.assetName)).toLocaleString()}g`,
         formatCurrency(r.unitPrice, currency),
         formatCurrency(r.totalValue, currency),
         paidFrom,

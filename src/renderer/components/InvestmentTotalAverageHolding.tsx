@@ -4,7 +4,7 @@ import type { Account, Voucher, BankMapping } from '../accounting/types'
 import type { BankAccount } from '../data/banking'
 import type { PurchaseRecord } from '../data/purchaseLedger'
 import { getInvestmentHoldingsProjection } from '../readModels/InvestmentHoldingsReadModel'
-import { getAssetWeightMultiplier, formatQuantityWithGrams } from '../services/purchaseLedgerService'
+import { getAssetWeightMultiplier } from '../services/purchaseLedgerService'
 import { DataTable, type Column } from './design/Table'
 import { KpiCard, Button, ChevronLeftIcon } from './design/DesignSystem'
 import { exportTableData } from '../services/reportExportService'
@@ -232,10 +232,17 @@ export default function InvestmentTotalAverageHolding({
     },
     {
       key: 'totalQuantity',
-      header: 'Quantity',
+      header: 'Qty (No)',
       sortable: true,
       numeric: true,
-      render: (a) => <span className="text-xs">{formatQuantityWithGrams(a.rawQuantity, a.assetName)}</span>,
+      render: (a) => <span className="text-xs">{a.rawQuantity.toLocaleString()}</span>,
+    },
+    {
+      key: 'totalQuantityGrams',
+      header: 'Qty (Grams)',
+      sortable: true,
+      numeric: true,
+      render: (a) => <span className="text-xs">{(a.rawQuantity * getAssetWeightMultiplier(a.assetName)).toLocaleString()}g</span>,
     },
     {
       key: 'purityAveragePrice',
