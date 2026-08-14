@@ -1097,15 +1097,17 @@ function generatePdfCoverPage(doc: any, title: string, subtitle: string, periodL
 
   const validMetaItems = metaItems.filter(item => item.val && String(item.val).trim() !== '')
 
-  const columns = 3
+  const columns = 2
   const rowHeight = 8
+  const leftMargin = 14
+  const colWidth = (pageWidth - (leftMargin * 2)) / columns
   
   validMetaItems.forEach((item, index) => {
     const col = index % columns
     const row = Math.floor(index / columns)
     
-    // Left-aligned 3-column grid starting at page margin 14
-    const startX = 14 + (col * 90)
+    // Left-aligned dynamic grid based on page width
+    const startX = leftMargin + (col * colWidth)
     const itemY = myY + (row * rowHeight)
 
     doc.setFont('helvetica', 'bold')
