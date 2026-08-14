@@ -1224,28 +1224,31 @@ export default function App() {
   // The existing purchases of 1000 and 2000 were entered as grams but represent 1 kg bars.
   // After rename, getAssetWeightMultiplier will apply ×1000, so we divide qty by 1000.
   useEffect(() => {
-    const MIGRATION_KEY = 'insacc_migrated_silver_bar_1kg_v1'
+    const MIGRATION_KEY = 'insacc_migrated_silver_bar_1kg_v2'
     if (localStorage.getItem(MIGRATION_KEY)) return
-    if (purchaseRecords.length === 0) return
+    if (purchaseRecords.length === 0) return  // wait until records are loaded
 
-    let modified = false
+    const hasSilverBar = purchaseRecords.some(
+      r => r.assetName === '999.9 Silver Bar' && r.assetType === 'Silver'
+    )
+
+    // Mark done whether or not there was anything to migrate (records are loaded)
+    localStorage.setItem(MIGRATION_KEY, '1')
+
+    if (!hasSilverBar) return
+
     const updated = purchaseRecords.map(r => {
       if (r.assetName === '999.9 Silver Bar' && r.assetType === 'Silver') {
-        modified = true
-        const newQty = r.quantity / 1000
         return {
           ...r,
           assetName: '999.9 Silver Bar 1 kg',
-          quantity: newQty,
+          quantity: r.quantity / 1000,
         }
       }
       return r
     })
 
-    if (modified) {
-      setPurchaseRecords(updated)
-    }
-    localStorage.setItem(MIGRATION_KEY, '1')
+    setPurchaseRecords(updated)
   }, [purchaseRecords, setPurchaseRecords])
 
 
