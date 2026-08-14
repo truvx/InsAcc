@@ -1442,14 +1442,29 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
 
   if (p.format === 'xlsx') {
     const wb = XLSX.utils.book_new()
-    const prefixRows = [
-      ...(p.moduleName ? [[p.moduleName]] : []),
+    
+    const now = new Date()
+    const exportedOn = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    
+    // Row layout matching reference:
+    // Row 1: Company name
+    // Row 2: Module name
+    // Row 3: Report title (bold)
+    // Row 4: Exported on date
+    // Row 5: Period
+    // Row 6: Blank
+    // Row 7: Column headers
+    // Row 8+: Data rows
+    const prefixRows: any[][] = [
+      ['Sameer Ishaq Harmoudi'],
+      [p.moduleName || ''],
       [p.title],
-      ...(p.subtitle ? [[p.subtitle]] : []),
+      [`Exported on ${exportedOn}`],
       [`Period: ${p.periodLabel || 'All Time'}`],
-      []
+      []  // blank row
     ]
-    const headerRow = prefixRows.length
+    const headerRowIdx = prefixRows.length  // 0-based index = 6 (row 7)
+    
     const wsData = [
       ...prefixRows,
       p.columns,
@@ -1458,25 +1473,97 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
     ]
     const ws = XLSX.utils.aoa_to_sheet(wsData)
     
-    // Style title
-    if (p.moduleName && ws['A1']) {
-      ws['A1'].s = { font: { sz: 12, color: { rgb: '64748B' } } }
-      if (ws['A2']) ws['A2'].s = { font: { sz: 14, bold: true, color: { rgb: '0F4C35' } } }
-    } else if (ws['A1']) {
-      ws['A1'].s = { font: { sz: 14, bold: true, color: { rgb: '0F4C35' } } }
+    // Style: Row 1 — company name, gray italic
+    if (ws['A1']) ws['A1'].s = { font: { sz: 11, italic: true, color: { rgb: '64748B' } } }
+    
+    // Style: Row 2 — module name, muted
+    if (ws['A2']) ws['A2'].s = { font: { sz: 10, color: { rgb: '64748B' } } }
+    
+    // Style: Row 3 — report title, large bold green
+    if (ws['A3']) ws['A3'].s = { font: { sz: 14, bold: true, color: { rgb: '0F4C35' } } }
+    
+    // Style: Row 4 — exported on, small gray
+    if (ws['A4']) ws['A4'].s = { font: { sz: 9, color: { rgb: '94A3B8' } } }
+    
+    // Style: Row 5 — period, small gray
+    if (ws['A5']) ws['A5'].s = { font: { sz: 9, color: { rgb: '94A3B8' } } }
+
+    // Style: Column headers (row 7, index 6)
+    const headerFill = { fgColor: { rgb: '0F4C35' } }
+    const headerFont = { bold: true, color: { rgb: 'FFFFFF' }, sz: 9 }
+    const headerBorder = {
+      top: { style: 'thin', color: { rgb: 'FFFFFF' } },
+      bottom: { style: 'thin', color: { rgb: 'FFFFFF' } },
+      left: { style: 'thin', color: { rgb: 'FFFFFF' } },
+      right: { style: 'thin', color: { rgb: 'FFFFFF' } }
+    }
+    for (let c = 0; c < p.columns.length; c++) {
+      const cellRef = XLSX.utils.encode_cell({ r: headerRowIdx, c })
+      if (ws[cellRef]) {
+        ws[cellRef].s = { font: headerFont, fill: headerFill, border: headerBorder, alignment: { vertical: 'center' } }
+      }
     }
     
-    // Style headers
-    for (let c = 0; c < p.columns.length; c++) {
-      const cellRef = XLSX.utils.encode_cell({ r: headerRow, c })
-      if (ws[cellRef]) {
-        ws[cellRef].s = { 
-          font: { bold: true, color: { rgb: 'FFFFFF' } },
-          fill: { fgColor: { rgb: '0F4C35' } },
-          border: { bottom: { style: 'thin', color: { rgb: 'E2E8F0' } } }
+    // Style: Alternating data rows (light green for even, white for odd)
+    const totalDataRows = p.rows.length
+    for (let r = 0; r < totalDataRows; r++) {
+      const rowIdx = headerRowIdx + 1 + r
+      const isAlt = r % 2 !== 0
+      for (let c = 0; c < p.columns.length; c++) {
+        const cellRef = XLSX.utils.encode_cell({ r: rowIdx, c })
+        if (ws[cellRef]) {
+          ws[cellRef].s = {
+            font: { sz: 9, color: { rgb: '111827' } },
+            fill: isAlt ? { fgColor: { rgb: 'F0FDF4' } } : { fgColor: { rgb: 'FFFFFF' } },
+            border: {
+              bottom: { style: 'hair', color: { rgb: 'E2E8F0' } },
+              right: { style: 'hair', color: { rgb: 'E2E8F0' } }
+            },
+            alignment: { vertical: 'center' }
+          }
         }
       }
     }
+
+    // Style: Footer/total rows
+    if (p.foot) {
+      for (let r = 0; r < p.foot.length; r++) {
+        const rowIdx = headerRowIdx + 1 + totalDataRows + r
+        for (let c = 0; c < p.columns.length; c++) {
+          const cellRef = XLSX.utils.encode_cell({ r: rowIdx, c })
+          if (ws[cellRef]) {
+            ws[cellRef].s = {
+              font: { bold: true, sz: 9, color: { rgb: '0F4C35' } },
+              fill: { fgColor: { rgb: 'E8F5E9' } },
+              border: { top: { style: 'thin', color: { rgb: '0F4C35' } } }
+            }
+          }
+        }
+      }
+    }
+    
+    // Auto column widths: measure max char length per column
+    const colWidths = p.columns.map((col: string, ci: number) => {
+      let maxLen = String(col).length
+      for (const row of p.rows) {
+        const cellVal = row[ci] !== undefined && row[ci] !== null ? String(row[ci]) : ''
+        if (cellVal.length > maxLen) maxLen = cellVal.length
+      }
+      // clamp between 8 and 35
+      return { wch: Math.min(35, Math.max(8, maxLen + 2)) }
+    })
+    ws['!cols'] = colWidths
+    
+    // Row heights for header and title rows
+    ws['!rows'] = [
+      { hpx: 18 },  // row 1: company
+      { hpx: 16 },  // row 2: module
+      { hpx: 22 },  // row 3: title
+      { hpx: 14 },  // row 4: exported on
+      { hpx: 14 },  // row 5: period
+      { hpx: 6 },   // row 6: blank
+      { hpx: 20 },  // row 7: headers
+    ]
     
     XLSX.utils.book_append_sheet(wb, ws, 'Report')
     const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
