@@ -1104,11 +1104,12 @@ function generatePdfCoverPage(doc: any, title: string, subtitle: string, periodL
     const col = index % columns
     const row = Math.floor(index / columns)
     
-    // Distribute 2 columns around the center (page width ~297)
-    // Col 0: right-aligned at 100, left-aligned at 105
-    // Col 1: right-aligned at 200, left-aligned at 205
-    const labelX = 100 + (col * 100)
-    const valX = 105 + (col * 100)
+    // Bring columns closer together in the center.
+    // Page is ~297mm wide. Center is 148.5.
+    // Col 0: right-aligned at 120, left-aligned at 125
+    // Col 1: right-aligned at 195, left-aligned at 200
+    const labelX = col === 0 ? 120 : 195
+    const valX = col === 0 ? 125 : 200
     
     const itemY = myY + (row * rowHeight)
 
