@@ -1,7 +1,7 @@
 /** Maps ISO currency codes to their display symbols for exports. Falls back to the code itself. */
 export function getCurrencySymbol(currency: string): string {
   const map: Record<string, string> = {
-    AED: 'DHS',
+    AED: 'AED',
     USD: '$',
     EUR: '€',
     GBP: '£',
