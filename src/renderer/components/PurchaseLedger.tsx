@@ -160,6 +160,8 @@ export default function PurchaseLedger({
   const [typeFilter, setTypeFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [tagFilter, setTagFilter] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [acctImpactId, setAcctImpactId] = useState<string | null>(null)
   const [holdingModalId, setHoldingModalId] = useState<string | null>(null)
@@ -214,9 +216,11 @@ export default function PurchaseLedger({
       const q = tagFilter.toLowerCase()
       result = result.filter(r => r.tags.some(t => t.toLowerCase().includes(q)))
     }
+    if (dateFrom) result = result.filter(r => r.purchaseDate >= dateFrom)
+    if (dateTo) result = result.filter(r => r.purchaseDate <= dateTo)
     if (searchQuery) result = searchPurchases(result, searchQuery)
     return result
-  }, [activeRecords, typeFilter, statusFilter, tagFilter, searchQuery])
+  }, [activeRecords, typeFilter, statusFilter, tagFilter, dateFrom, dateTo, searchQuery])
 
   interface PurchaseDetail {
     postingStatus: string
@@ -675,7 +679,8 @@ export default function PurchaseLedger({
       moduleName: 'Investment Portfolio',
       format,
       title: 'Purchase Ledger',
-      subtitle: `Exported on ${formatDate(new Date().toISOString(), dateFormat)}`,
+      subtitle: `Exported on ${new Date().toISOString().split('T')[0]}`,
+      periodLabel: dateFrom || dateTo ? `${dateFrom || 'Beginning'} - ${dateTo || 'Present'}` : 'All Time',
       filename: `Purchase_Ledger_${new Date().toISOString().split('T')[0]}`,
       columns: exportColumns,
       rows,
@@ -1195,6 +1200,14 @@ export default function PurchaseLedger({
                   onChange={e => setTagFilter(e.target.value)}
                   className="min-w-160 max-w-200"
                 />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8 }}>
+                  <span className="text-xs fw-600 text-secondary" style={{ textTransform: 'uppercase' }}>From</span>
+                  <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ width: 140, marginBottom: 0 }} />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span className="text-xs fw-600 text-secondary" style={{ textTransform: 'uppercase' }}>To</span>
+                  <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ width: 140, marginBottom: 0 }} />
+                </div>
               </>
             }
             emptyState={

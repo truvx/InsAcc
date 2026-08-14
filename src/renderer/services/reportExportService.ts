@@ -46,13 +46,28 @@ const FONT_SIZE_SUBTITLE = 10
 const FONT_SIZE_SECTION = 13
 const FONT_SIZE_BODY = 9
 const PAGE_MARGIN = 20
-const PAGE_WIDTH = 210
-const COLORS = {
-  primary: [15, 76, 53] as [number, number, number], // primaryDark (0F4C35)
-  secondary: [100, 116, 139] as [number, number, number],
-  header: [248, 251, 249] as [number, number, number], // rowAlt (F8FBF9)
-  border: [226, 232, 240] as [number, number, number],
+
+export function getThemeColorArray(): [number, number, number] {
+  if (typeof document !== 'undefined') {
+    const appShell = document.querySelector('.app-shell')
+    if (appShell && appShell.getAttribute('data-module') === 'property') {
+      return [222, 141, 169]
+    }
+  }
+  return getThemeColorArray()
 }
+
+const PAGE_WIDTH = 210
+const COLORS = new Proxy({
+  secondary: [100, 116, 139] as [number, number, number],
+  header: [248, 251, 249] as [number, number, number],
+  border: [226, 232, 240] as [number, number, number],
+}, {
+  get: (target, prop) => {
+    if (prop === 'primary') return getThemeColorArray();
+    return target[prop];
+  }
+}) as any;
 
 function formatCurrencyRaw(value: number, currency: string): string {
   return `${currency} ${value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
@@ -228,23 +243,51 @@ export interface ExcelExportParams {
 }
 
 // ── Colour palette (ARGB hex for xlsx-js-style) ───────────────────
-const C = {
-  primaryDark:  '0F4C35',
-  primary:      '22A45D',
-  primaryMid:   '1A7A47',
-  primaryLight: 'D6F0E1',
-  gold:         'D4AF37',
-  red:          'EF4444',
-  white:        'FFFFFF',
-  black:        '1A2230',
-  gray:         '64748B',
-  grayLight:    'F1F5F9',
-  grayBorder:   'CBD5E1',
-  rowAlt:       'F8FBF9',
-  rowEven:      'FFFFFF',
-  totalsRow:    'E8F5ED',
-  subHdr:       '1E3A2F',
-}
+const C = new Proxy({}, {
+  get: (target, prop) => {
+    let mod = undefined
+    if (typeof document !== 'undefined') {
+      const appShell = document.querySelector('.app-shell')
+      if (appShell) mod = appShell.getAttribute('data-module') || undefined
+    }
+    const isProp = mod && mod.toLowerCase().includes('propert')
+    
+    const colors = isProp ? {
+      primaryDark:  'D07D9B',
+      primary:      'DE8DA9',
+      primaryMid:   'E49DB6',
+      primaryLight: 'F4E6EB',
+      gold:         'D4AF37',
+      red:          'EF4444',
+      white:        'FFFFFF',
+      black:        '1A2230',
+      gray:         '64748B',
+      grayLight:    'F1F5F9',
+      grayBorder:   'CBD5E1',
+      rowAlt:       'FDF7F9',
+      rowEven:      'FFFFFF',
+      totalsRow:    'FAEDF1',
+      subHdr:       'B05D7C',
+    } : {
+      primaryDark:  '0F4C35',
+      primary:      '22A45D',
+      primaryMid:   '1A7A47',
+      primaryLight: 'D6F0E1',
+      gold:         'D4AF37',
+      red:          'EF4444',
+      white:        'FFFFFF',
+      black:        '1A2230',
+      gray:         '64748B',
+      grayLight:    'F1F5F9',
+      grayBorder:   'CBD5E1',
+      rowAlt:       'F8FBF9',
+      rowEven:      'FFFFFF',
+      totalsRow:    'E8F5ED',
+      subHdr:       '1E3A2F',
+    };
+    return colors[prop];
+  }
+}) as any;
 
 const FN = 'Calibri'
 
@@ -1032,7 +1075,9 @@ function addPdfFooter(doc: any, generatedBy?: string) {
     const pageWidth = doc.internal.pageSize.getWidth()
     const footerY = pageHeight - 10
     
-    // Only display page numbers in the footer
+    // Powered By INSACC on the left
+    doc.text(`Powered By INSACC`, 14, footerY, { align: 'left' })
+    // Only display page numbers in the footer on the right
     doc.text(`Page ${i} of ${pageCount}`, pageWidth - 14, footerY, { align: 'right' })
   }
 }
@@ -1042,32 +1087,24 @@ function generatePdfCoverPage(doc: any, title: string, subtitle: string, periodL
   const centerX = pageWidth / 2
 
   doc.setTextColor(0, 0, 0)
-  doc.setFontSize(14)
+  doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
-  doc.text('Sameer Ishaq Harmoudi', centerX, 20, { align: 'center' })
-
-  doc.setFontSize(24)
-  doc.text('INSACC', centerX, 30, { align: 'center' })
-
-  doc.setFontSize(9)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(100, 116, 139)
-  doc.text('Intelligent Asset & Investment Accounting', centerX, 35, { align: 'center' })
+  doc.text('Sameer Ishaq Harmoudi', centerX, 15, { align: 'center' })
 
   doc.setDrawColor(200, 200, 200)
   doc.setLineWidth(0.5)
-  doc.line(0, 42, pageWidth, 42)
+  doc.line(0, 23, pageWidth, 23)
 
   doc.setTextColor(0, 0, 0)
-  doc.setFontSize(14)
+  doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
-  doc.text(title.toUpperCase(), centerX, 52, { align: 'center' })
+  doc.text(title.toUpperCase(), centerX, 30, { align: 'center' })
 
   doc.setTextColor(100, 116, 139)
-  doc.setFontSize(9)
+  doc.setFontSize(8)
   doc.setFont('helvetica', 'bold')
   
-  let myY = 70
+  let myY = 38
   
   const dateOptions: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }
   const generatedOn = new Date().toLocaleString('en-GB', dateOptions).replace(',', '')
@@ -1097,8 +1134,8 @@ function generatePdfCoverPage(doc: any, title: string, subtitle: string, periodL
 
   const validMetaItems = metaItems.filter(item => item.val && String(item.val).trim() !== '')
 
-  const columns = 2
-  const rowHeight = 8
+  const columns = 3
+  const rowHeight = 7
   const leftMargin = 14
   const colWidth = (pageWidth - (leftMargin * 2)) / columns
   
@@ -1140,7 +1177,7 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
 
   // Report Page
   doc.setFontSize(18)
-  doc.setTextColor(15, 76, 53) // primaryDark
+  doc.setTextColor(...getThemeColorArray()) // primaryDark
   doc.text(`InsAcc ${moduleName} Report`, 14, y)
   
   y += 10
@@ -1179,7 +1216,7 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
       })
       
       tableData.unshift([
-        { content: `${group.groupName} - Debits: ${p.currency} ${totGrDr.toLocaleString(undefined, {minimumFractionDigits: 2})} | Credits: ${p.currency} ${totGrCr.toLocaleString(undefined, {minimumFractionDigits: 2})}`, colSpan: 8, styles: { halign: 'left', fillColor: [15, 76, 53], textColor: [255, 255, 255], fontStyle: 'bold' } }
+        { content: `${group.groupName} - Debits: ${p.currency} ${totGrDr.toLocaleString(undefined, {minimumFractionDigits: 2})} | Credits: ${p.currency} ${totGrCr.toLocaleString(undefined, {minimumFractionDigits: 2})}`, colSpan: 8, styles: { halign: 'left', fillColor: getThemeColorArray(), textColor: [255, 255, 255], fontStyle: 'bold' } }
       ])
       
       autoTable(doc, {
@@ -1188,7 +1225,7 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
         body: tableData,
         theme: 'grid',
         styles: { fontSize: 8 },
-        headStyles: { fillColor: [248, 251, 249], textColor: [15, 76, 53], fontStyle: 'bold' },
+        headStyles: { fillColor: [248, 251, 249], textColor: getThemeColorArray(), fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [248, 251, 249] },
       })
       
@@ -1223,7 +1260,7 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
       body: tableData,
       theme: 'grid',
       styles: { fontSize: 8 },
-      headStyles: { fillColor: [15, 76, 53], textColor: [255, 255, 255], fontStyle: 'bold' },
+      headStyles: { fillColor: getThemeColorArray(), textColor: [255, 255, 255], fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [248, 251, 249] },
     })
   }
@@ -1297,7 +1334,7 @@ export async function exportSideBySidePdf(p: SideBySideExportParams): Promise<st
   )
   
   doc.setFontSize(16)
-  doc.setTextColor(15, 76, 53)
+  doc.setTextColor(...getThemeColorArray())
   doc.text(p.title, 14, y)
   
   y += 6
@@ -1348,7 +1385,7 @@ export async function exportSideBySidePdf(p: SideBySideExportParams): Promise<st
 
   // Footer (Net Income)
   doc.setFontSize(12)
-  doc.setTextColor(15, 76, 53)
+  doc.setTextColor(...getThemeColorArray())
   doc.setFont('helvetica', 'bold')
   doc.text(`${p.footer.label}: ${p.currency} ${p.footer.value.toLocaleString(undefined, {minimumFractionDigits: 2})}`, 14, y)
 
@@ -1410,7 +1447,7 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
 
     // Report Page
     doc.setFontSize(18)
-    doc.setTextColor(15, 76, 53) // primaryDark
+    doc.setTextColor(...getThemeColorArray()) // primaryDark
     doc.text(p.title, 14, y)
     
     // Subtitle deliberately omitted in PDF as it's redundant with cover page details
@@ -1423,8 +1460,8 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
       showFoot: 'lastPage',
       theme: 'grid',
       styles: { fontSize: 9 },
-      headStyles: { fillColor: [15, 76, 53], textColor: [255, 255, 255], fontStyle: 'bold' },
-      footStyles: { fillColor: [248, 251, 249], textColor: [15, 76, 53], fontStyle: 'bold' },
+      headStyles: { fillColor: getThemeColorArray(), textColor: [255, 255, 255], fontStyle: 'bold' },
+      footStyles: { fillColor: [248, 251, 249], textColor: getThemeColorArray(), fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [248, 251, 249] },
     })
 
@@ -1593,7 +1630,7 @@ export async function exportFinancialOverviewPdf(p: FinancialOverviewExportParam
   
   // 2. Report Header
   doc.setFontSize(18)
-  doc.setTextColor(15, 76, 53) // primaryDark
+  doc.setTextColor(...getThemeColorArray()) // primaryDark
   doc.text(`InsAcc ${p.title}`, 14, y)
   
   y += 10
@@ -1621,7 +1658,7 @@ export async function exportFinancialOverviewPdf(p: FinancialOverviewExportParam
 
     // Value
     doc.setFontSize(12)
-    doc.setTextColor(15, 76, 53) // standard dark green for values
+    doc.setTextColor(...getThemeColorArray()) // standard dark green for values
     doc.setFont('helvetica', 'bold')
     doc.text(`${p.currency} ${kpi.value.toLocaleString(undefined, {minimumFractionDigits: 2})}`, x + 3, y + 16)
     doc.setFont('helvetica', 'normal')
@@ -1637,7 +1674,7 @@ export async function exportFinancialOverviewPdf(p: FinancialOverviewExportParam
   doc.roundedRect(14, y, 180, 25, 2, 2, 'FD')
 
   doc.setFontSize(9)
-  doc.setTextColor(15, 76, 53)
+  doc.setTextColor(...getThemeColorArray())
   doc.setFont('helvetica', 'bold')
   doc.text('Quick Financial Summary', 18, y + 7)
   doc.setFont('helvetica', 'normal')
@@ -1668,7 +1705,7 @@ export async function exportFinancialOverviewPdf(p: FinancialOverviewExportParam
 
   // 5. Recent Accounting Activity Table
   doc.setFontSize(12)
-  doc.setTextColor(15, 76, 53)
+  doc.setTextColor(...getThemeColorArray())
   doc.setFont('helvetica', 'bold')
   doc.text('Recent Accounting Activity', 14, y + 5)
   doc.setFont('helvetica', 'normal')
@@ -1679,7 +1716,7 @@ export async function exportFinancialOverviewPdf(p: FinancialOverviewExportParam
     body: p.recentActivity,
     theme: 'grid',
     styles: { fontSize: 8 },
-    headStyles: { fillColor: [15, 76, 53], textColor: [255, 255, 255], fontStyle: 'bold' },
+    headStyles: { fillColor: getThemeColorArray(), textColor: [255, 255, 255], fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [248, 251, 249] },
     columnStyles: {
       4: { halign: 'right' }
@@ -1700,7 +1737,7 @@ export { generatePdf, generateExcel, generateCsv }
 
 function pdfSectionBanner(doc: any, title: string, y: number): number {
   const pw = doc.internal.pageSize.getWidth()
-  doc.setFillColor(15, 76, 53)
+  doc.setFillColor(...getThemeColorArray())
   doc.rect(0, y, pw, 10, 'F')
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(11)
@@ -1869,7 +1906,7 @@ export async function exportOverviewPdf(p: ExcelExportParams): Promise<string | 
     body: txnRows,
     theme: 'grid',
     styles: { fontSize: 7 },
-    headStyles: { fillColor: [15, 76, 53], textColor: [255, 255, 255], fontStyle: 'bold' },
+    headStyles: { fillColor: getThemeColorArray(), textColor: [255, 255, 255], fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [248, 251, 249] },
     columnStyles: { 8: { halign: 'right' }, 9: { halign: 'right' }, 10: { halign: 'right' } },
   })
@@ -2068,7 +2105,7 @@ export async function exportOverviewPdf(p: ExcelExportParams): Promise<string | 
       body: [['No audit records found for this period.', '', '', '', '', '', '']],
       theme: 'grid',
       styles: { fontSize: 7, textColor: [100, 116, 139], fontStyle: 'italic' },
-      headStyles: { fillColor: [15, 76, 53], textColor: [255, 255, 255], fontStyle: 'bold' },
+      headStyles: { fillColor: getThemeColorArray(), textColor: [255, 255, 255], fontStyle: 'bold' },
     })
   } else {
     const auditRows = logs.map((log: any) => [
@@ -2086,7 +2123,7 @@ export async function exportOverviewPdf(p: ExcelExportParams): Promise<string | 
       body: auditRows,
       theme: 'grid',
       styles: { fontSize: 7 },
-      headStyles: { fillColor: [15, 76, 53], textColor: [255, 255, 255], fontStyle: 'bold' },
+      headStyles: { fillColor: getThemeColorArray(), textColor: [255, 255, 255], fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [248, 251, 249] },
     })
   }

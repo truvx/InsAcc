@@ -10,7 +10,7 @@ import { getLinesForAccount } from '../accounting/ledgerService'
 import { formatCurrency, getCurrencySymbol } from '../utils/reportFormatters'
 import { DataTable, type Column } from './design/Table'
 import { exportTableData } from '../services/reportExportService'
-import { Badge, EmptyState, Modal, ChevronLeftIcon, Button } from './design/DesignSystem'
+import { Badge, EmptyState, Modal, ChevronLeftIcon, Button, Input } from './design/DesignSystem'
 import VoucherTimeline from './VoucherTimeline'
 import BankAccountAvatar from './BankAccountAvatar'
 import { Download } from 'lucide-react'
@@ -34,10 +34,21 @@ export default function InvestmentHoldings({
 }: Props) {
   const [detailHolding, setDetailHolding] = useState<AssetHolding | null>(null)
   const [showExportMenu, setShowExportMenu] = useState(false)
+  
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+
+  const filteredPurchases = useMemo(() => {
+    return purchaseRecords.filter(r => {
+      if (dateFrom && r.purchaseDate < dateFrom) return false
+      if (dateTo && r.purchaseDate > dateTo) return false
+      return true
+    })
+  }, [purchaseRecords, dateFrom, dateTo])
 
   const holdings = useMemo(
-    () => getInvestmentHoldingsProjection(purchaseRecords, vouchers, accounts),
-    [purchaseRecords, vouchers, accounts],
+    () => getInvestmentHoldingsProjection(filteredPurchases, vouchers, accounts),
+    [filteredPurchases, vouchers, accounts],
   )
 
   const bankByIdMap = useMemo(
@@ -85,6 +96,7 @@ export default function InvestmentHoldings({
       format,
       title: 'Investment Holdings',
       subtitle: `Exported on ${new Date().toISOString().split('T')[0]}`,
+      periodLabel: dateFrom || dateTo ? `${dateFrom || 'Beginning'} - ${dateTo || 'Present'}` : 'All Time',
       filename: `Investment_Holdings_${new Date().toISOString().split('T')[0]}`,
       columns: exportColumns,
       rows,
@@ -361,7 +373,7 @@ export default function InvestmentHoldings({
       </div>
 
       <div className="page-body">
-        {holdings.length === 0 ? (
+        {holdings.length === 0 && !dateFrom && !dateTo ? (
           <EmptyState
             icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>}
             title="No holdings yet"
@@ -375,6 +387,18 @@ export default function InvestmentHoldings({
                 data={holdings}
                 keyExtractor={h => h.accountId || h.assetName}
                 pageSize={50}
+                filterBar={
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className="text-xs fw-600 text-secondary" style={{ textTransform: 'uppercase' }}>From</span>
+                      <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ width: 140, marginBottom: 0 }} />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className="text-xs fw-600 text-secondary" style={{ textTransform: 'uppercase' }}>To</span>
+                      <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ width: 140, marginBottom: 0 }} />
+                    </div>
+                  </div>
+                }
                 emptyState={
                   <EmptyState
                     icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>}

@@ -6,7 +6,7 @@ import type { PurchaseRecord } from '../data/purchaseLedger'
 import { getInvestmentHoldingsProjection } from '../readModels/InvestmentHoldingsReadModel'
 import { getAssetWeightMultiplier } from '../services/purchaseLedgerService'
 import { DataTable, type Column } from './design/Table'
-import { KpiCard, Button, ChevronLeftIcon } from './design/DesignSystem'
+import { KpiCard, Button, ChevronLeftIcon, Input } from './design/DesignSystem'
 import { exportTableData } from '../services/reportExportService'
 import { getCurrencySymbol } from '../utils/reportFormatters'
 import { Download } from 'lucide-react'
@@ -50,11 +50,19 @@ export default function InvestmentTotalAverageHolding({
   loggedInUser,
 }: Props) {
   const [showExportMenu, setShowExportMenu] = useState(false)
+  
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+
   // Filter active purchases
-  const activePurchases = useMemo(
-    () => purchaseRecords.filter((p) => p.status === 'active'),
-    [purchaseRecords]
-  )
+  const activePurchases = useMemo(() => {
+    return purchaseRecords.filter((p) => {
+      if (p.status !== 'active') return false
+      if (dateFrom && p.purchaseDate < dateFrom) return false
+      if (dateTo && p.purchaseDate > dateTo) return false
+      return true
+    })
+  }, [purchaseRecords, dateFrom, dateTo])
 
   // 1. Calculate Purity-wise Total Averages
   const purityWiseData = useMemo((): PurityGroup[] => {
@@ -149,6 +157,7 @@ export default function InvestmentTotalAverageHolding({
       format,
       title: 'Total Average Holding - Purity Summary',
       subtitle: `Exported on ${new Date().toISOString().split('T')[0]}`,
+      periodLabel: dateFrom || dateTo ? `${dateFrom || 'Beginning'} - ${dateTo || 'Present'}` : 'All Time',
       filename: `Average_Holding_${new Date().toISOString().split('T')[0]}`,
       columns: exportColumns,
       rows,
@@ -327,7 +336,23 @@ export default function InvestmentTotalAverageHolding({
             {purityWiseData.length === 0 ? (
               <div className="text-center p-6 text-secondary">No active purchases found.</div>
             ) : (
-              <DataTable data={purityWiseData} columns={purityColumns} keyExtractor={(p) => p.purity} />
+              <DataTable
+                columns={purityColumns}
+                data={purityWiseData}
+                keyExtractor={(p) => p.purity}
+                filterBar={
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className="text-xs fw-600 text-secondary" style={{ textTransform: 'uppercase' }}>From</span>
+                      <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ width: 140, marginBottom: 0 }} />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className="text-xs fw-600 text-secondary" style={{ textTransform: 'uppercase' }}>To</span>
+                      <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ width: 140, marginBottom: 0 }} />
+                    </div>
+                  </div>
+                }
+              />
             )}
           </div>
         </div>
