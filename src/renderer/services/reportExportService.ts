@@ -1095,19 +1095,20 @@ function generatePdfCoverPage(doc: any, title: string, subtitle: string, periodL
     metaItems.push({ label: 'Portfolio', val: finalModuleName })
   }
 
-  const columns = 3
+  const validMetaItems = metaItems.filter(item => item.val && String(item.val).trim() !== '')
+
+  const columns = 2
   const rowHeight = 8
   
-  metaItems.forEach((item, index) => {
+  validMetaItems.forEach((item, index) => {
     const col = index % columns
     const row = Math.floor(index / columns)
     
-    // Distribute columns evenly across the page. Page is ~297mm wide.
-    // Col 0: right-aligned at 50, left-aligned at 55
-    // Col 1: right-aligned at 145, left-aligned at 150
-    // Col 2: right-aligned at 240, left-aligned at 245
-    const labelX = 50 + (col * 95)
-    const valX = 55 + (col * 95)
+    // Distribute 2 columns around the center (page width ~297)
+    // Col 0: right-aligned at 100, left-aligned at 105
+    // Col 1: right-aligned at 200, left-aligned at 205
+    const labelX = 100 + (col * 100)
+    const valX = 105 + (col * 100)
     
     const itemY = myY + (row * rowHeight)
 
@@ -1118,7 +1119,7 @@ function generatePdfCoverPage(doc: any, title: string, subtitle: string, periodL
   })
 
   // Update myY based on how many rows we used
-  const totalRows = Math.ceil(metaItems.length / columns)
+  const totalRows = Math.ceil(validMetaItems.length / columns)
   myY += (totalRows * rowHeight) + 4
 
   doc.setFont('helvetica', 'normal')
