@@ -4,7 +4,7 @@ import type { Account, Voucher, BankMapping } from '../accounting/types'
 import type { BankAccount } from '../data/banking'
 import type { PurchaseRecord } from '../data/purchaseLedger'
 import { getInvestmentHoldingsProjection } from '../readModels/InvestmentHoldingsReadModel'
-import { getAssetWeightMultiplier } from '../services/purchaseLedgerService'
+import { getAssetWeightMultiplier, formatQuantityWithGrams } from '../services/purchaseLedgerService'
 import { DataTable, type Column } from './design/Table'
 import { KpiCard, Button, ChevronLeftIcon } from './design/DesignSystem'
 import { exportTableData } from '../services/reportExportService'
@@ -35,6 +35,7 @@ interface AssetHoldingAverage {
   assetName: string
   assetType: string
   totalQuantity: number
+  rawQuantity: number
   totalInvested: number
   weightedAveragePrice: number
   purityAveragePrice: number
@@ -103,6 +104,7 @@ export default function InvestmentTotalAverageHolding({
         assetName: h.assetName,
         assetType: h.assetType,
         totalQuantity: qtyInGrams,
+        rawQuantity: h.totalQuantity,
         totalInvested: h.totalInvested,
         weightedAveragePrice,
         purityAveragePrice: h.simpleAvgPrice || 0,
@@ -132,7 +134,7 @@ export default function InvestmentTotalAverageHolding({
     const rows = purityWiseData.map(p => [
       p.purity,
       p.purchaseCount,
-      p.totalQuantity,
+      p.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 4 }),
       `${sym} ${p.totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
       `${sym} ${p.purityAveragePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
     ])
@@ -233,7 +235,7 @@ export default function InvestmentTotalAverageHolding({
       header: 'Quantity',
       sortable: true,
       numeric: true,
-      render: (a) => <span className="text-xs">{a.totalQuantity.toLocaleString()} g</span>,
+      render: (a) => <span className="text-xs">{formatQuantityWithGrams(a.rawQuantity, a.assetName)}</span>,
     },
     {
       key: 'purityAveragePrice',

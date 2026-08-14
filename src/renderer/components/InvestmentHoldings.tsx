@@ -5,7 +5,7 @@ import type { Account, Voucher, BankMapping } from '../accounting/types'
 import type { BankAccount } from '../data/banking'
 import type { PurchaseRecord } from '../data/purchaseLedger'
 import { getInvestmentHoldingsProjection } from '../readModels/InvestmentHoldingsReadModel'
-import { getAssetWeightMultiplier } from '../services/purchaseLedgerService'
+import { getAssetWeightMultiplier, formatQuantityWithGrams } from '../services/purchaseLedgerService'
 import { getLinesForAccount } from '../accounting/ledgerService'
 import { formatCurrency, getCurrencySymbol } from '../utils/reportFormatters'
 import { DataTable, type Column } from './design/Table'
@@ -68,7 +68,7 @@ export default function InvestmentHoldings({
         h.assetName,
         h.assetType,
         bank?.institution || '—',
-        h.totalQuantity,
+        formatQuantityWithGrams(h.totalQuantity, h.assetName),
         `${sym} ${h.totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
         `${sym} ${h.avgPurchaseValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
       ]
@@ -117,7 +117,7 @@ export default function InvestmentHoldings({
     },
     {
       key: 'totalQuantity', header: 'Qty', sortable: true, numeric: true, width: '70px',
-      render: h => <span className="text-xs">{h.totalQuantity.toLocaleString()}</span>,
+      render: h => <span className="text-xs">{formatQuantityWithGrams(h.totalQuantity, h.assetName)}</span>,
     },
     {
       key: 'avgPurchaseValue', header: 'Average Unit Price', sortable: true, numeric: true, width: '180px',
@@ -217,7 +217,7 @@ export default function InvestmentHoldings({
               <Badge variant={detailHolding.growthPercent >= 0 ? 'success' : 'danger'}>
                 {detailHolding.growthPercent >= 0 ? '+' : ''}{detailHolding.growthPercent.toFixed(1)}% growth
               </Badge>
-              <Badge variant="neutral">Qty: {detailHolding.totalQuantity.toLocaleString()}</Badge>
+              <Badge variant="neutral">Qty: {formatQuantityWithGrams(detailHolding.totalQuantity, detailHolding.assetName)}</Badge>
             </div>
 
             <div>
@@ -243,7 +243,7 @@ export default function InvestmentHoldings({
                           return (
                             <tr key={p.id}>
                               <td className="text-xs text-secondary">{p.purchaseDate.substring(0, 10)}</td>
-                              <td className="text-xs">{p.quantity.toLocaleString()}</td>
+                              <td className="text-xs">{formatQuantityWithGrams(p.quantity, p.assetName)}</td>
                               <td className="text-xs text-mono">
                                 <CurrencyText value={p.unitPrice} currency={currency} />/g
                                 {(() => {

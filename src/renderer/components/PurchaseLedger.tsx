@@ -31,6 +31,7 @@ import {
   type SortField,
   type SortOrder,
   getAssetWeightMultiplier,
+  formatQuantityWithGrams,
 } from '../services/purchaseLedgerService'
 import { purchaseAndCreateVoucher, updatePurchaseVouchers } from '../services/purchaseAccountingService'
 import { getLinesForAccount, getLinesByReference, getAccountBalance, invalidateBalanceCache } from '../accounting/ledgerService'
@@ -406,7 +407,7 @@ export default function PurchaseLedger({
     },
     {
       key: 'quantity', header: 'Qty', sortable: true, numeric: true, width: '70px',
-      render: r => <span className="text-xs">{r.quantity.toLocaleString()}</span>,
+      render: r => <span className="text-xs">{formatQuantityWithGrams(r.quantity, r.assetName)}</span>,
     },
     {
       key: 'unitPrice', header: 'Unit Price', sortable: true, numeric: true, width: '100px',
@@ -646,7 +647,7 @@ export default function PurchaseLedger({
         r.voucherNumber || '—',
         formatDate(r.purchaseDate, dateFormat),
         `${r.assetName}\n(${formatAssetType(r.assetType)})`,
-        r.quantity.toLocaleString(),
+        formatQuantityWithGrams(r.quantity, r.assetName),
         formatCurrency(r.unitPrice, currency),
         formatCurrency(r.totalValue, currency),
         paidFrom,
