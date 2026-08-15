@@ -141,9 +141,10 @@ export default function InvestmentTotalAverageHolding({
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     const sym = getCurrencySymbol(currency)
     // Only exporting purity averages as a summary
-    const exportColumns = ['Purity/Type', 'Qty (No.)', 'Total Qty in Grams', 'Total Invested (DHS)', 'Purity Avg Price']
+    const exportColumns = ['Purity/Type', 'No. of Purchases', 'Qty (No.)', 'Total Qty in Grams', 'Total Invested (DHS)', 'Purity Avg Price']
     const rows = purityWiseData.map(p => [
       p.purity,
+      p.purchaseCount,
       p.rawQuantity.toLocaleString(),
       p.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 4 }),
       `${sym} ${p.totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
@@ -152,7 +153,7 @@ export default function InvestmentTotalAverageHolding({
 
     const totalInvestedSum = purityWiseData.reduce((s, p) => s + p.totalInvested, 0)
     const foot = [
-      ['', '', 'Total Invested:', `${sym} ${totalInvestedSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, '']
+      ['', '', '', 'Total Invested:', `${sym} ${totalInvestedSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, '']
     ]
 
     exportTableData({
@@ -218,6 +219,14 @@ export default function InvestmentTotalAverageHolding({
       sortable: true,
       numeric: true,
       render: (p) => <span className="fw-600 text-xs"><CurrencyText value={p.totalInvested} currency={currency} /></span>,
+    },
+    {
+      key: 'purchaseCount',
+      header: 'No. of Purchases',
+      sortable: true,
+      numeric: true,
+      width: '120px',
+      render: (p) => <span className="text-xs text-secondary">{p.purchaseCount}</span>,
     },
     {
       key: 'rawQuantity',
