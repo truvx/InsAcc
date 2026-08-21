@@ -56,12 +56,6 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const inputId = id || props.name
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      // For date inputs, if the user is in the middle of typing a year,
-      // the browser flags it as badInput and value="" is returned.
-      // If we pass "" to state, React re-renders and wipes the partially typed date.
-      if (type === 'date' && e.target.validity?.badInput) {
-        return
-      }
       onChange?.(e)
     }
 

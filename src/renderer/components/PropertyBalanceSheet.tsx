@@ -10,7 +10,7 @@ import Toast from './Toast'
 import { Landmark, ListChecks, Filter, Download } from 'lucide-react'
 import { CurrencyText } from './design/CurrencyText'
 
-import type { PropertyEntry, LeaseEntry } from '../data/propertyTypes'
+import type { PropertyEntry, LeaseEntry, PropAccount } from '../data/propertyTypes'
 
 interface Props {
   currency?: string
@@ -19,6 +19,7 @@ interface Props {
   properties?: PropertyEntry[]
   leases?: LeaseEntry[]
   loggedInUser?: string
+  propAccounts?: PropAccount[]
 }
 
 interface TreeNode {
@@ -43,7 +44,7 @@ function flatRowsFromTree(
   return rows
 }
 
-export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouchers, properties = [], leases = [], loggedInUser }: Props) {
+export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouchers, properties = [], leases = [], loggedInUser, propAccounts = [] }: Props) {
   const [drillAccountId, setDrillAccountId] = useState<string | null>(null)
   const [drillAccountName, setDrillAccountName] = useState<string>('')
   const [filterPropertyId, setFilterPropertyId] = useState('')
@@ -96,18 +97,27 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
 
   const assetRows = useMemo(() => {
     const rows = flatRowsFromTree(tree, balances, ['asset']).filter(r => r.account.code !== '1130' && r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 }))
-    return filterPropertyId ? rows.filter(r => r.balance !== 0) : rows
-  }, [tree, balances, filterPropertyId])
+    return filterPropertyId ? rows.filter(r => {
+      if (r.balance !== 0) return true
+      return propAccounts.some(pa => pa.chartAccountId === r.account.id && pa.propertyId === filterPropertyId)
+    }) : rows
+  }, [tree, balances, filterPropertyId, propAccounts])
   
   const liabilityRows = useMemo(() => {
     const rows = flatRowsFromTree(tree, balances, ['liability']).filter(r => r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 }))
-    return filterPropertyId ? rows.filter(r => r.balance !== 0) : rows
-  }, [tree, balances, filterPropertyId])
+    return filterPropertyId ? rows.filter(r => {
+      if (r.balance !== 0) return true
+      return propAccounts.some(pa => pa.chartAccountId === r.account.id && pa.propertyId === filterPropertyId)
+    }) : rows
+  }, [tree, balances, filterPropertyId, propAccounts])
   
   const rawEquityRows = useMemo(() => {
     const rows = flatRowsFromTree(tree, balances, ['equity']).filter(r => r.account.code !== '3200' && r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 }))
-    return filterPropertyId ? rows.filter(r => r.balance !== 0) : rows
-  }, [tree, balances, filterPropertyId])
+    return filterPropertyId ? rows.filter(r => {
+      if (r.balance !== 0) return true
+      return propAccounts.some(pa => pa.chartAccountId === r.account.id && pa.propertyId === filterPropertyId)
+    }) : rows
+  }, [tree, balances, filterPropertyId, propAccounts])
 
   const equityRows = useMemo(() => {
     if (bsModel.currentYearProfit === 0) return rawEquityRows

@@ -410,6 +410,7 @@ export default function PropertyRouter(props: Props) {
         currency={currency} accounts={propertyAccounts} vouchers={vouchers}
         properties={mappedProperties} leases={propLeases}
         loggedInUser={props.loggedInUser}
+        propAccounts={props.propAccounts}
       />
     case 'profit-loss':
       return <PropertyProfitLoss
