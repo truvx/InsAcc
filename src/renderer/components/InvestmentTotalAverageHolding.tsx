@@ -148,7 +148,7 @@ export default function InvestmentTotalAverageHolding({
       p.rawQuantity.toLocaleString(),
       p.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 4 }),
       `${sym} ${p.totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
-      `${sym} ${p.purityAveragePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+      `${sym} ${p.purityAveragePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     ])
 
     const totalInvestedSum = purityWiseData.reduce((s, p) => s + p.totalInvested, 0)

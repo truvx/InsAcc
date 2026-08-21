@@ -82,7 +82,7 @@ export default function InvestmentHoldings({
         h.totalQuantity.toLocaleString(),
         `${(h.totalQuantity * getAssetWeightMultiplier(h.assetName)).toLocaleString()}g`,
         `${sym} ${h.totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
-        `${sym} ${h.avgPurchaseValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+        `${sym} ${h.avgPurchaseValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       ]
     })
 
