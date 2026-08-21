@@ -90,6 +90,8 @@ export default function TrialBalanceTree({ currency = 'AED', accounts, vouchers,
   const [expandedTypes, setExpandedTypes] = useState<Record<string, boolean>>({
     asset: true, liability: true, revenue: true, expense: true, equity: true,
   })
+  
+  const [exportMenuOpenFor, setExportMenuOpenFor] = useState<string | null>(null)
 
   const tree = useMemo(() => buildTree(accounts, entries), [accounts, entries])
 
@@ -106,7 +108,7 @@ export default function TrialBalanceTree({ currency = 'AED', accounts, vouchers,
     setExpandedTypes(prev => ({ ...prev, [type]: !prev[type] }))
   }, [])
 
-  const handleExportAccount = useCallback(async (accountId: string, accountName: string, accountCode: string) => {
+  const handleExportAccount = useCallback(async (accountId: string, accountName: string, accountCode: string, format: 'pdf' | 'xlsx' | 'csv') => {
     const acct = accounts.find(a => a.id === accountId)
     if (!acct) return
     
@@ -138,7 +140,7 @@ export default function TrialBalanceTree({ currency = 'AED', accounts, vouchers,
 
     await exportTableData({
       moduleName: 'Accounting',
-      format: 'pdf',
+      format,
       title: `Statement of Account`,
       subtitle: `${accountName} (${accountCode})`,
       periodLabel: 'All Time',
@@ -222,22 +224,31 @@ export default function TrialBalanceTree({ currency = 'AED', accounts, vouchers,
                   style={{ cursor: 'pointer' }}
                   onClick={e => {
                     e.stopPropagation()
-                    handleExportAccount(node.id, node.name, node.code)
+                    setExportMenuOpenFor(exportMenuOpenFor === node.id ? null : node.id)
                   }}
-                  title="Click to export Statement of Account (PDF)"
+                  title="Click to export Statement of Account"
                 >
                   {node.name}
                 </span>
-                <button
-                  className="tb-export-btn"
-                  title="Export Statement (PDF)"
-                  onClick={e => {
-                    e.stopPropagation()
-                    handleExportAccount(node.id, node.name, node.code)
-                  }}
-                >
-                  <Download size={12} strokeWidth={2.5} />
-                </button>
+                <div style={{ position: 'relative', display: 'inline-block' }}>
+                  <button
+                    className="tb-export-btn"
+                    title="Export Statement"
+                    onClick={e => {
+                      e.stopPropagation()
+                      setExportMenuOpenFor(exportMenuOpenFor === node.id ? null : node.id)
+                    }}
+                  >
+                    <Download size={12} strokeWidth={2.5} />
+                  </button>
+                  {exportMenuOpenFor === node.id && (
+                    <div style={{ position: 'absolute', top: '100%', left: 6, marginTop: 4, background: '#fff', border: '1px solid var(--border-color)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, width: 120, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                      <button className="export-menu-item" onClick={(e) => { e.stopPropagation(); setExportMenuOpenFor(null); handleExportAccount(node.id, node.name, node.code, 'pdf') }} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', borderBottom: '1px solid var(--divider, #E5E7EB)' }}>PDF (.pdf)</button>
+                      <button className="export-menu-item" onClick={(e) => { e.stopPropagation(); setExportMenuOpenFor(null); handleExportAccount(node.id, node.name, node.code, 'xlsx') }} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', borderBottom: '1px solid var(--divider, #E5E7EB)' }}>Excel (.xlsx)</button>
+                      <button className="export-menu-item" onClick={(e) => { e.stopPropagation(); setExportMenuOpenFor(null); handleExportAccount(node.id, node.name, node.code, 'csv') }} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>CSV (.csv)</button>
+                    </div>
+                  )}
+                </div>
               </div>
             </td>
             {hasChildren ? (
@@ -310,6 +321,10 @@ export default function TrialBalanceTree({ currency = 'AED', accounts, vouchers,
         }
         .tb-export-btn:hover {
           background: var(--bg-tertiary, #F9FAFB);
+          color: var(--primary, #6366F1);
+        }
+        .export-menu-item:hover {
+          background-color: var(--bg-tertiary, #F9FAFB);
           color: var(--primary, #6366F1);
         }
         .tb-summary {
