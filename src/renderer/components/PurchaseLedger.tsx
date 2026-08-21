@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { Plus, Download } from 'lucide-react'
+import { Plus, Download, Filter } from 'lucide-react'
 import type { Account, Voucher, BankMapping } from '../accounting/types'
 import type { AccountingEngine } from '../accounting/accountingEngine'
 import type { BankAccount } from '../data/banking'
@@ -146,6 +146,8 @@ export default function PurchaseLedger({
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' })
   const [showForm, setShowForm] = useState(false)
   const [showExportMenu, setShowExportMenu] = useState(false)
+  const [showAssetExportMenu, setShowAssetExportMenu] = useState(false)
+  const [assetExportSelected, setAssetExportSelected] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState<FormState>(emptyForm)
   const [formErrors, setFormErrors] = useState<ValidationError[]>([])
@@ -639,14 +641,28 @@ export default function PurchaseLedger({
     }))
   }
 
-  const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+  // Unique asset names from current purchase records for "Export by Asset"
+  const uniqueAssetNames = useMemo(() => {
+    const names = new Set<string>()
+    for (const r of purchaseRecords) {
+      if (r.assetName) names.add(r.assetName)
+    }
+    return Array.from(names).sort()
+  }, [purchaseRecords])
+
+  const handleExport = (format: 'pdf' | 'csv' | 'xlsx', assetNameFilter?: string) => {
     const exportColumns = [
       'VOUCHER', 'DATE', 'ASSET', 'QTY (No.)', 'QTY (GRAMS)', 'UNIT PRICE (DHS)', 'TOTAL INVESTED (DHS)', 
       'PAID FROM', 'BUYER', 'PAYMENT MODE', 'TAGS', 'NOTES',
       'DOCS', 'POSTING', 'STATUS'
     ]
+
+    // Apply asset name filter on top of existing filters
+    const exportData = assetNameFilter
+      ? filtered.filter(r => r.assetName === assetNameFilter)
+      : filtered
     
-    const rows = filtered.map(r => {
+    const rows = exportData.map(r => {
       const bank = r.fundingBankAccountId ? bankByIdMap.get(r.fundingBankAccountId) ?? null : null
       const d = purchaseDetailMap.get(r.id)
       const paidFrom = bank ? bank.institution : (d?.creditAccountName || (r.voucherNumber ? '—' : 'N/A'))
@@ -670,18 +686,21 @@ export default function PurchaseLedger({
       ]
     })
 
-    const totalInvested = calculateTotalInvested(filtered)
+    const totalInvested = calculateTotalInvested(exportData)
     const foot = [
       ['', '', '', '', '', 'Total Invested:', formatCurrency(totalInvested, currency), '', '', '', '', '', '', '', '']
     ]
 
+    const assetSuffix = assetNameFilter ? `_${assetNameFilter.replace(/[^a-zA-Z0-9]/g, '_')}` : ''
+    const titleSuffix = assetNameFilter ? ` — ${assetNameFilter}` : ''
+
     exportTableData({
       moduleName: 'Investment Portfolio',
       format,
-      title: 'Purchase Ledger',
+      title: `Purchase Ledger${titleSuffix}`,
       subtitle: `Exported on ${new Date().toISOString().split('T')[0]}`,
       periodLabel: dateFrom || dateTo ? `${dateFrom || 'Beginning'} - ${dateTo || 'Present'}` : 'All Time',
-      filename: `Purchase_Ledger_${new Date().toISOString().split('T')[0]}`,
+      filename: `Purchase_Ledger${assetSuffix}_${new Date().toISOString().split('T')[0]}`,
       columns: exportColumns,
       rows,
       foot,
@@ -690,6 +709,8 @@ export default function PurchaseLedger({
       generatedBy: loggedInUser
     })
     setShowExportMenu(false)
+    setShowAssetExportMenu(false)
+    setAssetExportSelected(null)
   }
 
   const handleDuplicate = (r: PurchaseRecord) => {
@@ -1130,7 +1151,31 @@ export default function PurchaseLedger({
         </div>
         <div className="page-header-right" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div style={{ position: 'relative' }}>
-            <Button variant="secondary" onClick={() => setShowExportMenu(!showExportMenu)}>
+            <Button variant="secondary" onClick={() => { setShowAssetExportMenu(!showAssetExportMenu); setShowExportMenu(false); setAssetExportSelected(null) }}>
+              <Filter size={16} style={{ marginRight: 6 }} /> Export by Asset <span style={{ display: 'inline-block', transform: showAssetExportMenu ? 'rotate(90deg)' : 'rotate(-90deg)', width: 12, height: 12, marginLeft: 4 }}><ChevronLeftIcon /></span>
+            </Button>
+            {showAssetExportMenu && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', border: '1px solid var(--border-color)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, minWidth: 200, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                {assetExportSelected === null ? (
+                  <>
+                    <button className="export-menu-item" onClick={() => setAssetExportSelected('__all__')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', fontWeight: 600, borderBottom: '1px solid var(--border-color)' }}>All Assets</button>
+                    {uniqueAssetNames.map(name => (
+                      <button key={name} className="export-menu-item" onClick={() => setAssetExportSelected(name)} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>{name}</button>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    <button className="export-menu-item" onClick={() => setAssetExportSelected(null)} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 12, cursor: 'pointer', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)' }}>← {assetExportSelected === '__all__' ? 'All Assets' : assetExportSelected}</button>
+                    <button className="export-menu-item" onClick={() => handleExport('pdf', assetExportSelected === '__all__' ? undefined : assetExportSelected)} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>PDF (.pdf)</button>
+                    <button className="export-menu-item" onClick={() => handleExport('xlsx', assetExportSelected === '__all__' ? undefined : assetExportSelected)} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>Excel (.xlsx)</button>
+                    <button className="export-menu-item" onClick={() => handleExport('csv', assetExportSelected === '__all__' ? undefined : assetExportSelected)} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>CSV (.csv)</button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+          <div style={{ position: 'relative' }}>
+            <Button variant="secondary" onClick={() => { setShowExportMenu(!showExportMenu); setShowAssetExportMenu(false) }}>
               <Download size={16} style={{ marginRight: 6 }} /> Export <span style={{ display: 'inline-block', transform: showExportMenu ? 'rotate(90deg)' : 'rotate(-90deg)', width: 12, height: 12, marginLeft: 4 }}><ChevronLeftIcon /></span>
             </Button>
             {showExportMenu && (
