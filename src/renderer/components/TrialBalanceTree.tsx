@@ -4,7 +4,10 @@ import { CurrencyText } from './design/CurrencyText'
 
 import { EmptyState, Modal } from './design/DesignSystem'
 import AccountDrillDown from './AccountDrillDown'
-import { ChevronRight, Landmark, ListChecks, TrendingUp, TrendingDown } from 'lucide-react'
+import { ChevronRight, Landmark, ListChecks, TrendingUp, TrendingDown, Download } from 'lucide-react'
+import { exportTableData } from '../services/reportExportService'
+import { getLinesForAccount, getLinesForAccounts } from '../accounting/ledgerService'
+import { formatDate } from '../utils'
 
 interface TreeNode {
   id: string
@@ -103,6 +106,51 @@ export default function TrialBalanceTree({ currency = 'AED', accounts, vouchers,
     setExpandedTypes(prev => ({ ...prev, [type]: !prev[type] }))
   }, [])
 
+  const handleExportAccount = useCallback(async (accountId: string, accountName: string, accountCode: string) => {
+    const acct = accounts.find(a => a.id === accountId)
+    if (!acct) return
+    
+    let lines: any[] = []
+    const children = accounts.filter(a => a.parentId === acct.id && a.isActive)
+    if (children.length > 0) {
+      lines = getLinesForAccounts([accountId, ...children.map(c => c.id)], vouchers)
+    } else {
+      lines = getLinesForAccount(accountId, vouchers)
+    }
+
+    if (lines.length === 0) {
+      alert(`No transactions found for account: ${accountName}`)
+      return
+    }
+
+    const rows = lines.map(({ line, voucher }: any) => [
+      voucher.number,
+      formatDate(voucher.date, 'DD/MM/YYYY'),
+      line.narration || voucher.description || '',
+      line.type === 'Debit' ? line.baseAmount.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '',
+      line.type === 'Credit' ? line.baseAmount.toLocaleString(undefined, { minimumFractionDigits: 2 }) : ''
+    ])
+
+    const total = lines.reduce((s: number, { line }: any) => line.type === 'Debit' ? s + line.baseAmount : s - line.baseAmount, 0)
+    const foot = [
+      ['', '', 'Balance:', '', total.toLocaleString(undefined, { minimumFractionDigits: 2 })]
+    ]
+
+    await exportTableData({
+      moduleName: 'Accounting',
+      format: 'pdf',
+      title: `Statement of Account`,
+      subtitle: `${accountName} (${accountCode})`,
+      periodLabel: 'All Time',
+      filename: `SOA_${accountName.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}`,
+      columns: ['Voucher', 'Date', 'Narration', 'Debit', 'Credit'],
+      rows,
+      foot,
+      currency,
+      generatedBy: ''
+    })
+  }, [accounts, vouchers, currency])
+
   const handleBalanceClick = useCallback((id: string, name: string) => {
     setDrillAccountId(id)
     setDrillAccountName(name)
@@ -169,7 +217,27 @@ export default function TrialBalanceTree({ currency = 'AED', accounts, vouchers,
                   <span className="coa-chevron-placeholder" />
                 )}
                 {hasChildren && <span className="coa-typeicon">{TYPE_ICONS[node.type]}</span>}
-                <span className="coa-name">{node.name}</span>
+                <span 
+                  className="coa-name"
+                  style={{ cursor: 'pointer' }}
+                  onClick={e => {
+                    e.stopPropagation()
+                    handleExportAccount(node.id, node.name, node.code)
+                  }}
+                  title="Click to export Statement of Account (PDF)"
+                >
+                  {node.name}
+                </span>
+                <button
+                  className="tb-export-btn"
+                  title="Export Statement (PDF)"
+                  onClick={e => {
+                    e.stopPropagation()
+                    handleExportAccount(node.id, node.name, node.code)
+                  }}
+                >
+                  <Download size={12} strokeWidth={2.5} />
+                </button>
               </div>
             </td>
             {hasChildren ? (
@@ -220,6 +288,30 @@ export default function TrialBalanceTree({ currency = 'AED', accounts, vouchers,
         }
         .tb-balance { cursor: pointer; transition: opacity 0.1s; }
         .tb-balance:hover { opacity: 0.7; }
+        .coa-name { transition: color 0.15s, opacity 0.15s; }
+        .coa-name:hover { opacity: 0.7; }
+        .tb-export-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 20px;
+          height: 20px;
+          border-radius: 4px;
+          border: none;
+          background: transparent;
+          color: var(--text-tertiary, #9CA3AF);
+          cursor: pointer;
+          margin-left: 6px;
+          opacity: 0;
+          transition: all 0.15s;
+        }
+        .coa-row:hover .tb-export-btn {
+          opacity: 1;
+        }
+        .tb-export-btn:hover {
+          background: var(--bg-tertiary, #F9FAFB);
+          color: var(--primary, #6366F1);
+        }
         .tb-summary {
           padding: 12px 16px;
           display: flex;
