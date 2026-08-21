@@ -90,6 +90,7 @@ interface SelectProps {
   style?: React.CSSProperties
   required?: boolean
   onDeleteOption?: (val: string) => void
+  onEditOption?: (val: string) => void
   searchable?: boolean
   [key: string]: any
 }
@@ -106,6 +107,7 @@ export function Select({
   placeholder,
   style,
   onDeleteOption,
+  onEditOption,
   searchable,
   ...props
 }: SelectProps) {
@@ -331,6 +333,37 @@ export function Select({
               >
                 <span>{option.label}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {option.deletable && onEditOption && (
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        onEditOption(option.value)
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-secondary)',
+                        cursor: 'pointer',
+                        padding: '2px 4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '4px',
+                      }}
+                      title="Edit custom option"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                    </button>
+                  )}
                   {option.deletable && onDeleteOption && (
                     <button
                       type="button"

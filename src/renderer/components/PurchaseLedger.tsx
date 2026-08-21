@@ -364,6 +364,44 @@ export default function PurchaseLedger({
     }
   }
 
+  const handleEditAssetOption = (assetName: string) => {
+    const newName = prompt(`Enter new name for "${assetName}":`, assetName)
+    if (!newName || newName.trim() === '' || newName === assetName) return
+
+    const trimmedName = newName.trim()
+    
+    if (investmentAssets.some(a => a.name.toLowerCase() === trimmedName.toLowerCase())) {
+      alert(`An asset with the name "${trimmedName}" already exists.`)
+      return
+    }
+
+    const isUsed = purchaseRecords.some(r => r.assetName === assetName)
+    if (isUsed) {
+      if (!confirm(`The asset "${assetName}" is used in existing purchases. Updating its name will also update all related records. Do you wish to continue?`)) {
+        return
+      }
+    }
+
+    setInvestmentAssets?.(prev => prev.map(a => 
+      a.name === assetName ? { ...a, name: trimmedName } : a
+    ))
+
+    if (isUsed) {
+      setPurchaseRecords(prev => prev.map(r => {
+        if (r.assetName === assetName) {
+           return updatePurchaseRecord(r, { assetName: trimmedName })
+        }
+        return r
+      }))
+    }
+
+    if (formData.assetName === assetName) {
+      setFormData(prev => ({ ...prev, assetName: trimmedName }))
+    }
+    setToast({ visible: true, message: `Asset "${assetName}" renamed to "${trimmedName}".`, type: 'success' })
+  }
+
+
   const bankOptions = useMemo(() => [
     { value: '', label: 'Select bank account' },
     ...bankAccounts.filter(a => a.status === 'active' || a.id === formData.bankAccountId).map(a => ({
@@ -1508,6 +1546,7 @@ export default function PurchaseLedger({
                       }}
                       options={assetNameOptions}
                       onDeleteOption={handleDeleteAssetOption}
+                      onEditOption={handleEditAssetOption}
                       error={fieldError('assetName')}
                     />
                   </div>
