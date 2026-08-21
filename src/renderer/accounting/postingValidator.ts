@@ -9,7 +9,7 @@ import type {
 import { getAccountById } from './chartOfAccountsService'
 import { calculateBaseTotals, hasMinimumLines, generateVoucherNumber } from './voucherService'
 
-const VOUCHER_NUMBER_PATTERN = /^(PV|RV|JV|CV|PUR)-\d{4}-\d{6}$/
+const VOUCHER_NUMBER_PATTERN = /^(PV|RV|JV|CV|PUR)-\d{4}-\d{3,6}$/
 
 function err(code: string, message: string, field?: string): ValidationError {
   return { code, message, field }
