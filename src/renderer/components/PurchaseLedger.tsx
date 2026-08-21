@@ -687,7 +687,13 @@ export default function PurchaseLedger({
     })
 
     const totalInvested = calculateTotalInvested(exportData)
+    const METAL_TYPES = new Set(['Gold', 'Silver', 'Platinum', 'Palladium'])
+    const totalQtyNo = exportData.reduce((s, r) => s + r.quantity, 0)
+    const totalQtyGrams = exportData
+      .filter(r => METAL_TYPES.has(r.assetType))
+      .reduce((s, r) => s + (r.quantity * getAssetWeightMultiplier(r.assetName)), 0)
     const foot = [
+      ['', '', 'Total Quantity:', totalQtyNo.toLocaleString(), `${totalQtyGrams.toLocaleString()}g`, '', '', '', '', '', '', '', '', '', ''],
       ['', '', '', '', '', 'Total Invested:', formatCurrency(totalInvested, currency), '', '', '', '', '', '', '', '']
     ]
 
