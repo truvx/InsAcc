@@ -672,7 +672,7 @@ export default function PurchaseLedger({
 
     const totalInvested = calculateTotalInvested(filtered)
     const foot = [
-      ['', '', '', '', 'Total Invested:', formatCurrency(totalInvested, currency), '', '', '', '', '', '', '', '']
+      ['', '', '', '', '', 'Total Invested:', formatCurrency(totalInvested, currency), '', '', '', '', '', '', '', '']
     ]
 
     exportTableData({

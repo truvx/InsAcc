@@ -88,7 +88,7 @@ export default function InvestmentHoldings({
 
     const totalInvestedSum = holdings.reduce((s, h) => s + h.totalInvested, 0)
     const foot = [
-      ['', '', '', 'Total Invested:', `${sym} ${totalInvestedSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, '']
+      ['', '', '', '', 'Total Invested:', `${sym} ${totalInvestedSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, '']
     ]
 
     exportTableData({
