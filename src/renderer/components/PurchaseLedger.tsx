@@ -1460,17 +1460,6 @@ export default function PurchaseLedger({
                       error={fieldError('assetName')}
                     />
                   </div>
-                  {selectedCategory && !editingId && (
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      style={{ fontSize: 12, padding: '10px 12px', flexShrink: 0, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}
-                      onClick={openAddAssetModal}
-                      title="Add new asset to this category"
-                    >
-                      <Plus size={14} strokeWidth={1.75} /> Add Custom
-                    </button>
-                  )}
                 </div>
               </div>
             ) : null
