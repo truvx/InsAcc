@@ -641,25 +641,25 @@ export default function PurchaseLedger({
     }))
   }
 
-  // Unique asset names from current purchase records for "Export by Asset"
-  const uniqueAssetNames = useMemo(() => {
-    const names = new Set<string>()
+  // Unique asset types from current purchase records for "Export by Asset"
+  const uniqueAssetTypes = useMemo(() => {
+    const types = new Set<string>()
     for (const r of purchaseRecords) {
-      if (r.assetName) names.add(r.assetName)
+      if (r.assetType) types.add(r.assetType)
     }
-    return Array.from(names).sort()
+    return Array.from(types).sort()
   }, [purchaseRecords])
 
-  const handleExport = (format: 'pdf' | 'csv' | 'xlsx', assetNameFilter?: string) => {
+  const handleExport = (format: 'pdf' | 'csv' | 'xlsx', assetTypeFilter?: string) => {
     const exportColumns = [
       'VOUCHER', 'DATE', 'ASSET', 'QTY (No.)', 'QTY (GRAMS)', 'UNIT PRICE (DHS)', 'TOTAL INVESTED (DHS)', 
       'PAID FROM', 'BUYER', 'PAYMENT MODE', 'TAGS', 'NOTES',
       'DOCS', 'POSTING', 'STATUS'
     ]
 
-    // Apply asset name filter on top of existing filters
-    const exportData = assetNameFilter
-      ? filtered.filter(r => r.assetName === assetNameFilter)
+    // Apply asset type filter on top of existing filters
+    const exportData = assetTypeFilter
+      ? filtered.filter(r => r.assetType === assetTypeFilter)
       : filtered
     
     const rows = exportData.map(r => {
@@ -691,8 +691,9 @@ export default function PurchaseLedger({
       ['', '', '', '', '', 'Total Invested:', formatCurrency(totalInvested, currency), '', '', '', '', '', '', '', '']
     ]
 
-    const assetSuffix = assetNameFilter ? `_${assetNameFilter.replace(/[^a-zA-Z0-9]/g, '_')}` : ''
-    const titleSuffix = assetNameFilter ? ` — ${assetNameFilter}` : ''
+    const formattedType = assetTypeFilter ? formatAssetType(assetTypeFilter) : ''
+    const assetSuffix = assetTypeFilter ? `_${formattedType.replace(/[^a-zA-Z0-9]/g, '_')}` : ''
+    const titleSuffix = assetTypeFilter ? ` — ${formattedType}` : ''
 
     exportTableData({
       moduleName: 'Investment Portfolio',
@@ -1159,13 +1160,13 @@ export default function PurchaseLedger({
                 {assetExportSelected === null ? (
                   <>
                     <button className="export-menu-item" onClick={() => setAssetExportSelected('__all__')} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', fontWeight: 600, borderBottom: '1px solid var(--border-color)' }}>All Assets</button>
-                    {uniqueAssetNames.map(name => (
-                      <button key={name} className="export-menu-item" onClick={() => setAssetExportSelected(name)} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>{name}</button>
+                    {uniqueAssetTypes.map(type => (
+                      <button key={type} className="export-menu-item" onClick={() => setAssetExportSelected(type)} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>{formatAssetType(type)}</button>
                     ))}
                   </>
                 ) : (
                   <>
-                    <button className="export-menu-item" onClick={() => setAssetExportSelected(null)} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 12, cursor: 'pointer', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)' }}>← {assetExportSelected === '__all__' ? 'All Assets' : assetExportSelected}</button>
+                    <button className="export-menu-item" onClick={() => setAssetExportSelected(null)} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 12, cursor: 'pointer', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)' }}>← {assetExportSelected === '__all__' ? 'All Assets' : formatAssetType(assetExportSelected)}</button>
                     <button className="export-menu-item" onClick={() => handleExport('pdf', assetExportSelected === '__all__' ? undefined : assetExportSelected)} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>PDF (.pdf)</button>
                     <button className="export-menu-item" onClick={() => handleExport('xlsx', assetExportSelected === '__all__' ? undefined : assetExportSelected)} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>Excel (.xlsx)</button>
                     <button className="export-menu-item" onClick={() => handleExport('csv', assetExportSelected === '__all__' ? undefined : assetExportSelected)} style={{ padding: '8px 12px', textAlign: 'left', background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>CSV (.csv)</button>
