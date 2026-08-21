@@ -2989,7 +2989,7 @@ export default function App() {
           onClearTransactions={handleClearTransactions}
           onResetAllData={handleResetAllData}
           onDeleteEvent={handleDeleteAuditEvent}
-          loggedInUser={selectedProfile ? `${selectedProfile.name} (${selectedProfile.role})` : loggedInUser}
+          loggedInUser={selectedProfile ? selectedProfile.name : loggedInUser}
           loginEntries={loginEntries}
           setLoginEntries={setLoginEntries}
           accounts={propChartAccounts}
@@ -3057,7 +3057,7 @@ export default function App() {
         setSupabaseEnabled={setSupabaseEnabled}
         onClearTransactions={handleClearTransactions}
         onDeleteEvent={handleDeleteAuditEvent}
-        loggedInUser={selectedProfile ? `${selectedProfile.name} (${selectedProfile.role})` : loggedInUser}
+        loggedInUser={selectedProfile ? selectedProfile.name : loggedInUser}
         loginEntries={loginEntries}
         setLoginEntries={setLoginEntries}
         accounts={accounts}
