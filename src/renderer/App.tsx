@@ -2774,6 +2774,8 @@ export default function App() {
 
   const handleProfileSelect = useCallback((profile: Profile) => {
     setSelectedProfile(profile)
+    localStorage.setItem('loggedInUser', profile.name)
+    setLoggedInUser(profile.name)
     setScreen('module')
   }, [])
 

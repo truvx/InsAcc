@@ -162,7 +162,8 @@ export default function InvestmentAccountsDashboard({
           { label: 'Expenses', value: projection.quickSummary.expenses, color: '#EF4444' }
         ],
         summary: projection.quickSummary,
-        recentActivity: tableRows
+        recentActivity: tableRows,
+        generatedBy: loggedInUser
       })
     }
     setShowExportMenu(false)
