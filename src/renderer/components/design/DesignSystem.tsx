@@ -52,14 +52,27 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ error, label, hint, className = '', id, ...props }, ref) => {
+  ({ error, label, hint, className = '', id, onChange, type, ...props }, ref) => {
     const inputId = id || props.name
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      // For date inputs, if the user is in the middle of typing a year,
+      // the browser flags it as badInput and value="" is returned.
+      // If we pass "" to state, React re-renders and wipes the partially typed date.
+      if (type === 'date' && e.target.validity?.badInput) {
+        return
+      }
+      onChange?.(e)
+    }
+
     return (
       <div className="form-group">
         {label && <label className="form-label" htmlFor={inputId}>{label}</label>}
         <input
           ref={ref}
           id={inputId}
+          type={type}
+          onChange={handleChange}
           className={`input${error ? ' input-error' : ''}${className ? ' ' + className : ''}`}
           {...props}
         />
