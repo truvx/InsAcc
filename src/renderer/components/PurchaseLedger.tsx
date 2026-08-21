@@ -693,8 +693,7 @@ export default function PurchaseLedger({
       .filter(r => METAL_TYPES.has(r.assetType))
       .reduce((s, r) => s + (r.quantity * getAssetWeightMultiplier(r.assetName)), 0)
     const foot = [
-      ['', '', 'Total Quantity:', totalQtyNo.toLocaleString(), `${totalQtyGrams.toLocaleString()}g`, '', '', '', '', '', '', '', '', '', ''],
-      ['', '', '', '', '', 'Total Invested:', formatCurrency(totalInvested, currency), '', '', '', '', '', '', '', '']
+      ['', '', 'Total Quantity:', totalQtyNo.toLocaleString(), `${totalQtyGrams.toLocaleString()}g`, 'Total Invested:', formatCurrency(totalInvested, currency), '', '', '', '', '', '', '', '']
     ]
 
     const formattedType = assetTypeFilter ? formatAssetType(assetTypeFilter) : ''
