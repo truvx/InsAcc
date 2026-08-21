@@ -55,15 +55,19 @@ export default function InvestmentTotalAverageHolding({
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
 
-  // Filter active purchases
+  // Only metal asset types should appear in Total Average Holding
+  const METAL_TYPES = useMemo(() => new Set(['Gold', 'Silver', 'Platinum', 'Palladium']), [])
+
+  // Filter active purchases — metals only
   const activePurchases = useMemo(() => {
     return purchaseRecords.filter((p) => {
       if (p.status !== 'active') return false
+      if (!METAL_TYPES.has(p.assetType)) return false
       if (dateFrom && p.purchaseDate < dateFrom) return false
       if (dateTo && p.purchaseDate > dateTo) return false
       return true
     })
-  }, [purchaseRecords, dateFrom, dateTo])
+  }, [purchaseRecords, dateFrom, dateTo, METAL_TYPES])
 
   // 1. Calculate Purity-wise Total Averages
   const purityWiseData = useMemo((): PurityGroup[] => {
@@ -107,21 +111,23 @@ export default function InvestmentTotalAverageHolding({
   )
 
   const assetWiseData = useMemo((): AssetHoldingAverage[] => {
-    return holdingsProjection.map((h) => {
-      const multiplier = getAssetWeightMultiplier(h.assetName)
-      const qtyInGrams = h.totalQuantity * multiplier
-      const weightedAveragePrice = qtyInGrams > 0 ? h.totalInvested / qtyInGrams : 0
-      return {
-        assetName: h.assetName,
-        assetType: h.assetType,
-        totalQuantity: qtyInGrams,
-        rawQuantity: h.totalQuantity,
-        totalInvested: h.totalInvested,
-        weightedAveragePrice,
-        purityAveragePrice: h.simpleAvgPrice || 0,
-      }
-    })
-  }, [holdingsProjection])
+    return holdingsProjection
+      .filter(h => METAL_TYPES.has(h.assetType))
+      .map((h) => {
+        const multiplier = getAssetWeightMultiplier(h.assetName)
+        const qtyInGrams = h.totalQuantity * multiplier
+        const weightedAveragePrice = qtyInGrams > 0 ? h.totalInvested / qtyInGrams : 0
+        return {
+          assetName: h.assetName,
+          assetType: h.assetType,
+          totalQuantity: qtyInGrams,
+          rawQuantity: h.totalQuantity,
+          totalInvested: h.totalInvested,
+          weightedAveragePrice,
+          purityAveragePrice: h.simpleAvgPrice || 0,
+        }
+      })
+  }, [holdingsProjection, METAL_TYPES])
 
   // Summary KPIs
   const { goldQty, silverQty } = useMemo(() => {
