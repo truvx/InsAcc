@@ -421,7 +421,7 @@ function getCoverData(p: ExcelExportParams, count: number, colCount: number): an
   rows.push(cvr('Intelligent Asset & Investment Accounting', 10, false, C.gray))
   rows.push(blk())
   rows.push(cvr(p.reportTitle, 16, true, C.black))
-  rows.push(cvr(p.module === 'Property' ? 'Properties Management' : 'Investment Portfolio', 11, false, C.gray))
+  rows.push(cvr(p.module === 'Property' ? 'Properties Management' : 'Investment', 11, false, C.gray))
   rows.push(blk())
   rows.push(blkM())
   rows.push(meta('Reporting Period', p.periodLabel))
@@ -1047,7 +1047,7 @@ export async function exportAccountingExcel(p: ExcelExportParams): Promise<strin
 
 export async function exportAccountingCsv(p: ExcelExportParams): Promise<string | null> {
   const fv = getFilteredVouchers(p)
-  const modStr = p.module === 'Property' ? 'Properties Management' : 'Investment Portfolio'
+  const modStr = p.module === 'Property' ? 'Properties Management' : 'Investment'
   let csv = '\uFEFF' + `${modStr}\n${p.reportTitle}\nPeriod: ${p.periodLabel || 'All Time'}\n\nDate,Voucher No,Type,Account,Debit,Credit,Description\n`
   
   fv.forEach(v => {
@@ -1125,7 +1125,7 @@ function generatePdfCoverPage(doc: any, title: string, subtitle: string, periodL
     if (appShell) {
       const activeModule = appShell.getAttribute('data-module')
       if (activeModule === 'property') finalModuleName = 'Properties Management'
-      else if (activeModule === 'investment') finalModuleName = 'Investment Portfolio'
+      else if (activeModule === 'investment') finalModuleName = 'Investment'
     }
   }
   if (finalModuleName) {
@@ -1172,7 +1172,7 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
   let totDr = 0, totCr = 0
   fv.forEach(v => v.lines.forEach(l => { if (l.type === 'Debit') totDr += l.amount; else totCr += l.amount }))
 
-  const moduleName = p.module === 'Property' ? 'Properties Management' : 'Investment Portfolio'
+  const moduleName = p.module === 'Property' ? 'Properties Management' : 'Investment'
   let y = generatePdfCoverPage(doc, (p.reportTitle || 'ACCOUNTING REPORT').toUpperCase(), moduleName, p.periodLabel, p.currency, fv.length, moduleName, p.generatedBy)
 
   // Report Page
@@ -1779,7 +1779,7 @@ export async function exportOverviewPdf(p: ExcelExportParams): Promise<string | 
   let totDr = 0, totCr = 0
   fv.forEach(v => v.lines.forEach(l => { if (l.type === 'Debit') totDr += l.amount; else totCr += l.amount }))
 
-  const moduleName = p.module === 'Property' ? 'Properties Management' : 'Investment Portfolio'
+  const moduleName = p.module === 'Property' ? 'Properties Management' : 'Investment'
 
   // ─── PAGE 1: COVER + EXECUTIVE SUMMARY ─────────────────────────
   let y = generatePdfCoverPage(doc, 'OVERVIEW REPORT', moduleName, p.periodLabel, p.currency, fv.length, moduleName, p.generatedBy)

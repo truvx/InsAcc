@@ -336,10 +336,10 @@ export default function InvestmentReports({
           ]
           
           await exportTableData({
-            moduleName: 'Investment Portfolio',
+            moduleName: 'Investment',
             format,
             title,
-            subtitle: `Investment Portfolio`,
+            subtitle: `Investment`,
             periodLabel: `${filterStart} - ${filterEnd}`,
             currency: currency,
             filename: `Investment_${title.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}`,
@@ -373,10 +373,10 @@ export default function InvestmentReports({
       }
 
       await exportTableData({
-      moduleName: 'Investment Portfolio',
+      moduleName: 'Investment',
         format,
         title,
-        subtitle: `Investment Portfolio`,
+        subtitle: `Investment`,
         periodLabel: `${filterStart} - ${filterEnd}`,
         currency: currency,
         filename: `Investment_${title.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}`,

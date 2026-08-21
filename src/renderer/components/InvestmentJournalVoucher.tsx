@@ -113,7 +113,7 @@ export default function InvestmentJournalVoucher({
       })
       
       exportTableData({
-      moduleName: 'Investment Portfolio',
+      moduleName: 'Investment',
         title: 'Investment Journal Vouchers',
         subtitle: `Report generated on ${new Date().toLocaleDateString()}${dateFrom || dateTo ? ` | Period: ${dateFrom || 'Start'} to ${dateTo || 'End'}` : ''}`,
         columns,
@@ -398,7 +398,7 @@ export default function InvestmentJournalVoucher({
             onEdit={() => openEditForm(v)}
             onDuplicate={() => handleDuplicate(v)}
             onPrint={() => printVoucher(v, accounts, currency)}
-            onExportPDF={() => exportVoucherToPDF(v, accounts, currency, 'Investment Portfolio', loggedInUser)}
+            onExportPDF={() => exportVoucherToPDF(v, accounts, currency, 'Investment', loggedInUser)}
             onDelete={() => handleDelete(v)}
             onAuditTrail={() => {
               setAuditVoucher(v)

@@ -163,7 +163,7 @@ export default function InvestmentTotalAverageHolding({
     ]
 
     exportTableData({
-      moduleName: 'Investment Portfolio',
+      moduleName: 'Investment',
       format,
       title: 'Total Average Holding - Purity Summary',
       subtitle: `Exported on ${new Date().toISOString().split('T')[0]}`,

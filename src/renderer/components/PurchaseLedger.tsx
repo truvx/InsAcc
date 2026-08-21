@@ -510,7 +510,7 @@ export default function PurchaseLedger({
               }}
               onExportPDF={() => {
                 if (v) {
-                  exportVoucherToPDF(v, accounts, currency, 'Investment Portfolio', loggedInUser)
+                  exportVoucherToPDF(v, accounts, currency, 'Investment', loggedInUser)
                 } else {
                   setToast({ visible: true, message: 'No accounting voucher linked to export', type: 'error' })
                 }
@@ -701,7 +701,7 @@ export default function PurchaseLedger({
     const titleSuffix = assetTypeFilter ? ` — ${formattedType}` : ''
 
     exportTableData({
-      moduleName: 'Investment Portfolio',
+      moduleName: 'Investment',
       format,
       title: `Purchase Ledger${titleSuffix}`,
       subtitle: `Exported on ${new Date().toISOString().split('T')[0]}`,
