@@ -345,6 +345,16 @@ export default function InvestmentTotalAverageHolding({
             <span className="card-title">Purity-wise Total Average Holding</span>
           </div>
           <div className="card-body">
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="text-xs fw-600 text-secondary" style={{ textTransform: 'uppercase' }}>From</span>
+                <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ width: 170, marginBottom: 0 }} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="text-xs fw-600 text-secondary" style={{ textTransform: 'uppercase' }}>To</span>
+                <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ width: 170, marginBottom: 0 }} />
+              </div>
+            </div>
             {purityWiseData.length === 0 ? (
               <div className="text-center p-6 text-secondary">No active purchases found.</div>
             ) : (
@@ -352,18 +362,6 @@ export default function InvestmentTotalAverageHolding({
                 columns={purityColumns}
                 data={purityWiseData}
                 keyExtractor={(p) => p.purity}
-                filterBar={
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span className="text-xs fw-600 text-secondary" style={{ textTransform: 'uppercase' }}>From</span>
-                      <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ width: 170, marginBottom: 0 }} />
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span className="text-xs fw-600 text-secondary" style={{ textTransform: 'uppercase' }}>To</span>
-                      <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ width: 170, marginBottom: 0 }} />
-                    </div>
-                  </div>
-                }
               />
             )}
           </div>
