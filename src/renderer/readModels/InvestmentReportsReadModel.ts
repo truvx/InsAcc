@@ -3,6 +3,7 @@ import { getAllAccountBalances, getAccountTypeBalance, getTrialBalance, getAccou
 import { getLeafAccounts } from '../accounting/chartOfAccountsService'
 import type { PurchaseRecord } from '../data/purchaseLedger'
 import type { BankAccount, BankTransaction } from '../data/banking'
+import { formatDate } from '../utils'
 
 export interface BalanceSheetSection {
   accountId: string
@@ -260,7 +261,7 @@ export function getReportsProjection(
     .sort((a, b) => b.purchaseDate.localeCompare(a.purchaseDate))
     .map(p => ({
       id: p.id,
-      date: p.purchaseDate.substring(0, 10),
+      date: formatDate(p.purchaseDate),
       assetType: p.assetType,
       assetName: p.assetName,
       quantity: p.quantity,
@@ -364,7 +365,7 @@ export function getReportsProjection(
       })
       return {
         voucherNumber: v.number,
-        date: v.date.substring(0, 10),
+        date: formatDate(v.date),
         voucherType: v.type,
         description: v.description,
         status: v.status,

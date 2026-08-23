@@ -11,6 +11,7 @@ import { TreeView } from './TreeView'
 import { formatPremiumCompact } from '../utils/reportFormatters'
 import { motion } from 'framer-motion'
 import LazyChart from './LazyChart'
+import { formatDate } from '../utils'
 
 const AssetAllocationPie = React.lazy(() => import('./charts/AssetAllocationPie'))
 const InvestmentGrowthChart = React.lazy(() => import('./charts/InvestmentGrowthChart'))
@@ -232,7 +233,7 @@ function InvestmentDashboardInner({
       .slice(-5)
       .reverse()
     return posted.map(v => ({
-      date: v.date.substring(0, 10), number: v.number, desc: v.description,
+      date: formatDate(v.date), number: v.number, desc: v.description,
       amount: v.lines.reduce((s, l) => s + (l.type === 'Debit' ? l.baseAmount : 0), 0),
     }))
   }, [vouchers])
@@ -261,7 +262,7 @@ function InvestmentDashboardInner({
       else if (v.reference) buyer = v.reference
 
       return {
-        date: v.date.substring(0, 10),
+        date: formatDate(v.date),
         number: v.number,
         asset: assetName,
         buyer,

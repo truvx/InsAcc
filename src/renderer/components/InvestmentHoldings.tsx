@@ -262,7 +262,7 @@ export default function InvestmentHoldings({
                           const fundingBank = p.fundingBankAccountId ? bankByIdMap.get(p.fundingBankAccountId) ?? null : null
                           return (
                             <tr key={p.id}>
-                              <td className="text-xs text-secondary">{p.purchaseDate.substring(0, 10)}</td>
+                              <td className="text-xs text-secondary">{formatDate(p.purchaseDate)}</td>
                               <td className="text-xs">{p.quantity.toLocaleString()}</td>
                               <td className="text-xs">{(p.quantity * getAssetWeightMultiplier(p.assetName)).toLocaleString()}g</td>
                               <td className="text-xs text-mono">
@@ -332,7 +332,7 @@ export default function InvestmentHoldings({
                         {lines.map(({ line, voucher: v }) => (
                           <tr key={`${v.id}-${line.id}`}>
                             <td className="text-xs text-mono fw-500">{v.number}</td>
-                            <td className="text-xs text-secondary">{v.date.substring(0, 10)}</td>
+                            <td className="text-xs text-secondary">{formatDate(v.date)}</td>
                             <td className="text-xs text-mono text-success">{line.type === 'Debit' ? <CurrencyText value={line.baseAmount} currency={currency} /> : '—'}</td>
                             <td className="text-xs text-mono text-danger">{line.type === 'Credit' ? <CurrencyText value={line.baseAmount} currency={currency} /> : '—'}</td>
                             <td className="text-xs text-secondary" style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
