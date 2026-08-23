@@ -152,33 +152,9 @@ export default function InvestmentReports({
   );
   const fmtSimple = (n: number) => Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-  const filteredVouchers = useMemo(() => {
-    return vouchers.filter(v => {
-      if (filterStart && v.date < filterStart) return false
-      if (filterEnd && v.date > filterEnd) return false
-      return true
-    })
-  }, [vouchers, filterStart, filterEnd])
-
-  const filteredPurchaseRecords = useMemo(() => {
-    return purchaseRecords.filter(r => {
-      if (filterStart && r.date < filterStart) return false
-      if (filterEnd && r.date > filterEnd) return false
-      return true
-    })
-  }, [purchaseRecords, filterStart, filterEnd])
-
-  const filteredBankTransactions = useMemo(() => {
-    return bankTransactions.filter(t => {
-      if (filterStart && t.date < filterStart) return false
-      if (filterEnd && t.date > filterEnd) return false
-      return true
-    })
-  }, [bankTransactions, filterStart, filterEnd])
-
   const projection = useMemo(
-    () => getReportsProjection(accounts, filteredVouchers, filteredPurchaseRecords, bankAccounts, filteredBankTransactions, bankMappings),
-    [accounts, filteredVouchers, filteredPurchaseRecords, bankAccounts, filteredBankTransactions, bankMappings],
+    () => getReportsProjection(accounts, vouchers, purchaseRecords, bankAccounts, bankTransactions, bankMappings, filterStart, filterEnd),
+    [accounts, vouchers, purchaseRecords, bankAccounts, bankTransactions, bankMappings, filterStart, filterEnd],
   )
 
   // Accounting Integrity Validation

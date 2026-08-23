@@ -164,8 +164,33 @@ export function getReportsProjection(
   bankAccounts: BankAccount[] = [],
   bankTransactions: BankTransaction[] = [],
   bankMappings: BankMapping[] = [],
+  filterStart?: string,
+  filterEnd?: string,
 ): ReportsProjection {
-  const allBals = getAllAccountBalances(vouchers, accounts)
+  const periodVouchers = vouchers.filter(v => {
+    if (filterStart && v.date < filterStart) return false
+    if (filterEnd && v.date > filterEnd) return false
+    return true
+  })
+  
+  const cumulativeVouchers = vouchers.filter(v => {
+    if (filterEnd && v.date > filterEnd) return false
+    return true
+  })
+
+  const periodPurchases = purchaseRecords.filter(r => {
+    if (filterStart && r.purchaseDate < filterStart) return false
+    if (filterEnd && r.purchaseDate > filterEnd) return false
+    return true
+  })
+
+  const cumulativePurchases = purchaseRecords.filter(r => {
+    if (filterEnd && r.purchaseDate > filterEnd) return false
+    return true
+  })
+
+  // Balance Sheet / Snapshots use cumulative, P&L / Activity use period
+  const allBals = getAllAccountBalances(cumulativeVouchers, accounts)
   const leafAccounts = getLeafAccounts(accounts)
 
   const cashAccounts = leafAccounts.filter(a => a.parentId === '1110' || a.parentId === '1120')
@@ -178,8 +203,8 @@ export function getReportsProjection(
     .filter(a => a.code.startsWith('12'))
     .reduce((s, a) => s + (allBals[a.id] || 0), 0)
 
-  const totalRevenue = getAccountTypeBalance('revenue', vouchers, accounts)
-  const totalExpenses = getAccountTypeBalance('expense', vouchers, accounts)
+  const totalRevenue = getAccountTypeBalance('revenue', periodVouchers, accounts)
+  const totalExpenses = getAccountTypeBalance('expense', periodVouchers, accounts)
   const netIncome = totalRevenue - totalExpenses
 
   const receivablesParent = accounts.find(a => a.code === '13')
@@ -188,15 +213,16 @@ export function getReportsProjection(
     : 0
 
   const totalAssets = cash + bankBalance + investments + receivables
-  const totalLiabilitiesFromTypes = getAccountTypeBalance('liability', vouchers, accounts)
+  const totalLiabilitiesFromTypes = getAccountTypeBalance('liability', cumulativeVouchers, accounts)
 
-  const tbEntries = getTrialBalance(vouchers, accounts)
+  const tbEntries = getTrialBalance(cumulativeVouchers, accounts)
   const { sections: assets, total: totalAssetsVal } = buildBalanceSheetSections(accounts, allBals, 'asset')
   const { sections: liabilities, total: totalLiabilitiesVal } = buildBalanceSheetSections(accounts, allBals, 'liability')
   const { sections: equityItems, total: totalEquityFromLedger } = buildBalanceSheetSections(accounts, allBals, 'equity')
 
-  const revenueEntries = tbEntries.filter(e => e.type === 'revenue')
-  const expenseEntries = tbEntries.filter(e => e.type === 'expense')
+  const periodTbEntries = getTrialBalance(periodVouchers, accounts)
+  const revenueEntries = periodTbEntries.filter(e => e.type === 'revenue')
+  const expenseEntries = periodTbEntries.filter(e => e.type === 'expense')
 
   // Investment Position — asset-by-asset cost basis vs current value
   const investmentPosition: InvestmentPositionRow[] = []
@@ -205,7 +231,7 @@ export function getReportsProjection(
   )
   if (invChildIds.size > 0) {
     const byAccount = new Map<string, PurchaseRecord[]>()
-    for (const p of purchaseRecords.filter(p => p.status === 'active' && p.accountId && invChildIds.has(p.accountId))) {
+    for (const p of cumulativePurchases.filter(p => p.status === 'active' && p.accountId && invChildIds.has(p.accountId))) {
       if (!byAccount.has(p.accountId)) byAccount.set(p.accountId, [])
       byAccount.get(p.accountId)!.push(p)
     }
@@ -228,8 +254,8 @@ export function getReportsProjection(
     }
   }
 
-  // Purchase Report
-  const purchaseReport: PurchaseReportRow[] = purchaseRecords
+  // Purchase Report (Period)
+  const purchaseReport: PurchaseReportRow[] = periodPurchases
     .filter(p => p.status === 'active')
     .sort((a, b) => b.purchaseDate.localeCompare(a.purchaseDate))
     .map(p => ({
@@ -248,27 +274,33 @@ export function getReportsProjection(
   // Bank Position — ledger balance vs bank account balance
   const bankPosition: BankPositionRow[] = bankAccounts.map(ba => {
     const mapping = bankMappings.find(m => m.bankAccountId === ba.id)
-    const ledgerBalance = mapping ? (allBals[mapping.accountId] || 0) : 0
-    const relatedTxns = bankTransactions.filter(t => t.accountId === ba.id)
-    const bankBalance = relatedTxns.reduce((s, t) => {
-      if (t.type === 'credit' || t.type === 'transfer_in') return s + t.amount
-      if (t.type === 'debit' || t.type === 'transfer_out') return s - t.amount
-      return s
-    }, 0)
+    let ledgerBalance = mapping ? (allBals[mapping.accountId] || 0) : 0
+    if (mapping?.chartAccountId) {
+      const bankBal = cumulativeVouchers.reduce((s, v) => {
+        let amt = 0
+        v.lines.forEach(l => {
+          if (l.accountId === mapping.chartAccountId) {
+            amt += l.type === 'Debit' ? l.baseAmount : -l.baseAmount
+          }
+        })
+        return s + amt
+      }, 0)
+      ledgerBalance = Math.round(bankBal * 100) / 100
+    }
     return {
-      bankName: ba.institution,
-      ledgerBalance: Math.round(ledgerBalance * 100) / 100,
-      bankBalance: Math.round(bankBalance * 100) / 100,
-      difference: Math.round((ledgerBalance - bankBalance) * 100) / 100,
+      bankName: ba.institution + (ba.accountNumber ? ` - ${ba.accountNumber.slice(-4)}` : ''),
+      ledgerBalance,
+      bankBalance: ba.openingBalance,
+      difference: Math.round((ba.openingBalance - ledgerBalance) * 100) / 100,
     }
   })
 
-  // Cash Flow Report — classify vouchers into Operating / Investing / Financing
-  const postedVouchers = vouchers.filter(v => v.status === 'Posted')
+  // Cash Flow (Period)
   const operating: CashFlowCategory[] = []
   const investing: CashFlowCategory[] = []
   const financing: CashFlowCategory[] = []
 
+  const postedPeriodVouchers = periodVouchers.filter(v => v.status === 'Posted')
   const cashAndBankCodes = new Set<string>(
     leafAccounts.filter(a => a.code.startsWith('11')).map(a => a.id)
   )
@@ -316,8 +348,8 @@ export function getReportsProjection(
     netCashFlow: Math.round((totalOperating + totalInvesting + totalFinancing) * 100) / 100,
   }
 
-  // General Journal — all vouchers with line items
-  const generalJournal: GeneralJournalEntry[] = postedVouchers
+  // General Journal — all period vouchers with line items
+  const generalJournal: GeneralJournalEntry[] = postedPeriodVouchers
     .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt))
     .map(v => {
       const lines = v.lines.map(l => {
@@ -346,11 +378,17 @@ export function getReportsProjection(
   const generalLedger: GeneralLedgerRow[] = accounts
     .filter(a => a.isActive)
     .map(a => {
-      const lines = getLinesForAccount(a.id, vouchers)
+      // Net activity for the period
+      const lines = getLinesForAccount(a.id, periodVouchers)
       const totalDebit = lines.reduce((s, { line }) => s + (line.type === 'Debit' ? line.baseAmount : 0), 0)
       const totalCredit = lines.reduce((s, { line }) => s + (line.type === 'Credit' ? line.baseAmount : 0), 0)
+      
+      // Closing balance up to filterEnd
       const closingBalance = allBals[a.id] || 0
+      
       const netActivity = a.normalBalance === 'debit' ? totalDebit - totalCredit : totalCredit - totalDebit
+      
+      // Derived opening balance is just closing minus net activity
       const derivedOpening = closingBalance - netActivity
       return {
         accountCode: a.code,
