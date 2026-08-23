@@ -152,17 +152,26 @@ export default function InvestmentReports({
   );
   const fmtSimple = (n: number) => Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-  const projection = useMemo(
-    () => getReportsProjection(accounts, vouchers, purchaseRecords, bankAccounts, bankTransactions, bankMappings, filterStart, filterEnd),
-    [accounts, vouchers, purchaseRecords, bankAccounts, bankTransactions, bankMappings, filterStart, filterEnd],
-  )
+  let renderError: string | null = null
+  const projection = useMemo(() => {
+    try {
+      return getReportsProjection(accounts, vouchers, purchaseRecords, bankAccounts, bankTransactions, bankMappings, filterStart, filterEnd)
+    } catch (err: any) {
+      console.error(err)
+      return null
+    }
+  }, [accounts, vouchers, purchaseRecords, bankAccounts, bankTransactions, bankMappings, filterStart, filterEnd])
+
+  if (!projection) {
+    renderError = "Failed to calculate reports. Please check the console."
+  }
 
   // Accounting Integrity Validation
   const ledgerValidation = useMemo(() => validateLedgerBalance(vouchers, accounts), [vouchers, accounts])
 
-  const financialOverview = projection.financialOverview
-  const tbEntries = projection.trialBalance
-  const holdings = projection.balanceSheet.assets.filter(a => a.accountCode.startsWith('12')).map(a => ({
+  const financialOverview = projection?.financialOverview || { totalAssets: 0, totalLiabilities: 0, netPosition: 0, cashBalance: 0, investmentValue: 0 }
+  const tbEntries = projection?.trialBalance || []
+  const holdings = (projection?.balanceSheet?.assets || []).filter((a: any) => a.accountCode.startsWith('12')).map((a: any) => ({
     accountId: a.accountId,
     assetName: a.accountName,
     assetCode: a.accountCode,
@@ -1129,7 +1138,12 @@ export default function InvestmentReports({
             </button>
           ))}
         </div>
-        {activeTab !== 'overview' && (
+        {renderError ? (
+          <div style={{ padding: 20, color: 'red', background: '#fee', borderRadius: 8 }}>
+            <h3>Error loading reports</h3>
+            <pre>{renderError}</pre>
+          </div>
+        ) : activeTab !== 'overview' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>From</span>
@@ -1151,7 +1165,7 @@ export default function InvestmentReports({
             </div>
           </div>
         )}
-        {renderTabContent()}
+        {!renderError && renderTabContent()}
       </div>
 
       <ExportReportModal

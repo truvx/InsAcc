@@ -275,11 +275,11 @@ export function getReportsProjection(
   const bankPosition: BankPositionRow[] = bankAccounts.map(ba => {
     const mapping = bankMappings.find(m => m.bankAccountId === ba.id)
     let ledgerBalance = mapping ? (allBals[mapping.accountId] || 0) : 0
-    if (mapping?.chartAccountId) {
+    if (mapping?.accountId) {
       const bankBal = cumulativeVouchers.reduce((s, v) => {
         let amt = 0
         v.lines.forEach(l => {
-          if (l.accountId === mapping.chartAccountId) {
+          if (l.accountId === mapping.accountId) {
             amt += l.type === 'Debit' ? l.baseAmount : -l.baseAmount
           }
         })
@@ -310,7 +310,7 @@ export function getReportsProjection(
   const isLoan = (acct: Account): boolean => acct.code.startsWith('22')
   const isEquity = (acct: Account): boolean => acct.type === 'equity'
 
-  for (const v of postedVouchers) {
+  for (const v of postedPeriodVouchers) {
     for (const l of v.lines) {
       const acct = accounts.find(a => a.id === l.accountId)
       if (!acct) continue
