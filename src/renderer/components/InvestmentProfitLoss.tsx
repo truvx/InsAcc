@@ -41,8 +41,17 @@ function flatRowsFromTree(
 export default function InvestmentProfitLoss({ currency = 'AED', accounts, vouchers, loggedInUser }: Props) {
   const [drillAccountId, setDrillAccountId] = useState<string | null>(null)
   const [drillAccountName, setDrillAccountName] = useState<string>('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
 
-  const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, vouchers), [accounts, vouchers])
+  const filteredVouchers = useMemo(() => {
+    let vList = vouchers
+    if (dateFrom) vList = vList.filter(v => v.date >= dateFrom)
+    if (dateTo) vList = vList.filter(v => v.date <= dateTo)
+    return vList
+  }, [vouchers, dateFrom, dateTo])
+
+  const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, filteredVouchers), [accounts, filteredVouchers])
   
   const balances = useMemo(() => {
     const map: Record<string, number> = {}
@@ -138,7 +147,7 @@ export default function InvestmentProfitLoss({ currency = 'AED', accounts, vouch
     exportSideBySidePdf({ generatedBy: loggedInUser,
       title: 'Profit & Loss',
       subtitle: 'Revenue — Expenses = Net Income',
-      periodLabel: 'All Time',
+      periodLabel: dateFrom || dateTo ? `${dateFrom || 'Start'} to ${dateTo || 'End'}` : 'All Time',
       currency: currency,
       filename: `Profit_And_Loss_${new Date().toISOString().split('T')[0]}`,
       leftCol: {
@@ -187,7 +196,37 @@ export default function InvestmentProfitLoss({ currency = 'AED', accounts, vouch
             <div className="page-subtitle">Revenue — Expenses = Net Income</div>
           </div>
         </div>
-        <div className="page-header-right">
+        <div className="page-header-right" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg-tertiary)', padding: '6px 12px', borderRadius: 8, border: '1px solid var(--divider)' }}>
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>Period</span>
+            <input
+              type="date"
+              className="data-table-search-input"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              style={{ padding: '4px 8px', fontSize: 13, background: 'transparent', border: 'none', width: 'auto' }}
+            />
+            <span style={{ color: 'var(--text-tertiary)' }}>→</span>
+            <input
+              type="date"
+              className="data-table-search-input"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+              style={{ padding: '4px 8px', fontSize: 13, background: 'transparent', border: 'none', width: 'auto' }}
+            />
+            {(dateFrom || dateTo) && (
+              <button
+                onClick={() => { setDateFrom(''); setDateTo('') }}
+                className="btn-icon"
+                style={{ width: 24, height: 24, background: 'var(--bg-primary)', border: '1px solid var(--border)' }}
+                title="Clear dates"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            )}
+          </div>
           <button
             onClick={handleExport}
             style={{

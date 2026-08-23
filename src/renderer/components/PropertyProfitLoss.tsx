@@ -47,14 +47,20 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
   const [drillAccountId, setDrillAccountId] = useState<string | null>(null)
   const [drillAccountName, setDrillAccountName] = useState<string>('')
   const [filterPropertyId, setFilterPropertyId] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' })
 
   const filteredVouchers = useMemo(() => {
-    if (!filterPropertyId) return vouchers
+    let vList = vouchers
+    if (dateFrom) vList = vList.filter(v => v.date >= dateFrom)
+    if (dateTo) vList = vList.filter(v => v.date <= dateTo)
+
+    if (!filterPropertyId) return vList
     
     const targetPropName = properties.find(p => p.id === filterPropertyId)?.name
 
-    return vouchers.map(v => {
+    return vList.map(v => {
       const leaseByVoucherRef = v.reference ? leases.find(l => l.leaseNumber === v.reference) : undefined
       const isVoucherLinkedToProp = !!leaseByVoucherRef && leaseByVoucherRef.propertyId === filterPropertyId
       const isVoucherTaggedToProp = !!targetPropName && !!v.tags?.includes(targetPropName)
@@ -75,7 +81,7 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
       
       return { ...v, lines: filteredLines }
     }).filter(v => v.lines.length > 0)
-  }, [vouchers, filterPropertyId, leases, properties])
+  }, [vouchers, filterPropertyId, leases, properties, dateFrom, dateTo])
 
   const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, filteredVouchers, !!filterPropertyId), [accounts, filteredVouchers, filterPropertyId])
   
@@ -193,6 +199,7 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
       exportSideBySidePdf({ generatedBy: loggedInUser,
         title: 'Profit & Loss Statement',
         subtitle: filterPropertyId ? `Property: ${properties.find(p => p.id === filterPropertyId)?.name}` : 'All Properties',
+        periodLabel: dateFrom || dateTo ? `${dateFrom || 'Start'} to ${dateTo || 'End'}` : 'All Time',
         currency,
         filename: `Profit_Loss_${new Date().toISOString().split('T')[0]}`,
         leftCol: {
@@ -251,7 +258,38 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
           </div>
         </div>
         <div className="page-header-right">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg-tertiary)', padding: '6px 12px', borderRadius: 8, border: '1px solid var(--divider)' }}>
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>Period</span>
+              <input
+                type="date"
+                className="data-table-search-input"
+                value={dateFrom}
+                onChange={e => setDateFrom(e.target.value)}
+                style={{ padding: '4px 8px', fontSize: 13, background: 'transparent', border: 'none', width: 'auto' }}
+              />
+              <span style={{ color: 'var(--text-tertiary)' }}>→</span>
+              <input
+                type="date"
+                className="data-table-search-input"
+                value={dateTo}
+                onChange={e => setDateTo(e.target.value)}
+                style={{ padding: '4px 8px', fontSize: 13, background: 'transparent', border: 'none', width: 'auto' }}
+              />
+              {(dateFrom || dateTo) && (
+                <button
+                  onClick={() => { setDateFrom(''); setDateTo('') }}
+                  className="btn-icon"
+                  style={{ width: 24, height: 24, background: 'var(--bg-primary)', border: '1px solid var(--border)' }}
+                  title="Clear dates"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
             <Button variant="secondary" size="sm" icon={<Download size={14} />} onClick={handleExportPdf}>
               Export PDF
             </Button>

@@ -41,8 +41,15 @@ function flatRowsFromTree(
 export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vouchers, loggedInUser }: Props) {
   const [drillAccountId, setDrillAccountId] = useState<string | null>(null)
   const [drillAccountName, setDrillAccountName] = useState<string>('')
+  const [dateTo, setDateTo] = useState('')
 
-  const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, vouchers), [accounts, vouchers])
+  const filteredVouchers = useMemo(() => {
+    let vList = vouchers
+    if (dateTo) vList = vList.filter(v => v.date <= dateTo)
+    return vList
+  }, [vouchers, dateTo])
+
+  const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, filteredVouchers), [accounts, filteredVouchers])
   const tbEntries = useMemo(() => generateTrialBalanceReadModel(coaEntries), [coaEntries])
   const plModel = useMemo(() => generateProfitAndLossReadModel(tbEntries, accounts), [tbEntries, accounts])
   const bsModel = useMemo(() => generateBalanceSheetReadModel(tbEntries, plModel.netProfit, accounts), [tbEntries, plModel.netProfit, accounts])
@@ -173,7 +180,7 @@ export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vou
     exportSideBySidePdf({ generatedBy: loggedInUser,
       title: 'Balance Sheet',
       subtitle: 'Financial position at a glance',
-      periodLabel: 'As of Today',
+      periodLabel: dateTo ? `As of ${dateTo}` : 'All Time',
       currency: currency,
       filename: `Balance_Sheet_${new Date().toISOString().split('T')[0]}`,
       leftCol: {
@@ -230,7 +237,29 @@ export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vou
             <div className="page-subtitle">Financial position at a glance</div>
           </div>
         </div>
-        <div className="page-header-right">
+        <div className="page-header-right" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg-tertiary)', padding: '6px 12px', borderRadius: 8, border: '1px solid var(--divider)' }}>
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>As Of</span>
+            <input
+              type="date"
+              className="data-table-search-input"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+              style={{ padding: '4px 8px', fontSize: 13, background: 'transparent', border: 'none', width: 'auto' }}
+            />
+            {dateTo && (
+              <button
+                onClick={() => setDateTo('')}
+                className="btn-icon"
+                style={{ width: 24, height: 24, background: 'var(--bg-primary)', border: '1px solid var(--border)' }}
+                title="Clear date"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            )}
+          </div>
           <button
             onClick={handleExport}
             style={{

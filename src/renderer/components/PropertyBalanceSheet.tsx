@@ -48,14 +48,18 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
   const [drillAccountId, setDrillAccountId] = useState<string | null>(null)
   const [drillAccountName, setDrillAccountName] = useState<string>('')
   const [filterPropertyId, setFilterPropertyId] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' })
 
   const filteredVouchers = useMemo(() => {
-    if (!filterPropertyId) return vouchers
+    let vList = vouchers
+    if (dateTo) vList = vList.filter(v => v.date <= dateTo)
+
+    if (!filterPropertyId) return vList
     
     const targetPropName = properties.find(p => p.id === filterPropertyId)?.name
 
-    return vouchers.map(v => {
+    return vList.map(v => {
       const leaseByVoucherRef = v.reference ? leases.find(l => l.leaseNumber === v.reference) : undefined
       const isVoucherLinkedToProp = !!leaseByVoucherRef && leaseByVoucherRef.propertyId === filterPropertyId
       const isVoucherTaggedToProp = !!targetPropName && !!v.tags?.includes(targetPropName)
@@ -76,7 +80,7 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
       
       return { ...v, lines: filteredLines }
     }).filter(v => v.lines.length > 0)
-  }, [vouchers, filterPropertyId, leases, properties])
+  }, [vouchers, filterPropertyId, leases, properties, dateTo])
 
   const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, filteredVouchers, !!filterPropertyId), [accounts, filteredVouchers, filterPropertyId])
   const tbEntries = useMemo(() => generateTrialBalanceReadModel(coaEntries), [coaEntries])
@@ -252,6 +256,7 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
       exportSideBySidePdf({ generatedBy: loggedInUser,
         title: 'Balance Sheet',
         subtitle: filterPropertyId ? `Property: ${properties.find(p => p.id === filterPropertyId)?.name}` : 'All Properties',
+        periodLabel: dateTo ? `As of ${dateTo}` : 'All Time',
         currency,
         filename: `Balance_Sheet_${new Date().toISOString().split('T')[0]}`,
         leftCol: {
@@ -310,7 +315,30 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
           </div>
         </div>
         <div className="page-header-right">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg-tertiary)', padding: '6px 12px', borderRadius: 8, border: '1px solid var(--divider)' }}>
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>As Of</span>
+              <input
+                type="date"
+                className="data-table-search-input"
+                value={dateTo}
+                onChange={e => setDateTo(e.target.value)}
+                style={{ padding: '4px 8px', fontSize: 13, background: 'transparent', border: 'none', width: 'auto' }}
+              />
+              {dateTo && (
+                <button
+                  onClick={() => setDateTo('')}
+                  className="btn-icon"
+                  style={{ width: 24, height: 24, background: 'var(--bg-primary)', border: '1px solid var(--border)' }}
+                  title="Clear date"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
             <Button variant="secondary" size="sm" icon={<Download size={14} />} onClick={handleExportPdf}>
               Export PDF
             </Button>
