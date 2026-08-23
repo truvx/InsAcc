@@ -11,6 +11,7 @@ import { formatAssetType } from '../data/investmentMasterData'
 import { exportAccountingExcel, exportAccountingCsv, exportAccountingPdf, exportOverviewPdf, exportTableData, exportSideBySidePdf } from '../services/reportExportService'
 import { getCurrencySymbol } from '../utils/reportFormatters'
 import { getAssetWeightMultiplier } from '../services/purchaseLedgerService'
+import { formatDate } from '../utils'
 import ExportReportModal from './design/ExportReportModal'
 import { validateLedgerBalance } from '../accounting/ledgerService'
 
@@ -207,7 +208,7 @@ export default function InvestmentReports({
           companyName: 'INSACC',
           reportTitle: dynamicTitle.toUpperCase(),
           module: 'Investment' as const,
-          periodLabel: `${filterStart} - ${filterEnd}`,
+          periodLabel: `${formatDate(filterStart)} - ${formatDate(filterEnd)}`,
           generatedBy: loggedInUser || 'User',
           currency,
           accounts,
@@ -266,7 +267,7 @@ export default function InvestmentReports({
               title: 'Profit & Loss',
               subtitle: 'Revenue - Expenses = Net Income',
               filename: `Investment_Profit_Loss_${new Date().toISOString().slice(0, 10)}`,
-              periodLabel: `${filterStart} - ${filterEnd}`,
+              periodLabel: `${formatDate(filterStart)} - ${formatDate(filterEnd)}`,
               currency: currency,
               generatedBy: loggedInUser || 'User',
               leftCol: {
@@ -340,7 +341,7 @@ export default function InvestmentReports({
             format,
             title,
             subtitle: `Investment`,
-            periodLabel: `${filterStart} - ${filterEnd}`,
+            periodLabel: `${formatDate(filterStart)} - ${formatDate(filterEnd)}`,
             currency: currency,
             filename: `Investment_${title.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}`,
             columns,
@@ -377,7 +378,7 @@ export default function InvestmentReports({
         format,
         title,
         subtitle: `Investment`,
-        periodLabel: `${filterStart} - ${filterEnd}`,
+        periodLabel: `${formatDate(filterStart)} - ${formatDate(filterEnd)}`,
         currency: currency,
         filename: `Investment_${title.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}`,
         columns,

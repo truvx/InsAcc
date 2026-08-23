@@ -743,7 +743,7 @@ export default function PurchaseLedger({
       format,
       title: `Purchase Ledger${titleSuffix}`,
       subtitle: `Exported on ${new Date().toISOString().split('T')[0]}`,
-      periodLabel: dateFrom || dateTo ? `${dateFrom || 'Beginning'} - ${dateTo || 'Present'}` : 'All Time',
+      periodLabel: dateFrom || dateTo ? `${formatDate(dateFrom) || 'Beginning'} - ${formatDate(dateTo) || 'Present'}` : 'All Time',
       filename: `Purchase_Ledger${assetSuffix}_${new Date().toISOString().split('T')[0]}`,
       columns: exportColumns,
       rows,

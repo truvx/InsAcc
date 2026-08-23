@@ -8,6 +8,7 @@ import { getInvestmentHoldingsProjection } from '../readModels/InvestmentHolding
 import { getAssetWeightMultiplier } from '../services/purchaseLedgerService'
 import { getLinesForAccount } from '../accounting/ledgerService'
 import { formatCurrency, getCurrencySymbol } from '../utils/reportFormatters'
+import { formatDate } from '../utils'
 import { DataTable, type Column } from './design/Table'
 import { exportTableData } from '../services/reportExportService'
 import { Badge, EmptyState, Modal, ChevronLeftIcon, Button, Input } from './design/DesignSystem'
@@ -96,7 +97,7 @@ export default function InvestmentHoldings({
       format,
       title: 'Investment Holdings',
       subtitle: `Exported on ${new Date().toISOString().split('T')[0]}`,
-      periodLabel: dateFrom || dateTo ? `${dateFrom || 'Beginning'} - ${dateTo || 'Present'}` : 'All Time',
+      periodLabel: dateFrom || dateTo ? `${formatDate(dateFrom) || 'Beginning'} - ${formatDate(dateTo) || 'Present'}` : 'All Time',
       filename: `Investment_Holdings_${new Date().toISOString().split('T')[0]}`,
       columns: exportColumns,
       rows,

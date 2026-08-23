@@ -9,6 +9,7 @@ import { DataTable, type Column } from './design/Table'
 import { KpiCard, Button, ChevronLeftIcon, Input } from './design/DesignSystem'
 import { exportTableData } from '../services/reportExportService'
 import { getCurrencySymbol } from '../utils/reportFormatters'
+import { formatDate } from '../utils'
 import { Download } from 'lucide-react'
 
 interface Props {
@@ -167,7 +168,7 @@ export default function InvestmentTotalAverageHolding({
       format,
       title: 'Total Average Holding - Purity Summary',
       subtitle: `Exported on ${new Date().toISOString().split('T')[0]}`,
-      periodLabel: dateFrom || dateTo ? `${dateFrom || 'Beginning'} - ${dateTo || 'Present'}` : 'All Time',
+      periodLabel: dateFrom || dateTo ? `${formatDate(dateFrom) || 'Beginning'} - ${formatDate(dateTo) || 'Present'}` : 'All Time',
       filename: `Average_Holding_${new Date().toISOString().split('T')[0]}`,
       columns: exportColumns,
       rows,
