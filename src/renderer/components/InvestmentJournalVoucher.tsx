@@ -115,7 +115,8 @@ export default function InvestmentJournalVoucher({
       exportTableData({
       moduleName: 'Investment',
         title: 'Investment Journal Vouchers',
-        subtitle: `Report generated on ${new Date().toLocaleDateString()}${dateFrom || dateTo ? ` | Period: ${dateFrom || 'Start'} to ${dateTo || 'End'}` : ''}`,
+        subtitle: `Report generated on ${new Date().toLocaleDateString()}`,
+        periodLabel: dateFrom || dateTo ? `${dateFrom ? formatDate(dateFrom, dateFormat) : 'Start'} to ${dateTo ? formatDate(dateTo, dateFormat) : 'End'}` : 'All Time',
         columns,
         rows,
         generatedBy: loggedInUser,

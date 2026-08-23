@@ -428,6 +428,7 @@ export default function PropertyJournalVoucher({
       format,
       title: 'Journal Vouchers',
       subtitle: `Total Journals: ${filtered.length}`,
+      periodLabel: dateFrom || dateTo ? `${dateFrom ? formatDate(dateFrom, dateFormat) : 'Start'} to ${dateTo ? formatDate(dateTo, dateFormat) : 'End'}` : 'All Time',
       filename: `Journal_Vouchers_${new Date().toISOString().split('T')[0]}`,
       columns: ['Voucher #', 'Date', 'Description', 'Tags', 'Total Amount', 'Status'],
       rows: filtered.map(v => {

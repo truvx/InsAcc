@@ -925,6 +925,7 @@ export default function PropertyTransactions({
       format,
       title: 'Property Transactions',
       subtitle: 'Track income and expenses for your property investments',
+      periodLabel: dateFrom || dateTo ? `${dateFrom ? formatDate(dateFrom, dateFormat) : 'Start'} to ${dateTo ? formatDate(dateTo, dateFormat) : 'End'}` : 'All Time',
       filename: `Property_Transactions_${new Date().toISOString().split('T')[0]}`,
       columns,
       rows,

@@ -579,6 +579,7 @@ export default function PropertyReceiptVoucher({
       format,
       title: 'Receipt Vouchers',
       subtitle: `Total Vouchers: ${filtered.length}`,
+      periodLabel: dateFrom || dateTo ? `${dateFrom ? formatDate(dateFrom, dateFormat) : 'Start'} to ${dateTo ? formatDate(dateTo, dateFormat) : 'End'}` : 'All Time',
       filename: `Receipt_Vouchers_${new Date().toISOString().split('T')[0]}`,
       columns: ['Voucher #', 'Date', 'Received From', 'Credited To', 'Description', 'Amount', 'Payment Mode', 'Status'],
       rows: filtered.map(v => {

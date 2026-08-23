@@ -548,6 +548,7 @@ export default function PropertyPaymentVoucher({
       format,
       title: 'Payment Vouchers',
       subtitle: `Total Vouchers: ${filtered.length}`,
+      periodLabel: dateFrom || dateTo ? `${dateFrom ? formatDate(dateFrom, dateFormat) : 'Start'} to ${dateTo ? formatDate(dateTo, dateFormat) : 'End'}` : 'All Time',
       filename: `Payment_Vouchers_${new Date().toISOString().split('T')[0]}`,
       columns: ['Voucher #', 'Date', 'Paid To', 'Paid From', 'Expense Type', 'Description', 'Amount', 'Payment Mode', 'Status', 'Tags'],
       rows: filtered.map(v => {
