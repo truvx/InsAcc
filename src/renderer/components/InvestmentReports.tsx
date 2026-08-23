@@ -1130,21 +1130,25 @@ export default function InvestmentReports({
           ))}
         </div>
         {activeTab !== 'overview' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, padding: '10px 16px', background: 'var(--bg-tertiary, #F9FAFB)', borderRadius: 8, border: '1px solid var(--border-color, #E5E7EB)' }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>From</span>
-            <input
-              type="date"
-              value={filterStart}
-              onChange={e => setFilterStart(e.target.value)}
-              style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-color, #D1D5DB)', fontSize: 13, background: '#fff', color: 'var(--text-primary)', outline: 'none', width: 160 }}
-            />
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>To</span>
-            <input
-              type="date"
-              value={filterEnd}
-              onChange={e => setFilterEnd(e.target.value)}
-              style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-color, #D1D5DB)', fontSize: 13, background: '#fff', color: 'var(--text-primary)', outline: 'none', width: 160 }}
-            />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>From</span>
+              <input
+                type="date"
+                value={filterStart}
+                onChange={e => setFilterStart(e.target.value)}
+                style={{ padding: '8px 14px', borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 14, fontFamily: "'Inter', sans-serif", background: '#fff', color: '#1F2937', outline: 'none', cursor: 'pointer', width: 160 }}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>To</span>
+              <input
+                type="date"
+                value={filterEnd}
+                onChange={e => setFilterEnd(e.target.value)}
+                style={{ padding: '8px 14px', borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 14, fontFamily: "'Inter', sans-serif", background: '#fff', color: '#1F2937', outline: 'none', cursor: 'pointer', width: 160 }}
+              />
+            </div>
           </div>
         )}
         {renderTabContent()}
