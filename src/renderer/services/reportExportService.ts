@@ -1100,11 +1100,19 @@ function generatePdfCoverPage(doc: any, title: string, subtitle: string, periodL
   doc.setFont('helvetica', 'bold')
   doc.text(title.toUpperCase(), centerX, 30, { align: 'center' })
 
+  let myY = 38
+
+  if (subtitle) {
+    doc.setTextColor(100, 116, 139)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text(subtitle, centerX, 36, { align: 'center' })
+    myY = 46
+  }
+
   doc.setTextColor(100, 116, 139)
   doc.setFontSize(8)
   doc.setFont('helvetica', 'bold')
-  
-  let myY = 38
   
   const dateOptions: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }
   const generatedOn = new Date().toLocaleString('en-GB', dateOptions).replace(',', '')
