@@ -574,31 +574,37 @@ export default function PropertyReceiptVoucher({
   const [showExportMenu, setShowExportMenu] = useState(false)
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+    let grandTotal = 0
+    const rows = filtered.map(v => {
+      const refInfo = getReferenceInfo(v.reference)
+      const receivedFrom = refInfo?.tenant || v.reference || '—'
+      const totalAmount = v.lines.reduce((s: number, l: any) => s + (l.type === 'Debit' ? (l.baseAmount ?? l.amount) : 0), 0)
+      grandTotal += totalAmount
+
+      return [
+        v.number,
+        formatDate(v.date, dateFormat),
+        receivedFrom,
+        getBankName(v),
+        v.description || '-',
+        totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        v.paymentMode || 'Unknown',
+        v.status || 'Draft'
+      ]
+    })
+
     exportTableData({
       moduleName: 'Properties Management',
       format,
-      title: 'Receipt Vouchers',
+      title: filterParty ? `Receipt Vouchers — ${filterParty.toUpperCase()}` : 'Receipt Vouchers',
       subtitle: `Total Vouchers: ${filtered.length}`,
       periodLabel: dateFrom || dateTo ? `${dateFrom ? formatDate(dateFrom, dateFormat) : 'Start'} to ${dateTo ? formatDate(dateTo, dateFormat) : 'End'}` : 'All Time',
       filename: `Receipt_Vouchers_${new Date().toISOString().split('T')[0]}`,
-      columns: ['Voucher #', 'Date', 'Received From', 'Credited To', 'Description', 'Amount', 'Payment Mode', 'Status'],
-      rows: filtered.map(v => {
-        const refInfo = getReferenceInfo(v.reference)
-        const receivedFrom = refInfo?.tenant || v.reference || '—'
-        const totalAmount = v.lines.reduce((s: number, l: any) => s + (l.type === 'Debit' ? (l.baseAmount ?? l.amount) : 0), 0)
-
-        return [
-          v.number,
-          formatDate(v.date, dateFormat),
-          receivedFrom,
-          getBankName(v),
-          v.description || '-',
-          formatCurrency(totalAmount, currency),
-          v.paymentMode || 'Unknown',
-          v.status || 'Draft'
-        ]
-      }),
+      columns: ['Voucher #', 'Date', 'Received From', 'Credited To', 'Description', `Amount (${currency})`, 'Payment Mode', 'Status'],
+      rows,
+      foot: [['', '', '', '', 'Total', grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), '', '']],
       currency,
+      orientation: 'landscape',
       generatedBy: loggedInUser
     })
 

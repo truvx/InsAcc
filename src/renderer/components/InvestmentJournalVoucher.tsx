@@ -95,17 +95,19 @@ export default function InvestmentJournalVoucher({
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     try {
-      const columns = ['Voucher #', 'Date', 'Description', 'Tags', 'Amount', 'Debit Account', 'Credit Account', 'Status']
+      let grandTotal = 0
+      const columns = ['Voucher #', 'Date', 'Description', 'Tags', `Amount (${currency})`, 'Debit Account', 'Credit Account', 'Status']
       const rows = filtered.map(v => {
         const debitLine = v.lines.find(l => l.type === 'Debit')
         const creditLine = v.lines.find(l => l.type === 'Credit')
         const totalAmount = v.lines.reduce((sum, l) => l.type === 'Debit' ? sum + l.amount : sum, 0)
+        grandTotal += totalAmount
         return [
           v.number,
           formatDate(v.date, dateFormat),
           v.description,
           v.tags ? v.tags.join(', ') : '-',
-          `${currency} ${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
           debitLine ? accounts.find(a => a.id === debitLine.accountId)?.name || '—' : '—',
           creditLine ? accounts.find(a => a.id === creditLine.accountId)?.name || '—' : '—',
           v.status
@@ -119,6 +121,9 @@ export default function InvestmentJournalVoucher({
         periodLabel: dateFrom || dateTo ? `${dateFrom ? formatDate(dateFrom, dateFormat) : 'Start'} to ${dateTo ? formatDate(dateTo, dateFormat) : 'End'}` : 'All Time',
         columns,
         rows,
+        foot: [['', '', '', 'Total', grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), '', '', '']],
+        currency,
+        orientation: 'landscape',
         generatedBy: loggedInUser,
         format,
         filename: `Investment_Journal_Vouchers_${new Date().toISOString().split('T')[0]}`

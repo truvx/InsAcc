@@ -423,6 +423,21 @@ export default function PropertyJournalVoucher({
   const [showExportMenu, setShowExportMenu] = useState(false)
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+    let grandTotal = 0
+    const rows = filtered.map(v => {
+      const totalAmount = v.lines.reduce((s: number, l: any) => s + (l.type === 'Debit' ? (l.baseAmount ?? l.amount) : 0), 0)
+      grandTotal += totalAmount
+
+      return [
+        v.number,
+        formatDate(v.date, dateFormat),
+        v.description || '-',
+        v.tags ? v.tags.join(', ') : '-',
+        totalAmount ? totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-',
+        v.status || 'Draft'
+      ]
+    })
+
     exportTableData({
       moduleName: 'Properties Management',
       format,
@@ -430,20 +445,11 @@ export default function PropertyJournalVoucher({
       subtitle: `Total Journals: ${filtered.length}`,
       periodLabel: dateFrom || dateTo ? `${dateFrom ? formatDate(dateFrom, dateFormat) : 'Start'} to ${dateTo ? formatDate(dateTo, dateFormat) : 'End'}` : 'All Time',
       filename: `Journal_Vouchers_${new Date().toISOString().split('T')[0]}`,
-      columns: ['Voucher #', 'Date', 'Description', 'Tags', 'Total Amount', 'Status'],
-      rows: filtered.map(v => {
-        const totalAmount = v.lines.reduce((s: number, l: any) => s + (l.type === 'Debit' ? (l.baseAmount ?? l.amount) : 0), 0)
-
-        return [
-          v.number,
-          formatDate(v.date, dateFormat),
-          v.description || '-',
-          v.tags ? v.tags.join(', ') : '-',
-          totalAmount ? formatCurrency(totalAmount, currency) : '-',
-          v.status || 'Draft'
-        ]
-      }),
+      columns: ['Voucher #', 'Date', 'Description', 'Tags', `Total Amount (${currency})`, 'Status'],
+      rows,
+      foot: [['', '', '', 'Total', grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), '']],
       currency,
+      orientation: 'landscape',
       generatedBy: loggedInUser
     })
 

@@ -571,7 +571,7 @@ export default function PropertyPaymentVoucher({
     exportTableData({
       moduleName: 'Properties Management',
       format,
-      title: 'Payment Vouchers',
+      title: filterParty ? `Payment Vouchers — ${filterParty.toUpperCase()}` : 'Payment Vouchers',
       subtitle: `Total Vouchers: ${filtered.length}`,
       periodLabel: dateFrom || dateTo ? `${dateFrom ? formatDate(dateFrom, dateFormat) : 'Start'} to ${dateTo ? formatDate(dateTo, dateFormat) : 'End'}` : 'All Time',
       filename: `Payment_Vouchers_${new Date().toISOString().split('T')[0]}`,

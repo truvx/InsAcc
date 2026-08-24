@@ -124,15 +124,17 @@ export default function InvestmentReceiptVoucher({
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     try {
-      const columns = ['Voucher #', 'Date', 'Revenue Account', 'Description', 'Amount', 'Payment Mode', 'Status']
+      let grandTotal = 0
+      const columns = ['Voucher #', 'Date', 'Revenue Account', 'Description', `Amount (${currency})`, 'Payment Mode', 'Status']
       const rows = filtered.map(v => {
         const totalAmount = v.lines.reduce((sum, l) => l.type === 'Credit' ? sum + l.amount : sum, 0)
+        grandTotal += totalAmount
         return [
           v.number,
           formatDate(v.date, dateFormat),
           accounts.find(a => a.id === v.lines[0]?.accountId)?.name || '—',
           v.description,
-          `${currency} ${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
           v.paymentMode || '—',
           v.status
         ]
@@ -145,6 +147,9 @@ export default function InvestmentReceiptVoucher({
         periodLabel: dateFrom || dateTo ? `${dateFrom ? formatDate(dateFrom, dateFormat) : 'Start'} to ${dateTo ? formatDate(dateTo, dateFormat) : 'End'}` : 'All Time',
         columns,
         rows,
+        foot: [['', '', '', 'Total', grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), '', '']],
+        currency,
+        orientation: 'landscape',
         generatedBy: loggedInUser,
         format,
         filename: `Investment_Receipt_Vouchers_${new Date().toISOString().split('T')[0]}`
