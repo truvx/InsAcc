@@ -13,7 +13,7 @@ import { formatCurrency } from '../utils/currencyHelpers'
 import type { AuditEvent } from '../data/auditTypes'
 import { recordModuleEvent } from '../services/auditService'
 import * as XLSX from 'xlsx-js-style'
-import { Download, Eye, Printer, Trash2 } from 'lucide-react'
+import { Download, Eye, FileSpreadsheet, Printer, Trash2 } from 'lucide-react'
 import { exportTableData } from '../services/reportExportService'
 
 interface Props {
@@ -338,7 +338,7 @@ export default function PropertyVendors({
     setShowExportMenu(false)
   }, [filtered, vendorPaymentTotals, vendorExpenseCounts, currency])
 
-  const handlePrintLedger = useCallback(() => {
+  const handleExportLedger = useCallback((format: 'pdf' | 'xlsx') => {
     if (!drawerVendor) return
 
     const columns = ['Date', 'Expense #', 'Property', 'Category', `Amount (${currency})`]
@@ -356,7 +356,7 @@ export default function PropertyVendors({
 
     exportTableData({
       moduleName: 'Properties Management',
-      format: 'pdf',
+      format,
       title: `Vendor Ledger — ${drawerVendor.name}`,
       subtitle: drawerVendor.category,
       filename: `Vendor_Ledger_${drawerVendor.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`,
@@ -367,7 +367,7 @@ export default function PropertyVendors({
       generatedBy: loggedInUser,
     })
 
-    setToast({ message: 'Vendor ledger PDF exported', type: 'success' })
+    setToast({ message: `Vendor ledger ${format.toUpperCase()} exported`, type: 'success' })
   }, [drawerVendor, vendorLedger, vendorLedgerTotal, properties, currency, dateFormat, loggedInUser])
 
   // ── Table columns ──
@@ -654,7 +654,8 @@ export default function PropertyVendors({
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <Button variant="ghost" size="sm" onClick={handlePrintLedger} title="Print Ledger"><Printer size={16} /></Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleExportLedger('pdf')} title="Export PDF"><Printer size={16} /></Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleExportLedger('xlsx')} title="Export Excel"><FileSpreadsheet size={16} /></Button>
                   <Button variant="ghost" size="sm" onClick={() => setDrawerVendor(null)} title="Close"><CloseIcon /></Button>
                 </div>
               </div>
