@@ -357,8 +357,8 @@ export default function PropertyVendors({
     exportTableData({
       moduleName: 'Properties Management',
       format,
-      title: `Vendor Ledger — ${drawerVendor.name}`,
-      subtitle: drawerVendor.category,
+      title: 'Vendor Ledger',
+      subtitle: `${drawerVendor.name} — ${drawerVendor.category}`,
       filename: `Vendor_Ledger_${drawerVendor.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`,
       columns,
       rows,
