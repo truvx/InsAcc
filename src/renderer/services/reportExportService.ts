@@ -1450,7 +1450,12 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
     doc.setTextColor(...getThemeColorArray()) // primaryDark
     doc.text(p.title, 14, y)
     
-    // Subtitle deliberately omitted in PDF as it's redundant with cover page details
+    if (p.subtitle) {
+      doc.setFontSize(11)
+      doc.setTextColor(100, 116, 139)
+      doc.text(p.subtitle, 14, y + 7)
+      y += 7
+    }
 
     autoTable(doc, {
       startY: y + 8,
