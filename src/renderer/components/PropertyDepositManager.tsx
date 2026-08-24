@@ -1368,7 +1368,7 @@ export default function PropertyDepositManager({
               value={formPaymentMode}
               onChange={e => setFormPaymentMode(e.target.value)}
               options={[
-                { value: 'Post Dated Cheque (PDC)', label: 'Security Cheque Received' },
+                { value: 'Post Dated Cheque (PDC)', label: 'Security Cheque' },
                 { value: 'Bank Transfer', label: 'Bank Transfer' },
                 { value: 'Cash', label: 'Cash' }
               ]}

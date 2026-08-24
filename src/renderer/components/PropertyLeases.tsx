@@ -1458,7 +1458,7 @@ export default function PropertyLeases({
                     value={depositPaymentMode}
                     onChange={e => setDepositPaymentMode(e.target.value as any)}
                     options={[
-                      { value: 'Security Cheque', label: 'Security Cheque Received' },
+                      { value: 'Security Cheque', label: 'Security Cheque' },
                       { value: 'Bank Transfer', label: 'Bank Transfer' },
                       { value: 'Cash', label: 'Cash' }
                     ]}
