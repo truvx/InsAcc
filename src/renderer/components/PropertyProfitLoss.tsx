@@ -63,7 +63,11 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
     return vList.map(v => {
       const leaseByVoucherRef = v.reference ? leases.find(l => l.leaseNumber === v.reference) : undefined
       const isVoucherLinkedToProp = !!leaseByVoucherRef && leaseByVoucherRef.propertyId === filterPropertyId
-      const isVoucherTaggedToProp = !!targetPropName && !!v.tags?.includes(targetPropName)
+      const isVoucherTaggedToProp = !!targetPropName && (
+        !!v.tags?.includes(targetPropName) ||
+        (v.description && v.description.toLowerCase().includes(targetPropName.toLowerCase())) ||
+        (v.reference && v.reference.toLowerCase().includes(targetPropName.toLowerCase()))
+      )
 
       if (isVoucherTaggedToProp) {
         return v
