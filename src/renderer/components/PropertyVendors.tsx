@@ -303,7 +303,7 @@ export default function PropertyVendors({
     // Allow exporting empty list to generate a template/blank report
     
     const columns = [
-      'Name', 'Category', 'Contact Person', 'Phone', 'Email', 'TRN', 'Total Paid', 'Payments', 'Status'
+      'Name', 'Category', 'Contact Person', 'Phone', 'Email', 'TRN', `Total Paid (${currency})`, 'Payments', 'Status'
     ]
 
     const rows = filtered.map(v => [
@@ -313,7 +313,7 @@ export default function PropertyVendors({
       v.phone || '',
       v.email || '',
       v.trn || '',
-      Number((vendorPaymentTotals[v.id] || 0).toFixed(2)),
+      (vendorPaymentTotals[v.id] || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
       vendorExpenseCounts[v.id] || 0,
       v.status
     ])
@@ -329,7 +329,7 @@ export default function PropertyVendors({
       filename: `Vendors_${new Date().toISOString().split('T')[0]}`,
       columns,
       rows,
-      foot: [['', '', '', '', '', 'Total', Number(grandTotalPaid.toFixed(2)), totalPayments, '']],
+      foot: [['', '', '', '', '', 'Total', grandTotalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), totalPayments, '']],
       currency,
       generatedBy: loggedInUser
     })
