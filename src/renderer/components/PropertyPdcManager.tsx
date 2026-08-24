@@ -800,14 +800,6 @@ export default function PropertyPdcManager({
         <CurrencyText value={row.amount} currency={currency} />
       ),
     },
-
-    {
-      key: 'dueDate',
-      header: 'Due Date',
-      width: '100px',
-      sortable: true,
-      render: row => <span className="text-xs text-secondary">{formatDate(row.dueDate, dateFormat)}</span>,
-    },
     {
       key: 'status',
       header: 'Status',
@@ -1147,10 +1139,6 @@ export default function PropertyPdcManager({
                 <div className="pdc-detail-row">
                   <span className="pdc-detail-label">Issue Date</span>
                   <span className="pdc-detail-value">{formatDate(activePdc.chequeDate, dateFormat)}</span>
-                </div>
-                <div className="pdc-detail-row">
-                  <span className="pdc-detail-label">Due Date</span>
-                  <span className="pdc-detail-value">{formatDate(activePdc.dueDate, dateFormat)}</span>
                 </div>
                 <div className="pdc-detail-row">
                   <span className="pdc-detail-label">Status</span>
