@@ -2,12 +2,13 @@ import React, { useMemo, useState } from 'react'
 import type { Account, Voucher } from '../accounting/types'
 import { buildAccountTree } from '../accounting/chartOfAccountsService'
 import { generateChartOfAccountsReadModel, generateTrialBalanceReadModel, generateProfitAndLossReadModel, generateBalanceSheetReadModel } from '../readModels/accountingReadModels'
-import { EmptyState, Modal } from './design/DesignSystem'
+import { EmptyState, Modal, Button, ChevronDownIcon } from './design/DesignSystem'
 import AccountDrillDown from './AccountDrillDown'
+import Toast from './Toast'
 
 import { Landmark, ListChecks, Download } from 'lucide-react'
 import { CurrencyText } from './design/CurrencyText'
-import { exportSideBySidePdf } from '../services/reportExportService'
+import { exportSideBySideReport } from '../services/reportExportService'
 
 interface Props {
   currency?: string
@@ -176,8 +177,13 @@ export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vou
     </div>
   )
 
-  const handleExport = () => {
-    exportSideBySidePdf({ generatedBy: loggedInUser,
+  const [showExportMenu, setShowExportMenu] = useState(false)
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' })
+
+  const handleExport = (format: 'pdf' | 'xlsx' | 'csv') => {
+    setShowExportMenu(false)
+    exportSideBySideReport({ generatedBy: loggedInUser,
+      format,
       title: 'Balance Sheet',
       subtitle: 'Financial position at a glance',
       periodLabel: dateTo ? `As of ${dateTo}` : 'All Time',
@@ -213,11 +219,16 @@ export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vou
         label: 'Balance Difference',
         value: Math.abs(totalAssets - (totalLiabilities + totalEquity))
       }
+    }).then(() => {
+      setToast({ visible: true, message: 'Exported successfully', type: 'success' })
+    }).catch(e => {
+      setToast({ visible: true, message: 'Export failed: ' + (e.message || e), type: 'error' })
     })
   }
 
   return (
     <>
+      <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={() => setToast(prev => ({ ...prev, visible: false }))} />
       <Modal open={drillAccountId !== null} title={`Account Drill Down — ${drillAccountName}`} onClose={() => setDrillAccountId(null)}>
         {drillAccountId && (
           <AccountDrillDown
@@ -260,17 +271,18 @@ export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vou
               </button>
             )}
           </div>
-          <button
-            onClick={handleExport}
-            style={{
-              padding: '8px 16px', borderRadius: 8, border: '1px solid #E5E7EB',
-              background: '#fff', cursor: 'pointer', fontSize: 13,
-              display: 'flex', alignItems: 'center', gap: 6,
-              color: '#374151', fontWeight: 500
-            }}
-          >
-            <Download size={16} /> Export PDF
-          </button>
+          <div style={{ position: 'relative' }}>
+            <Button variant="secondary" size="sm" onClick={() => setShowExportMenu(!showExportMenu)}>
+              Export <ChevronDownIcon />
+            </Button>
+            {showExportMenu && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', border: '1px solid var(--border-color)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, width: 140, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <button className="export-menu-item" onClick={() => handleExport('pdf')}>PDF (.pdf)</button>
+                <button className="export-menu-item" onClick={() => handleExport('xlsx')}>Excel (.xlsx)</button>
+                <button className="export-menu-item" onClick={() => handleExport('csv')}>CSV (.csv)</button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

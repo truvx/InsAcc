@@ -13,7 +13,7 @@ import { t } from '../utils'
 import { getPropertyFinancialSummary } from '../services/propertyFinancialAggregationService'
 import { getBalanceSheetTree, getProfitLossTree, flattenStatementRows } from '../services/propertyFinancialStatements'
 import { formatDate } from '../utils'
-import { exportAccountingExcel, exportAccountingCsv, exportAccountingPdf, exportOverviewPdf, exportTableData, exportSideBySidePdf } from '../services/reportExportService'
+import { exportAccountingExcel, exportAccountingCsv, exportAccountingPdf, exportOverviewPdf, exportTableData, exportSideBySideReport } from '../services/reportExportService'
 import ExportReportModal from './design/ExportReportModal'
 
 function BuildingIcon() {
@@ -255,7 +255,7 @@ export default function PropertyReports({
         const netInc = totRev - totExp
 
         if (format === 'pdf') {
-          await exportSideBySidePdf({
+          await exportSideBySideReport({
             title: 'Profit & Loss',
             subtitle: 'Revenue - Expenses = Net Income',
             filename: `Property_Profit_Loss_${new Date().toISOString().slice(0, 10)}`,

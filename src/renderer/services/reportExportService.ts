@@ -1296,6 +1296,7 @@ export interface TableExportParams {
 }
 
 export interface SideBySideExportParams {
+  format?: 'pdf' | 'xlsx' | 'csv'
   title: string
   subtitle?: string
   filename: string
@@ -1321,12 +1322,84 @@ export interface SideBySideExportParams {
   moduleName?: string
 }
 
-export async function exportSideBySidePdf(p: SideBySideExportParams): Promise<string | null> {
+export async function exportSideBySideReport(p: SideBySideExportParams): Promise<string | null> {
   p.leftCol.rows = formatRows(p.leftCol.rows)
   p.rightCol.rows = formatRows(p.rightCol.rows)
   p.leftCol.total = roundDecimals(p.leftCol.total)
   p.rightCol.total = roundDecimals(p.rightCol.total)
   p.footer.value = roundDecimals(p.footer.value)
+
+  const format = p.format || 'pdf'
+
+  if (format === 'xlsx') {
+    const wb = XLSX.utils.book_new()
+    const now = new Date()
+    const exportedOn = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    const wsData: any[][] = [
+      ['Sameer Ishaq Harmoudi'],
+      [p.moduleName || ''],
+      [p.title],
+      ...(p.subtitle ? [[p.subtitle]] : []),
+      [`Exported on ${exportedOn}`],
+      [`Period: ${p.periodLabel || 'All Time'}`],
+      [],
+      [p.leftCol.title, '', '', p.rightCol.title, ''],
+      ['Account', 'Amount', '', 'Account', 'Amount']
+    ]
+
+    const maxRows = Math.max(p.leftCol.rows.length, p.rightCol.rows.length)
+    for (let i = 0; i < maxRows; i++) {
+      const lRow = p.leftCol.rows[i] || ['', '']
+      const rRow = p.rightCol.rows[i] || ['', '']
+      wsData.push([
+        lRow[0],
+        typeof lRow[1] === 'string' ? parseFloat(lRow[1].replace(/,/g, '')) || 0 : lRow[1] || 0,
+        '',
+        rRow[0],
+        typeof rRow[1] === 'string' ? parseFloat(rRow[1].replace(/,/g, '')) || 0 : rRow[1] || 0
+      ])
+    }
+
+    wsData.push(['Total', p.leftCol.total, '', 'Total', p.rightCol.total])
+    wsData.push([])
+    wsData.push([p.footer.label, p.footer.value])
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData)
+    ws['!cols'] = [{ wch: 40 }, { wch: 15 }, { wch: 5 }, { wch: 40 }, { wch: 15 }]
+    XLSX.utils.book_append_sheet(wb, ws, 'Report')
+
+    const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
+    return saveWithDialog(`${p.filename}.xlsx`, [{ name: 'Excel', extensions: ['xlsx'] }], buf)
+  }
+
+  if (format === 'csv') {
+    const esc = (v: any) => {
+      const s = String(v || '')
+      return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g, '""')}"` : s
+    }
+    const lines = [
+      esc('Sameer Ishaq Harmoudi'),
+      esc(p.moduleName || ''),
+      esc(p.title),
+      ...(p.subtitle ? [esc(p.subtitle)] : []),
+      `Period: ${p.periodLabel || 'All Time'}`,
+      '',
+      `${esc(p.leftCol.title)},,,,${esc(p.rightCol.title)}`,
+      'Account,Amount,,Account,Amount'
+    ]
+    const maxRows = Math.max(p.leftCol.rows.length, p.rightCol.rows.length)
+    for (let i = 0; i < maxRows; i++) {
+      const lRow = p.leftCol.rows[i] || ['', '']
+      const rRow = p.rightCol.rows[i] || ['', '']
+      lines.push(`${esc(lRow[0])},${esc(typeof lRow[1] === 'string' ? lRow[1].replace(/,/g, '') : lRow[1])},,${esc(rRow[0])},${esc(typeof rRow[1] === 'string' ? rRow[1].replace(/,/g, '') : rRow[1])}`)
+    }
+    lines.push(`Total,${p.leftCol.total},,Total,${p.rightCol.total}`)
+    lines.push('')
+    lines.push(`${esc(p.footer.label)},${p.footer.value}`)
+
+    const buf = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    return saveWithDialog(`${p.filename}.csv`, [{ name: 'CSV', extensions: ['csv'] }], buf)
+  }
 
   const doc = new jsPDF()
   

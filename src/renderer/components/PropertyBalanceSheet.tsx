@@ -2,9 +2,9 @@ import React, { useMemo, useState } from 'react'
 import type { Account, Voucher } from '../accounting/types'
 import { buildAccountTree } from '../accounting/chartOfAccountsService'
 import { generateChartOfAccountsReadModel, generateTrialBalanceReadModel, generateProfitAndLossReadModel, generateBalanceSheetReadModel } from '../readModels/accountingReadModels'
-import { EmptyState, Modal, Input, Select, Button } from './design/DesignSystem'
+import { EmptyState, Modal, Input, Select, Button, ChevronDownIcon } from './design/DesignSystem'
 import AccountDrillDown from './AccountDrillDown'
-import { exportSideBySidePdf } from '../services/reportExportService'
+import { exportSideBySideReport } from '../services/reportExportService'
 import Toast from './Toast'
 
 import { Landmark, ListChecks, Filter, Download } from 'lucide-react'
@@ -234,7 +234,10 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
   )
 
 
-  const handleExportPdf = () => {
+  const [showExportMenu, setShowExportMenu] = useState(false)
+
+  const handleExport = (format: 'pdf' | 'xlsx' | 'csv') => {
+    setShowExportMenu(false)
     const leftRows = assetRows.map(r => [
       `${' '.repeat(r.depth * 2)}${r.account.name}`,
       r.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })
@@ -257,7 +260,8 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
     ]
 
     try {
-      exportSideBySidePdf({ generatedBy: loggedInUser,
+      exportSideBySideReport({ generatedBy: loggedInUser,
+        format,
         title: 'Balance Sheet',
         subtitle: filterPropertyId ? `Property: ${properties.find(p => p.id === filterPropertyId)?.name}` : 'All Properties',
         periodLabel: dateTo ? `As of ${dateTo}` : 'All Time',
@@ -280,7 +284,7 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
           value: totalAssets
         }
       }).then(() => {
-        setToast({ visible: true, message: 'PDF Exported successfully', type: 'success' })
+        setToast({ visible: true, message: 'Exported successfully', type: 'success' })
       }).catch(e => {
         setToast({ visible: true, message: 'Export failed: ' + (e.message || e), type: 'error' })
       })
@@ -343,9 +347,18 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
               )}
             </div>
 
-            <Button variant="secondary" size="sm" icon={<Download size={14} />} onClick={handleExportPdf}>
-              Export PDF
-            </Button>
+            <div style={{ position: 'relative' }}>
+              <Button variant="secondary" size="sm" onClick={() => setShowExportMenu(!showExportMenu)}>
+                Export <ChevronDownIcon />
+              </Button>
+              {showExportMenu && (
+                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', border: '1px solid var(--border-color)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, width: 140, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <button className="export-menu-item" onClick={() => handleExport('pdf')}>PDF (.pdf)</button>
+                  <button className="export-menu-item" onClick={() => handleExport('xlsx')}>Excel (.xlsx)</button>
+                  <button className="export-menu-item" onClick={() => handleExport('csv')}>CSV (.csv)</button>
+                </div>
+              )}
+            </div>
             <div style={{ width: 16 }} />
             <Filter size={16} color="var(--text-secondary)" />
             <div style={{ width: 220 }}>

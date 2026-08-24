@@ -8,7 +8,7 @@ import type { BankAccount, BankTransaction } from '../data/banking'
 import { UaeDirhamIcon } from './design/UaeDirhamIcon'
 import BankAccountAvatar from './BankAccountAvatar'
 import { formatAssetType } from '../data/investmentMasterData'
-import { exportAccountingExcel, exportAccountingCsv, exportAccountingPdf, exportOverviewPdf, exportTableData, exportSideBySidePdf } from '../services/reportExportService'
+import { exportAccountingExcel, exportAccountingCsv, exportAccountingPdf, exportOverviewPdf, exportTableData, exportSideBySideReport } from '../services/reportExportService'
 import { getCurrencySymbol } from '../utils/reportFormatters'
 import { getAssetWeightMultiplier } from '../services/purchaseLedgerService'
 import { formatDate } from '../utils'
@@ -272,7 +272,7 @@ export default function InvestmentReports({
         }
         case 'profit-loss': {
           if (format === 'pdf') {
-            await exportSideBySidePdf({
+            await exportSideBySideReport({
               title: 'Profit & Loss',
               subtitle: 'Revenue - Expenses = Net Income',
               filename: `Investment_Profit_Loss_${new Date().toISOString().slice(0, 10)}`,
