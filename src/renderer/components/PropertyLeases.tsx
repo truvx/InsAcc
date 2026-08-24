@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import { Printer } from 'lucide-react'
 import type { LeaseEntry, TenantEntry, UnitEntry, PropertyEntry, PdcCheque, SecurityDeposit, SecurityDepositGlMappings, PropAccount } from '../data/propertyTypes'
 import type { Account, Voucher, BankMapping, PostingResult } from '../accounting/types'
 import type { AccountingEngine } from '../accounting/accountingEngine'
@@ -14,6 +15,7 @@ import { getAccountBalance, invalidateBalanceCache } from '../accounting/ledgerS
 import { SystemAccountRegistry } from '../accounting/systemAccountRegistry'
 import { autoPostVoucher } from '../hooks/useVoucherLifecycle'
 import { computeDepositBalances, createInitialDeposit, addDepositTransaction } from '../services/propertyDepositService'
+import { printLease } from '../utils/printLeaseHelper'
 import { getPropertyBankAccountId, validateBankChartLink } from '../services/propertyAccountingService'
 import { getDefaultPropertyReceiptBankAccount, getDefaultPropertyPaymentBankAccount } from '../services/bankingService'
 import VoucherTimeline from './VoucherTimeline'
@@ -1294,6 +1296,7 @@ export default function PropertyLeases({
                               <Button variant="ghost" size="sm" onClick={() => setExpandedLeaseId(isExpanded ? null : l.id)} title="Expand Details">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                               </Button>
+                              <Button variant="ghost" size="sm" icon={<Printer size={14} />} onClick={(e) => { e.stopPropagation(); printLease(l, tenant, property, unit, currency, cheques, depositRecord, financials); }} title="Print Lease" />
                               <Button variant="ghost" size="sm" icon={<EditIcon />} onClick={() => openEdit(l)} title="Edit Lease" />
                               <Button variant="ghost" size="sm" icon={<TrashIcon />} onClick={() => setDeleteTarget(l)} title="Delete Lease" className="delete-lease-btn" />
                             </div>
