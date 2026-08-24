@@ -318,6 +318,9 @@ export default function PropertyVendors({
       v.status
     ])
 
+    const grandTotalPaid = filtered.reduce((sum, v) => sum + (vendorPaymentTotals[v.id] || 0), 0)
+    const totalPayments = filtered.reduce((sum, v) => sum + (vendorExpenseCounts[v.id] || 0), 0)
+
     exportTableData({
       moduleName: 'Properties Management',
       format,
@@ -326,6 +329,7 @@ export default function PropertyVendors({
       filename: `Vendors_${new Date().toISOString().split('T')[0]}`,
       columns,
       rows,
+      foot: [['', '', '', '', '', 'Total', Number(grandTotalPaid.toFixed(2)), totalPayments, '']],
       currency,
       generatedBy: loggedInUser
     })
