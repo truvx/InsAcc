@@ -1461,7 +1461,7 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
       theme: 'grid',
       styles: { fontSize: 9 },
       headStyles: { fillColor: getThemeColorArray(), textColor: [255, 255, 255], fontStyle: 'bold' },
-      footStyles: { fillColor: [248, 251, 249], textColor: getThemeColorArray(), fontStyle: 'bold' },
+      footStyles: { fillColor: [248, 251, 249], textColor: getThemeColorArray(), fontStyle: 'bold', lineWidth: { top: 0.5, bottom: 0.1, left: 0.1, right: 0.1 }, lineColor: getThemeColorArray() },
       alternateRowStyles: { fillColor: [248, 251, 249] },
     })
 
