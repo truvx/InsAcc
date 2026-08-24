@@ -1489,8 +1489,7 @@ export default function PropertyLeases({
                     )}
                   </div>
                 )}
-                <div className="form-row">
-                  <Input label="Payment Due Day" type="number" value={formDueDay} onChange={e => setFormDueDay(e.target.value)} placeholder="1" />
+                <div className="form-group">
                   <Select
                     label="Mode of Payment *"
                     value={formModeOfPayment}
