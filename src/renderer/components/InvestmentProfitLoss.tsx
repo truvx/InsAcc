@@ -151,6 +151,7 @@ export default function InvestmentProfitLoss({ currency = 'AED', accounts, vouch
     setShowExportMenu(false)
     exportSideBySideReport({ generatedBy: loggedInUser,
       format,
+      moduleName: 'Investment',
       title: 'Profit & Loss',
       subtitle: 'Revenue — Expenses = Net Income',
       periodLabel: dateFrom || dateTo ? `${dateFrom || 'Start'} to ${dateTo || 'End'}` : 'All Time',

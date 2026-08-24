@@ -184,6 +184,7 @@ export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vou
     setShowExportMenu(false)
     exportSideBySideReport({ generatedBy: loggedInUser,
       format,
+      moduleName: 'Investment',
       title: 'Balance Sheet',
       subtitle: 'Financial position at a glance',
       periodLabel: dateTo ? `As of ${dateTo}` : 'All Time',

@@ -262,6 +262,7 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
     try {
       exportSideBySideReport({ generatedBy: loggedInUser,
         format,
+        moduleName: 'Properties Management',
         title: 'Balance Sheet',
         subtitle: filterPropertyId ? `Property: ${properties.find(p => p.id === filterPropertyId)?.name}` : 'All Properties',
         periodLabel: dateTo ? `As of ${dateTo}` : 'All Time',

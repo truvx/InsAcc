@@ -205,6 +205,7 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
     try {
       exportSideBySideReport({ generatedBy: loggedInUser,
         format,
+        moduleName: 'Properties Management',
         title: 'Profit & Loss Statement',
         subtitle: filterPropertyId ? `Property: ${properties.find(p => p.id === filterPropertyId)?.name}` : 'All Properties',
         periodLabel: dateFrom || dateTo ? `${dateFrom || 'Start'} to ${dateTo || 'End'}` : 'All Time',
