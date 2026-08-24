@@ -29,7 +29,7 @@ export function printLease(
   const pdcRows = cheques.map(c => `
     <tr>
       <td>${c.chequeNumber}</td>
-      <td>${formatDate(c.chequeDate)}</td>
+      <td>${c.status === 'Cleared' && c.clearedAt ? formatDate(c.clearedAt) : '—'}</td>
       <td class="td-num">${currency} ${formatAmount(c.amount)}</td>
       <td>${c.bankAccountId ? 'Bank Transfer' : 'Post-Dated Cheque (PDC)'}</td>
       <td>${c.status}</td>
@@ -228,7 +228,7 @@ export function printLease(
           <thead>
             <tr>
               <th>Cheque No.</th>
-              <th>Date</th>
+              <th>Cleared Date</th>
               <th style="text-align: right">Amount</th>
               <th>Mode</th>
               <th>Status</th>
