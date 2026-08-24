@@ -1445,16 +1445,11 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
       p.generatedBy
     )
 
-    // Report Page
-    doc.setFontSize(18)
-    doc.setTextColor(...getThemeColorArray()) // primaryDark
-    doc.text(p.title, 14, y)
-    
+    // Report Page — title already on cover page, only show subtitle if present
     if (p.subtitle) {
-      doc.setFontSize(11)
-      doc.setTextColor(100, 116, 139)
-      doc.text(p.subtitle, 14, y + 7)
-      y += 7
+      doc.setFontSize(13)
+      doc.setTextColor(...getThemeColorArray())
+      doc.text(p.subtitle, 14, y)
     }
 
     autoTable(doc, {
