@@ -543,6 +543,31 @@ export default function PropertyPaymentVoucher({
   const [showExportMenu, setShowExportMenu] = useState(false)
 
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+    let grandTotal = 0
+
+    const rows = filtered.map(v => {
+      let paidToMatch = (v.description || '').match(/\(paid to\s+(.*?)\)$/i)
+      if (!paidToMatch && (v.description || '').includes('Expense:')) {
+        paidToMatch = (v.description || '').match(/for\s+(.*)$/i)
+      }
+      const paidTo = paidToMatch ? paidToMatch[1] : '—'
+      const totalAmount = v.lines.reduce((s: number, l: any) => s + (l.type === 'Credit' ? (l.baseAmount ?? l.amount) : 0), 0)
+      grandTotal += totalAmount
+
+      return [
+        v.number,
+        formatDate(v.date, dateFormat),
+        paidTo,
+        getBankName(v),
+        getExpenseName(v),
+        v.description || '-',
+        totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        v.paymentMode || 'Unknown',
+        v.status || 'Draft',
+        v.tags?.length ? v.tags.join(', ') : '—'
+      ]
+    })
+
     exportTableData({
       moduleName: 'Properties Management',
       format,
@@ -550,29 +575,11 @@ export default function PropertyPaymentVoucher({
       subtitle: `Total Vouchers: ${filtered.length}`,
       periodLabel: dateFrom || dateTo ? `${dateFrom ? formatDate(dateFrom, dateFormat) : 'Start'} to ${dateTo ? formatDate(dateTo, dateFormat) : 'End'}` : 'All Time',
       filename: `Payment_Vouchers_${new Date().toISOString().split('T')[0]}`,
-      columns: ['Voucher #', 'Date', 'Paid To', 'Paid From', 'Expense Type', 'Description', 'Amount', 'Payment Mode', 'Status', 'Tags'],
-      rows: filtered.map(v => {
-        let paidToMatch = (v.description || '').match(/\(paid to\s+(.*?)\)$/i)
-        if (!paidToMatch && (v.description || '').includes('Expense:')) {
-          paidToMatch = (v.description || '').match(/for\s+(.*)$/i)
-        }
-        const paidTo = paidToMatch ? paidToMatch[1] : '—'
-        const totalAmount = v.lines.reduce((s: number, l: any) => s + (l.type === 'Credit' ? (l.baseAmount ?? l.amount) : 0), 0)
-
-        return [
-          v.number,
-          formatDate(v.date, dateFormat),
-          paidTo,
-          getBankName(v),
-          getExpenseName(v),
-          v.description || '-',
-          formatCurrency(totalAmount, currency),
-          v.paymentMode || 'Unknown',
-          v.status || 'Draft',
-          v.tags?.length ? v.tags.join(', ') : '—'
-        ]
-      }),
+      columns: ['Voucher #', 'Date', 'Paid To', 'Paid From', 'Expense Type', 'Description', `Amount (${currency})`, 'Payment Mode', 'Status', 'Tags'],
+      rows,
+      foot: [['', '', '', '', '', 'Total', grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), '', '', '']],
       currency,
+      orientation: 'landscape',
       generatedBy: loggedInUser
     })
 
