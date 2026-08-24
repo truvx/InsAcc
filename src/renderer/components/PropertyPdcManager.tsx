@@ -1034,7 +1034,7 @@ export default function PropertyPdcManager({
                   <thead>
                     <tr>
                       {columns.map(col => (
-                        <th key={col.key} style={col.width ? { width: col.width } : undefined}>
+                        <th key={col.key} className={col.numeric ? 'numeric' : ''} style={col.width ? { width: col.width } : undefined}>
                           {col.header}
                         </th>
                       ))}
