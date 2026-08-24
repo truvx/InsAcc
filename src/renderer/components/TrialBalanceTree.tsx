@@ -134,8 +134,17 @@ export default function TrialBalanceTree({ currency = 'AED', accounts, vouchers,
     ])
 
     const total = lines.reduce((s: number, { line }: any) => line.type === 'Debit' ? s + line.baseAmount : s - line.baseAmount, 0)
+    let debitBal = ''
+    let creditBal = ''
+    if (total > 0) {
+      debitBal = total.toLocaleString(undefined, { minimumFractionDigits: 2 })
+    } else if (total < 0) {
+      creditBal = Math.abs(total).toLocaleString(undefined, { minimumFractionDigits: 2 })
+    } else {
+      debitBal = '0.00'
+    }
     const foot = [
-      ['', '', 'Balance:', '', total.toLocaleString(undefined, { minimumFractionDigits: 2 })]
+      ['', '', 'Balance:', debitBal, creditBal]
     ]
 
     await exportTableData({
