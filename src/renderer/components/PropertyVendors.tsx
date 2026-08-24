@@ -340,39 +340,35 @@ export default function PropertyVendors({
 
   const handlePrintLedger = useCallback(() => {
     if (!drawerVendor) return
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(`<html><head><title>Vendor Ledger – ${drawerVendor.name}</title>
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; color: #1a1a2e; }
-        h2 { margin: 0 0 4px; } h4 { margin: 0 0 16px; color: #666; }
-        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 13px; }
-        th { background: #f5f5f7; font-weight: 600; }
-        .total { font-weight: 700; font-size: 14px; margin-top: 16px; }
-      </style></head><body>
-      <h2>Vendor Ledger</h2>
-      <h4>${drawerVendor.name} – ${drawerVendor.category}</h4>
-      <table>
-        <thead><tr><th>Date</th><th>Expense #</th><th>Property</th><th>Category</th><th>Method</th><th style="text-align:right">Amount</th></tr></thead>
-        <tbody>
-          ${vendorLedger.map(e => {
-            const prop = properties.find(p => p.id === e.propertyId)
-            return `<tr>
-              <td>${formatDate(e.date, dateFormat)}</td>
-              <td>${e.expenseNo}</td>
-              <td>${prop?.name || '–'}</td>
-              <td>${e.category}</td>
-              <td style="text-align:right">$<CurrencyText value={e.totalAmount} currency={currency} /></td>
-            </tr>`
-          }).join('')}
-        </tbody>
-      </table>
-      <p class="total">Total Paid: $<CurrencyText value={vendorLedgerTotal} currency={currency} /></p>
-    </body></html>`)
-    win.document.close()
-    win.print()
-  }, [drawerVendor, vendorLedger, vendorLedgerTotal, properties, currency, dateFormat])
+
+    const columns = ['Date', 'Expense #', 'Property', 'Category', `Amount (${currency})`]
+
+    const rows = vendorLedger.map(e => {
+      const prop = properties.find(p => p.id === e.propertyId)
+      return [
+        formatDate(e.date, dateFormat),
+        e.expenseNo,
+        prop?.name || '–',
+        e.category,
+        e.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      ]
+    })
+
+    exportTableData({
+      moduleName: 'Properties Management',
+      format: 'pdf',
+      title: `Vendor Ledger — ${drawerVendor.name}`,
+      subtitle: drawerVendor.category,
+      filename: `Vendor_Ledger_${drawerVendor.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`,
+      columns,
+      rows,
+      foot: [['', '', '', 'Total', vendorLedgerTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })]],
+      currency,
+      generatedBy: loggedInUser,
+    })
+
+    setToast({ message: 'Vendor ledger PDF exported', type: 'success' })
+  }, [drawerVendor, vendorLedger, vendorLedgerTotal, properties, currency, dateFormat, loggedInUser])
 
   // ── Table columns ──
   const columns: Column<VendorEntry>[] = useMemo(() => [
