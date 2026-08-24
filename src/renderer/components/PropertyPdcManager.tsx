@@ -451,17 +451,21 @@ export default function PropertyPdcManager({
 
   const handleBounce = () => {
     if (!activePdc) return
-    const bankAcctId = activePdc.bankAccountId || selectedBankAccountId
-    if (!bankAcctId) {
-      setToast({ visible: true, message: 'Please select a bank account.', type: 'error' })
-      return
+    let mappingId = ''
+    
+    if (bounceFee && Number(bounceFee) > 0) {
+      const bankAcctId = activePdc.bankAccountId || selectedBankAccountId
+      if (!bankAcctId) {
+        setToast({ visible: true, message: 'Please select a bank account for the bounce fee.', type: 'error' })
+        return
+      }
+      const linkResult = validateBankChartLink(bankAcctId, propAccounts, bankMappings)
+      if (!linkResult.valid) {
+        setToast({ visible: true, message: linkResult.error + ' Open Bank Accounts to fix it.', type: 'error' })
+        return
+      }
+      mappingId = linkResult.chartAccountId
     }
-    const linkResult = validateBankChartLink(bankAcctId, propAccounts, bankMappings)
-    if (!linkResult.valid) {
-      setToast({ visible: true, message: linkResult.error + ' Open Bank Accounts to fix it.', type: 'error' })
-      return
-    }
-    const mappingId = linkResult.chartAccountId
 
     let bouncedVoucherId: string | null = null
     let feeVoucherId: string | null = null
@@ -709,6 +713,7 @@ export default function PropertyPdcManager({
     if (row.status === 'Pending') {
       items.push(
         { label: 'Clear PDC', icon: <CheckCircle2 size={14} strokeWidth={1.75} />, onClick: () => openActionModal(row, 'ClearPDC') },
+        { label: 'Bounce', icon: <XCircle size={14} strokeWidth={1.75} />, onClick: () => openActionModal(row, 'Bounce'), danger: true },
         { label: 'Cancel Cheque', icon: <Ban size={14} strokeWidth={1.75} />, onClick: () => openActionModal(row, 'Cancel'), divider: true },
       )
     }
@@ -1304,6 +1309,19 @@ export default function PropertyPdcManager({
             <label>Reason for Bounce *</label>
             <input type="text" placeholder="e.g. Insufficient Funds" value={bounceReason} onChange={e => setBounceReason(e.target.value)} />
           </div>
+          {!activePdc.bankAccountId && (
+            <div className="pdc-modal-field">
+              <Select
+                label="Bank Account (if bounce fee charged)"
+                value={selectedBankAccountId}
+                onChange={e => setSelectedBankAccountId(e.target.value)}
+                options={[{ value: '', label: 'Select Bank Account' }, ...propAccounts.map(acc => ({
+                  value: acc.id,
+                  label: `${acc.institution} (${acc.currency})`
+                }))]}
+              />
+            </div>
+          )}
           <div className="pdc-modal-field">
             <label>Bank Bounce Fee (optional)</label>
             <input type="number" placeholder="0.00" value={bounceFee} onChange={e => setBounceFee(e.target.value)} />
