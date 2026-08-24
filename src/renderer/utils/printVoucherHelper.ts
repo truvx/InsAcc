@@ -42,7 +42,7 @@ export function printVoucher(voucher: Voucher, accounts: Account[], currency: st
       <head>
         <title>Voucher ${voucher.number}</title>
         <style>
-          @page { margin: 15mm; size: A4 portrait; }
+          @page { margin: 0; size: A4 portrait; }
           @media print {
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .page-break { page-break-inside: avoid; }
@@ -52,7 +52,7 @@ export function printVoucher(voucher: Voucher, accounts: Account[], currency: st
             color: #000; 
             background: #fff; 
             margin: 0;
-            padding: 0;
+            padding: 15mm;
             font-size: 13px;
           }
           .header { text-align: center; margin-bottom: 30px; }
@@ -141,9 +141,9 @@ export function printVoucher(voucher: Voucher, accounts: Account[], currency: st
 
           .page-footer {
             position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            bottom: 15mm;
+            left: 15mm;
+            right: 15mm;
             display: flex;
             justify-content: space-between;
             font-size: 11px;
@@ -240,7 +240,7 @@ export function printVoucher(voucher: Voucher, accounts: Account[], currency: st
 
         <div class="page-footer">
           <div>Powered By INSACC</div>
-          <div>Printed from browser</div>
+          <div></div>
         </div>
 
         <script>
