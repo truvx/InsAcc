@@ -567,7 +567,7 @@ function addSheetHeader(rows: XCell[][], p: ExcelExportParams, title: string, co
 function sheetTransactions(p: ExcelExportParams, fv: Voucher[]): any {
   const rows: XCell[][] = []
   const merges = addSheetHeader(rows, p, 'Transactions', 18)
-  const hdrs = ['Date', 'Voucher No.', 'Ref. No.', 'Type', 'Party / Tenant / Vendor', 'Description', 'Narration', 'From Account', 'To Account', 'Payment Mode', 'Cheque No.', 'Account Code', 'Account Name', 'Debit', 'Credit', 'Running Balance', 'Posted By', 'Posted Time']
+  const hdrs = ['Date', 'Voucher No.', 'Ref. No.', 'Type', 'Party / Tenant / Vendor', 'Description', 'Narration', 'From Account', 'To Account', 'Payment Mode', 'Cheque No.', 'Account Code', 'Account Name', `Debit (${p.currency})`, `Credit (${p.currency})`, 'Running Balance', 'Posted By', 'Posted Time']
   rows.push(hdrs.map(h => hCell(h, { bg: C.primaryDark, sz: 9 })))
 
   const sorted = [...fv].sort((a, b) => a.date.localeCompare(b.date))
@@ -752,7 +752,7 @@ function sheetLedger(p: ExcelExportParams, fv: Voucher[]): any {
   const sorted = [...fv].sort((a, b) => a.date.localeCompare(b.date))
   const typeOrder = ['asset', 'liability', 'equity', 'revenue', 'expense']
   const typeLabels: Record<string, string> = { asset: 'ASSETS', liability: 'LIABILITIES', equity: 'EQUITY', revenue: 'REVENUE / INCOME', expense: 'EXPENSES' }
-  const colHdrs = ['Date', 'Voucher No.', 'Type', 'Description', 'Debit', 'Credit', 'Running Balance']
+  const colHdrs = ['Date', 'Voucher No.', 'Type', 'Description', `Debit (${p.currency})`, `Credit (${p.currency})`, 'Running Balance']
 
   for (const aType of typeOrder) {
     const accs = p.accounts.filter(a => a.isActive && a.type === aType)
@@ -935,7 +935,7 @@ function sheetBreakup(p: ExcelExportParams, fv: Voucher[], coverData?: any): any
     })
     
     rows.push(sectionRow(`  ${group.groupName.toUpperCase()} - (Debits: ${p.currency} ${totDr.toFixed(2)} | Credits: ${p.currency} ${totCr.toFixed(2)})`, 8, C.primaryDark))
-    const hdrs = ['Date', 'Voucher', 'Reference', 'Type', 'Account', 'Description', 'Debit', 'Credit']
+    const hdrs = ['Date', 'Voucher', 'Reference', 'Type', 'Account', 'Description', `Debit (${p.currency})`, `Credit (${p.currency})`]
     rows.push(hdrs.map(h => hCell(h, { bg: C.primary })))
     
     group.lines.forEach((x: any) => {
@@ -1048,7 +1048,7 @@ export async function exportAccountingExcel(p: ExcelExportParams): Promise<strin
 export async function exportAccountingCsv(p: ExcelExportParams): Promise<string | null> {
   const fv = getFilteredVouchers(p)
   const modStr = p.module === 'Property' ? 'Properties Management' : 'Investment'
-  let csv = '\uFEFF' + `${modStr}\n${p.reportTitle}\nPeriod: ${p.periodLabel || 'All Time'}\n\nDate,Voucher No,Type,Account,Debit,Credit,Description\n`
+  let csv = '\uFEFF' + `${modStr}\n${p.reportTitle}\nPeriod: ${p.periodLabel || 'All Time'}\n\nDate,Voucher No,Type,Account,Debit (${p.currency}),Credit (${p.currency}),Description\n`
   
   fv.forEach(v => {
     v.lines.forEach(l => {
@@ -1229,7 +1229,7 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
       
       autoTable(doc, {
         startY: y + 5,
-        head: [['Date', 'Voucher', 'Reference', 'Type', 'Account', 'Description', 'Debit', 'Credit']],
+        head: [['Date', 'Voucher', 'Reference', 'Type', 'Account', 'Description', `Debit (${p.currency})`, `Credit (${p.currency})`]],
         body: tableData,
         theme: 'grid',
         styles: { fontSize: 8 },
@@ -1264,7 +1264,7 @@ export async function exportAccountingPdf(p: ExcelExportParams): Promise<string 
 
     autoTable(doc, {
       startY: y + 5,
-      head: [['Date', 'Voucher', 'Reference', 'Type', 'Account', 'Description', 'Debit', 'Credit']],
+      head: [['Date', 'Voucher', 'Reference', 'Type', 'Account', 'Description', `Debit (${p.currency})`, `Credit (${p.currency})`]],
       body: tableData,
       theme: 'grid',
       styles: { fontSize: 8 },
@@ -1996,7 +1996,7 @@ export async function exportOverviewPdf(p: ExcelExportParams): Promise<string | 
 
   autoTable(doc, {
     startY: y,
-    head: [['Date', 'Voucher', 'Ref', 'Type', 'Party', 'Description', 'Code', 'Account', 'Debit', 'Credit', 'Balance']],
+    head: [['Date', 'Voucher', 'Ref', 'Type', 'Party', 'Description', 'Code', 'Account', `Debit (${p.currency})`, `Credit (${p.currency})`, 'Balance']],
     body: txnRows,
     theme: 'grid',
     styles: { fontSize: 7 },
@@ -2044,7 +2044,7 @@ export async function exportOverviewPdf(p: ExcelExportParams): Promise<string | 
 
   autoTable(doc, {
     startY: y,
-    head: [['#', 'Code', 'Account', 'Dr/Cr', 'Debit', 'Credit', 'Narration']],
+    head: [['#', 'Code', 'Account', 'Dr/Cr', `Debit (${p.currency})`, `Credit (${p.currency})`, 'Narration']],
     body: vdRows,
     theme: 'grid',
     styles: { fontSize: 7 },
@@ -2173,7 +2173,7 @@ export async function exportOverviewPdf(p: ExcelExportParams): Promise<string | 
         startY: y,
         head: [
           [{ content: `${acct.code}  ${acct.name}`, colSpan: 7, styles: { fillColor: [30, 58, 47], textColor: [255, 255, 255], fontStyle: 'bold' } }],
-          ['Date', 'Voucher', 'Type', 'Description', 'Debit', 'Credit', 'Balance']
+          ['Date', 'Voucher', 'Type', 'Description', `Debit (${p.currency})`, `Credit (${p.currency})`, 'Balance']
         ],
         body: ledgerRows,
         theme: 'grid',
