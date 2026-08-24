@@ -1347,16 +1347,24 @@ export async function exportSideBySideReport(p: SideBySideExportParams): Promise
       ['Account', 'Amount', '', 'Account', 'Amount']
     ]
 
+    const extractCell = (cell: any) => typeof cell === 'object' && cell !== null && 'content' in cell ? cell.content : cell
+
     const maxRows = Math.max(p.leftCol.rows.length, p.rightCol.rows.length)
     for (let i = 0; i < maxRows; i++) {
       const lRow = p.leftCol.rows[i] || ['', '']
       const rRow = p.rightCol.rows[i] || ['', '']
+      
+      const l0 = extractCell(lRow[0])
+      const l1 = extractCell(lRow[1])
+      const r0 = extractCell(rRow[0])
+      const r1 = extractCell(rRow[1])
+
       wsData.push([
-        lRow[0],
-        typeof lRow[1] === 'string' ? parseFloat(lRow[1].replace(/,/g, '')) || 0 : lRow[1] || 0,
+        l0,
+        typeof l1 === 'string' ? parseFloat(l1.replace(/,/g, '')) || 0 : l1 || 0,
         '',
-        rRow[0],
-        typeof rRow[1] === 'string' ? parseFloat(rRow[1].replace(/,/g, '')) || 0 : rRow[1] || 0
+        r0,
+        typeof r1 === 'string' ? parseFloat(r1.replace(/,/g, '')) || 0 : r1 || 0
       ])
     }
 
@@ -1391,7 +1399,12 @@ export async function exportSideBySideReport(p: SideBySideExportParams): Promise
     for (let i = 0; i < maxRows; i++) {
       const lRow = p.leftCol.rows[i] || ['', '']
       const rRow = p.rightCol.rows[i] || ['', '']
-      lines.push(`${esc(lRow[0])},${esc(typeof lRow[1] === 'string' ? lRow[1].replace(/,/g, '') : lRow[1])},,${esc(rRow[0])},${esc(typeof rRow[1] === 'string' ? rRow[1].replace(/,/g, '') : rRow[1])}`)
+      const l0 = typeof lRow[0] === 'object' && lRow[0] !== null && 'content' in lRow[0] ? lRow[0].content : lRow[0]
+      const l1 = typeof lRow[1] === 'object' && lRow[1] !== null && 'content' in lRow[1] ? lRow[1].content : lRow[1]
+      const r0 = typeof rRow[0] === 'object' && rRow[0] !== null && 'content' in rRow[0] ? rRow[0].content : rRow[0]
+      const r1 = typeof rRow[1] === 'object' && rRow[1] !== null && 'content' in rRow[1] ? rRow[1].content : rRow[1]
+      
+      lines.push(`${esc(l0)},${esc(typeof l1 === 'string' ? l1.replace(/,/g, '') : l1)},,${esc(r0)},${esc(typeof r1 === 'string' ? r1.replace(/,/g, '') : r1)}`)
     }
     lines.push(`Total,${p.leftCol.total},,Total,${p.rightCol.total}`)
     lines.push('')
