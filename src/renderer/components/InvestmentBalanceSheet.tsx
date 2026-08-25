@@ -189,7 +189,7 @@ export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vou
       moduleName: 'Investment',
       title: 'Balance Sheet',
       subtitle: 'Financial position at a glance',
-      periodLabel: dateTo ? `As of ${dateTo}` : 'All Time',
+      periodLabel: dateStart && dateEnd ? `${dateStart} to ${dateEnd}` : dateStart ? `From ${dateStart}` : dateEnd ? `Until ${dateEnd}` : 'All Time',
       currency: currency,
       filename: `Balance_Sheet_${new Date().toISOString().split('T')[0]}`,
       leftCol: {

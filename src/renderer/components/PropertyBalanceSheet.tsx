@@ -267,7 +267,7 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
         moduleName: 'Properties Management',
         title: 'Balance Sheet',
         subtitle: filterPropertyId ? `Property: ${properties.find(p => p.id === filterPropertyId)?.name}` : 'All Properties',
-        periodLabel: dateTo ? `As of ${dateTo}` : 'All Time',
+        periodLabel: dateStart && dateEnd ? `${dateStart} to ${dateEnd}` : dateStart ? `From ${dateStart}` : dateEnd ? `Until ${dateEnd}` : 'All Time',
         currency,
         filename: `Balance_Sheet_${new Date().toISOString().split('T')[0]}`,
         leftCol: {
