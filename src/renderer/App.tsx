@@ -1772,12 +1772,21 @@ export default function App() {
       !depositMappings ||
       !depositMappings.liabilityAccountId ||
       !depositMappings.forfeitureIncomeAccountId ||
+      !depositMappings.securityChequesAccountId ||
+      !depositMappings.cashAccountId ||
+      !depositMappings.pdcReceivableAccountId ||
       depositMappings.liabilityAccountId !== '2120' ||
-      depositMappings.forfeitureIncomeAccountId !== '4160'
+      depositMappings.forfeitureIncomeAccountId !== '4160' ||
+      depositMappings.securityChequesAccountId !== '1420' ||
+      depositMappings.cashAccountId !== '1110' ||
+      depositMappings.pdcReceivableAccountId !== '1410'
     if (needsFix) {
       setDepositMappings({
         liabilityAccountId: '2120',
         forfeitureIncomeAccountId: '4160',
+        securityChequesAccountId: '1420',
+        cashAccountId: '1110',
+        pdcReceivableAccountId: '1410'
       })
     }
     let changedAccounts = false

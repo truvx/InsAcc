@@ -691,7 +691,7 @@ export default function PropertyLeases({
 
         let coaBankAccountId: string | undefined
         if (isCash) {
-          coaBankAccountId = accounts?.find(a => a.code === '1110')?.id
+          coaBankAccountId = accounts?.find(a => a.id === depositMappings?.cashAccountId)?.id
         } else if (depositReceived && depositPaymentMode === 'Bank Transfer') {
           const effectiveBankId = depositBankId || defaultBank?.id || propAccounts?.[0]?.id
           coaBankAccountId = effectiveBankId ? getPropertyBankAccountId(effectiveBankId, propAccounts, bankMappings) : undefined

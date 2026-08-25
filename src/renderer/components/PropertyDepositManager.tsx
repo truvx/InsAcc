@@ -320,13 +320,19 @@ export default function PropertyDepositManager({
   const [isSettingsExpanded, setIsSettingsExpanded] = useState(false)
   const [localMappings, setLocalMappings] = useState({
     liabilityAccountId: depositMappings.liabilityAccountId,
-    forfeitureIncomeAccountId: depositMappings.forfeitureIncomeAccountId
+    forfeitureIncomeAccountId: depositMappings.forfeitureIncomeAccountId,
+    securityChequesAccountId: depositMappings.securityChequesAccountId,
+    cashAccountId: depositMappings.cashAccountId,
+    pdcReceivableAccountId: depositMappings.pdcReceivableAccountId
   })
 
   useEffect(() => {
     setLocalMappings({
       liabilityAccountId: depositMappings.liabilityAccountId,
-      forfeitureIncomeAccountId: depositMappings.forfeitureIncomeAccountId
+      forfeitureIncomeAccountId: depositMappings.forfeitureIncomeAccountId,
+      securityChequesAccountId: depositMappings.securityChequesAccountId,
+      cashAccountId: depositMappings.cashAccountId,
+      pdcReceivableAccountId: depositMappings.pdcReceivableAccountId
     })
   }, [depositMappings])
 
@@ -554,15 +560,15 @@ export default function PropertyDepositManager({
     let coaBankAccountId: string | undefined
     if (!isPdcMode) {
       if (isCashMode) {
-        coaBankAccountId = accounts.find(a => a.code === '1110')?.id
+        coaBankAccountId = accounts.find(a => a.id === depositMappings.cashAccountId)?.id
         if (!coaBankAccountId) {
-          setToast({ visible: true, message: 'Cash In Hand account (1110) not found.', type: 'error' })
+          setToast({ visible: true, message: 'Cash account not found in mappings.', type: 'error' })
           return
         }
       } else if (isSecurityChequeMode) {
-        coaBankAccountId = accounts.find(a => a.code === '1420')?.id
+        coaBankAccountId = accounts.find(a => a.id === depositMappings.securityChequesAccountId)?.id
         if (!coaBankAccountId) {
-          setToast({ visible: true, message: 'Security Cheques Received account (1420) not found.', type: 'error' })
+          setToast({ visible: true, message: 'Security Cheques account not found in mappings.', type: 'error' })
           return
         }
       } else {
@@ -761,15 +767,15 @@ export default function PropertyDepositManager({
 
     let coaBankAccountId: string | undefined
     if (isCashMode) {
-      coaBankAccountId = accounts.find(a => a.code === '1110')?.id
+      coaBankAccountId = accounts.find(a => a.id === depositMappings.cashAccountId)?.id
       if (!coaBankAccountId) {
-        setToast({ visible: true, message: 'Cash In Hand account (1110) not found.', type: 'error' })
+        setToast({ visible: true, message: 'Cash account not found in mappings.', type: 'error' })
         return
       }
     } else if (isSecurityChequeMode) {
-      coaBankAccountId = accounts.find(a => a.code === '1420')?.id
+      coaBankAccountId = accounts.find(a => a.id === depositMappings.securityChequesAccountId)?.id
       if (!coaBankAccountId) {
-        setToast({ visible: true, message: 'Security Cheques Received account (1420) not found.', type: 'error' })
+        setToast({ visible: true, message: 'Security Cheques account not found in mappings.', type: 'error' })
         return
       }
     } else {
@@ -964,15 +970,15 @@ export default function PropertyDepositManager({
 
     let coaBankAccountId: string | undefined
     if (isCashMode) {
-      coaBankAccountId = accounts.find(a => a.code === '1110')?.id
+      coaBankAccountId = accounts.find(a => a.id === depositMappings.cashAccountId)?.id
       if (!coaBankAccountId) {
-        setToast({ visible: true, message: 'Cash In Hand account (1110) not found.', type: 'error' })
+        setToast({ visible: true, message: 'Cash account not found in mappings.', type: 'error' })
         return
       }
     } else if (isSecurityChequeMode) {
-      coaBankAccountId = accounts.find(a => a.code === '1420')?.id
+      coaBankAccountId = accounts.find(a => a.id === depositMappings.securityChequesAccountId)?.id
       if (!coaBankAccountId) {
-        setToast({ visible: true, message: 'Security Cheques Received account (1420) not found.', type: 'error' })
+        setToast({ visible: true, message: 'Security Cheques account not found in mappings.', type: 'error' })
         return
       }
     } else {
@@ -1247,6 +1253,35 @@ export default function PropertyDepositManager({
                   options={[
                     { value: '', label: '-- Select Revenue Account --' },
                     ...revenueAccounts.map(a => ({ value: a.id, label: `${a.code} — ${a.name}` }))
+                  ]}
+                />
+              </div>
+              <div className="form-row">
+                <Select
+                  label="Security Cheques Account (GL Code)"
+                  value={localMappings.securityChequesAccountId}
+                  onChange={e => setLocalMappings(prev => ({ ...prev, securityChequesAccountId: e.target.value }))}
+                  options={[
+                    { value: '', label: '-- Select Asset Account --' },
+                    ...assetAccounts.map(a => ({ value: a.id, label: `${a.code} — ${a.name}` }))
+                  ]}
+                />
+                <Select
+                  label="Cash Account (GL Code)"
+                  value={localMappings.cashAccountId}
+                  onChange={e => setLocalMappings(prev => ({ ...prev, cashAccountId: e.target.value }))}
+                  options={[
+                    { value: '', label: '-- Select Asset Account --' },
+                    ...assetAccounts.map(a => ({ value: a.id, label: `${a.code} — ${a.name}` }))
+                  ]}
+                />
+                <Select
+                  label="PDC Receivables Account (GL Code)"
+                  value={localMappings.pdcReceivableAccountId}
+                  onChange={e => setLocalMappings(prev => ({ ...prev, pdcReceivableAccountId: e.target.value }))}
+                  options={[
+                    { value: '', label: '-- Select Asset Account --' },
+                    ...assetAccounts.map(a => ({ value: a.id, label: `${a.code} — ${a.name}` }))
                   ]}
                 />
               </div>

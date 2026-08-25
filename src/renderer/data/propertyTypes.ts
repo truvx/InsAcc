@@ -406,6 +406,9 @@ export interface SecurityDeposit {
 export interface SecurityDepositGlMappings {
   liabilityAccountId: string        // GL account for Dr/Cr Security Deposit Liability
   forfeitureIncomeAccountId: string // GL account for Cr Deposit Forfeiture Income
+  securityChequesAccountId: string  // GL account for Security Cheques
+  cashAccountId: string             // GL account for Cash
+  pdcReceivableAccountId: string    // GL account for PDC Receivables
 }
 
 export interface PropertyTransactionCategory {
