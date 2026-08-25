@@ -528,7 +528,12 @@ export default function PropertyDepositManager({
       ? getDefaultPropertyReceiptBankAccount(propAccounts)
       : getDefaultPropertyPaymentBankAccount(propAccounts)
     setSelectedPropBankId(defaultBank ? defaultBank.id : '')
-    setFormPaymentMode('Bank Transfer')
+    const isSecurityCheque = deposit?.transactions?.some((t: any) => t.type === 'Receipt' && t.paymentMode === 'Security Cheque')
+    if (isSecurityCheque && (action === 'Refund' || action === 'PartialRefund' || action === 'Forfeit')) {
+      setFormPaymentMode('Security Cheque')
+    } else {
+      setFormPaymentMode('Bank Transfer')
+    }
     setFormPaymentReference('')
   }
 
@@ -1199,6 +1204,10 @@ export default function PropertyDepositManager({
     return 'Security Cheque'
   }, [activeDeposit])
 
+  const isActiveDepositOrigCheque = useMemo(() => {
+    return activeDeposit?.transactions?.some((t: any) => t.type === 'Receipt' && t.paymentMode === 'Security Cheque') || false
+  }, [activeDeposit])
+
   return (
     <>
       <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={() => setToast(prev => ({ ...prev, visible: false }))} />
@@ -1524,22 +1533,24 @@ export default function PropertyDepositManager({
               required
             />
           </div>
-          <div className="form-group" style={{ marginTop: 12 }}>
-            <Select
-              label="Payment Mode"
-              value={formPaymentMode}
-              onChange={e => setFormPaymentMode(e.target.value)}
-              options={[
-                { value: 'Cash', label: 'Cash' },
-                { value: 'Bank Transfer', label: 'Bank Transfer' },
-                { value: 'Security Cheque', label: securityChequeLabel },
-                { value: 'Post Dated Cheque (PDC)', label: 'Post Dated Cheque (PDC)' },
-                { value: 'Online Transfer', label: 'Online Transfer' },
-                { value: 'Card', label: 'Card' },
-                { value: 'Other', label: 'Other' }
-              ]}
-            />
-          </div>
+          {!isActiveDepositOrigCheque && (
+            <div className="form-group" style={{ marginTop: 12 }}>
+              <Select
+                label="Payment Mode"
+                value={formPaymentMode}
+                onChange={e => setFormPaymentMode(e.target.value)}
+                options={[
+                  { value: 'Cash', label: 'Cash' },
+                  { value: 'Bank Transfer', label: 'Bank Transfer' },
+                  { value: 'Security Cheque', label: securityChequeLabel },
+                  { value: 'Post Dated Cheque (PDC)', label: 'Post Dated Cheque (PDC)' },
+                  { value: 'Online Transfer', label: 'Online Transfer' },
+                  { value: 'Card', label: 'Card' },
+                  { value: 'Other', label: 'Other' }
+                ]}
+              />
+            </div>
+          )}
           {formPaymentMode !== 'Cash' && formPaymentMode !== 'Security Cheque' && formPaymentMode !== 'Post Dated Cheque (PDC)' && (
             <div className="form-group" style={{ marginTop: 12 }}>
               <Select
@@ -1603,23 +1614,25 @@ export default function PropertyDepositManager({
               required
             />
           </div>
-          <div className="form-group" style={{ marginTop: 12 }}>
-            <Select
-              label="Payment Mode (optional)"
-              value={formPaymentMode}
-              onChange={e => setFormPaymentMode(e.target.value)}
-              options={[
-                { value: '', label: 'None' },
-                { value: 'Cash', label: 'Cash' },
-                { value: 'Bank Transfer', label: 'Bank Transfer' },
-                { value: 'Security Cheque', label: securityChequeLabel },
-                { value: 'Post Dated Cheque (PDC)', label: 'Post Dated Cheque (PDC)' },
-                { value: 'Online Transfer', label: 'Online Transfer' },
-                { value: 'Card', label: 'Card' },
-                { value: 'Other', label: 'Other' }
-              ]}
-            />
-          </div>
+          {!isActiveDepositOrigCheque && (
+            <div className="form-group" style={{ marginTop: 12 }}>
+              <Select
+                label="Payment Mode (optional)"
+                value={formPaymentMode}
+                onChange={e => setFormPaymentMode(e.target.value)}
+                options={[
+                  { value: '', label: 'None' },
+                  { value: 'Cash', label: 'Cash' },
+                  { value: 'Bank Transfer', label: 'Bank Transfer' },
+                  { value: 'Security Cheque', label: securityChequeLabel },
+                  { value: 'Post Dated Cheque (PDC)', label: 'Post Dated Cheque (PDC)' },
+                  { value: 'Online Transfer', label: 'Online Transfer' },
+                  { value: 'Card', label: 'Card' },
+                  { value: 'Other', label: 'Other' }
+                ]}
+              />
+            </div>
+          )}
           <div className="form-group" style={{ marginTop: 12 }}>
             <Input 
               label="Reference Number (optional)" 
@@ -1742,22 +1755,24 @@ export default function PropertyDepositManager({
               required
             />
           </div>
-          <div className="form-group" style={{ marginTop: 12 }}>
-            <Select
-              label="Payment Mode"
-              value={formPaymentMode}
-              onChange={e => setFormPaymentMode(e.target.value)}
-              options={[
-                { value: 'Cash', label: 'Cash' },
-                { value: 'Bank Transfer', label: 'Bank Transfer' },
-                { value: 'Security Cheque', label: securityChequeLabel },
-                { value: 'Post Dated Cheque (PDC)', label: 'Post Dated Cheque (PDC)' },
-                { value: 'Online Transfer', label: 'Online Transfer' },
-                { value: 'Card', label: 'Card' },
-                { value: 'Other', label: 'Other' }
-              ]}
-            />
-          </div>
+          {!isActiveDepositOrigCheque && (
+            <div className="form-group" style={{ marginTop: 12 }}>
+              <Select
+                label="Payment Mode"
+                value={formPaymentMode}
+                onChange={e => setFormPaymentMode(e.target.value)}
+                options={[
+                  { value: 'Cash', label: 'Cash' },
+                  { value: 'Bank Transfer', label: 'Bank Transfer' },
+                  { value: 'Security Cheque', label: securityChequeLabel },
+                  { value: 'Post Dated Cheque (PDC)', label: 'Post Dated Cheque (PDC)' },
+                  { value: 'Online Transfer', label: 'Online Transfer' },
+                  { value: 'Card', label: 'Card' },
+                  { value: 'Other', label: 'Other' }
+                ]}
+              />
+            </div>
+          )}
           {formPaymentMode !== 'Cash' && formPaymentMode !== 'Security Cheque' && formPaymentMode !== 'Post Dated Cheque (PDC)' && (
             <div className="form-group" style={{ marginTop: 12 }}>
               <Select
