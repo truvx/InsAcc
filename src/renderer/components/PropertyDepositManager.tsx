@@ -560,9 +560,9 @@ export default function PropertyDepositManager({
           return
         }
       } else if (isSecurityChequeMode) {
-        coaBankAccountId = accounts.find(a => a.code === '1125')?.id
+        coaBankAccountId = accounts.find(a => a.code === '1420')?.id
         if (!coaBankAccountId) {
-          setToast({ visible: true, message: 'Security Cheques Received account (1125) not found.', type: 'error' })
+          setToast({ visible: true, message: 'Security Cheques Received account (1420) not found.', type: 'error' })
           return
         }
       } else {
@@ -767,9 +767,9 @@ export default function PropertyDepositManager({
         return
       }
     } else if (isSecurityChequeMode) {
-      coaBankAccountId = accounts.find(a => a.code === '1125')?.id
+      coaBankAccountId = accounts.find(a => a.code === '1420')?.id
       if (!coaBankAccountId) {
-        setToast({ visible: true, message: 'Security Cheques Received account (1125) not found.', type: 'error' })
+        setToast({ visible: true, message: 'Security Cheques Received account (1420) not found.', type: 'error' })
         return
       }
     } else {
@@ -970,9 +970,9 @@ export default function PropertyDepositManager({
         return
       }
     } else if (isSecurityChequeMode) {
-      coaBankAccountId = accounts.find(a => a.code === '1125')?.id
+      coaBankAccountId = accounts.find(a => a.code === '1420')?.id
       if (!coaBankAccountId) {
-        setToast({ visible: true, message: 'Security Cheques Received account (1125) not found.', type: 'error' })
+        setToast({ visible: true, message: 'Security Cheques Received account (1420) not found.', type: 'error' })
         return
       }
     } else {
