@@ -78,21 +78,48 @@ export default function PropertyVendors({
   const [drawerVendor, setDrawerVendor] = useState<VendorEntry | null>(null)
   const [filterCategory, setFilterCategory] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [dateFilter, setDateFilter] = useState('All')
   const [showExportMenu, setShowExportMenu] = useState(false)
 
   // ── Computed data ──
+  const filteredData = useMemo(() => {
+    let expList = expenses
+    let vchList = vouchers
+
+    if (dateFilter !== 'All') {
+      const now = new Date()
+      const thirtyDaysAgo = new Date()
+      thirtyDaysAgo.setDate(now.getDate() - 30)
+      const ninetyDaysAgo = new Date()
+      ninetyDaysAgo.setDate(now.getDate() - 90)
+
+      const filterByDate = (dateString: string) => {
+        if (!dateString) return false
+        const d = new Date(dateString)
+        if (dateFilter === 'This Month') return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+        if (dateFilter === 'This Year') return d.getFullYear() === now.getFullYear()
+        if (dateFilter === 'Last 30 Days') return d >= thirtyDaysAgo
+        if (dateFilter === 'Last 90 Days') return d >= ninetyDaysAgo
+        return true
+      }
+      expList = expenses.filter(e => filterByDate(e.date))
+      vchList = vouchers.filter(v => filterByDate(v.date))
+    }
+    return { expList, vchList }
+  }, [expenses, vouchers, dateFilter])
+
   const vendorPaymentTotals = useMemo(() => {
     const map: Record<string, number> = {}
     
     // First include any legacy expenses (if any)
-    expenses.forEach(e => {
+    filteredData.expList.forEach(e => {
       if (e.vendorId) {
         map[e.vendorId] = (map[e.vendorId] || 0) + e.totalAmount
       }
     })
 
     // Then add amounts from payment vouchers
-    vouchers.filter(v => v.type === 'Payment').forEach(v => {
+    filteredData.vchList.filter(v => v.type === 'Payment').forEach(v => {
       let paidToMatch = v.description.match(/\(paid to\s+(.*?)\)$/i)
       if (!paidToMatch && v.description.includes('Expense:')) {
         paidToMatch = v.description.match(/for\s+(.*)$/i)
@@ -108,20 +135,20 @@ export default function PropertyVendors({
       }
     })
     return map
-  }, [expenses, vouchers, vendors])
+  }, [filteredData, vendors])
 
   const vendorExpenseCounts = useMemo(() => {
     const map: Record<string, number> = {}
     
     // Legacy expenses count
-    expenses.forEach(e => {
+    filteredData.expList.forEach(e => {
       if (e.vendorId) {
         map[e.vendorId] = (map[e.vendorId] || 0) + 1
       }
     })
 
     // Payment vouchers count
-    vouchers.filter(v => v.type === 'Payment').forEach(v => {
+    filteredData.vchList.filter(v => v.type === 'Payment').forEach(v => {
       let paidToMatch = v.description.match(/\(paid to\s+(.*?)\)$/i)
       if (!paidToMatch && v.description.includes('Expense:')) {
         paidToMatch = v.description.match(/for\s+(.*)$/i)
@@ -136,7 +163,7 @@ export default function PropertyVendors({
       }
     })
     return map
-  }, [expenses, vouchers, vendors])
+  }, [filteredData, vendors])
 
   const totalPaidAllVendors = useMemo(() =>
     Object.values(vendorPaymentTotals).reduce((s, v) => s + v, 0),
@@ -158,7 +185,7 @@ export default function PropertyVendors({
     if (!drawerVendor) return []
     
     // Legacy expenses
-    const expList = expenses
+    const expList = filteredData.expList
       .filter(e => e.vendorId === drawerVendor.id)
       .map(e => ({
         id: e.id,
@@ -170,7 +197,7 @@ export default function PropertyVendors({
       }))
       
     // Payment vouchers
-    const vchList = vouchers
+    const vchList = filteredData.vchList
       .filter(v => v.type === 'Payment')
       .filter(v => {
         let paidToMatch = v.description.match(/\(paid to\s+(.*?)\)$/i)
@@ -195,7 +222,7 @@ export default function PropertyVendors({
       })
       
     return [...expList, ...vchList].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  }, [expenses, vouchers, drawerVendor])
+  }, [filteredData, drawerVendor])
 
   const vendorLedgerTotal = useMemo(() =>
     vendorLedger.reduce((s, e) => s + e.totalAmount, 0),
@@ -491,6 +518,18 @@ export default function PropertyVendors({
             { value: '', label: 'All Status' },
             { value: 'Active', label: 'Active' },
             { value: 'Inactive', label: 'Inactive' }
+          ]}
+        />
+        <Select
+          value={dateFilter}
+          onChange={(e: any) => setDateFilter(e.target.value)}
+          style={{ minWidth: 140, margin: 0 }}
+          options={[
+            { value: 'All', label: 'All Dates' },
+            { value: 'This Month', label: 'This Month' },
+            { value: 'This Year', label: 'This Year' },
+            { value: 'Last 30 Days', label: 'Last 30 Days' },
+            { value: 'Last 90 Days', label: 'Last 90 Days' }
           ]}
         />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
