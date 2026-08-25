@@ -19,7 +19,7 @@ export default function InvestmentTrialBalance({ currency = 'AED', accounts, vou
   }, [vouchers, dateTo])
 
   const { entries, totals } = useMemo(() => {
-    const coa = generateChartOfAccountsReadModel(accounts, filteredVouchers)
+    const coa = generateChartOfAccountsReadModel(accounts, filteredVouchers, !!dateTo)
     const e = generateTrialBalanceReadModel(coa)
     const leafEntries = e.filter(entry => {
       const acct = accounts.find(a => a.id === entry.accountId)

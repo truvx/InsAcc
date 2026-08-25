@@ -89,7 +89,7 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
     }).filter(v => v.lines.length > 0)
   }, [vouchers, filterPropertyId, leases, properties, dateStart, dateEnd])
 
-  const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, filteredVouchers, !!filterPropertyId), [accounts, filteredVouchers, filterPropertyId])
+  const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, filteredVouchers, !!filterPropertyId || !!dateStart || !!dateEnd), [accounts, filteredVouchers, filterPropertyId, dateStart, dateEnd])
   const tbEntries = useMemo(() => generateTrialBalanceReadModel(coaEntries), [coaEntries])
   const plModel = useMemo(() => generateProfitAndLossReadModel(tbEntries, accounts), [tbEntries, accounts])
   const bsModel = useMemo(() => generateBalanceSheetReadModel(tbEntries, plModel.netProfit, accounts), [tbEntries, plModel.netProfit, accounts])

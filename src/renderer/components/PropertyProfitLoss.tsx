@@ -87,7 +87,7 @@ export default function PropertyProfitLoss({ currency = 'AED', accounts, voucher
     }).filter(v => v.lines.length > 0)
   }, [vouchers, filterPropertyId, leases, properties, dateFrom, dateTo])
 
-  const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, filteredVouchers, !!filterPropertyId), [accounts, filteredVouchers, filterPropertyId])
+  const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, filteredVouchers, !!filterPropertyId || !!dateFrom || !!dateTo), [accounts, filteredVouchers, filterPropertyId, dateFrom, dateTo])
   
   const balances = useMemo(() => {
     const map: Record<string, number> = {}

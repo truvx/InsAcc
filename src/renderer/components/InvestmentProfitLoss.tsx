@@ -52,7 +52,7 @@ export default function InvestmentProfitLoss({ currency = 'AED', accounts, vouch
     return vList
   }, [vouchers, dateFrom, dateTo])
 
-  const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, filteredVouchers), [accounts, filteredVouchers])
+  const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, filteredVouchers, !!dateFrom || !!dateTo), [accounts, filteredVouchers, dateFrom, dateTo])
   
   const balances = useMemo(() => {
     const map: Record<string, number> = {}

@@ -53,7 +53,7 @@ export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vou
     return vList
   }, [vouchers, dateStart, dateEnd])
 
-  const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, filteredVouchers), [accounts, filteredVouchers])
+  const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, filteredVouchers, !!dateStart || !!dateEnd), [accounts, filteredVouchers, dateStart, dateEnd])
   const tbEntries = useMemo(() => generateTrialBalanceReadModel(coaEntries), [coaEntries])
   const plModel = useMemo(() => generateProfitAndLossReadModel(tbEntries, accounts), [tbEntries, accounts])
   const bsModel = useMemo(() => generateBalanceSheetReadModel(tbEntries, plModel.netProfit, accounts), [tbEntries, plModel.netProfit, accounts])
