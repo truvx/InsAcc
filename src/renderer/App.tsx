@@ -1652,9 +1652,28 @@ export default function App() {
       changed = true
     }
     const has1320 = updatedPropAccounts.some(a => a.code === '1320')
+    if (has1320) {
+      updatedPropAccounts = updatedPropAccounts.filter(a => a.code !== '1320')
+      changed = true
+    }
+    // Ensure Cheques in Hand (1130) exists for existing profiles
     const has1130 = updatedPropAccounts.some(a => a.code === '1130')
-    if (has1320 || has1130) {
-      updatedPropAccounts = updatedPropAccounts.filter(a => a.code !== '1320' && a.code !== '1130')
+    if (!has1130) {
+      const ts = new Date().toISOString()
+      updatedPropAccounts.push({
+        id: '1130-prop',
+        code: '1130',
+        name: 'Cheques in Hand',
+        type: 'asset',
+        normalBalance: 'debit',
+        parentId: '1000',
+        isActive: true,
+        description: 'Cheques in Hand',
+        currency: currency === 'INR' ? 'INR' : currency === 'GBP' ? 'GBP' : 'AED',
+        createdAt: ts,
+        updatedAt: ts,
+        module: 'property'
+      })
       changed = true
     }
     const migratedPropAccounts = updatedPropAccounts.map(a => {
