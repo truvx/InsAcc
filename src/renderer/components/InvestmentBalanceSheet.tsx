@@ -42,13 +42,15 @@ function flatRowsFromTree(
 export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vouchers, loggedInUser }: Props) {
   const [drillAccountId, setDrillAccountId] = useState<string | null>(null)
   const [drillAccountName, setDrillAccountName] = useState<string>('')
-  const [dateTo, setDateTo] = useState('')
+  const [dateStart, setDateStart] = useState('')
+  const [dateEnd, setDateEnd] = useState('')
 
   const filteredVouchers = useMemo(() => {
     let vList = vouchers
-    if (dateTo) vList = vList.filter(v => v.date <= dateTo)
+    if (dateStart) vList = vList.filter(v => v.date >= dateStart)
+    if (dateEnd) vList = vList.filter(v => v.date <= dateEnd)
     return vList
-  }, [vouchers, dateTo])
+  }, [vouchers, dateStart, dateEnd])
 
   const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, filteredVouchers), [accounts, filteredVouchers])
   const tbEntries = useMemo(() => generateTrialBalanceReadModel(coaEntries), [coaEntries])
@@ -236,7 +238,7 @@ export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vou
             accountId={drillAccountId}
             accountName={drillAccountName}
             accounts={accounts}
-            vouchers={vouchers}
+            vouchers={filteredVouchers}
             currency={currency}
           />
         )}
@@ -251,17 +253,25 @@ export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vou
         </div>
         <div className="page-header-right" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg-tertiary)', padding: '6px 12px', borderRadius: 8, border: '1px solid var(--divider)' }}>
-            <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>As Of</span>
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>Date Range</span>
             <input
               type="date"
               className="data-table-search-input"
-              value={dateTo}
-              onChange={e => setDateTo(e.target.value)}
+              value={dateStart}
+              onChange={e => setDateStart(e.target.value)}
               style={{ padding: '4px 8px', fontSize: 13, background: 'transparent', border: 'none', width: 'auto' }}
             />
-            {dateTo && (
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>to</span>
+            <input
+              type="date"
+              className="data-table-search-input"
+              value={dateEnd}
+              onChange={e => setDateEnd(e.target.value)}
+              style={{ padding: '4px 8px', fontSize: 13, background: 'transparent', border: 'none', width: 'auto' }}
+            />
+            {(dateStart || dateEnd) && (
               <button
-                onClick={() => setDateTo('')}
+                onClick={() => { setDateStart(''); setDateEnd('') }}
                 className="btn-icon"
                 style={{ width: 24, height: 24, background: 'var(--bg-primary)', border: '1px solid var(--border)' }}
                 title="Clear date"

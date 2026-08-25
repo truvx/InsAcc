@@ -48,12 +48,14 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
   const [drillAccountId, setDrillAccountId] = useState<string | null>(null)
   const [drillAccountName, setDrillAccountName] = useState<string>('')
   const [filterPropertyId, setFilterPropertyId] = useState('')
-  const [dateTo, setDateTo] = useState('')
+  const [dateStart, setDateStart] = useState('')
+  const [dateEnd, setDateEnd] = useState('')
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' })
 
   const filteredVouchers = useMemo(() => {
     let vList = vouchers
-    if (dateTo) vList = vList.filter(v => v.date <= dateTo)
+    if (dateStart) vList = vList.filter(v => v.date >= dateStart)
+    if (dateEnd) vList = vList.filter(v => v.date <= dateEnd)
 
     if (!filterPropertyId) return vList
     
@@ -84,7 +86,7 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
       
       return { ...v, lines: filteredLines }
     }).filter(v => v.lines.length > 0)
-  }, [vouchers, filterPropertyId, leases, properties, dateTo])
+  }, [vouchers, filterPropertyId, leases, properties, dateStart, dateEnd])
 
   const coaEntries = useMemo(() => generateChartOfAccountsReadModel(accounts, filteredVouchers, !!filterPropertyId), [accounts, filteredVouchers, filterPropertyId])
   const tbEntries = useMemo(() => generateTrialBalanceReadModel(coaEntries), [coaEntries])
@@ -326,17 +328,25 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
         <div className="page-header-right">
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg-tertiary)', padding: '6px 12px', borderRadius: 8, border: '1px solid var(--divider)' }}>
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>As Of</span>
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>Date Range</span>
               <input
                 type="date"
                 className="data-table-search-input"
-                value={dateTo}
-                onChange={e => setDateTo(e.target.value)}
+                value={dateStart}
+                onChange={e => setDateStart(e.target.value)}
                 style={{ padding: '4px 8px', fontSize: 13, background: 'transparent', border: 'none', width: 'auto' }}
               />
-              {dateTo && (
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>to</span>
+              <input
+                type="date"
+                className="data-table-search-input"
+                value={dateEnd}
+                onChange={e => setDateEnd(e.target.value)}
+                style={{ padding: '4px 8px', fontSize: 13, background: 'transparent', border: 'none', width: 'auto' }}
+              />
+              {(dateStart || dateEnd) && (
                 <button
-                  onClick={() => setDateTo('')}
+                  onClick={() => { setDateStart(''); setDateEnd('') }}
                   className="btn-icon"
                   style={{ width: 24, height: 24, background: 'var(--bg-primary)', border: '1px solid var(--border)' }}
                   title="Clear date"
