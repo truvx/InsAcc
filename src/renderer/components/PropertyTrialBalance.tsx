@@ -11,7 +11,7 @@ interface Props {
 
 export default function PropertyTrialBalance({ currency = 'AED', accounts, vouchers }: Props) {
   const [dateTo, setDateTo] = useState('')
-  const filteredAccounts = useMemo(() => accounts.filter(a => a.code !== '1130'), [accounts])
+  const filteredAccounts = accounts
 
   const filteredVouchers = useMemo(() => {
     let vList = vouchers
@@ -21,10 +21,7 @@ export default function PropertyTrialBalance({ currency = 'AED', accounts, vouch
 
   const { entries, totals } = useMemo(() => {
     const coa = generateChartOfAccountsReadModel(accounts, filteredVouchers)
-    const e = generateTrialBalanceReadModel(coa).filter(entry => {
-      const acct = accounts.find(a => a.id === entry.accountId)
-      return acct?.code !== '1130'
-    })
+    const e = generateTrialBalanceReadModel(coa)
     const leafEntries = e.filter(entry => {
       const acct = accounts.find(a => a.id === entry.accountId)
       const isParent = acct ? accounts.some(child => child.parentId === acct.id && child.isActive) : false
