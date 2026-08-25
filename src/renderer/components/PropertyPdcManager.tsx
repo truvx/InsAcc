@@ -652,7 +652,7 @@ export default function PropertyPdcManager({
   // The lease creation journal debited 1410 (PDC receivable) for the full rent.
   // When a PDC is cancelled or deleted, we must credit 1410 to remove that receivable.
   // We find the lease creation voucher to identify the income account and post a partial reverse.
-  const postPdcReversalVoucher = (pdc: PdcCheque, existingVouchers: Voucher[]): Voucher[] => {
+  const postPdcReversalVoucher = (pdc: PdcCheque, existingVouchers: Voucher[], isDelete: boolean = false): Voucher[] => {
     if (pdc.status !== 'Pending' && pdc.status !== 'Bounced') return existingVouchers
     const today = new Date().toISOString().split('T')[0]
 
@@ -688,8 +688,8 @@ export default function PropertyPdcManager({
       lines: [
         // Credit 1410 to reduce the PDC receivable
         { accountId: '1410', type: 'Credit', amount: pdc.amount, baseAmount: pdc.amount, narration: `PDC cancelled — ${pdc.chequeNumber}` },
-        // Debit the income account (or 1410 itself as fallback — net neutral on income)
-        { accountId: incomeAccountId || '1410', type: 'Debit', amount: pdc.amount, baseAmount: pdc.amount, narration: `PDC cancelled — reversed rental recognition` },
+        // Debit the income account (if cancelled) or Owner Account (if deleted, to preserve income)
+        { accountId: isDelete ? '2200-prop' : (incomeAccountId || '1410'), type: 'Debit', amount: pdc.amount, baseAmount: pdc.amount, narration: isDelete ? `PDC deleted — transferred to owner account` : `PDC cancelled — reversed rental recognition` },
       ],
       ...(({ referenceType: 'Lease', referenceId: pdc.leaseId }) as any),
     } as Voucher
@@ -769,7 +769,7 @@ export default function PropertyPdcManager({
   const handleDeletePDC = () => {
     if (!deletePdcTarget) return
     // Post a GL reversal to remove the 1410 receivable before deleting the record
-    postPdcReversalVoucher(deletePdcTarget, [...vouchers])
+    postPdcReversalVoucher(deletePdcTarget, [...vouchers], true)
     setPdcCheques(prev => prev.filter(c => c.id !== deletePdcTarget.id))
     onAuditEvent?.(recordModuleEvent('Property Transactions', 'Delete', deletePdcTarget.chequeNumber, deletePdcTarget.id, `Deleted cheque ${deletePdcTarget.chequeNumber}`))
     setToast({ visible: true, message: `PDC ${deletePdcTarget.chequeNumber} deleted.`, type: 'success' })
