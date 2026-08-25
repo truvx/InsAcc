@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import type { PropertyEntry, PropertyDocument } from '../data/propertyTypes'
 import { Button, SearchIcon, CloseIcon, EmptyState, Badge, Input } from './design/DesignSystem'
 import ConfirmDialog from './design/ConfirmDialog'
@@ -83,6 +84,18 @@ function ActionMenu({ onOpen, onDownload, onRename, onEditNotes, onDelete }: {
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState({ top: 0, right: 0 })
+
+  const handleToggle = () => {
+    if (!open && ref.current) {
+      const rect = ref.current.getBoundingClientRect()
+      setPos({
+        top: rect.bottom,
+        right: window.innerWidth - rect.right
+      })
+    }
+    setOpen(!open)
+  }
 
   const actions = [
     { label: 'Open', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>, onClick: onOpen },
@@ -93,15 +106,15 @@ function ActionMenu({ onOpen, onDownload, onRename, onEditNotes, onDelete }: {
   ]
 
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <Button variant="ghost" size="sm" onClick={() => setOpen(!open)}>
+    <div ref={ref}>
+      <Button variant="ghost" size="sm" onClick={handleToggle}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="5" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" /></svg>
       </Button>
-      {open && (
+      {open && createPortal(
         <>
-          <div style={{ position: 'fixed', inset: 0, zIndex: 100 }} onClick={() => setOpen(false)} />
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9999 }} onClick={() => setOpen(false)} />
           <div style={{
-            position: 'absolute', right: 0, top: '100%', zIndex: 101,
+            position: 'fixed', right: pos.right, top: pos.top, zIndex: 10000,
             background: '#fff', border: '1px solid #E5E7EB', borderRadius: 8,
             boxShadow: '0 4px 16px rgba(0,0,0,0.1)', minWidth: 160, padding: 4,
           }}>
@@ -123,7 +136,8 @@ function ActionMenu({ onOpen, onDownload, onRename, onEditNotes, onDelete }: {
               </button>
             ))}
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   )
