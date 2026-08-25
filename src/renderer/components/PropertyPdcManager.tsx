@@ -687,9 +687,9 @@ export default function PropertyPdcManager({
       updatedAt: ts,
       lines: [
         // Credit 1410 to reduce the PDC receivable
-        { accountId: '1410', type: 'Credit', amount: pdc.amount, narration: `PDC cancelled — ${pdc.chequeNumber}` },
+        { accountId: '1410', type: 'Credit', amount: pdc.amount, baseAmount: pdc.amount, narration: `PDC cancelled — ${pdc.chequeNumber}` },
         // Debit the income account (or 1410 itself as fallback — net neutral on income)
-        { accountId: incomeAccountId || '1410', type: 'Debit', amount: pdc.amount, narration: `PDC cancelled — reversed rental recognition` },
+        { accountId: incomeAccountId || '1410', type: 'Debit', amount: pdc.amount, baseAmount: pdc.amount, narration: `PDC cancelled — reversed rental recognition` },
       ],
       ...(({ referenceType: 'Lease', referenceId: pdc.leaseId }) as any),
     } as Voucher

@@ -1716,9 +1716,19 @@ export default function App() {
     const updatedPropVouchers = filteredVouchers.map(v => {
       let vChanged = false
       const updatedLines = v.lines.map(l => {
-        if (l.accountId === '1320' || l.accountId === '1130') {
+        let lChanged = false
+        let newLine = { ...l }
+        if (newLine.accountId === '1320' || newLine.accountId === '1130') {
+          lChanged = true
+          newLine.accountId = '1410'
+        }
+        if (newLine.baseAmount === undefined || isNaN(newLine.baseAmount)) {
+          lChanged = true
+          newLine.baseAmount = typeof newLine.amount === 'number' ? newLine.amount : 0
+        }
+        if (lChanged) {
           vChanged = true
-          return { ...l, accountId: '1410' }
+          return newLine
         }
         return l
       })
