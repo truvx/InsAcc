@@ -549,6 +549,7 @@ export default function PropertyDepositManager({
 
     const isPdcMode = formPaymentMode === 'Post Dated Cheque (PDC)'
     const isCashMode = formPaymentMode === 'Cash'
+    const isSecurityChequeMode = formPaymentMode === 'Security Cheque'
 
     let coaBankAccountId: string | undefined
     if (!isPdcMode) {
@@ -556,6 +557,12 @@ export default function PropertyDepositManager({
         coaBankAccountId = accounts.find(a => a.code === '1110')?.id
         if (!coaBankAccountId) {
           setToast({ visible: true, message: 'Cash In Hand account (1110) not found.', type: 'error' })
+          return
+        }
+      } else if (isSecurityChequeMode) {
+        coaBankAccountId = accounts.find(a => a.code === '1125')?.id
+        if (!coaBankAccountId) {
+          setToast({ visible: true, message: 'Security Cheques Received account (1125) not found.', type: 'error' })
           return
         }
       } else {
@@ -749,16 +756,34 @@ export default function PropertyDepositManager({
       return
     }
 
-    if (!selectedPropBankId) {
-      setToast({ visible: true, message: 'Please select a bank account.', type: 'error' })
-      return
+    const isCashMode = formPaymentMode === 'Cash'
+    const isSecurityChequeMode = formPaymentMode === 'Security Cheque'
+
+    let coaBankAccountId: string | undefined
+    if (isCashMode) {
+      coaBankAccountId = accounts.find(a => a.code === '1110')?.id
+      if (!coaBankAccountId) {
+        setToast({ visible: true, message: 'Cash In Hand account (1110) not found.', type: 'error' })
+        return
+      }
+    } else if (isSecurityChequeMode) {
+      coaBankAccountId = accounts.find(a => a.code === '1125')?.id
+      if (!coaBankAccountId) {
+        setToast({ visible: true, message: 'Security Cheques Received account (1125) not found.', type: 'error' })
+        return
+      }
+    } else {
+      if (!selectedPropBankId) {
+        setToast({ visible: true, message: 'Please select a bank account.', type: 'error' })
+        return
+      }
+      const linkResult = validateBankChartLink(selectedPropBankId, propAccounts, bankMappings)
+      if (!linkResult.valid) {
+        setToast({ visible: true, message: linkResult.error + ' Open Bank Accounts to fix it.', type: 'error' })
+        return
+      }
+      coaBankAccountId = linkResult.chartAccountId
     }
-    const linkResult = validateBankChartLink(selectedPropBankId, propAccounts, bankMappings)
-    if (!linkResult.valid) {
-      setToast({ visible: true, message: linkResult.error + ' Open Bank Accounts to fix it.', type: 'error' })
-      return
-    }
-    const coaBankAccountId = linkResult.chartAccountId
 
     const desc = `Security Deposit Refund: Lease ${activeDeposit.id.split('-')[2] || ''} — Tenant: ${tenantMap.get(activeDeposit.tenantId)}`
     
@@ -934,16 +959,34 @@ export default function PropertyDepositManager({
       return
     }
 
-    if (!selectedPropBankId) {
-      setToast({ visible: true, message: 'Please select a bank account for the refund.', type: 'error' })
-      return
+    const isCashMode = formPaymentMode === 'Cash'
+    const isSecurityChequeMode = formPaymentMode === 'Security Cheque'
+
+    let coaBankAccountId: string | undefined
+    if (isCashMode) {
+      coaBankAccountId = accounts.find(a => a.code === '1110')?.id
+      if (!coaBankAccountId) {
+        setToast({ visible: true, message: 'Cash In Hand account (1110) not found.', type: 'error' })
+        return
+      }
+    } else if (isSecurityChequeMode) {
+      coaBankAccountId = accounts.find(a => a.code === '1125')?.id
+      if (!coaBankAccountId) {
+        setToast({ visible: true, message: 'Security Cheques Received account (1125) not found.', type: 'error' })
+        return
+      }
+    } else {
+      if (!selectedPropBankId) {
+        setToast({ visible: true, message: 'Please select a bank account for the refund.', type: 'error' })
+        return
+      }
+      const linkResult = validateBankChartLink(selectedPropBankId, propAccounts, bankMappings)
+      if (!linkResult.valid) {
+        setToast({ visible: true, message: linkResult.error + ' Open Bank Accounts to fix it.', type: 'error' })
+        return
+      }
+      coaBankAccountId = linkResult.chartAccountId
     }
-    const linkResult = validateBankChartLink(selectedPropBankId, propAccounts, bankMappings)
-    if (!linkResult.valid) {
-      setToast({ visible: true, message: linkResult.error + ' Open Bank Accounts to fix it.', type: 'error' })
-      return
-    }
-    const coaBankAccountId = linkResult.chartAccountId
 
     const desc = `Security Deposit Partial Refund: Lease ${activeDeposit.id.split('-')[2] || ''} — Tenant: ${tenantMap.get(activeDeposit.tenantId)}`
 
@@ -1140,6 +1183,15 @@ export default function PropertyDepositManager({
   ], [currency, mappingError, vouchers, leaseMap, properties])
 
   const statusOptions = ['All', 'Expected', 'Received', 'Held', 'Partially Refunded', 'Fully Refunded', 'Partially Forfeited', 'Fully Forfeited', 'Closed']
+
+  const securityChequeLabel = useMemo(() => {
+    if (!activeDeposit) return 'Security Cheque'
+    const originalChequeTx = activeDeposit.transactions?.find((tx: any) => tx.type === 'Receipt' && tx.paymentMode === 'Security Cheque')
+    if (originalChequeTx && originalChequeTx.paymentReference) {
+      return `Security Cheque (${originalChequeTx.paymentReference})`
+    }
+    return 'Security Cheque'
+  }, [activeDeposit])
 
   return (
     <>
@@ -1368,7 +1420,7 @@ export default function PropertyDepositManager({
               value={formPaymentMode}
               onChange={e => setFormPaymentMode(e.target.value)}
               options={[
-                { value: 'Post Dated Cheque (PDC)', label: 'Security Cheque' },
+                { value: 'Security Cheque', label: securityChequeLabel },
                 { value: 'Bank Transfer', label: 'Bank Transfer' },
                 { value: 'Cash', label: 'Cash' }
               ]}
@@ -1445,7 +1497,7 @@ export default function PropertyDepositManager({
               options={[
                 { value: 'Cash', label: 'Cash' },
                 { value: 'Bank Transfer', label: 'Bank Transfer' },
-                { value: 'Cheque', label: 'Cheque' },
+                { value: 'Security Cheque', label: securityChequeLabel },
                 { value: 'Post Dated Cheque (PDC)', label: 'Post Dated Cheque (PDC)' },
                 { value: 'Online Transfer', label: 'Online Transfer' },
                 { value: 'Card', label: 'Card' },
@@ -1453,18 +1505,20 @@ export default function PropertyDepositManager({
               ]}
             />
           </div>
-          <div className="form-group" style={{ marginTop: 12 }}>
-            <Select
-              label="Source Bank Account"
-              value={selectedPropBankId}
-              onChange={e => setSelectedPropBankId(e.target.value)}
-              options={propAccounts.map(b => ({
-                value: b.id,
-                label: `${b.institution} (${b.currency})`
-              }))}
-              required
-            />
-          </div>
+          {formPaymentMode !== 'Cash' && formPaymentMode !== 'Security Cheque' && formPaymentMode !== 'Post Dated Cheque (PDC)' && (
+            <div className="form-group" style={{ marginTop: 12 }}>
+              <Select
+                label="Source Bank Account"
+                value={selectedPropBankId}
+                onChange={e => setSelectedPropBankId(e.target.value)}
+                options={propAccounts.map(b => ({
+                  value: b.id,
+                  label: `${b.institution} (${b.currency})`
+                }))}
+                required
+              />
+            </div>
+          )}
           <div className="form-group" style={{ marginTop: 12 }}>
             <Input 
               label="Reference Number (optional)" 
@@ -1523,7 +1577,7 @@ export default function PropertyDepositManager({
                 { value: '', label: 'None' },
                 { value: 'Cash', label: 'Cash' },
                 { value: 'Bank Transfer', label: 'Bank Transfer' },
-                { value: 'Cheque', label: 'Cheque' },
+                { value: 'Security Cheque', label: securityChequeLabel },
                 { value: 'Post Dated Cheque (PDC)', label: 'Post Dated Cheque (PDC)' },
                 { value: 'Online Transfer', label: 'Online Transfer' },
                 { value: 'Card', label: 'Card' },
@@ -1655,14 +1709,40 @@ export default function PropertyDepositManager({
           </div>
           <div className="form-group" style={{ marginTop: 12 }}>
             <Select
-              label="Refund Bank Account"
-              value={selectedPropBankId}
-              onChange={e => setSelectedPropBankId(e.target.value)}
-              options={propAccounts.map(b => ({
-                value: b.id,
-                label: `${b.institution} (${b.currency})`
-              }))}
-              required
+              label="Payment Mode"
+              value={formPaymentMode}
+              onChange={e => setFormPaymentMode(e.target.value)}
+              options={[
+                { value: 'Cash', label: 'Cash' },
+                { value: 'Bank Transfer', label: 'Bank Transfer' },
+                { value: 'Security Cheque', label: securityChequeLabel },
+                { value: 'Post Dated Cheque (PDC)', label: 'Post Dated Cheque (PDC)' },
+                { value: 'Online Transfer', label: 'Online Transfer' },
+                { value: 'Card', label: 'Card' },
+                { value: 'Other', label: 'Other' }
+              ]}
+            />
+          </div>
+          {formPaymentMode !== 'Cash' && formPaymentMode !== 'Security Cheque' && formPaymentMode !== 'Post Dated Cheque (PDC)' && (
+            <div className="form-group" style={{ marginTop: 12 }}>
+              <Select
+                label="Refund Bank Account"
+                value={selectedPropBankId}
+                onChange={e => setSelectedPropBankId(e.target.value)}
+                options={propAccounts.map(b => ({
+                  value: b.id,
+                  label: `${b.institution} (${b.currency})`
+                }))}
+                required
+              />
+            </div>
+          )}
+          <div className="form-group" style={{ marginTop: 12 }}>
+            <Input 
+              label="Reference Number (optional)" 
+              value={formPaymentReference} 
+              onChange={e => setFormPaymentReference(e.target.value)} 
+              placeholder="e.g. TXN-12345" 
             />
           </div>
           <div className="form-group" style={{ marginTop: 12 }}>
