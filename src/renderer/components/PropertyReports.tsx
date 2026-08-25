@@ -59,6 +59,7 @@ export default function PropertyReports({
   currency = 'AED', dateFormat = 'DD/MM/YYYY', language = 'English', onAuditEvent,
   onNavigate,
   expenses = [],
+  loggedInUser = 'User',
 }: Props) {
   const [period, setPeriod] = useState<PeriodOption>('this-month')
   const [customStart, setCustomStart] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0])
