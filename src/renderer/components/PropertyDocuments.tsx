@@ -194,6 +194,46 @@ export default function PropertyDocuments({
   }, [documents, searchQuery, filterType, sortKey, sortAsc])
 
   const handleUpload = async () => {
+    if (!window.api?.openFileDialog) {
+      // Browser fallback
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.multiple = true
+      input.onchange = async (e) => {
+        const fileList = Array.from((e.target as HTMLInputElement).files || [])
+        if (fileList.length === 0) return
+        
+        setUploading(true)
+        let successCount = 0
+        const SUPPORTED = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt', 'jpg', 'jpeg', 'png', 'webp'])
+        for (const file of fileList) {
+          const ext = file.name.split('.').pop()?.toLowerCase() || ''
+          if (!SUPPORTED.has(ext)) continue
+          try {
+            const buffer = await file.arrayBuffer()
+            const result = await addFileFromBuffer(
+              { name: file.name, size: file.size, buffer },
+              selectedPropertyId,
+              currentUser,
+            )
+            if (result.success) successCount++
+          } catch {}
+        }
+    
+        if (successCount > 0) {
+          showToast(`${successCount} file(s) uploaded successfully`, 'success')
+          if (setPropDocuments) {
+            setPropDocuments(getDocumentsByProperty(selectedPropertyId))
+          }
+        } else {
+          showToast('Upload failed or no valid files', 'error')
+        }
+        setUploading(false)
+      }
+      input.click()
+      return
+    }
+
     const files = await openFileDialog()
     if (!files || files.length === 0) return
 

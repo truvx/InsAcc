@@ -152,13 +152,32 @@ export async function addFileFromBuffer(
   if (!baseName) return { success: false, error: 'Invalid file name' }
 
   try {
-    const pathResult = await window.api.generateStoragePath({
-      propertyId,
-      fileName: baseName,
-      extension,
-    })
+    let finalName = baseName
+    let storagePath = ''
 
-    await window.api.writeFileBuffer(pathResult.storagePath, file.buffer)
+    if (window.api?.generateStoragePath) {
+      const pathResult = await window.api.generateStoragePath({
+        propertyId,
+        fileName: baseName,
+        extension,
+      })
+      finalName = pathResult.finalName
+      storagePath = pathResult.storagePath
+
+      if (window.api.writeFileBuffer) {
+        await window.api.writeFileBuffer(storagePath, file.buffer)
+      }
+    } else {
+      // Browser fallback (Vercel)
+      finalName = `${baseName}.${extension}`
+      storagePath = `browser-mock-path/${finalName}`
+      try {
+        const base64 = btoa(new Uint8Array(file.buffer).reduce((data, byte) => data + String.fromCharCode(byte), ''))
+        localStorage.setItem(`doc_${finalName}`, base64)
+      } catch (e) {
+        console.warn('Could not cache file in localStorage, quota exceeded?', e)
+      }
+    }
 
     const mimeMap: Record<string, string> = {
       pdf: 'application/pdf', doc: 'application/msword',
@@ -172,7 +191,7 @@ export async function addFileFromBuffer(
     const doc: PropertyDocument = {
       id: generateId(),
       propertyId,
-      fileName: pathResult.finalName,
+      fileName: finalName,
       originalFileName: file.name,
       fileExtension: extension,
       mimeType: mimeMap[extension] || 'application/octet-stream',
@@ -180,7 +199,7 @@ export async function addFileFromBuffer(
       uploadDate: new Date().toISOString(),
       uploadedBy: uploadedBy || 'User',
       notes: '',
-      storagePath: pathResult.storagePath,
+      storagePath: storagePath,
     }
 
     const existing = loadMetadata()
