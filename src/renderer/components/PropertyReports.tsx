@@ -207,6 +207,7 @@ export default function PropertyReports({
             status: filterStatus,
           },
           properties,
+          propAccounts,
           units,
           tenants,
           leases,
@@ -361,6 +362,7 @@ export default function PropertyReports({
       })
     } catch (e) {
       console.error(e)
+      alert('Export failed: ' + (e as any).message)
     }
   }
 

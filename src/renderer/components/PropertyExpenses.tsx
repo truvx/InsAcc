@@ -1093,7 +1093,7 @@ export default function PropertyExpenses({
           <Input label="Description / Narration" value={formDescription} onChange={e => setFormDescription(e.target.value)} placeholder="e.g. AC maintenance works" />
           <Input label="Amount" type="number" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0.00" />
           <Input label="Tax Amount (Optional)" type="number" value={formTax} onChange={e => setFormTax(e.target.value)} placeholder="0.00" />
-          <Input label="Total Amount (AED)" type="number" value={String(totalAmountValue)} disabled placeholder="0.00" />
+          <Input label={`Total Amount`} type="number" value={String(totalAmountValue)} disabled placeholder="0.00" />
         </div>
 
         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)', borderBottom: '1px solid var(--border)', paddingBottom: 6, marginBottom: 12 }}>

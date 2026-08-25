@@ -162,6 +162,34 @@ export function formatDate(dateStr: string, format: string = 'DD/MM/YYYY'): stri
   return dateStr
 }
 
+export function formatMonthYear(dateStr: string): string {
+  if (!dateStr) return ''
+  const datePart = dateStr.split('T')[0]
+  let y = '', m = ''
+  if (datePart.includes('-')) {
+    const p = datePart.split('-')
+    if (p[0].length === 4) { y = p[0]; m = p[1] } // YYYY-MM-DD
+    else { m = p[1]; y = p[2] } // DD-MM-YYYY
+  } else if (datePart.includes('/')) {
+    const p = datePart.split('/')
+    if (p[2]?.length === 4) { y = p[2]; m = p[1] } // DD/MM/YYYY
+    else { y = p[0]; m = p[1] } // YYYY/MM/DD
+  } else {
+    const dObj = new Date(dateStr)
+    if (!isNaN(dObj.getTime())) {
+      y = String(dObj.getFullYear())
+      m = String(dObj.getMonth() + 1).padStart(2, '0')
+    }
+  }
+
+  if (y && m) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const mIndex = parseInt(m, 10) - 1
+    if (mIndex >= 0 && mIndex < 12) return `${months[mIndex]} ${y}`
+  }
+  return dateStr
+}
+
 export function maskAccountNumber(accountNumber: string): string {
   if (!accountNumber || accountNumber === '----') return ''
   return `****${accountNumber.slice(-4)}`

@@ -35,7 +35,7 @@ export function generateGeneralLedgerReadModel(
         closingBalance: Math.round(balance * 100) / 100,
       }
     })
-    .filter(r => r.debitTotal !== 0 || r.creditTotal !== 0 || r.closingBalance !== 0 || r.openingBalance !== 0)
+    .filter(r => r.debitTotal !== 0 || r.creditTotal !== 0 || r.closingBalance !== 0 || r.openingBalance !== 0 || r.code === '1130')
 }
 
 // 2. Chart of Accounts Read Model

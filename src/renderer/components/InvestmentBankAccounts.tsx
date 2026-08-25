@@ -850,7 +850,7 @@ export default function InvestmentBankAccounts({
             <Input label="IBAN" value={formIban} onChange={e => setFormIban(e.target.value)} placeholder="e.g. AE83024000..." />
             <Input label="SWIFT Code" value={formSwift} onChange={e => setFormSwift(e.target.value)} placeholder="e.g. EIBKAEADXXX" />
             <Input label="Branch" value={formBranch} onChange={e => setFormBranch(e.target.value)} placeholder="e.g. Sheikh Zayed Road Branch" />
-            <Input label="Initial Amount (AED)" type="number" value={formOpeningBalance} onChange={e => setFormOpeningBalance(e.target.value)} placeholder="0" />
+            <Input label={`Initial Amount`} type="number" value={formOpeningBalance} onChange={e => setFormOpeningBalance(e.target.value)} placeholder="0" />
             <Select label="Theme Color" value={formTheme} onChange={e => setFormTheme(e.target.value)} options={themeOptions} />
             {dialog.type === 'editAccount' && (
               <Select label="Status" value={formStatus} onChange={e => setFormStatus(e.target.value as any)} options={statusOptions} />
@@ -859,14 +859,14 @@ export default function InvestmentBankAccounts({
         )}
         {dialog.type === 'deposit' && (
           <div className="form-row">
-            <Input label="Amount (AED)" type="number" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0" autoFocus />
+            <Input label={`Amount`} type="number" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0" autoFocus />
             <Input label="Description" value={formDesc} onChange={e => setFormDesc(e.target.value)} placeholder="e.g. Dividend payment" />
             <Input label="Date" type="date" value={formDate} onChange={e => setFormDate(e.target.value)} />
           </div>
         )}
         {dialog.type === 'withdraw' && (
           <div className="form-row">
-            <Input label="Amount (AED)" type="number" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0" autoFocus />
+            <Input label={`Amount`} type="number" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0" autoFocus />
             <Input label="Description" value={formDesc} onChange={e => setFormDesc(e.target.value)} placeholder="e.g. Asset purchase" />
             <Input label="Date" type="date" value={formDate} onChange={e => setFormDate(e.target.value)} />
           </div>

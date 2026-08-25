@@ -235,6 +235,7 @@ export interface ExcelExportParams {
     vendorName?: string
   }
   properties?: any[]
+  propAccounts?: any[]
   units?: any[]
   tenants?: any[]
   leases?: any[]
@@ -996,8 +997,12 @@ export function getFilteredVouchers(p: ExcelExportParams) {
       const isLinkedToProp = v.lines.some(l => l.referenceType === 'Property' && l.referenceId === propId)
       const lease = p.leases?.find(l => l.leaseNumber === v.reference || v.lines.some(line => line.referenceType === 'Lease' && line.referenceId === l.id))
       const isLinkedToLeaseProp = lease?.propertyId === propId
+      const isLinkedToTag = v.tags && v.tags.some(t => t.toLowerCase() === bName)
       
-      if (!isLinkedToProp && !isLinkedToLeaseProp) return false
+      const linkedBankAccounts = p.propAccounts?.filter(a => a.propertyId === propId).map(a => a.chartAccountId) || []
+      const isLinkedToBankAccount = v.lines.some(l => linkedBankAccounts.includes(l.accountId))
+
+      if (!isLinkedToProp && !isLinkedToLeaseProp && !isLinkedToTag && !isLinkedToBankAccount) return false
     }
     if (p.filters?.tenantName && p.filters.tenantName !== 'All') {
       const tName = p.filters.tenantName.toLowerCase()
@@ -1410,7 +1415,7 @@ export async function exportSideBySideReport(p: SideBySideExportParams): Promise
     lines.push('')
     lines.push(`${esc(p.footer.label)},${p.footer.value}`)
 
-    const buf = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    const buf = '\uFEFF' + lines.join('\n')
     return saveWithDialog(`${p.filename}.csv`, [{ name: 'CSV', extensions: ['csv'] }], buf)
   }
 
@@ -1521,7 +1526,7 @@ export async function exportTableData(p: TableExportParams): Promise<string | nu
       ...p.rows.map(r => r.map(esc).join(',')),
       ...(p.foot ? p.foot.map(r => r.map(esc).join(',')) : [])
     ]
-    const buf = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    const buf = '\uFEFF' + lines.join('\n')
     return saveWithDialog(`${p.filename}.csv`, [{ name: 'CSV', extensions: ['csv'] }], buf)
   }
 

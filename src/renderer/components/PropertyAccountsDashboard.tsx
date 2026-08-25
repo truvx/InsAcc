@@ -275,7 +275,7 @@ export default function PropertyAccountsDashboard({ currency = 'AED', accounts, 
         filename: 'Financial_Overview_Activity',
         currency: currency,
         columns,
-        data: rows,
+        rows,
         format,
         generatedBy: 'System'
       })

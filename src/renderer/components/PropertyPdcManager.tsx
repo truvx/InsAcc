@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import type { PdcCheque, LeaseEntry, TenantEntry, PropAccount, PropertyEntry, UnitEntry } from '../data/propertyTypes'
 import type { Column } from './design/Table'
 import { Badge, Button, SearchIcon, CloseIcon, EmptyState, Modal, Select, KpiCard, ChevronLeftIcon } from './design/DesignSystem'
-import { formatDate } from '../utils'
+import { formatDate, formatMonthYear } from '../utils'
 import { transitionPdcCheque, replaceCheque } from '../services/propertyPdcService'
 import Toast from './Toast'
 import ConfirmDialog from './design/ConfirmDialog'
@@ -883,7 +883,7 @@ export default function PropertyPdcManager({
       sortable: true,
       render: row => (
         <span className="text-sm fw-500">
-          {row.dueDate ? new Date(row.dueDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—'}
+          {row.dueDate ? formatMonthYear(row.dueDate) : '—'}
         </span>
       ),
     },
@@ -961,7 +961,7 @@ export default function PropertyPdcManager({
         meta?.propertyName || '—',
         chq.chequeNumber,
         meta?.bankName || '—',
-        chq.dueDate ? new Date(chq.dueDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—',
+        chq.dueDate ? formatMonthYear(chq.dueDate) : '—',
         chq.status === 'Cleared' && chq.clearedAt ? formatDate(chq.clearedAt, dateFormat) : '—',
         chq.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }),
         chq.status

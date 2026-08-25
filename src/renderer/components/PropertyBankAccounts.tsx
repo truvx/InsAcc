@@ -1006,7 +1006,7 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
             <Input label="IBAN" value={formIban} onChange={e => setFormIban(e.target.value)} placeholder="e.g. AE83024000..." />
             <Input label="SWIFT Code" value={formSwift} onChange={e => setFormSwift(e.target.value)} placeholder="e.g. DIBKAEADXXX" />
             <Input label="Branch" value={formBranch} onChange={e => setFormBranch(e.target.value)} placeholder="e.g. Sheikh Zayed Road Branch" />
-            <Input label="Initial Amount (AED)" type="number" value={formOpeningBalance} onChange={e => setFormOpeningBalance(e.target.value)} placeholder="0" />
+            <Input label={`Initial Amount`} type="number" value={formOpeningBalance} onChange={e => setFormOpeningBalance(e.target.value)} placeholder="0" />
             <Select label="Property (Optional)" value={formPropertyId} onChange={e => setFormPropertyId(e.target.value)} options={[{ value: '', label: 'Select Property' }, ...properties.map(p => ({ value: p.id, label: p.name }))]} />
             <Select label="Theme Color" value={formTheme} onChange={e => setFormTheme(e.target.value)} options={themeOptions} />
             {dialog.type === 'editAccount' && (
@@ -1016,14 +1016,14 @@ export default function PropertyBankAccounts({ currency = 'AED', dateFormat = 'D
         )}
         {dialog.type === 'deposit' && (
           <div className="form-row">
-            <Input label="Amount (AED)" type="number" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0" autoFocus />
+            <Input label={`Amount`} type="number" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0" autoFocus />
             <Input label="Description" value={formDesc} onChange={e => setFormDesc(e.target.value)} placeholder="e.g. Dividend payment" />
             <Input label="Date" type="date" value={formDate} onChange={e => setFormDate(e.target.value)} />
           </div>
         )}
         {dialog.type === 'withdraw' && (
           <div className="form-row">
-            <Input label="Amount (AED)" type="number" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0" autoFocus />
+            <Input label={`Amount`} type="number" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0" autoFocus />
             <Input label="Description" value={formDesc} onChange={e => setFormDesc(e.target.value)} placeholder="e.g. ATM withdrawal" />
             <Input label="Date" type="date" value={formDate} onChange={e => setFormDate(e.target.value)} />
           </div>
