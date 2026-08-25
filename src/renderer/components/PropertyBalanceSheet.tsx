@@ -9,6 +9,7 @@ import Toast from './Toast'
 
 import { Landmark, ListChecks, Filter, Download } from 'lucide-react'
 import { CurrencyText } from './design/CurrencyText'
+import { formatDate } from '../utils'
 
 import type { PropertyEntry, LeaseEntry, PropAccount } from '../data/propertyTypes'
 
@@ -267,7 +268,7 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
         moduleName: 'Properties Management',
         title: 'Balance Sheet',
         subtitle: filterPropertyId ? `Property: ${properties.find(p => p.id === filterPropertyId)?.name}` : 'All Properties',
-        periodLabel: dateStart && dateEnd ? `${dateStart} to ${dateEnd}` : dateStart ? `From ${dateStart}` : dateEnd ? `Until ${dateEnd}` : 'All Time',
+        periodLabel: dateStart && dateEnd ? `${formatDate(dateStart)} to ${formatDate(dateEnd)}` : dateStart ? `From ${formatDate(dateStart)}` : dateEnd ? `Until ${formatDate(dateEnd)}` : 'All Time',
         currency,
         filename: `Balance_Sheet_${new Date().toISOString().split('T')[0]}`,
         leftCol: {

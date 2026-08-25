@@ -9,6 +9,7 @@ import Toast from './Toast'
 import { Landmark, ListChecks, Download } from 'lucide-react'
 import { CurrencyText } from './design/CurrencyText'
 import { exportSideBySideReport } from '../services/reportExportService'
+import { formatDate } from '../utils'
 
 interface Props {
   currency?: string
@@ -189,7 +190,7 @@ export default function InvestmentBalanceSheet({ currency = 'AED', accounts, vou
       moduleName: 'Investment',
       title: 'Balance Sheet',
       subtitle: 'Financial position at a glance',
-      periodLabel: dateStart && dateEnd ? `${dateStart} to ${dateEnd}` : dateStart ? `From ${dateStart}` : dateEnd ? `Until ${dateEnd}` : 'All Time',
+      periodLabel: dateStart && dateEnd ? `${formatDate(dateStart)} to ${formatDate(dateEnd)}` : dateStart ? `From ${formatDate(dateStart)}` : dateEnd ? `Until ${formatDate(dateEnd)}` : 'All Time',
       currency: currency,
       filename: `Balance_Sheet_${new Date().toISOString().split('T')[0]}`,
       leftCol: {
