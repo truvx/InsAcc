@@ -1382,7 +1382,7 @@ export default function PropertyPdcManager({
                     onChange={e => setSelectedBankAccountId(e.target.value)}
                     options={propAccounts.map(acc => ({
                       value: acc.id,
-                      label: `${acc.institution} (${acc.currency})`
+                      label: acc.institution
                     }))}
                   />
                 )}
