@@ -1309,7 +1309,7 @@ export default function PropertyPdcManager({
             <label>Reason for Bounce *</label>
             <input type="text" placeholder="e.g. Insufficient Funds" value={bounceReason} onChange={e => setBounceReason(e.target.value)} />
           </div>
-          {!activePdc.bankAccountId && (
+          {(!activePdc || !activePdc.bankAccountId) && (
             <div className="pdc-modal-field">
               <Select
                 label="Bank Account (if bounce fee charged)"
