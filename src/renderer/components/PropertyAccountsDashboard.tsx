@@ -601,7 +601,7 @@ export default function PropertyAccountsDashboard({ currency = 'AED', accounts, 
                           </span>
                         </td>
                         <td style={{ padding: '12px 10px', fontSize: 12, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.description}</td>
-                        <td style={{ padding: '12px 10px', fontSize: 12, color: '#1F2937', fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{fmtCompact(row.amount, currency)}</td>
+                        <td style={{ padding: '12px 10px', fontSize: 12, color: '#1F2937', fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}><CurrencyText value={row.amount} currency={currency} /></td>
                       </tr>
                     )
                   })}
