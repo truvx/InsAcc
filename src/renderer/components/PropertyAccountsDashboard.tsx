@@ -4,6 +4,7 @@ import type { LeaseEntry, TenantEntry, PropertyEntry } from '../data/propertyTyp
 import type { PropAccount } from '../data/propertyTypes'
 import { getPropertyFinancialSummary } from '../services/propertyFinancialAggregationService'
 import { getAccountBalance } from '../accounting/ledgerService'
+import { exportFinancialOverviewPdf } from '../services/reportExportService'
 import { Modal, Button, ChevronDownIcon } from './design/DesignSystem'
 import AccountDrillDown from './AccountDrillDown'
 import { formatDate } from '../utils'
@@ -254,7 +255,32 @@ export default function PropertyAccountsDashboard({ currency = 'AED', accounts, 
   const handleExport = async (format: 'pdf' | 'xlsx' | 'csv' | 'print') => {
     setShowExportMenu(false)
     if (format === 'pdf' || format === 'print') {
-      window.print()
+      const tableRows = allRecentActivity.map(r => [
+        r.date, r.number, r.type, r.description, `${currency} ${r.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}`
+      ])
+      exportFinancialOverviewPdf({
+        title: 'Property Financial Overview',
+        subtitle: 'Real-time financial position derived from the accounting book.',
+        filename: `property-financial-overview-${new Date().toISOString().split('T')[0]}`,
+        currency,
+        kpis: [
+          { label: 'Cash', value: metrics.cash, color: '#3BA549' },
+          { label: 'Bank Balance', value: metrics.bankBalance, color: '#0A0A6F' },
+          { label: 'Rental Income', value: metrics.rentalIncome, color: '#8B5CF6' },
+          { label: 'Deposits Held', value: metrics.depositsHeld, color: '#F59E0B' },
+          { label: 'Total Revenue', value: metrics.totalRevenue, color: '#1B65A6' }
+        ],
+        summary: [
+          { label: 'CASH ON HAND', value: `${currency} ${metrics.cash.toLocaleString(undefined, {minimumFractionDigits: 2})}` },
+          { label: 'BANK BALANCE', value: `${currency} ${metrics.bankBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}` },
+          { label: 'RENTAL INCOME', value: `${currency} ${metrics.rentalIncome.toLocaleString(undefined, {minimumFractionDigits: 2})}` },
+          { label: 'DEPOSITS HELD', value: `${currency} ${metrics.depositsHeld.toLocaleString(undefined, {minimumFractionDigits: 2})}` },
+          { label: 'TOTAL REVENUE', value: `${currency} ${metrics.totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2})}` }
+        ],
+        recentActivity: tableRows,
+        moduleName: 'Property',
+        generatedBy: 'System'
+      })
       return
     }
 

@@ -1701,13 +1701,7 @@ export interface FinancialOverviewExportParams {
   filename: string
   currency: string
   kpis: { label: string; value: number; color: string }[]
-  summary: {
-    initialCapital: number
-    currentAssets: number
-    revenue: number
-    expenses: number
-    growth: number
-  }
+  summary: { label: string; value: string | number }[]
   recentActivity: any[][]
   moduleName?: string
   generatedBy?: string
@@ -1716,11 +1710,6 @@ export interface FinancialOverviewExportParams {
 export async function exportFinancialOverviewPdf(p: FinancialOverviewExportParams): Promise<string | null> {
   p.recentActivity = formatRows(p.recentActivity)
   p.kpis.forEach(k => { k.value = roundDecimals(k.value) })
-  p.summary.initialCapital = roundDecimals(p.summary.initialCapital)
-  p.summary.currentAssets = roundDecimals(p.summary.currentAssets)
-  p.summary.revenue = roundDecimals(p.summary.revenue)
-  p.summary.expenses = roundDecimals(p.summary.expenses)
-  p.summary.growth = roundDecimals(p.summary.growth)
 
   const doc = new jsPDF('portrait')
   
@@ -1739,30 +1728,36 @@ export async function exportFinancialOverviewPdf(p: FinancialOverviewExportParam
 
   y += 15
 
-  // 3. KPI Cards (4 in a row, fits in 210mm portrait)
-  const cardWidth = 42
+  // 3. KPI Cards (Dynamic sizing)
+  const maxKpis = 5
+  const kpiCount = Math.min(p.kpis.length, maxKpis)
+  const availableWidth = 180 // 210 - 14 - 16
+  const cardSpacing = 4
+  const cardWidth = Math.floor((availableWidth - (kpiCount - 1) * cardSpacing) / kpiCount)
   const cardHeight = 22
   let x = 14
   
-  p.kpis.forEach((kpi) => {
+  p.kpis.slice(0, maxKpis).forEach((kpi) => {
     // Draw box
     doc.setDrawColor(226, 232, 240) // light border
     doc.setFillColor(255, 255, 255)
     doc.roundedRect(x, y, cardWidth, cardHeight, 2, 2, 'FD')
 
     // Label
-    doc.setFontSize(8)
+    doc.setFontSize(7)
     doc.setTextColor(100, 116, 139)
-    doc.text(kpi.label.toUpperCase(), x + 3, y + 7)
+    let label = kpi.label.toUpperCase()
+    if (label.length > 18) label = label.substring(0, 15) + '...'
+    doc.text(label, x + 3, y + 7)
 
     // Value
-    doc.setFontSize(12)
+    doc.setFontSize(10)
     doc.setTextColor(...getThemeColorArray()) // standard dark green for values
     doc.setFont('helvetica', 'bold')
     doc.text(`${p.currency} ${kpi.value.toLocaleString(undefined, {minimumFractionDigits: 2})}`, x + 3, y + 16)
     doc.setFont('helvetica', 'normal')
     
-    x += cardWidth + 4 // 4mm spacing
+    x += cardWidth + cardSpacing
   })
 
   y += cardHeight + 8
@@ -1778,25 +1773,17 @@ export async function exportFinancialOverviewPdf(p: FinancialOverviewExportParam
   doc.text('Quick Financial Summary', 18, y + 7)
   doc.setFont('helvetica', 'normal')
 
-  const summaryLabels = ['INITIAL CAPITAL', 'CURRENT ASSETS', 'REVENUE', 'EXPENSES', 'GROWTH']
-  const summaryValues = [
-    `${p.currency} ${p.summary.initialCapital.toLocaleString(undefined, {minimumFractionDigits: 2})}`,
-    `${p.currency} ${p.summary.currentAssets.toLocaleString(undefined, {minimumFractionDigits: 2})}`,
-    `${p.currency} ${p.summary.revenue.toLocaleString(undefined, {minimumFractionDigits: 2})}`,
-    `${p.currency} ${p.summary.expenses.toLocaleString(undefined, {minimumFractionDigits: 2})}`,
-    `${p.summary.growth > 0 ? '+' : ''}${p.summary.growth.toFixed(1)}%`
-  ]
-
   let sx = 18
   const sWidth = 35
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < Math.min(p.summary.length, 5); i++) {
+    const item = p.summary[i]
     doc.setFontSize(7)
     doc.setTextColor(100, 116, 139)
-    doc.text(summaryLabels[i], sx, y + 15)
+    doc.text(item.label.toUpperCase(), sx, y + 15)
     
     doc.setFontSize(9)
     doc.setTextColor(17, 24, 39)
-    doc.text(summaryValues[i], sx, y + 21)
+    doc.text(String(item.value), sx, y + 21)
     sx += sWidth
   }
 

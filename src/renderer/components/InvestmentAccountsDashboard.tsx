@@ -175,7 +175,13 @@ export default function InvestmentAccountsDashboard({
           { label: 'Investment Assets', value: projection.investments, color: '#1B65A6' },
           { label: 'Expenses', value: projection.quickSummary.expenses, color: '#EF4444' }
         ],
-        summary: projection.quickSummary,
+        summary: [
+          { label: 'INITIAL CAPITAL', value: `${currency} ${projection.quickSummary.initialCapital.toLocaleString(undefined, {minimumFractionDigits: 2})}` },
+          { label: 'CURRENT ASSETS', value: `${currency} ${projection.quickSummary.currentAssets.toLocaleString(undefined, {minimumFractionDigits: 2})}` },
+          { label: 'REVENUE', value: `${currency} ${projection.quickSummary.revenue.toLocaleString(undefined, {minimumFractionDigits: 2})}` },
+          { label: 'EXPENSES', value: `${currency} ${projection.quickSummary.expenses.toLocaleString(undefined, {minimumFractionDigits: 2})}` },
+          { label: 'GROWTH', value: `${projection.quickSummary.growth > 0 ? '+' : ''}${projection.quickSummary.growth.toFixed(1)}%` }
+        ],
         recentActivity: tableRows,
         generatedBy: loggedInUser
       })
