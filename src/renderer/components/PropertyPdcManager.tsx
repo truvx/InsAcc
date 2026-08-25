@@ -883,7 +883,7 @@ export default function PropertyPdcManager({
       sortable: true,
       render: row => (
         <span className="text-sm fw-500">
-          {new Date(row.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+          {row.dueDate ? new Date(row.dueDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—'}
         </span>
       ),
     },
@@ -961,7 +961,7 @@ export default function PropertyPdcManager({
         meta?.propertyName || '—',
         chq.chequeNumber,
         meta?.bankName || '—',
-        new Date(chq.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        chq.dueDate ? new Date(chq.dueDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—',
         chq.status === 'Cleared' && chq.clearedAt ? formatDate(chq.clearedAt, dateFormat) : '—',
         chq.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }),
         chq.status
