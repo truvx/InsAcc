@@ -109,6 +109,7 @@ export function transitionPdcCheque(
     bouncedVoucherId?: string | null
     feeVoucherId?: string | null
     penaltyVoucherId?: string | null
+    clearedVia?: 'Cash' | 'Cheque' | 'Bank Transfer' | null
   } = {}
 ): PdcCheque[] {
   const now = params.timestamp || new Date().toISOString()
@@ -146,6 +147,7 @@ export function transitionPdcCheque(
       bouncedVoucherId: params.bouncedVoucherId !== undefined ? params.bouncedVoucherId : chq.bouncedVoucherId,
       feeVoucherId: params.feeVoucherId !== undefined ? params.feeVoucherId : chq.feeVoucherId,
       penaltyVoucherId: params.penaltyVoucherId !== undefined ? params.penaltyVoucherId : chq.penaltyVoucherId,
+      clearedVia: params.clearedVia !== undefined ? params.clearedVia : chq.clearedVia,
     }
 
     if (newStatus === 'Deposited') update.depositedAt = now

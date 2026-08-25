@@ -166,6 +166,7 @@ export interface PdcCheque {
   bouncedVoucherId?: string | null
   feeVoucherId?: string | null
   penaltyVoucherId?: string | null
+  clearedVia?: 'Cash' | 'Cheque' | 'Bank Transfer' | null
   auditHistory?: PdcAuditEntry[]
 }
 
