@@ -378,7 +378,7 @@ export default function PropertyAccountsDashboard({ currency = 'AED', accounts, 
           </Button>
           {showExportMenu && (
             <div style={{ position: 'absolute', top: '100%', right: 32, marginTop: 4, background: '#fff', border: '1px solid var(--border-color)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, width: 160, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              <button className="export-menu-item" onClick={() => handleExport('print')}>Print Dashboard</button>
+
               <button className="export-menu-item" onClick={() => handleExport('pdf')}>Save as PDF</button>
               <div style={{ borderTop: '1px solid var(--border-color)', margin: '4px 0' }} />
               <button className="export-menu-item" onClick={() => handleExport('xlsx')}>Export Activity (Excel)</button>
