@@ -878,6 +878,16 @@ export default function PropertyPdcManager({
       render: row => <span className="text-sm text-secondary">{chequeMeta[row.id]?.bankName || '—'}</span>,
     },
     {
+      key: 'date',
+      header: 'Due Date',
+      sortable: true,
+      render: row => (
+        <span className="text-sm fw-500">
+          {new Date(row.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+        </span>
+      ),
+    },
+    {
       key: 'amount',
       header: 'Amount',
       numeric: true,
@@ -942,7 +952,7 @@ export default function PropertyPdcManager({
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     // Allow exporting empty list to generate a template/blank report
 
-    const columns = ['Lease No.', 'Tenant', 'Property', 'Cheque No.', 'Bank', 'Cleared Date', 'Amount', 'Status']
+    const columns = ['Lease No.', 'Tenant', 'Property', 'Cheque No.', 'Bank', 'Due Date', 'Cleared Date', 'Amount', 'Status']
     const rows = filtered.map(chq => {
       const meta = chequeMeta[chq.id]
       return [
@@ -951,6 +961,7 @@ export default function PropertyPdcManager({
         meta?.propertyName || '—',
         chq.chequeNumber,
         meta?.bankName || '—',
+        new Date(chq.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
         chq.status === 'Cleared' && chq.clearedAt ? formatDate(chq.clearedAt, dateFormat) : '—',
         chq.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }),
         chq.status
