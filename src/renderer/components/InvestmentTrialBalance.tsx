@@ -73,6 +73,7 @@ export default function InvestmentTrialBalance({ currency = 'AED', accounts, vou
         vouchers={filteredVouchers}
         entries={entries}
         totals={totals}
+        moduleName="Investment"
       />
     </>
   )

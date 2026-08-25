@@ -28,6 +28,7 @@ interface Props {
   vouchers: Voucher[]
   entries: TrialBalanceEntry[]
   totals: { totalDebit: number; totalCredit: number }
+  moduleName?: string
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -82,7 +83,7 @@ function buildTree(accounts: Account[], entries: TrialBalanceEntry[]): TreeNode[
   return getChildren(null)
 }
 
-export default function TrialBalanceTree({ currency = 'AED', accounts, vouchers, entries, totals }: Props) {
+export default function TrialBalanceTree({ currency = 'AED', accounts, vouchers, entries, totals, moduleName = 'Accounting' }: Props) {
   const [drillAccountId, setDrillAccountId] = useState<string | null>(null)
   const [drillAccountName, setDrillAccountName] = useState<string>('')
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(accounts.map(a => a.id)))
@@ -150,7 +151,7 @@ export default function TrialBalanceTree({ currency = 'AED', accounts, vouchers,
     ]
 
     await exportTableData({
-      moduleName: 'Accounting',
+      moduleName,
       format,
       title: `Statement of Account`,
       subtitle: `${accountName} (${accountCode})`,
@@ -162,7 +163,7 @@ export default function TrialBalanceTree({ currency = 'AED', accounts, vouchers,
       currency,
       generatedBy: ''
     })
-  }, [accounts, vouchers, currency])
+  }, [accounts, vouchers, currency, moduleName])
 
   const handleBalanceClick = useCallback((id: string, name: string) => {
     setDrillAccountId(id)

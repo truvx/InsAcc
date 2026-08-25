@@ -74,6 +74,7 @@ export default function PropertyTrialBalance({ currency = 'AED', accounts, vouch
         vouchers={filteredVouchers}
         entries={entries}
         totals={totals}
+        moduleName="Property"
       />
     </>
   )
