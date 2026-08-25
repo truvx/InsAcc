@@ -149,11 +149,25 @@ export function useLazyPersistedState<T>(key: string, defaultValue: T): [T, Reac
       }
     }
 
+    const handleHistorySync = (e: CustomEvent<{ key: string; value: any }>) => {
+      if (e.detail && e.detail.key === key) {
+        try {
+          const valStr = JSON.stringify(e.detail.value)
+          // We intentionally DO NOT set isRemoteUpdate.current = true here.
+          // We want the subsequent render to trigger the Supabase push!
+          cache.set(key, valStr)
+          setState(e.detail.value)
+        } catch {}
+      }
+    }
+
     window.addEventListener('storage' as any, handleStorageChange)
     window.addEventListener('insacc-remote-sync' as any, handleRemoteSync)
+    window.addEventListener('insacc-history-sync' as any, handleHistorySync)
     return () => {
       window.removeEventListener('storage', handleStorageChange)
       window.removeEventListener('insacc-remote-sync', handleRemoteSync as EventListener)
+      window.removeEventListener('insacc-history-sync', handleHistorySync as EventListener)
     }
   }, [key])
 

@@ -167,8 +167,8 @@ function applySnapshot(snapshot: Snapshot) {
         parsedValue = value;
       }
       
-      // Tell lazyPersistedState to update its React state!
-      window.dispatchEvent(new CustomEvent('insacc-remote-sync', { 
+      // Tell lazyPersistedState to update its React state and push to backend
+      window.dispatchEvent(new CustomEvent('insacc-history-sync', { 
         detail: { key, value: parsedValue } 
       }));
     }
