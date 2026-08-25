@@ -104,7 +104,7 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
   const tree = useMemo(() => buildAccountTree(accounts) as unknown as TreeNode[], [accounts])
 
   const assetRows = useMemo(() => {
-    const rows = flatRowsFromTree(tree, balances, ['asset']).filter(r => r.account.code !== '1130' && r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 }))
+    const rows = flatRowsFromTree(tree, balances, ['asset']).filter(r => r.depth > 0).map(r => ({ ...r, depth: r.depth - 1 }))
     return filterPropertyId ? rows.filter(r => {
       if (r.balance !== 0) return true
       return propAccounts.some(pa => pa.chartAccountId === r.account.id && pa.propertyId === filterPropertyId)

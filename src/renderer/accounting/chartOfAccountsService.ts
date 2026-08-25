@@ -290,6 +290,7 @@ export function initializeDefaultChartOfAccounts(country: string = 'UAE', module
   return [
     ...shared,
     mkAcct('1110-prop', '1110', 'Cash In Hand', 'asset', 'debit', '1000', 'Cash', 'property'),
+    mkAcct('1130-prop', '1130', 'Cheques in Hand', 'asset', 'debit', '1000', 'Cheques in Hand', 'property'),
     // Bank child accounts are NOT created here — they are added by
     // initializeApplication() with canonical IDs (acc-dib-current etc.)
     // to avoid duplicate accounts with the same code.
@@ -446,6 +447,7 @@ export function verifyAndCreateSystemAccounts(accounts: Account[], baseCurrency:
   } else {
     // Property-specific accounts only
     ensureAccount('1110-prop', '1110', 'Cash In Hand', 'asset', 'debit', '1000', 'Cash', 'property')
+    ensureAccount('1130-prop', '1130', 'Cheques in Hand', 'asset', 'debit', '1000', 'Cheques in Hand', 'property')
     ensureAccount('1270', '1270', 'Real Estate', 'asset', 'debit', '1000', 'Property Assets', 'property')
     ensureAccount('1410', '1410', 'Post-dated Cheques Receivable', 'asset', 'debit', '1000', 'PDC Receivables Pool', 'property')
     ensureAccount('1420', '1420', 'Security Cheques Received', 'asset', 'debit', '1000', 'Security Cheques Received Pool', 'property')
