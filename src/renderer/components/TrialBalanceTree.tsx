@@ -153,10 +153,10 @@ export default function TrialBalanceTree({ currency = 'AED', accounts, vouchers,
     await exportTableData({
       moduleName,
       format,
-      title: `Statement of Account`,
+      title: `LEDGER REPORT`,
       subtitle: `${accountName} (${accountCode})`,
       periodLabel: 'All Time',
-      filename: `SOA_${accountName.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}`,
+      filename: `LEDGER_${accountName.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}`,
       columns: ['Voucher', 'Date', 'Narration', `Debit (${currency})`, `Credit (${currency})`],
       rows,
       foot,
@@ -238,14 +238,14 @@ export default function TrialBalanceTree({ currency = 'AED', accounts, vouchers,
                     e.stopPropagation()
                     setExportMenuOpenFor(exportMenuOpenFor === node.id ? null : node.id)
                   }}
-                  title="Click to export Statement of Account"
+                  title="Click to export Ledger Report"
                 >
                   {node.name}
                 </span>
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <button
                     className="tb-export-btn"
-                    title="Export Statement"
+                    title="Export Ledger"
                     onClick={e => {
                       e.stopPropagation()
                       setExportMenuOpenFor(exportMenuOpenFor === node.id ? null : node.id)
