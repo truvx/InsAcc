@@ -162,7 +162,7 @@ export default function InvestmentAccountsDashboard({
       URL.revokeObjectURL(url)
     } else if (format === 'pdf') {
       const tableRows = allRecentActivity.map(r => [
-        r.date, r.number, r.type, r.description, `${currency} ${r.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}`
+        r.date, r.number, r.type, r.description, r.amount.toLocaleString(undefined, {minimumFractionDigits: 2})
       ])
       exportFinancialOverviewPdf({
         title: 'Financial Overview',

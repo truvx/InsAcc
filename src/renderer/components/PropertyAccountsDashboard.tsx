@@ -256,7 +256,7 @@ export default function PropertyAccountsDashboard({ currency = 'AED', accounts, 
     setShowExportMenu(false)
     if (format === 'pdf' || format === 'print') {
       const tableRows = allRecentActivity.map(r => [
-        r.date, r.number, r.type, r.description, `${currency} ${r.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}`
+        r.date, r.number, r.type, r.description, r.amount.toLocaleString(undefined, {minimumFractionDigits: 2})
       ])
       exportFinancialOverviewPdf({
         title: 'Property Financial Overview',

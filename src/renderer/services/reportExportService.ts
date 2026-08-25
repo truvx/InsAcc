@@ -1819,7 +1819,7 @@ export async function exportFinancialOverviewPdf(p: FinancialOverviewExportParam
 
   autoTable(doc, {
     startY: y + 8,
-    head: [['Date', 'Voucher', 'Type', 'Description', 'Amount']],
+    head: [['Date', 'Voucher', 'Type', 'Description', `Amount (${p.currency})`]],
     body: p.recentActivity,
     theme: 'grid',
     styles: { fontSize: 8 },
