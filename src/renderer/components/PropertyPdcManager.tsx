@@ -452,9 +452,9 @@ export default function PropertyPdcManager({
   const handleBounce = () => {
     if (!activePdc) return
     let mappingId = ''
+    const bankAcctId = activePdc.bankAccountId || selectedBankAccountId
     
     if (bounceFee && Number(bounceFee) > 0) {
-      const bankAcctId = activePdc.bankAccountId || selectedBankAccountId
       if (!bankAcctId) {
         setToast({ visible: true, message: 'Please select a bank account for the bounce fee.', type: 'error' })
         return
