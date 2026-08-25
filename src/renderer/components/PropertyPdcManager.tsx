@@ -215,6 +215,7 @@ export default function PropertyPdcManager({
   const [clearDate, setClearDate] = useState(new Date().toISOString().split('T')[0])
   const [cancelReason, setCancelReason] = useState('')
   const [clearNotes, setClearNotes] = useState('')
+  const [clearPaymentMode, setClearPaymentMode] = useState<'Cheque' | 'Cash' | 'Bank Transfer'>('Bank Transfer')
 
   const chequeMeta = useMemo(() => {
     const map: Record<string, { tenantName: string; propertyName: string; bankName: string; unitNumber: string }> = {}
@@ -368,62 +369,118 @@ export default function PropertyPdcManager({
     if (action === 'Clear' || action === 'ClearPDC') {
       setClearDate(new Date().toISOString().split('T')[0])
       setClearNotes('')
+    setClearPaymentMode('Bank Transfer')
     }
   }
 
   const handleClearPDC = () => {
-    if (!activePdc || !selectedBankAccountId) return
-    const linkResult = validateBankChartLink(selectedBankAccountId, propAccounts, bankMappings)
-    if (!linkResult.valid) {
-      setToast({ visible: true, message: linkResult.error + ' Open Bank Accounts to fix it.', type: 'error' })
-      return
-    }
-    const mappingId = linkResult.chartAccountId
-    const hasChildren = accounts.some(a => a.parentId === mappingId && a.isActive)
-    if (hasChildren) {
-      setToast({ visible: true, message: 'Bank account CoA mapping is a group account, not a unique leaf.', type: 'error' })
-      return
-    }
-    if (activePdc.depositedVoucherId) {
-      setToast({ visible: true, message: 'This cheque has already been cleared. No duplicate entry created.', type: 'error' })
-      return
-    }
+    if (!activePdc) return
+
+    const today = new Date().toISOString().split('T')[0]
     const desc = clearNotes
       ? `Clear PDC: ${activePdc.chequeNumber} — ${clearNotes}`
       : `Clear PDC: ${activePdc.chequeNumber}`
-    const draftResult = accountingEngine.processAccountingEvent(
-      'PDC_DEPOSITED',
-      {
-        amount: activePdc.amount,
-        date: clearDate,
-        description: desc,
-        currency, exchangeRate: 1, baseCurrency: currency,
-        bankAccount: mappingId,
-        referenceType: 'Lease', referenceId: activePdc.leaseId, createdBy: 'user',
-      },
-      accounts, vouchers
-    )
-    if (!draftResult.success || !draftResult.voucher) {
-      setToast({ visible: true, message: draftResult.errors.map(e => e.message).join(', '), type: 'error' })
+
+    if (clearPaymentMode === 'Bank Transfer') {
+      // Original bank transfer path — requires bank account selection
+      if (!selectedBankAccountId) {
+        setToast({ visible: true, message: 'Please select a bank account.', type: 'error' })
+        return
+      }
+      const linkResult = validateBankChartLink(selectedBankAccountId, propAccounts, bankMappings)
+      if (!linkResult.valid) {
+        setToast({ visible: true, message: linkResult.error + ' Open Bank Accounts to fix it.', type: 'error' })
+        return
+      }
+      const mappingId = linkResult.chartAccountId
+      if (accounts.some(a => a.parentId === mappingId && a.isActive)) {
+        setToast({ visible: true, message: 'Bank account CoA mapping is a group account, not a unique leaf.', type: 'error' })
+        return
+      }
+      if (activePdc.depositedVoucherId) {
+        setToast({ visible: true, message: 'This cheque has already been cleared.', type: 'error' })
+        return
+      }
+      const draftResult = accountingEngine.processAccountingEvent(
+        'PDC_DEPOSITED',
+        { amount: activePdc.amount, date: clearDate, description: desc, currency, exchangeRate: 1, baseCurrency: currency, bankAccount: mappingId, referenceType: 'Lease', referenceId: activePdc.leaseId, createdBy: 'user' },
+        accounts, vouchers
+      )
+      if (!draftResult.success || !draftResult.voucher) {
+        setToast({ visible: true, message: draftResult.errors.map(e => e.message).join(', '), type: 'error' })
+        return
+      }
+      const postResult = autoPostVoucher(accountingEngine, draftResult.voucher, accounts)
+      if (!postResult.success || !postResult.voucher) {
+        setToast({ visible: true, message: postResult.errors.map(e => e.message).join(', '), type: 'error' })
+        return
+      }
+      try {
+        const updated = transitionPdcCheque(pdcCheques, activePdc.id, 'Cleared', {
+          bankAccountId: selectedBankAccountId, depositedVoucherId: postResult.voucher.id, timestamp: clearDate, user: 'user'
+        })
+        setPdcCheques(updated)
+        setVouchers(prev => [postResult.voucher!, ...prev])
+        invalidateBalanceCache()
+        onAuditEvent?.(recordModuleEvent('Property Transactions', 'Update', activePdc.chequeNumber, activePdc.id, `Cleared cheque ${activePdc.chequeNumber} via bank transfer`))
+        setToast({ visible: true, message: `Cheque ${activePdc.chequeNumber} cleared. Voucher ${postResult.voucher.number} posted.`, type: 'success' })
+        setActiveAction(null)
+        setActivePdc(null)
+      } catch (e: any) {
+        setToast({ visible: true, message: e.message, type: 'error' })
+      }
       return
     }
-    const postResult = autoPostVoucher(accountingEngine, draftResult.voucher, accounts)
-    if (!postResult.success || !postResult.voucher) {
-      setToast({ visible: true, message: postResult.errors.map(e => e.message).join(', '), type: 'error' })
+
+    // Cash or Cheque mode — debit Cash In Hand (1110) or a generic clearing account
+    // For Cash: Dr Cash In Hand / Cr 1410
+    // For Cheque (physical): Dr Cheques on Hand (1120) / Cr 1410 — if account exists, else Cash
+    const cashAccount = accounts.find(a => a.code === '1110')
+    const chequeOnHandAccount = accounts.find(a => a.code === '1120') || cashAccount
+    const debitAccountId = clearPaymentMode === 'Cash' ? cashAccount?.id : chequeOnHandAccount?.id
+
+    if (!debitAccountId) {
+      setToast({ visible: true, message: 'Cash In Hand account (1110) not found in chart of accounts.', type: 'error' })
       return
     }
+
+    if (activePdc.depositedVoucherId) {
+      setToast({ visible: true, message: 'This cheque has already been cleared.', type: 'error' })
+      return
+    }
+
+    const ts = new Date().toISOString()
+    const vId = `v-pdc-clear-${activePdc.id}-${Date.now()}`
+    const clearVoucher = Object.assign({
+      id: vId,
+      number: `RV-PDC-${activePdc.chequeNumber}`,
+      date: clearDate || today,
+      type: 'Receipt' as const,
+      reference: '',
+      description: desc,
+      paymentMode: clearPaymentMode === 'Cash' ? 'Cash' as const : 'Cheque' as const,
+      status: 'Posted' as const,
+      currency: currency || 'AED',
+      exchangeRate: 1,
+      baseCurrency: currency || 'AED',
+      createdBy: 'user',
+      createdAt: ts,
+      updatedAt: ts,
+      lines: [
+        { accountId: debitAccountId, type: 'Debit' as const, amount: activePdc.amount, narration: `PDC cleared — ${clearPaymentMode}` },
+        { accountId: '1410', type: 'Credit' as const, amount: activePdc.amount, narration: `PDC receivable settled` },
+      ],
+    }, { referenceType: 'Lease', referenceId: activePdc.leaseId })
+
     try {
       const updated = transitionPdcCheque(pdcCheques, activePdc.id, 'Cleared', {
-        bankAccountId: selectedBankAccountId,
-        depositedVoucherId: postResult.voucher.id,
-        timestamp: clearDate,
-        user: 'user'
+        depositedVoucherId: vId, timestamp: clearDate || today, user: 'user'
       })
       setPdcCheques(updated)
-      setVouchers(prev => [postResult.voucher!, ...prev])
+      setVouchers(prev => [clearVoucher as any, ...prev])
       invalidateBalanceCache()
-      onAuditEvent?.(recordModuleEvent('Property Transactions', 'Update', activePdc.chequeNumber, activePdc.id, `Cleared cheque ${activePdc.chequeNumber} via bank`))
-      setToast({ visible: true, message: `Cheque ${activePdc.chequeNumber} cleared. Voucher ${postResult.voucher.number} posted.`, type: 'success' })
+      onAuditEvent?.(recordModuleEvent('Property Transactions', 'Update', activePdc.chequeNumber, activePdc.id, `Cleared cheque ${activePdc.chequeNumber} via ${clearPaymentMode}`))
+      setToast({ visible: true, message: `Cheque ${activePdc.chequeNumber} cleared via ${clearPaymentMode}.`, type: 'success' })
       setActiveAction(null)
       setActivePdc(null)
     } catch (e: any) {
@@ -1281,15 +1338,47 @@ export default function PropertyPdcManager({
                   <label>Amount</label>
                   <div className="text-sm fw-600" style={{ padding: '6px 0' }}><CurrencyText value={activePdc.amount} currency={currency} /></div>
                 </div>
-                <Select
-                  label="Deposit Into Bank Account *"
-                  value={selectedBankAccountId}
-                  onChange={e => setSelectedBankAccountId(e.target.value)}
-                  options={propAccounts.map(acc => ({
-                    value: acc.id,
-                    label: `${acc.institution} (${acc.currency})`
-                  }))}
-                />
+
+                {/* Payment Mode Selector */}
+                <div className="pdc-modal-field">
+                  <label>Payment Mode *</label>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                    {(['Cheque', 'Cash', 'Bank Transfer'] as const).map(mode => (
+                      <button
+                        key={mode}
+                        onClick={() => setClearPaymentMode(mode)}
+                        style={{
+                          flex: 1,
+                          padding: '8px 0',
+                          borderRadius: 8,
+                          border: clearPaymentMode === mode ? '2px solid var(--primary)' : '1.5px solid var(--border)',
+                          background: clearPaymentMode === mode ? 'var(--primary-light, #eef2ff)' : 'transparent',
+                          color: clearPaymentMode === mode ? 'var(--primary)' : 'var(--text-secondary)',
+                          fontWeight: clearPaymentMode === mode ? 600 : 400,
+                          fontSize: 13,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        {mode}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Bank account — only for Bank Transfer */}
+                {clearPaymentMode === 'Bank Transfer' && (
+                  <Select
+                    label="Deposit Into Bank Account *"
+                    value={selectedBankAccountId}
+                    onChange={e => setSelectedBankAccountId(e.target.value)}
+                    options={propAccounts.map(acc => ({
+                      value: acc.id,
+                      label: `${acc.institution} (${acc.currency})`
+                    }))}
+                  />
+                )}
+
                 <div className="pdc-modal-field">
                   <label>Clear Date *</label>
                   <input type="date" value={clearDate} onChange={e => setClearDate(e.target.value)} />
