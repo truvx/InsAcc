@@ -4,7 +4,7 @@ import type { LeaseEntry, TenantEntry, PropertyEntry } from '../data/propertyTyp
 import type { PropAccount } from '../data/propertyTypes'
 import { getPropertyFinancialSummary } from '../services/propertyFinancialAggregationService'
 import { getAccountBalance } from '../accounting/ledgerService'
-import { Modal } from './design/DesignSystem'
+import { Modal, Button, ChevronDownIcon } from './design/DesignSystem'
 import AccountDrillDown from './AccountDrillDown'
 import { formatDate } from '../utils'
 import {
@@ -92,10 +92,11 @@ function getVoucherBadge(type: string) {
   }
 }
 
-export default function PropertyAccountsDashboard({ currency = 'AED', accounts, vouchers, bankAccounts, bankMappings, properties, leases = [], tenants = [] }: Props) {
+export default function PropertyAccountsDashboard({ currency = 'AED', accounts, vouchers, bankAccounts, bankMappings, properties, leases, tenants }: Props) {
   const [drillAccountId, setDrillAccountId] = useState<string | null>(null)
   const [drillAccountName, setDrillAccountName] = useState<string>('')
-  const [drillLeases, setDrillLeases] = useState(false)
+  const [drillLeases, setDrillLeases] = useState<boolean>(false)
+  const [showExportMenu, setShowExportMenu] = useState(false)
 
   const getLeaseMonths = (s: string, e: string): number => {
     const start = new Date(s + 'T00:00:00')
@@ -250,6 +251,39 @@ export default function PropertyAccountsDashboard({ currency = 'AED', accounts, 
   const cardBorder = '1px solid #E5E7EB'
   const cardShadow = '0 1px 3px rgba(0,0,0,0.05)'
 
+  const handleExport = async (format: 'pdf' | 'xlsx' | 'csv' | 'print') => {
+    setShowExportMenu(false)
+    if (format === 'pdf' || format === 'print') {
+      window.print()
+      return
+    }
+
+    try {
+      const { exportTableData } = await import('../services/reportExportService')
+      const columns = ['Date', 'Voucher #', 'Type', 'Description', 'Amount']
+      const rows = allRecentActivity.map(a => [
+        a.date,
+        a.number,
+        a.type,
+        a.description,
+        a.amount.toString()
+      ])
+      
+      await exportTableData({
+        title: 'Recent Accounting Activity',
+        subtitle: 'Financial Overview',
+        filename: 'Financial_Overview_Activity',
+        currency: currency,
+        columns,
+        data: rows,
+        format,
+        generatedBy: 'System'
+      })
+    } catch (e) {
+      console.error('Export failed', e)
+    }
+  }
+
   return (
     <div style={{ background: PAGE_BG, minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
       <Modal open={drillAccountId !== null} title={`Account Drill Down — ${drillAccountName}`} onClose={() => setDrillAccountId(null)}>
@@ -307,10 +341,24 @@ export default function PropertyAccountsDashboard({ currency = 'AED', accounts, 
         </div>
       </Modal>
 
-      <div className="page-header" style={{ background: PAGE_BG, borderBottom: '1px solid #E5E7EB' }}>
+      <div className="page-header" style={{ background: PAGE_BG, borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div className="page-header-left">
           <div className="page-title">Financial Overview</div>
           <div className="page-subtitle">Real-time financial position derived from the accounting book.</div>
+        </div>
+        <div className="page-header-right" style={{ position: 'relative', paddingRight: 32 }}>
+          <Button variant="secondary" size="sm" onClick={() => setShowExportMenu(!showExportMenu)}>
+            Print / Export <ChevronDownIcon />
+          </Button>
+          {showExportMenu && (
+            <div style={{ position: 'absolute', top: '100%', right: 32, marginTop: 4, background: '#fff', border: '1px solid var(--border-color)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, width: 160, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <button className="export-menu-item" onClick={() => handleExport('print')}>Print Dashboard</button>
+              <button className="export-menu-item" onClick={() => handleExport('pdf')}>Save as PDF</button>
+              <div style={{ borderTop: '1px solid var(--border-color)', margin: '4px 0' }} />
+              <button className="export-menu-item" onClick={() => handleExport('xlsx')}>Export Activity (Excel)</button>
+              <button className="export-menu-item" onClick={() => handleExport('csv')}>Export Activity (CSV)</button>
+            </div>
+          )}
         </div>
       </div>
 
