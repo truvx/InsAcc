@@ -1994,6 +1994,26 @@ export default function App() {
     localStorage.setItem(migratedKey, 'true')
   }, [propChartAccounts, propVouchers, setPropVouchers])
 
+  // Purge vouchers whose top-level referenceType='Lease' points to a deleted lease
+  // (PDC migration vouchers are stored this way and are missed by the cascade delete)
+  useEffect(() => {
+    if (!propVouchers.length || !propLeases.length) return
+    const activeLeaseIds = new Set(propLeases.map(l => l.id))
+    const activeLeaseNumbers = new Set(propLeases.map(l => l.leaseNumber))
+    const filtered = propVouchers.filter(v => {
+      const vAny = v as any
+      if (vAny.referenceType === 'Lease') {
+        const refId = vAny.referenceId || ''
+        // If it points to a lease that no longer exists, remove it
+        if (refId && !activeLeaseIds.has(refId) && !activeLeaseNumbers.has(refId)) return false
+      }
+      return true
+    })
+    if (filtered.length !== propVouchers.length) {
+      setPropVouchers(filtered)
+    }
+  }, [propLeases, propVouchers, setPropVouchers])
+
   useEffect(() => {
     const oldVal = localStorage.getItem('insacc_prop_accounts')
     if (oldVal) {

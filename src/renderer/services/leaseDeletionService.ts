@@ -42,6 +42,13 @@ function findVouchersByLeaseRef(
     // Backward compat: voucher-level reference field (lease number)
     if (v.reference === leaseNumber) return true
 
+    // Voucher-level referenceType/referenceId (set by PDC migrations and propertyAccountingService)
+    const vAny = v as any
+    if (
+      vAny.referenceType === 'Lease' &&
+      (vAny.referenceId === leaseId || vAny.referenceId === leaseNumber)
+    ) return true
+
     // Primary: line-level referenceType/referenceId
     return v.lines.some(l =>
       l.referenceType === 'Lease' &&
@@ -186,9 +193,16 @@ export function auditOrphanedRecords(
     actions.push(`Found ${orphanedDeposits.length} orphaned security deposits`)
   }
 
-  // Vouchers with lines referencing non-existent leases
+  // Vouchers with lines referencing non-existent leases, OR with voucher-level referenceType='Lease' pointing to a deleted lease
   const orphanedVouchers = vouchers.filter(v => {
     if (!isVoucherActive(v) || v.status !== 'Posted') return false
+    // Check voucher-level referenceType/referenceId (used by PDC migrations)
+    const vAny = v as any
+    if (vAny.referenceType === 'Lease') {
+      const refId = vAny.referenceId || ''
+      if (refId && !activeLeaseIds.has(refId) && !activeLeaseNumbers.has(refId)) return true
+    }
+    // Check line-level referenceType/referenceId
     return v.lines.some(l => {
       if (l.referenceType !== 'Lease') return false
       return !activeLeaseIds.has(l.referenceId || '') && !activeLeaseNumbers.has(l.referenceId || '')
