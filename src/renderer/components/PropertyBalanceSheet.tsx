@@ -385,10 +385,14 @@ export default function PropertyBalanceSheet({ currency = 'AED', accounts, vouch
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
           <div className="card" style={{ padding: '16px 20px', borderTop: '3px solid #0A0A6F' }}>
             <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>Total Assets</div>
             <CurrencyText value={totalAssets} currency={currency} className="text-md fw-700" style={{ color: '#0A0A6F' }} />
+          </div>
+          <div className="card" style={{ padding: '16px 20px', borderTop: '3px solid #6366F1' }}>
+            <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>Total Liab. + Equity</div>
+            <CurrencyText value={totalLiabilities + totalEquity} currency={currency} className="text-md fw-700" style={{ color: '#6366F1' }} />
           </div>
           <div className="card" style={{ padding: '16px 20px', borderTop: '3px solid #D97706' }}>
             <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>Total Liabilities</div>
