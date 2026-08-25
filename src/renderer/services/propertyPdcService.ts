@@ -81,7 +81,7 @@ export function validatePdcTransition(from: PdcCheque['status'], to: PdcCheque['
   if (from === to) return true
   switch (from) {
     case 'Pending':
-      return to === 'Deposited' || to === 'Cleared' || to === 'Cancelled' || to === 'Replaced'
+      return to === 'Deposited' || to === 'Cleared' || to === 'Cancelled' || to === 'Replaced' || to === 'Bounced'
     case 'Deposited':
       return to === 'Cleared' || to === 'Bounced' || to === 'Cancelled' || to === 'Replaced'
     case 'Cleared':
