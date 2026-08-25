@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import type { Account, Voucher, PostingResult } from '../accounting/types'
 import { Button, Input, Select, EmptyState, SearchIcon, CloseIcon, KpiCard, ChevronDownIcon } from './design/DesignSystem'
+import { CurrencyText } from './design/CurrencyText'
 import { DataTable, type Column } from './design/Table'
 import { exportTableData } from '../services/reportExportService'
 import { recordModuleEvent } from '../services/auditService'
@@ -385,7 +386,7 @@ export default function InvestmentJournalVoucher({
       header: 'Amount',
       render: v => {
         const amt = v.lines.filter(l => l.type === 'Debit').reduce((sum, l) => sum + l.amount, 0)
-        return <span className="text-mono text-xs fw-600">{currency} {amt.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        return <span className="text-mono text-xs fw-600"><CurrencyText value={amt} currency={currency} /></span>
       },
     },
     {

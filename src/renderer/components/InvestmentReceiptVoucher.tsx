@@ -7,6 +7,7 @@ import { exportTableData } from '../services/reportExportService'
 import { recordModuleEvent } from '../services/auditService'
 import { useMasterData } from '../contexts/MasterDataContext'
 import { PartyLookupService } from '../services/partyLookupService'
+import { CurrencyText } from './design/CurrencyText'
 import { SearchablePartySelect } from './design/SearchablePartySelect'
 import { DataTable, type Column } from './design/Table'
 import EntityForm from './design/EntityForm'
@@ -448,6 +449,16 @@ export default function InvestmentReceiptVoucher({
       key: 'description',
       header: 'Description',
       render: v => <span className="text-sm" style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}>{v.description}</span>,
+    },
+    {
+      key: 'amount',
+      header: 'Amount',
+      sortable: true,
+      numeric: true,
+      render: v => {
+        const total = v.lines.reduce((s: number, l: any) => s + (l.type === 'Debit' ? (l.baseAmount ?? l.amount) : 0), 0)
+        return <span className="fw-600 text-sm" style={{ color: 'var(--accent)' }}><CurrencyText value={total} currency={currency} /></span>
+      },
     },
     {
       key: 'paymentMode',

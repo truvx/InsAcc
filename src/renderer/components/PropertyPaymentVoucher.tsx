@@ -8,6 +8,7 @@ import { recordModuleEvent } from '../services/auditService'
 import { formatCurrency } from '../utils/currencyHelpers'
 import { useMasterData } from '../contexts/MasterDataContext'
 import { PartyLookupService, type Party } from '../services/partyLookupService'
+import { CurrencyText } from './design/CurrencyText'
 import { SearchablePartySelect } from './design/SearchablePartySelect'
 import { DataTable, type Column } from './design/Table'
 import EntityForm from './design/EntityForm'
@@ -493,7 +494,7 @@ export default function PropertyPaymentVoucher({
       numeric: true,
       render: v => {
         const total = v.lines.reduce((s: number, l: any) => s + (l.type === 'Credit' ? (l.baseAmount ?? l.amount) : 0), 0)
-        return <span className="fw-600 text-sm" style={{ color: 'var(--accent)' }}>{currency} {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        return <span className="fw-600 text-sm" style={{ color: 'var(--accent)' }}><CurrencyText value={total} currency={currency} /></span>
       },
     },
     {

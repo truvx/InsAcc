@@ -16,6 +16,7 @@ import VoucherDetailsModal from './design/VoucherDetailsModal'
 import ActionsMenu from './design/ActionsMenu'
 
 import { PartyLookupService } from '../services/partyLookupService'
+import { CurrencyText } from './design/CurrencyText'
 import { SearchablePartySelect } from './design/SearchablePartySelect'
 import AuditTrailModal from './design/AuditTrailModal'
 import { printVoucher } from '../utils/printVoucherHelper'
@@ -388,7 +389,7 @@ export default function PropertyJournalVoucher({
       header: 'Amount',
       render: v => {
         const amt = v.lines.filter(l => l.type === 'Debit').reduce((sum, l) => sum + l.amount, 0)
-        return <span className="text-mono text-xs fw-600">{currency} {amt.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        return <span className="text-mono text-xs fw-600"><CurrencyText value={amt} currency={currency} /></span>
       },
     },
     {
