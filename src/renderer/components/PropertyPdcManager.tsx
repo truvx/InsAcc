@@ -583,54 +583,67 @@ export default function PropertyPdcManager({
     }
   }
 
+  // ── Shared helper: post a GL reversal when a pending PDC is removed ────────
+  // The lease creation journal debited 1410 (PDC receivable) for the full rent.
+  // When a PDC is cancelled or deleted, we must credit 1410 to remove that receivable.
+  // We find the lease creation voucher to identify the income account and post a partial reverse.
+  const postPdcReversalVoucher = (pdc: PdcCheque, existingVouchers: Voucher[]): Voucher[] => {
+    if (pdc.status !== 'Pending' && pdc.status !== 'Bounced') return existingVouchers
+    const today = new Date().toISOString().split('T')[0]
+
+    // Find the income account from the lease creation voucher (credit side, debits 1410)
+    const leaseCreationVoucher = existingVouchers.find(v => {
+      const vAny = v as any
+      return (
+        (vAny.referenceType === 'Lease' || v.lines.some(l => l.referenceType === 'Lease')) &&
+        ((vAny.referenceId === pdc.leaseId) || v.lines.some(l => l.referenceId === pdc.leaseId)) &&
+        v.lines.some(l => l.accountId === '1410' && l.type === 'Debit')
+      )
+    })
+
+    // Find the credit (income) account from the lease creation voucher
+    const incomeAccountId = leaseCreationVoucher?.lines.find(l => l.type === 'Credit' && l.accountId !== '1410')?.accountId
+
+    const ts = new Date().toISOString()
+    const reversalId = `v-pdc-cancel-${pdc.id}-${Date.now()}`
+    const reversalVoucher: Voucher = {
+      id: reversalId,
+      number: `JV-PDC-REV-${pdc.chequeNumber}`,
+      date: today,
+      type: 'Journal',
+      reference: '',
+      description: `PDC Removed: Cheque ${pdc.chequeNumber} — receivable reversed`,
+      status: 'Posted',
+      currency: currency || 'AED',
+      exchangeRate: 1,
+      baseCurrency: currency || 'AED',
+      createdBy: 'user',
+      createdAt: ts,
+      updatedAt: ts,
+      lines: [
+        // Credit 1410 to reduce the PDC receivable
+        { accountId: '1410', type: 'Credit', amount: pdc.amount, narration: `PDC cancelled — ${pdc.chequeNumber}` },
+        // Debit the income account (or 1410 itself as fallback — net neutral on income)
+        { accountId: incomeAccountId || '1410', type: 'Debit', amount: pdc.amount, narration: `PDC cancelled — reversed rental recognition` },
+      ],
+      ...(({ referenceType: 'Lease', referenceId: pdc.leaseId }) as any),
+    } as Voucher
+
+    // Use spread to attach the extra top-level fields the query logic expects
+    const fullReversal = Object.assign({}, reversalVoucher, { referenceType: 'Lease', referenceId: pdc.leaseId })
+
+    const updated = [fullReversal, ...existingVouchers]
+    setVouchers(updated)
+    invalidateBalanceCache()
+    return updated
+  }
+
+
   const handleCancel = () => {
     if (!activePdc) return
     try {
-      let updatedVouchers = [...vouchers]
-
-      // If this PDC had a FUTURE_PDC_RECEIVED journal entry (stored in voucherId),
-      // post a PDC_CANCELLED reversal to keep the GL balanced.
-      const pdcVoucherId = activePdc.voucherId
-      if (pdcVoucherId && (activePdc.status === 'Pending' || activePdc.status === 'Bounced')) {
-        const origVoucher = vouchers.find(v => v.id === pdcVoucherId)
-        if (origVoucher) {
-          // Reverse the original FUTURE_PDC_RECEIVED entry
-          const revResult = accountingEngine.reverse(
-            origVoucher,
-            new Date().toISOString().split('T')[0],
-            'user',
-            accounts,
-            updatedVouchers
-          )
-          if (revResult.success && revResult.voucher) {
-            updatedVouchers = [revResult.voucher, ...updatedVouchers]
-            setVouchers(updatedVouchers)
-            invalidateBalanceCache()
-          }
-        } else {
-          // Original voucher not in state — post a PDC_CANCELLED entry directly
-          const desc = `PDC Cancelled: Cheque No. ${activePdc.chequeNumber}`
-          const draftResult = accountingEngine.processAccountingEvent(
-            'PDC_CANCELLED',
-            {
-              amount: activePdc.amount,
-              date: new Date().toISOString().split('T')[0],
-              description: desc,
-              currency, exchangeRate: 1, baseCurrency: currency,
-              referenceType: 'Lease', referenceId: activePdc.leaseId, createdBy: 'user',
-            },
-            accounts, updatedVouchers
-          )
-          if (draftResult.success && draftResult.voucher) {
-            const postResult = autoPostVoucher(accountingEngine, draftResult.voucher, accounts)
-            if (postResult.success && postResult.voucher) {
-              updatedVouchers = [postResult.voucher, ...updatedVouchers]
-              setVouchers(updatedVouchers)
-              invalidateBalanceCache()
-            }
-          }
-        }
-      }
+      // Post GL reversal (Credit 1410) for Pending or Bounced PDCs
+      postPdcReversalVoucher(activePdc, [...vouchers])
 
       const updated = transitionPdcCheque(pdcCheques, activePdc.id, 'Cancelled', {
         bounceReason: cancelReason, user: 'user'
@@ -644,6 +657,7 @@ export default function PropertyPdcManager({
       setToast({ visible: true, message: e.message, type: 'error' })
     }
   }
+
 
   const handleReplace = () => {
     if (!replaceTarget || !replaceChequeNumber.trim()) return
@@ -689,6 +703,8 @@ export default function PropertyPdcManager({
 
   const handleDeletePDC = () => {
     if (!deletePdcTarget) return
+    // Post a GL reversal to remove the 1410 receivable before deleting the record
+    postPdcReversalVoucher(deletePdcTarget, [...vouchers])
     setPdcCheques(prev => prev.filter(c => c.id !== deletePdcTarget.id))
     onAuditEvent?.(recordModuleEvent('Property Transactions', 'Delete', deletePdcTarget.chequeNumber, deletePdcTarget.id, `Deleted cheque ${deletePdcTarget.chequeNumber}`))
     setToast({ visible: true, message: `PDC ${deletePdcTarget.chequeNumber} deleted.`, type: 'success' })
